@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: scenthunter-pr726-staging
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   import:
@@ -103,10 +103,14 @@ jobs:
         run: |
           set -euo pipefail
           machines="$(flyctl machine list --app "$FLY_APP" --json)"
-          machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started")][0].id // empty')"
+          machine_id="$(printf '%s' "$machines" | jq -r '[.[] | select(.state == "started")][0].id // [.[]][0].id // empty')"
           if [ -z "$machine_id" ]; then
-            echo "::error::No started machine exists in the isolated staging app."
+            echo "::error::No machine exists in the isolated staging app."
             exit 1
+          fi
+          state="$(printf '%s' "$machines" | jq -r --arg id "$machine_id" '.[] | select(.id == $id) | .state')"
+          if [ "$state" != "started" ]; then
+            flyctl machine start "$machine_id" --app "$FLY_APP"
           fi
           status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
           if ! grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$status"; then
@@ -122,13 +126,21 @@ jobs:
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mkdir -p /data/notino-phase2"
           REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml.gz"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh sftp put "$NOTINO_XML_GZ_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$MACHINE_ID"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s $REMOTE_TMP"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml.gz"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import gzip,shutil; src=gzip.open(\"/data/notino-phase2/notino-cj-feed.xml.gz\",\"rb\"); dst=open(\"/data/notino-phase2/notino-cj-feed.xml\",\"wb\"); shutil.copyfileobj(src,dst); src.close(); dst.close()'"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s /data/notino-phase2/notino-cj-feed.xml"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "sha256sum /data/notino-phase2/notino-cj-feed.xml"
 
       - name: Import into the dedicated persistent Phase 2 SQLite database
@@ -136,6 +148,7 @@ jobs:
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
 
       - name: Re-import same snapshot and verify offer idempotency
@@ -146,7 +159,9 @@ jobs:
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3,json; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); q=lambda s:c.execute(s).fetchone()[0]; out={\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicates\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"offers\"]==83 and out[\"history\"]>=166 and out[\"duplicates\"]==0'"
 
       - name: Verify Phase 2 and public catalog-first Notino search
@@ -183,4 +198,5 @@ jobs:
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import os,sqlite3,json; p=\"/data/notino-phase2/catalog.sqlite3\"; c=sqlite3.connect(p); q=lambda s:c.execute(s).fetchone()[0]; out={\"db_exists\":os.path.isfile(p),\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"price_history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicate_external_ids\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"db_exists\"] and out[\"offers\"]>0 and out[\"price_history\"]>=out[\"offers\"] and out[\"duplicate_external_ids\"]==0'"
