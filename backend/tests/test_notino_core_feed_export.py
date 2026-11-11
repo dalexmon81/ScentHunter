@@ -17,7 +17,7 @@ class NotinoCoreFeedExportTests(unittest.TestCase):
         <rss xmlns:g="http://base.google.com/ns/1.0"><channel>
           <entry>
             <g:id>SKU-1</g:id><g:title>Known Eau de Parfum 100 ml pour homme</g:title>
-            <g:brand>Known</g:brand><g:gtin>4006381333931</g:gtin>
+            <g:brand>Known</g:brand><g:google_product_category>479</g:google_product_category><g:gtin>4006381333931</g:gtin>
             <g:price>49.90 EUR</g:price><g:sale_price>39.90 EUR</g:sale_price>
             <g:availability>in stock</g:availability><g:size>100 ml</g:size>
             <g:product_type>Beauty &gt; parfémované vody</g:product_type>
@@ -26,14 +26,14 @@ class NotinoCoreFeedExportTests(unittest.TestCase):
           </entry>
           <entry>
             <g:id>SKU-2</g:id><g:title>Known Eau de Parfum 100 ml pour homme second listing</g:title>
-            <g:brand>Known</g:brand><g:gtin>4006381333931</g:gtin>
+            <g:brand>Known</g:brand><g:google_product_category>479</g:google_product_category><g:gtin>4006381333931</g:gtin>
             <g:price>50.00 EUR</g:price><g:availability>out of stock</g:availability>
             <g:size>100 ml</g:size><g:product_type>Beauty &gt; parfémované vody</g:product_type>
             <g:link>https://notino.fr/p/sku-2</g:link>
           </entry>
           <entry>
             <g:id>SKU-BAD</g:id><g:title>Bad GTIN EDP 50 ml</g:title>
-            <g:brand>Other</g:brand><g:gtin>4006381333932</g:gtin>
+            <g:brand>Other</g:brand><g:google_product_category>479</g:google_product_category><g:gtin>4006381333932</g:gtin>
             <g:price>10.00 EUR</g:price><g:availability>in stock</g:availability>
             <g:product_type>Beauty &gt; parfémované vody</g:product_type>
           </entry>
