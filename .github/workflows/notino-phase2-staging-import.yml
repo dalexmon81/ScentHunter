@@ -25,8 +25,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: notino-phase2-staging-import-v2
-  cancel-in-progress: true
+  group: scenthunter-pr726-staging
+  cancel-in-progress: false
 
 jobs:
   import:
