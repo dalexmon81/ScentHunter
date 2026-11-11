@@ -4323,6 +4323,7 @@ def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
 
 
 @app.get('/catalog/hydration-errors')
+# Staging diagnostics also exercise the local catalog search path before retailer refreshes.
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors.
 
