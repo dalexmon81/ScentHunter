@@ -427,7 +427,7 @@ def _product_from_html(html, canonical_url):
                 if availability_text:
                     break
     if availability_text:
-        available = not any(x in availability_text.casefold() for x in ("outofstock", "out_of_stock", "soldout", "discontinued"))
+        available = not any(x in availability_text.casefold() for x in ("outofstock", "out_of_stock", "out of stock", "soldout", "sold out", "discontinued"))
     else:
         page_text = clean(soup.get_text(" ", strip=True)).casefold()
         sold_out_markers = ("épuisé", "uitverkocht", "sold out", "ausverkauft", "agotado")
