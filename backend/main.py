@@ -670,7 +670,6 @@ def _start_catalog_bootstrap():
     if _catalog_is_ready():
         missing_stores = _stores_missing_catalog()
         with _CATALOG_BOOTSTRAP_LOCK:
-            global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
         if missing_stores:
             print(
