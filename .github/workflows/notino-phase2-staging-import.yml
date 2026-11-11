@@ -68,6 +68,10 @@ jobs:
           test -s "$XML"
           echo "NOTINO_XML_PATH=$XML" >> "$GITHUB_ENV"
           sha256sum "$XML"
+          gzip -c "$XML" > "$XML.gz"
+          test -s "$XML.gz"
+          echo "NOTINO_XML_GZ_PATH=$XML.gz" >> "$GITHUB_ENV"
+          ls -lh "$XML" "$XML.gz"
           python - "$XML" <<'PY'
           import sys
           from pathlib import Path
@@ -118,10 +122,12 @@ jobs:
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mkdir -p /data/notino-phase2"
-          REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml"
-          flyctl ssh sftp put "$NOTINO_XML_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$MACHINE_ID"
+          REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml.gz"
+          flyctl ssh sftp put "$NOTINO_XML_GZ_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$MACHINE_ID"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s $REMOTE_TMP"
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml.gz"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import gzip,shutil; src=gzip.open(\"/data/notino-phase2/notino-cj-feed.xml.gz\",\"rb\"); dst=open(\"/data/notino-phase2/notino-cj-feed.xml\",\"wb\"); shutil.copyfileobj(src,dst); src.close(); dst.close()'"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s /data/notino-phase2/notino-cj-feed.xml"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "sha256sum /data/notino-phase2/notino-cj-feed.xml"
 
       - name: Import into the dedicated persistent Phase 2 SQLite database
