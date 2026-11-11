@@ -137,7 +137,7 @@ jobs:
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py 'Liquid Brun' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
           printf '%s\\n' "$OUTPUT"
-          python -c 'import json,sys; d=json.loads(sys.stdin.read()); assert d["source"]=="notino_phase2_catalog_sqlite"; assert d["live_scraping"] is False; assert d["count"]>0; assert any("liquid brun" in x["fragrance"].lower() for x in d["offers"]); print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
+          python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite", d; assert d["live_scraping"] is False, d; assert d["count"]>0, d; assert any("liquid brun" in x["fragrance"].lower() for x in d["offers"]), d; print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
 
       - name: Verify persisted database and offer uniqueness
         shell: bash
