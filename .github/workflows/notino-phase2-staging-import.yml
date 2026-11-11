@@ -92,8 +92,8 @@ jobs:
             exit 1
           fi
           status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
-          if ! grep -Fq "/data" <<< "$status"; then
-            echo "::error::Selected staging machine does not report the expected /data volume mount."
+          if ! grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$status"; then
+            echo "::error::Selected staging machine does not report an attached persistent Fly volume."
             printf '%s\\n' "$status"
             exit 1
           fi
