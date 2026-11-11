@@ -108,7 +108,7 @@ jobs:
           refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
           echo "::endgroup::"
           echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
-          curl --connect-timeout 10 --max-time 45 -sS -G --data-urlencode "q=Liquid Brun" "${BASE}/search"
+          curl --connect-timeout 10 --max-time 90 -sS -G --data-urlencode "q=Liquid Brun" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Liquid Brun"
           echo
           echo "::endgroup::"
           fetch "/catalog/hydration-processing"
