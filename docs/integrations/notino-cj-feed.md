@@ -84,12 +84,11 @@ a GTIN or offer can be attached.
   IDs. Keep both source rows visible for review; do not assume they are duplicates
   that can safely be collapsed.
 - The 9,533 core fragrance rows were analyzed separately from the broader Google category 479 feed population.
-- **Canonical matching result: zero exact GTIN matches are currently possible.**
-  The current canonical JSON catalog has 1,389 products and 511 variants, but
-  none of the variants has a GTIN recorded. Therefore the exact-GTIN adapter
-  cannot promote any feed row today. The separate read-only candidate report
-  ranks product and variant identities for manual review; it does not authorize
-  offer import or write GTINs back to the catalog.
+- **Historical snapshot result (2026-11-10): zero exact GTIN matches were possible.**
+  At that time the canonical JSON catalog had 1,389 products and 511 variants,
+  with no GTIN recorded on variants. The subsequent enrichment is documented
+  in the dated update below. Candidate scores remain ranking evidence, not
+  independent human identity approval.
 
 ## Important limitation
 The adapter and persistence tests do not activate production ingestion, change
@@ -115,8 +114,8 @@ Results for the 9,533 core fragrance feed rows:
 - 167 top-ranked candidates fell into the strongest existing-variant score band before comparing the runner-up; the reproducible priority queue now splits these into 160 with a clear lead and 7 ambiguous alternatives.
 - 1,017 rows were ambiguous; 292 medium-priority; 1,585 low-priority;
   318 were downgraded for known size, concentration or gender conflicts.
-- No exact GTIN matches were possible because no canonical variant has a GTIN.
-- Automatic matches: zero. Every candidate requires human verification.
+- No exact GTIN matches were possible in the 2026-11-10 catalog snapshot because no canonical variant then had a GTIN.
+- Automatic matches: zero. Every candidate required human verification.
 
 These are candidate-ranking statistics, not confirmed match counts. A row with
 no candidate is not proof that the fragrance is new: missing aliases, retailer
@@ -309,3 +308,21 @@ review package after the secrets are configured. Every generated candidate
 remains human-review-only; a successful download or audit is not an approval
 to map products or publish offers.
 
+
+
+## Canonical GTIN enrichment (2026-11-11)
+
+The PR branch catalog was enriched with 83 GTINs across 83 existing canonical
+variants. The selected rows required an exact candidate score of 1.0, exact
+name similarity of 1.0, exact size and concentration matches, no gender or
+variant-format conflict, a valid GS1 check digit, a unique GTIN and a unique
+target variant. These are deterministic high-evidence mappings derived from
+the CJ feed and canonical catalog; they are not represented as independent
+human confirmations.
+
+The committed catalog was re-read and checked: 511 variants, 83 GTIN values,
+83 unique GTIN values and no orphan variant references. The enrichment is on
+the PR branch only. No production catalog/database write or offer import was
+performed. The Notino Phase 2 adapter can now resolve those 83 exact GTINs
+when run against a database seeded from this enriched catalog; all remaining
+feed rows continue to stage for review until a unique canonical GTIN exists.
