@@ -2,6 +2,9 @@ name: Notino authorized feed review
 
 on:
   workflow_dispatch:
+  schedule:
+    # Poll CJ for a refreshed export; CJ itself may only publish when its feed changes.
+    - cron: "17 */6 * * *"
   pull_request:
     branches:
       - main
