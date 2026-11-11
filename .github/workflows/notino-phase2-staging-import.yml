@@ -106,8 +106,10 @@ jobs:
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mkdir -p /data/notino-phase2"
-          flyctl ssh sftp put "$NOTINO_XML_PATH" "/data/notino-phase2/notino-cj-feed.xml" --app "$FLY_APP" --machine "$MACHINE_ID"
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s /data/notino-phase2/notino-cj-feed.xml"
+          REMOTE_TMP="/data/notino-phase2/notino-cj-feed-${GITHUB_RUN_ID}.xml"
+          flyctl ssh sftp put "$NOTINO_XML_PATH" "$REMOTE_TMP" --app "$FLY_APP" --machine "$MACHINE_ID"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "test -s $REMOTE_TMP"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "mv -f $REMOTE_TMP /data/notino-phase2/notino-cj-feed.xml"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "sha256sum /data/notino-phase2/notino-cj-feed.xml"
 
       - name: Import into the dedicated persistent Phase 2 SQLite database
