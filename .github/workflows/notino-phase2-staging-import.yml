@@ -169,7 +169,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_MACHINE="${{ steps.snapshot.outputs.source_machine }}"
-          flyctl ssh console --app "$FLY_APP" --machine "$SOURCE_MACHINE" -C "test -s /data/notino-phase2/notino-cj-feed.xml.gz || gzip -c /data/notino-phase2/notino-cj-feed.xml > /data/notino-phase2/notino-cj-feed.xml.gz"
+          flyctl ssh console --app "$FLY_APP" --machine "$SOURCE_MACHINE" -C "/app/.venv/bin/python -c 'import gzip,shutil; from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); g=Path(\"/data/notino-phase2/notino-cj-feed.xml.gz\"); [None if g.is_file() and g.stat().st_size else shutil.copyfileobj(p.open(\"rb\"),gzip.open(g,\"wb\"))]'"
           mkdir -p /tmp/notino-reused-snapshot
           XML_GZ=/tmp/notino-reused-snapshot/notino-cj-feed.xml.gz
           XML=/tmp/notino-reused-snapshot/notino-cj-feed.xml
