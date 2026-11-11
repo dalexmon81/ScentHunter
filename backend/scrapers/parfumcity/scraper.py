@@ -423,6 +423,17 @@ def _product_from_html(html, canonical_url):
                 price = node.get("content")
                 break
 
+    # Some Shopify themes omit the amount from JSON-LD but render the current
+    # price directly after the product heading. Read only the first currency
+    # amount following H1; do not pick compare-at or shipping prices elsewhere.
+    if price is None and title_node:
+        for text_node in title_node.find_all_next(string=True):
+            text_value = clean(text_node)
+            match = re.search(r"(?:€\\s*)?(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})\\s*(?:€|EUR)", text_value, re.I)
+            if match:
+                price = match.group(1)
+                break
+
     brand = record.get("brand") or {}
     if isinstance(brand, dict):
         brand = brand.get("name")
