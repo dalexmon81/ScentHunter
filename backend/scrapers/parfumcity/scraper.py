@@ -370,7 +370,11 @@ def extract_product_page(session, url, slug, html=None):
     and availability. Use the same public .js product endpoint as discovery,
     and return one row per real variant for the catalog adapter to validate.
     """
-    data = product_json(session, url)
+    # Shopify's localized storefront paths can serve the HTML page but
+    # do not consistently expose the product JSON endpoint. Resolve the
+    # canonical root product URL before requesting its structured .js data.
+    canonical_url = _canonical_product_url(url)
+    data = product_json(session, canonical_url)
     if not isinstance(data, dict):
         return None
     query = clean(data.get("title")) + " " + clean(data.get("vendor"))
@@ -378,7 +382,7 @@ def extract_product_page(session, url, slug, html=None):
     for variant in data.get("variants") or []:
         if not isinstance(variant, dict):
             continue
-        item = make_item(data, variant, _canonical_product_url(url), query)
+        item = make_item(data, variant, canonical_url, query)
         if item:
             rows.append(item)
     return rows or None
