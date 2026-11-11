@@ -83,15 +83,26 @@ def extract_concentration(value: str) -> str | None:
 
 
 def extract_gender(value: str) -> str | None:
+    """Extract explicit audience markers in common retailer/catalog languages."""
     text = normalize(value)
-    has_men = bool(re.search(r"\b(?:for men|pour homme|homme|men|man|for him|pour lui)\b", text))
-    has_women = bool(re.search(r"\b(?:for women|pour femme|femme|women|woman|for her|pour elle)\b", text))
+    has_men = bool(re.search(
+        r"\b(?:for men|pour homme|homme|hommes|men|mens|man|male|masculine|"
+        r"uomo|uomini|for him|pour lui)\b",
+        text,
+    ))
+    has_women = bool(re.search(
+        r"\b(?:for women|pour femme|femme|femmes|women|womens|woman|female|"
+        r"feminine|donna|donne|for her|pour elle)\b",
+        text,
+    ))
     if has_men and has_women:
         return "conflict"
     if has_men:
         return "men"
     if has_women:
         return "women"
+    if re.search(r"\bunisex\b", text):
+        return "unisex"
     return None
 
 
@@ -140,17 +151,22 @@ def _brand_key(value: str) -> str:
 
 
 def _catalog_gender(product: dict, names: list[str]) -> str | None:
-    # Prefer primary catalog identity fields. Aliases are secondary evidence:
-    # they must not turn a clear primary gender into a false conflict.
+    # Canonical name is primary evidence, followed by explicit catalog metadata.
+    # Aliases are secondary: they must not override a clear primary declaration.
     primary = extract_gender(" ".join([
         product.get("canonical_name", ""),
         product.get("family_name", ""),
     ]))
     if primary:
         return primary
+
+    metadata_gender = extract_gender(str(product.get("gender") or ""))
+    if metadata_gender:
+        return metadata_gender
+
     alias_genders = {
         gender for gender in (extract_gender(name) for name in names)
-        if gender in {"men", "women", "conflict"}
+        if gender in {"men", "women", "unisex", "conflict"}
     }
     if "conflict" in alias_genders or len(alias_genders) > 1:
         return "conflict"
