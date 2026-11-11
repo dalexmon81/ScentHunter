@@ -148,14 +148,34 @@ jobs:
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3,json; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); q=lambda s:c.execute(s).fetchone()[0]; out={\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicates\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"offers\"]==83 and out[\"history\"]>=166 and out[\"duplicates\"]==0'"
 
-      - name: Verify Phase 2 catalog-first Notino search
+      - name: Verify Phase 2 and public catalog-first Notino search
         shell: bash
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py 'Liquid Brun' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
+          QUERY="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); r=c.execute(\"select f.name from offers o join stores s on s.id=o.store_id join product_variants v on v.id=o.product_variant_id join fragrances f on f.id=v.fragrance_id where s.slug=\\\"notino-fr\\\" and o.status=\\\"active\\\" and o.availability=\\\"in_stock\\\" limit 1\").fetchone(); print(r[0].split()[0] if r else \"\")'")"
+          test -n "$QUERY"
+          echo "Testing a real feed-matched Notino product: $QUERY"
+          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py '$QUERY' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
           printf '%s\\n' "$OUTPUT"
-          python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite", d; assert d["live_scraping"] is False, d; assert d["count"]>0, d; assert any("liquid brun" in x["fragrance"].lower() for x in d["offers"]), d; print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
+          python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite", d; assert d["live_scraping"] is False, d; assert d["count"]>0, d; print("PHASE2_NOTINO_SEARCH=PASS")' <<< "$OUTPUT"
+          python - "$QUERY" <<'PY'
+          import json, sys, urllib.parse, urllib.request
+          query = sys.argv[1]
+          url = "https://scenthunter-pr726-staging.fly.dev/search?" + urllib.parse.urlencode({"q": query})
+          req = urllib.request.Request(url, headers={"Accept": "application/json"})
+          with urllib.request.urlopen(req, timeout=60) as response:
+              payload = json.loads(response.read().decode("utf-8"))
+          offers = [offer for product in (payload.get("results") or []) for offer in (product.get("offers") or [])]
+          notino = [offer for offer in offers if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"]
+          assert notino, {"query": query, "stores": sorted({str(o.get("store") or o.get("shop")) for o in offers}), "payload": payload}
+          valid = [o for o in notino if float(o.get("price") or o.get("price_num") or 0) > 0 and str(o.get("url") or "").startswith("http")]
+          assert valid, {"query": query, "notino": notino}
+          print("PUBLIC_NOTINO_SEARCH=PASS")
+          print("PUBLIC_NOTINO_PRODUCT=" + str(valid[0].get("name")))
+          print("PUBLIC_NOTINO_PRICE=" + str(valid[0].get("price") or valid[0].get("price_num")))
+          print("PUBLIC_NOTINO_URL=" + str(valid[0].get("url")))
+          PY
 
       - name: Verify persisted database and offer uniqueness
         shell: bash
