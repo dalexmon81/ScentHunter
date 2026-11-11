@@ -169,3 +169,46 @@ The script never writes the catalog or database and does not create variants.
 
 Exact GTIN evidence in the general candidate ranker is now accepted only when
 the feed and catalog identifiers both pass the GS1 check-digit validator.
+
+
+## Publisher acceptance and feed authorization (2026-11-10)
+
+VIVnetworks confirmed by email on 2026-11-10 that ScentHunter was accepted
+into the NOTINO.fr affiliate program and that the feed is enabled automatically
+after acceptance; no additional feed-access approval is required. VIVnetworks
+also previously confirmed that price-comparison platforms are generally
+permitted, with acceptance into the program decided by Notino. Continue to
+follow the CJ/Notino publisher terms and the supplied Publisher & Developer
+Welcome Kit for display, attribution, refresh and link requirements.
+
+This confirms affiliate-program acceptance and feed access. It does **not**
+approve any product-to-canonical mapping or allow unvalidated rows to be
+published. Feed access, catalog identity validation and offer publication are
+separate gates.
+
+## Reproducible review-priority queue
+
+After producing the core-fragrance CSV and candidate CSV, generate one
+best-ranked candidate per feed external ID, retain the runner-up and score
+margin, and apply GTIN holds:
+
+```bash
+python -m backend.scripts.build_notino_review_priority \
+  /path/to/notino_fr_core_fragrances.csv \
+  /path/to/notino-match-candidates.csv \
+  --csv /tmp/notino-catalog-review-priority.csv \
+  --json /tmp/notino-catalog-review-priority.json
+```
+
+The queue prioritizes invalid GTINs and duplicate feed GTINs as hard holds,
+then high/medium/low variant candidates, product-only candidates and rows with
+no candidate. It never approves a match and never writes to the canonical
+catalog or offer database. The 2026-11-11 saved review snapshot contains
+9,533 rows: 184 invalid-GTIN holds, 2 duplicate-GTIN holds, 167 high-confidence
+variant candidates for human verification, 292 medium candidates, 219
+attribute-conflict candidates, 400 low-confidence variant candidates, 2,297
+product-only candidates and 5,972 with no candidate.
+
+The generated queue is a review artifact based on the saved 2026-11-10 feed
+extract. Re-download and audit the current CJ XML before treating any price,
+availability or timestamp as current.
