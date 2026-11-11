@@ -106,6 +106,8 @@ def main() -> int:
 
                     price, price_currency = money(row.get("price", ""))
                     sale_price, sale_currency = money(row.get("sale_price", ""))
+                    if sale_price is not None and sale_price <= 0:
+                        sale_price = None
                     chosen_price = sale_price if sale_price is not None else price
                     currency = sale_currency or price_currency or "EUR"
                     raw_record = {
