@@ -149,8 +149,24 @@ def main() -> int:
                     .group_by(Offer.external_product_id)
                     .having(func.count() > 1)
                 ).all()
+                # A successful download or a clean database is not a
+                # successful import. Require real matched variants, offers and
+                # price-history rows; otherwise CI must fail loudly.
+                verification_failures = []
+                if offers <= 0:
+                    verification_failures.append("no_offers_promoted")
+                if unique_variant_matches <= 0:
+                    verification_failures.append("no_canonical_variants_matched")
+                if history <= 0:
+                    verification_failures.append("no_price_history_recorded")
+                if raw_total != len(rows):
+                    verification_failures.append("raw_row_count_mismatch")
+                if active_duplicate_ids:
+                    verification_failures.append("duplicate_offer_external_ids")
+
                 summary = {
-                    "status": "passed" if not active_duplicate_ids else "failed",
+                    "status": "passed" if not verification_failures else "failed",
+                    "verification_failures": verification_failures,
                     "feed_core_rows": len(rows),
                     "unique_external_ids": len(seen_ids),
                     "duplicate_external_ids_in_feed": len(duplicate_external_ids),
