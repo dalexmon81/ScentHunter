@@ -35,7 +35,7 @@ from scripts.build_notino_match_candidates import iter_perfume_rows
 
 def money(value: str) -> tuple[Decimal | None, str | None]:
     text = (value or "").strip()
-    match = re.search(r"([0-9][0-9.,]*)\\s*([A-Z]{3})", text, re.I)
+    match = re.search(r"([0-9][0-9.,]*)\s*([A-Z]{3})", text, re.I)
     if not match:
         return None, None
     number, currency = match.groups()
