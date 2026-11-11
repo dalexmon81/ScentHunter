@@ -130,7 +130,7 @@ jobs:
           }
           refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
           refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
-          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/"
+          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
           refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
           refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
           echo "::endgroup::"
