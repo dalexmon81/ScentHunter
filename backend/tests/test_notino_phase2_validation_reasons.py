@@ -168,3 +168,19 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                 self.assertEqual({offer.external_product_id for offer in offers}, {"NOTINO-A", "NOTINO-B"})
         finally:
             engine.dispose()
+
+
+class NotinoFeedMoneyParserTests(unittest.TestCase):
+    def test_money_parser_accepts_currency_with_or_without_space(self):
+        from scripts.import_notino_phase2_persistent import money
+
+        self.assertEqual(money("36.70 EUR"), (Decimal("36.70"), "EUR"))
+        self.assertEqual(money("36,70 EUR"), (Decimal("36.70"), "EUR"))
+        self.assertEqual(money("1.234,56 EUR"), (Decimal("1234.56"), "EUR"))
+        self.assertEqual(money("36.70EUR"), (Decimal("36.70"), "EUR"))
+
+    def test_money_parser_rejects_missing_or_invalid_amount(self):
+        from scripts.import_notino_phase2_persistent import money
+
+        self.assertEqual(money(""), (None, None))
+        self.assertEqual(money("not a price"), (None, None))
