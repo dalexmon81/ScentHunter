@@ -646,11 +646,27 @@ def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
 
 @app.on_event('startup')
 def _start_catalog_bootstrap():
-    global _CATALOG_BOOTSTRAP_STARTED
+    global _CATALOG_BOOTSTRAP_STARTED, _CATALOG_BOOTSTRAP_DONE
     with _CATALOG_BOOTSTRAP_LOCK:
         if _CATALOG_BOOTSTRAP_STARTED:
             return
         _CATALOG_BOOTSTRAP_STARTED = True
+
+    # Isolated smoke-test deployments can opt out of broad discovery and
+    # hydration. Those background workers compete with targeted verification
+    # for the same SQLite writer lock and can starve API/search requests.
+    background_enabled = str(
+        os.environ.get('CATALOG_BACKGROUND_WORKERS_ENABLED', '1')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if not background_enabled:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_DONE = _catalog_is_ready()
+        print(
+            'CATALOG BOOTSTRAP SKIP: background workers disabled by configuration',
+            flush=True,
+        )
+        return
+
     if _catalog_is_ready():
         missing_stores = _stores_missing_catalog()
         with _CATALOG_BOOTSTRAP_LOCK:
