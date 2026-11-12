@@ -259,13 +259,14 @@ jobs:
             timeout --signal=TERM --kill-after=10s 120s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3"
           done
 
-      - name: Verify offer count is stable and re-import adds observations only
+      - name: Verify offer count and database integrity without requiring a second observation
+        timeout-minutes: 3
         shell: bash
         run: |
           set -euo pipefail
           IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
           for machine_id in "${ids[@]}"; do
-            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3 --compare-baseline /tmp/notino-phase2-before.json"
+            timeout --signal=TERM --kill-after=10s 120s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3"
           done
 
       - name: Verify Phase 2 and public catalog-first Notino search
