@@ -1766,6 +1766,13 @@ def _public_offer(item):
         "shop": item.get("shop"),
         "price": item.get("price"),
         "price_num": item.get("price_num"),
+        # Preserve Notino's explicit coupon breakdown through the public API.
+        # The effective price remains the displayed price; regular_price and
+        # coupon_code explain the condition instead of silently dropping it.
+        "regular_price": item.get("regular_price"),
+        "regular_price_num": item.get("regular_price_num"),
+        "coupon_code": item.get("coupon_code"),
+        "coupon_required": bool(item.get("coupon_required")),
         "price_stale": item.get("price_stale"),
         "currency": item.get("currency"),
         "format": item.get("format"),
