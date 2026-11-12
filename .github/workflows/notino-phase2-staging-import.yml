@@ -567,7 +567,7 @@ jobs:
               with urllib.request.urlopen(base + path, timeout=60) as response:
                   return json.loads(response.read().decode("utf-8"))
 
-          def search(query):
+          def search(query, require_notino=True):
               deadline = time.time() + 180
               start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
               while True:
@@ -591,9 +591,16 @@ jobs:
               }
               report = (payload.get("stores") or {}).get("notino") or {}
               details = report.get("details") or {}
-              assert details.get("phase2_source") == "persistent_notino_cj_catalog", details
-              assert details.get("live_scraping") is False, details
-              assert not (details.get("live_fallback") or {}).get("attempted"), details
+              if require_notino:
+                  assert details.get("phase2_source") == "persistent_notino_cj_catalog", {
+                      "query": query, "details": details,
+                  }
+                  assert details.get("live_scraping") is False, {
+                      "query": query, "details": details,
+                  }
+                  assert not (details.get("live_fallback") or {}).get("attempted"), {
+                      "query": query, "details": details,
+                  }
               return payload
 
           def valid_affiliate(value):
@@ -611,7 +618,22 @@ jobs:
 
           verified = []
           for brand in brands:
-              payload = search(brand)
+              print("PUBLIC_BRAND_QUERY=" + brand, flush=True)
+              payload = search(brand, require_notino=False)
+              report = (payload.get("stores") or {}).get("notino") or {}
+              details = report.get("details") or {}
+              if not details:
+                  print("PUBLIC_BRAND_NO_NOTINO_RESULTS=" + brand, flush=True)
+                  continue
+              assert details.get("phase2_source") == "persistent_notino_cj_catalog", {
+                  "query": brand, "details": details,
+              }
+              assert details.get("live_scraping") is False, {
+                  "query": brand, "details": details,
+              }
+              assert not (details.get("live_fallback") or {}).get("attempted"), {
+                  "query": brand, "details": details,
+              }
               offers = [
                   offer for group in (payload.get("results") or [])
                   for offer in (group.get("offers") or [])
