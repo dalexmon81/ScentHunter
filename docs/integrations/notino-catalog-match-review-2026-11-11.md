@@ -41,3 +41,19 @@ The queue contains one best-ranked candidate and its runner-up for each feed ite
 - Keep Notino ingestion isolated until the 156 high-priority candidates have been checked and canonical GTIN coverage has been populated/verified. The 31 explicit refill/recharge variant candidates require separate variant-format verification. The 184 invalid and 2 duplicate-GTIN rows must remain held.
 - A feed refresh must rerun the XML audit and candidate generation against the current canonical catalog; this snapshot must not be treated as live price or stock data.
 
+
+
+## Verified manual mapping — Rayhaan Aquatica 100 ml EDP (2026-11-12)
+
+The Notino listing `RAYAQTM_AEDP10` is mapped to canonical product `SH-0066`, variant `VAR-e2cc3951b1445b9f`, using the following aligned evidence:
+
+- Feed GTIN `6297001571330` passes the GS1 check digit.
+- Feed title: `Rayhaan Aquatica Eau de Parfum pour homme 100 ml`.
+- Canonical brand/name: Rayhaan / Aquatica.
+- Canonical variant: Eau de Parfum, 100 ml.
+- Canonical product source: [Rayhaan Aquatica official product page](https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687).
+- Notino sellable product URL: `https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/`.
+
+The exact GTIN is now recorded on that one canonical variant in the PR branch catalog. This is a single-item evidence-backed mapping, not a relaxed brand/name matching rule. The candidate remains labeled `needs_human_review` in the review tooling; automatic fuzzy approvals remain disabled. Regression tests cover the real catalog GTIN mapping and replacement of the same-variant legacy Notino URL while preserving a different concentration.
+
+No production catalog or database was changed. A disposable Phase 2 import and staging verification are still required before this mapping can be considered operationally published.
