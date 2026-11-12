@@ -9,65 +9,51 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
-      - name: Install missing HTML parser
-        run: python -m pip install --quiet beautifulsoup4
-      - name: Observe CJ redirects and isolated staging results
+      - name: Observe isolated staging searches
         shell: bash
         run: |
           python - <<'PY'
           import json, urllib.parse
+          from collections import Counter
           import requests
-          from bs4 import BeautifulSoup
 
           base = "https://scenthunter-pr726-staging.fly.dev"
-          for term in ("Hawas", "Hawas Kobra", "Rasasi Hawas Kobra", "Liquid Brun"):
+          queries = (
+              "Hawas", "Rasasi Hawas Kobra", "Liquid Brun",
+              "Liquid Brun Limited Edition", "Dior Sauvage",
+              "Armaf Club de Nuit", "Lattafa Asad",
+          )
+          for term in queries:
               try:
                   response = requests.get(base + "/search", params={"q": term}, timeout=60)
                   response.raise_for_status()
                   payload = response.json()
                   groups = []
+                  stores, prices, cj_hosts = Counter(), Counter(), Counter()
                   for group in payload.get("results", []):
+                      offers = []
+                      for offer in group.get("offers", []):
+                          store = str(offer.get("store") or offer.get("shop") or "")
+                          stores[store] += 1
+                          if offer.get("price_num") is not None:
+                              prices[store] += 1
+                          host = urllib.parse.urlsplit(offer.get("url") or "").hostname
+                          if store.casefold() == "notino":
+                              cj_hosts[host or "missing"] += 1
+                          offers.append({key: offer.get(key) for key in
+                              ("store", "price_num", "currency", "size_ml",
+                               "price_stale", "availability", "url", "source")})
                       groups.append({
                           "id": group.get("catalog_id"), "name": group.get("name"),
-                          "offers": [{key: offer.get(key) for key in
-                              ("store", "price", "price_num", "currency", "size_ml",
-                               "availability", "url", "source")}
-                              for offer in group.get("offers", [])],
+                          "retailer_only": group.get("retailer_only"), "offers": offers,
                       })
-                  print("STAGING_SEARCH=" + json.dumps({"query": term, "results": groups}, ensure_ascii=False))
+                  print("STAGING_SEARCH=" + json.dumps({
+                      "query": term, "group_count": len(groups),
+                      "stores": stores, "priced": prices, "notino_hosts": cj_hosts,
+                      "results": groups,
+                  }, ensure_ascii=False))
               except (requests.RequestException, ValueError) as exc:
                   print("STAGING_SEARCH_ERROR=" + json.dumps({"query": term, "error": str(exc)}))
-
-          click = ("https://www.kqzyfj.com/click-101918103-13485502?url="
-                   "https%3A%2F%2Fwww.notino.fr%2Frasasi%2Fhawas-kobra-eau-de-parfum-pour-homme%2Fp-16334380%2F")
-          agents = {
-              "desktop": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-              "mobile": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-          }
-          for device, agent in agents.items():
-              try:
-                  session = requests.Session()
-                  response = session.get(click, headers={"User-Agent": agent, "Accept-Language": "fr-FR,fr;q=0.9"},
-                                         timeout=30, allow_redirects=True)
-                  soup = BeautifulSoup(response.text, "html.parser")
-                  links = [{"text": link.get_text(" ", strip=True)[:150], "href": link.get("href")}
-                           for link in soup.find_all("a", href=True)
-                           if any(word in link.get_text(" ", strip=True).casefold() for word in
-                                  ("voir les détails", "voir les details", "hawas kobra"))][:20]
-                  canonical = soup.find("link", rel=lambda rel: rel and "canonical" in rel)
-                  payload = {
-                      "device": device,
-                      "hops": [{"status": r.status_code, "url": r.url, "location": r.headers.get("Location")}
-                               for r in response.history],
-                      "final_status": response.status_code, "final_url": response.url,
-                      "title": soup.title.get_text(" ", strip=True) if soup.title else None,
-                      "canonical": canonical.get("href") if canonical else None,
-                      "relevant_links": links,
-                      "contains_details": "voir les détails" in soup.get_text(" ", strip=True).casefold(),
-                  }
-                  print("CJ_REDIRECT=" + json.dumps(payload, ensure_ascii=False))
-              except requests.RequestException as exc:
-                  print("CJ_REDIRECT_ERROR=" + json.dumps({"device": device, "error": str(exc)}))
           PY
