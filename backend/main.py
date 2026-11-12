@@ -1074,7 +1074,7 @@ def _is_dior_line_url_mismatch(item):
     )
     normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
     title_norm = normalize(title)
-    url_norm = normalize(url)
+    url_norm = normalize(urllib.parse.unquote(url))
 
     title_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", title_norm))
     url_is_eau_sauvage = bool(re.search(r"\beau sauvage\b", url_norm))
@@ -1100,8 +1100,8 @@ def _is_concentration_mismatch_offer(item):
 
     title = " ".join(str(item.get(key) or "") for key in
                      ("name", "title", "product_name", "raw_name", "_raw_name")).strip()
-    url = " ".join(str(item.get(key) or "") for key in
-                   ("url", "product_url", "source_url", "product_page", "link", "_raw_url")).strip()
+    url = urllib.parse.unquote(" ".join(str(item.get(key) or "") for key in
+                   ("url", "product_url", "source_url", "product_page", "link", "_raw_url")).strip())
     title_norm = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
     url_norm = re.sub(r"[^a-z0-9]+", " ", url.lower()).strip()
 
@@ -1395,9 +1395,14 @@ def result_key(item):
     def _offer_url_identity(value):
         # Ignore tracking/locale query noise when identifying the same listing,
         # but retain explicit commercial variant selectors and fragments.
-        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+        from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
         try:
-            parsed = urlsplit(str(value or '').strip())
+            raw_value = str(value or '').strip()
+            parsed = urlsplit(raw_value)
+            if store == 'notino':
+                from app.services.notino_feed_listings import is_notino_cj_affiliate_url
+                if is_notino_cj_affiliate_url(raw_value):
+                    parsed = urlsplit(parse_qs(parsed.query)['url'][0])
             host = parsed.netloc.lower()
             if host.startswith('www.'):
                 host = host[4:]
@@ -2774,6 +2779,12 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                             # unless the matcher returns a canonical identity
                             # with high confidence; never guess from title text.
                             resolved = _resolve_offer_identity(listing, query)
+                            if (
+                                isinstance(resolved, dict)
+                                and resolved.get("_match_status") == "rejected"
+                                and resolved.get("_reject_reason") != "outside_query_family"
+                            ):
+                                continue
                             try:
                                 confidence = float(
                                     resolved.get("match_confidence")

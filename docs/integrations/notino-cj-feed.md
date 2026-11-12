@@ -21,6 +21,10 @@ In this staging mode, legacy Notino catalog and live-fallback results are
 suppressed because their links and identities are not validated against CJ.
 This intentionally reduces Notino coverage when the feed is unavailable rather
 than displaying untracked or duplicate offers; other stores are unaffected.
+The deduplication key uses a validated GTIN when available, or the decoded
+Notino destination rather than the shared CJ click path. Matching family
+scores alone do not prove a cross-retailer identity; explicit matcher rejections
+for an incompatible size are not republished as retailer-only offers.
 The switch defaults off outside staging. Normalized brand-plus-product queries
 work across the two fields without accepting SQL wildcard input.
 

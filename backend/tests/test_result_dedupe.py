@@ -80,6 +80,37 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertNotEqual(result_key(first), result_key(second))
         self.assertEqual(len(dedupe_results([first, second])), 2)
 
+    def test_notino_cj_destination_distinguishes_same_size_offers_without_gtin(self):
+        first = {
+            "store": "notino", "size_ml": 100,
+            "url": "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Fbrand%2Fedt%2Fp-123%2F",
+        }
+        second = {
+            **first,
+            "url": "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Fbrand%2Fedp%2Fp-456%2F",
+        }
+        duplicate = {
+            **first,
+            "url": "https://www.anrdoezrs.net/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Fbrand%2Fedt%2Fp-123%2F",
+        }
+        self.assertNotEqual(result_key(first), result_key(second))
+        self.assertEqual(result_key(first), result_key(duplicate))
+        self.assertEqual(dedupe_results([first, second, duplicate]), [first, second])
+
+    def test_encoded_cj_destination_preserves_matching_dior_line(self):
+        offer = {
+            "store": "notino", "brand": "DIOR",
+            "name": "DIOR Eau Sauvage Eau de Toilette 100 ml",
+            "catalog_id": "notino-feed-1", "_match_status": "notino_retailer_only",
+            "source": "cj_notino_fr_feed",
+            "url": "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Fdior%2Feau-sauvage-eau-de-toilette%2Fp-123%2F",
+        }
+        groups, _ = main._aggregate_identity_results([offer])
+        self.assertEqual(len(groups), 1)
+        mismatch = {**offer, "name": "DIOR Sauvage Eau de Toilette 100 ml"}
+        groups, _ = main._aggregate_identity_results([mismatch])
+        self.assertEqual(groups, [])
+
     def test_shopify_locales_collapse_only_equivalent_listings(self):
         unknown = {
             "store": "parfumcity", "url": "https://www.parfumcity.nl/fr/products/example",

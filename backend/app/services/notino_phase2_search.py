@@ -13,6 +13,7 @@ from app.models import (
     Brand, Fragrance, LegacyProductIdMap, NotinoFeedListing, Offer, ProductVariant, Store,
 )
 from app.services.notino_feed_listings import is_notino_cj_affiliate_url
+from gtin import is_valid_gtin
 
 DEFAULT_DATABASE = Path("/data/notino-phase2/catalog.sqlite3")
 
@@ -212,6 +213,7 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     "price": float(listing.price), "price_num": float(listing.price),
                     "price_stale": _listing_is_stale(listing),
                     "currency": listing.currency, "size_ml": listing.size_ml,
+                    "gtin": listing.gtin if is_valid_gtin(listing.gtin or "") else None,
                     "url": listing.affiliate_url, "image": listing.image_url,
                     "available": True, "availability": "in_stock",
                     "source": "cj_notino_fr_feed",
