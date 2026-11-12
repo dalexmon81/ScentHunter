@@ -1,14 +1,6 @@
 name: Deploy PR 726 isolated web staging
 # Deploy the current isolated search, schema migration, and multi-brand staging verification.
 
-on:
-  push:
-    branches:
-      - feature/notino-cj-feed-ingestion-2026-11-10
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-pr726-staging.yml"
-      - "fly.pr726.staging.toml"
   workflow_dispatch:
     inputs:
       confirm:
@@ -25,7 +17,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
