@@ -29,6 +29,63 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
         }
         self.index = build_catalog_index(catalog)
 
+
+    def test_rayhaan_aquatica_does_not_match_other_rayhaan_fragrances(self):
+        catalog = {
+            "products": [{
+                "product_id": "SH-AQUATICA",
+                "brand_name": "Rayhaan",
+                "canonical_name": "Aquatica",
+                "family_name": "Aquatica",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Rayhaan Aquatica", "Aquatica Rayhaan"],
+            }],
+            "variants": [{
+                "variant_id": "VAR-AQUATICA-100",
+                "product_id": "SH-AQUATICA",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        index = build_catalog_index(catalog)
+        wrong_product = score_row({
+            "id": "RAYHAAN-KISS",
+            "brand": "Rayhaan",
+            "title": "Rayhaan Kiss Eau de Parfum 100 ml",
+            "size": "100 ml",
+        }, index)
+        self.assertEqual(wrong_product, [])
+
+    def test_rayhaan_aquatica_exact_name_remains_candidate(self):
+        catalog = {
+            "products": [{
+                "product_id": "SH-AQUATICA",
+                "brand_name": "Rayhaan",
+                "canonical_name": "Aquatica",
+                "family_name": "Aquatica",
+                "concentration": "Eau de Parfum",
+                "aliases": ["Rayhaan Aquatica", "Aquatica Rayhaan"],
+            }],
+            "variants": [{
+                "variant_id": "VAR-AQUATICA-100",
+                "product_id": "SH-AQUATICA",
+                "size_ml": 100,
+                "gtins": [],
+                "aliases": [],
+            }],
+        }
+        candidates = score_row({
+            "id": "RAYAQTM_AEDP10",
+            "brand": "Rayhaan",
+            "title": "Rayhaan Aquatica Eau de Parfum pour homme 100 ml",
+            "size": "100 ml",
+        }, build_catalog_index(catalog))
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["canonical_product_id"], "SH-AQUATICA")
+        self.assertEqual(candidates[0]["canonical_variant_id"], "VAR-AQUATICA-100")
+        self.assertEqual(candidates[0]["review_status"], "needs_human_review")
+
     def test_extracts_size_and_concentration(self):
         self.assertEqual(parse_size("100 ml"), 100.0)
         self.assertEqual(parse_size("3.4 fl oz"), 100.55)
