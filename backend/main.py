@@ -2477,7 +2477,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # latter, so without this explicit read path thousands of valid feed offers
     # can be present in SQLite yet invisible to normal searches.
     notino_feed_candidate_count = 0
-    if 'notino' in grouped_raw and not (cancel_event is not None and cancel_event.is_set()):
+    standalone_cj_enabled = str(
+        os.environ.get('NOTINO_CJ_STANDALONE_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if (
+        'notino' in grouped_raw and not standalone_cj_enabled
+        and not (cancel_event is not None and cancel_event.is_set())
+    ):
         try:
             feed_module = importlib.import_module('scrapers.notino.affiliate_feed')
             feed_report = feed_module.search_feed(query)

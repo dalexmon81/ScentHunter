@@ -386,6 +386,19 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(reports[0]["results"][0]["source"], "cj_viv_authorized_xml")
         self.assertEqual(reports[0]["results"][0]["catalog_id"], "SH-TEST")
 
+    def test_isolated_cj_snapshot_does_not_duplicate_untracked_feed_path(self):
+        with (
+            patch.dict(os.environ, {"NOTINO_CJ_STANDALONE_ENABLED": "1"}),
+            patch.object(main, "catalog_search_local", return_value=[]),
+            patch.object(main, "catalog_refresh_candidates", None),
+            patch.object(main, "_catalog_indexed_flags", return_value={"notino": True}),
+            patch.object(main.importlib, "import_module") as importer,
+        ):
+            main._collect_catalog_reports_isolated(
+                "Liquid Brun", ["notino"], allow_live_fallback=False,
+            )
+        importer.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
