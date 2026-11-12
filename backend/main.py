@@ -1456,7 +1456,7 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
         return re.sub(r'[^a-z0-9]+', ' ', str(value or '').casefold()).strip()
 
     def gtin(item):
-        value = re.sub(r'\\D', '', str(
+        value = re.sub(r'\D', '', str(
             item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
         ))
         return value if len(value) in {8, 12, 13, 14} else ''
