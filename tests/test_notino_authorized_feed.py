@@ -1,5 +1,6 @@
 """Tests for the authenticated Notino CJ/VIV XML feed importer."""
 import gzip
+import sqlite3
 import logging
 import xml.etree.ElementTree as ET
 
@@ -90,6 +91,55 @@ def test_item_url_rejects_non_fr_host_credentials_and_non_https():
     assert feed._product_url("https://www.notino.de/brand/item/") is None
     assert feed._product_url("http://www.notino.fr/brand/item/") is None
     assert feed._product_url("https://user:pass@www.notino.fr/brand/item/") is None
+
+
+
+def test_feed_import_queues_background_hydration_for_coupon_price_refresh(monkeypatch):
+    import catalog_engine
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE store_urls(
+            store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+            discovered_at REAL, active INTEGER, PRIMARY KEY(store,url)
+        );
+        CREATE TABLE store_products(
+            store TEXT, url TEXT, name TEXT, brand TEXT, image TEXT,
+            sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT,
+            gender TEXT, price REAL, currency TEXT, availability TEXT,
+            fetched_at REAL, fetch_status TEXT, PRIMARY KEY(store,url)
+        );
+        CREATE TABLE store_product_variants(
+            store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
+            image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+            concentration TEXT, gender TEXT, price REAL, currency TEXT,
+            availability TEXT, fetched_at REAL, variant_url TEXT,
+            regular_price REAL, coupon_code TEXT, coupon_required INTEGER,
+            PRIMARY KEY(store,url,variant_key)
+        );
+        CREATE TABLE hydration_queue(
+            store TEXT, url TEXT, state TEXT, priority INTEGER, attempts INTEGER,
+            available_at REAL, leased_until REAL, lease_token TEXT,
+            first_seen_at REAL, last_error TEXT, PRIMARY KEY(store,url)
+        );
+    """)
+    monkeypatch.setattr(catalog_engine, "db", lambda: conn)
+    offers = feed.parse_feed(SAMPLE)
+
+    assert feed._persist_offers(offers) == 2
+    rows = conn.execute(
+        "SELECT state,priority FROM hydration_queue ORDER BY url"
+    ).fetchall()
+    assert len(rows) == 2
+    assert all(row["state"] == "PENDING" for row in rows)
+    assert all(row["priority"] == 25 for row in rows)
+    variants = conn.execute(
+        "SELECT price,regular_price,coupon_code,coupon_required FROM store_product_variants"
+    ).fetchall()
+    assert all(row["price"] == row["regular_price"] for row in variants)
+    assert all(row["coupon_code"] is None and row["coupon_required"] == 0 for row in variants)
+    conn.close()
 
 
 def test_no_credentials_fail_without_logging_values(monkeypatch, caplog):
