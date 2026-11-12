@@ -1,6 +1,7 @@
 name: Deploy PR 726 isolated web staging
 # Deploy the current isolated search, schema migration, and multi-brand staging verification.
 
+on:
   workflow_dispatch:
     inputs:
       confirm:
@@ -24,16 +25,18 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pr726-staging
     steps:
-      - name: Checkout PR 726 staging branch only
+      - name: Checkout the exact dispatch commit
         uses: actions/checkout@v4
         with:
-          ref: feature/notino-cj-feed-ingestion-2026-11-10
+          ref: ${{ github.sha }}
+          fetch-depth: 1
 
-      - name: Validate isolated target and normalize Fly token
+      - name: Validate exact commit, isolated target, and normalize Fly token
         shell: bash
         run: |
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           grep -Fq 'app = "scenthunter-pr726-staging"' fly.pr726.staging.toml
           ! grep -Fq 'app = "scenthunter"' fly.pr726.staging.toml
           ! grep -Fq 'source = ' fly.pr726.staging.toml
@@ -48,28 +51,45 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Enforce one SQLite staging machine and one persistent volume
+      - name: Install bounded Fly SSH command wrapper
         shell: bash
         run: |
           set -euo pipefail
+          real_flyctl="$(command -v flyctl)"
+          mkdir -p "$RUNNER_TEMP/flyctl-wrapper"
+          cp .github/scripts/flyctl-ssh-timeout "$RUNNER_TEMP/flyctl-wrapper/flyctl"
+          chmod +x "$RUNNER_TEMP/flyctl-wrapper/flyctl"
+          echo "FLYCTL_REAL_BIN=$real_flyctl" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/flyctl-wrapper" >> "$GITHUB_PATH"
+
+      - name: Verify the existing single SQLite staging machine and volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_count="$(jq '[.[] | select(.state != "destroyed")] | length' <<< "$machines_json")"
+          test "$machine_count" -eq 1
+          machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines_json")"
           volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
-          existing="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          if [ "$existing" -lt 1 ]; then
-            echo "Creating the single dedicated staging volume in ams."
-            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count 1 --app "$FLY_APP" --yes
-          fi
-          # SQLite is a single-host database. Fly volumes are machine-local,
-          # not a shared filesystem: two machines would maintain divergent
-          # catalogs and independent writer locks. Keep this staging app at
-          # exactly one machine until the catalog moves to PostgreSQL.
-          flyctl scale count 1 --app "$FLY_APP" --yes
-          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
-          verified="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          test "$verified" -ge 1
-          echo "Verified a dedicated persistent staging volume; machine count is pinned to one."
+          verified="$(jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
+          test "$verified" -eq 1
+          machine_status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
+          grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$machine_status"
+          echo "Verified one existing machine and volume without creating, removing, or scaling either."
 
       - name: Deploy isolated staging app
-        run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
+        run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --build-arg "SCENTHUNTER_BUILD_COMMIT=$GITHUB_SHA" --yes
+
+      - name: Verify the deployed image commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines="$(flyctl machine list --app "$FLY_APP" --json)"
+          test "$(jq '[.[] | select(.state != "destroyed")] | length' <<< "$machines")" -eq 1
+          machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines")"
+          deployed="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "cat /app/.build-commit")"
+          test "$deployed" = "$GITHUB_SHA"
+          echo "STAGING_IMAGE_COMMIT=$deployed"
 
       - name: Verify isolated staging health
         shell: bash

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 import json
 import os
@@ -18,12 +19,14 @@ sys.path.insert(0, str(BACKEND))
 
 from app.models import (
     Base, Brand, Fragrance, ProductVariant, Store, Offer, IngestionRaw,
-    LegacyProductIdMap, LegacyVariantIdMap,
+    PriceHistory, LegacyProductIdMap, LegacyVariantIdMap,
 )
 from app.services.notino_phase2_adapter import persist_notino_record
 from app.services.ingestion_persistence import promote_offer, record_match, stage_raw_offer
+from app.services.notino_feed_listings import refresh_notino_listings
 from scripts.import_notino_phase2_persistent import (
-    _seed_canonical_catalog, _stage_unmatched_rows_bulk,
+    _count_retailer_only_listings, _seed_canonical_catalog,
+    _stage_unmatched_rows_bulk,
 )
 from scripts.seed_catalog import stable_id
 
@@ -64,7 +67,11 @@ def _notino_record(external_id: str, **changes):
         "sale_price": None,
         "currency": "EUR",
         "availability": "in stock",
-        "affiliate_url": f"https://notino.fr/p/{external_id}",
+        "source_last_updated": "2026-11-10T12:00:00Z",
+        "affiliate_url": (
+            "https://www.kqzyfj.com/click-test?url="
+            f"https%3A%2F%2Fwww.notino.fr%2Fp%2F{external_id}"
+        ),
         "captured_at": "2026-11-10T12:00:00Z",
     }
     row.update(changes)
@@ -203,6 +210,25 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                         legacy_product_id="mapped-product", fragrance_id=fragrance.id,
                     ))
                     session.flush()
+                    now = datetime.now(timezone.utc)
+                    refresh_notino_listings(session, [{
+                        "id": "RETAILER-ONLY",
+                        "brand": "Mapped Brand",
+                        "title": "Mapped Brand Unmapped Fragrance Eau de Parfum 100 ml",
+                        "gtin": "00000000000000",
+                        "size": "100 ml",
+                        "price": "29.90 EUR",
+                        "sale_price": "",
+                        "availability": "in stock",
+                        "link": (
+                            "https://www.kqzyfj.com/click-test?url="
+                            "https%3A%2F%2Fwww.notino.fr%2Fp%2Funmapped"
+                        ),
+                        "last_updated": now.isoformat(),
+                    }], now)
+                    self.assertEqual(
+                        _count_retailer_only_listings(session, store.id), 1,
+                    )
                     persisted = persist_notino_record(
                         session, store_id=store.id,
                         raw_record=_notino_record(
@@ -212,11 +238,19 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                     )
                     self.assertEqual(persisted.status, "promoted")
                 metrics = verify_notino_phase2_persistent._metrics(database)
+                preflight = verify_notino_phase2_persistent._preflight(database)
                 self.assertEqual(metrics["offers"], 1)
                 self.assertEqual(metrics["price_history"], 1)
                 self.assertEqual(metrics["distinct_matched_variants"], 1)
                 self.assertEqual(metrics["duplicate_external_ids"], 0)
                 self.assertEqual(metrics["invalid_offers"], 0)
+                self.assertEqual(metrics["retailer_listings"], 1)
+                self.assertEqual(metrics["retailer_only_listings"], 1)
+                self.assertEqual(metrics["invalid_retailer_listings"], 0)
+                self.assertEqual(metrics["sqlite_integrity"], "ok")
+                self.assertEqual(preflight["status"], "passed")
+                self.assertEqual(preflight["canonical_offers"], 1)
+                self.assertEqual(preflight["retailer_listings"], 1)
                 from app.services.notino_phase2_search import search_notino_phase2
                 previous_database = os.environ.get("NOTINO_PHASE2_DATABASE")
                 os.environ["NOTINO_PHASE2_DATABASE"] = str(database)
@@ -252,6 +286,8 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
             ("BAD-PRICE", {"price": "0"}, "invalid_price"),
             ("BAD-CURRENCY", {"currency": "USD"}, "unexpected_currency"),
             ("BAD-URL", {"affiliate_url": "file:///tmp/not-an-offer"}, "invalid_affiliate_url"),
+            ("NOT-AFFILIATE", {"affiliate_url": "https://notino.fr/p/product"}, "invalid_affiliate_url"),
+            ("BAD-LAST-UPDATED", {"source_last_updated": "2026-11-10T12:00:00"}, "invalid_source_last_updated"),
             ("UNKNOWN-STOCK", {"availability": "preorder"}, "availability_not_explicit"),
             ("NO-TIMESTAMP", {"captured_at": ""}, "missing_source_observation_timestamp"),
             ("NAIVE-TIMESTAMP", {"captured_at": "2026-11-10T12:00:00"}, "invalid_source_observation_timestamp"),
@@ -351,6 +387,35 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                 offers = session.scalars(select(Offer).where(Offer.store_id == notino_store_id)).all()
                 self.assertEqual(len(offers), 2)
                 self.assertEqual({offer.external_product_id for offer in offers}, {"NOTINO-A", "NOTINO-B"})
+        finally:
+            engine.dispose()
+
+    def test_reimport_updates_offer_by_external_id_without_duplicates(self):
+        engine, (notino_store_id, _legacy_store_id, _variant_id) = _fixture()
+        try:
+            with Session(engine) as session, session.begin():
+                first = persist_notino_record(
+                    session, store_id=notino_store_id,
+                    raw_record=_notino_record("REIMPORT-SKU", captured_at="2026-11-10T12:00:00Z"),
+                )
+                second = persist_notino_record(
+                    session, store_id=notino_store_id,
+                    raw_record=_notino_record(
+                        "REIMPORT-SKU", price="29.90",
+                        captured_at="2026-11-10T12:05:00Z",
+                    ),
+                )
+                self.assertEqual(first.status, "promoted")
+                self.assertEqual(second.status, "promoted")
+            with Session(engine) as session:
+                offers = session.scalars(
+                    select(Offer).where(Offer.store_id == notino_store_id)
+                ).all()
+                history = session.scalars(select(PriceHistory)).all()
+                self.assertEqual(len(offers), 1)
+                self.assertEqual(len(history), 2)
+                self.assertEqual(offers[0].external_product_id, "REIMPORT-SKU")
+                self.assertEqual(offers[0].price, Decimal("29.90"))
         finally:
             engine.dispose()
 

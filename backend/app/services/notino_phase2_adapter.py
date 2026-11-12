@@ -9,13 +9,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import IngestionRaw, ProductVariant
+from app.services.notino_affiliate import is_valid_notino_affiliate_url
 from gtin import is_valid_gtin
 from app.services.ingestion_persistence import (
     promote_offer, record_match, stage_raw_offer, StaleObservation,
@@ -114,7 +114,6 @@ def persist_notino_record(
         "out of stock": "out_of_stock",
     }.get(availability_raw)
     url = str(raw_record.get("affiliate_url") or "").strip()
-    parsed = urlparse(url)
 
     if not price.is_finite() or price <= 0:
         return _held_matched_result(session, raw_id=raw_id, variant_id=variant.id, reason="invalid_price")
@@ -122,8 +121,16 @@ def persist_notino_record(
         return _held_matched_result(session, raw_id=raw_id, variant_id=variant.id, reason="unexpected_currency")
     if availability is None:
         return _held_matched_result(session, raw_id=raw_id, variant_id=variant.id, reason="availability_not_explicit")
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if not is_valid_notino_affiliate_url(url):
         return _held_matched_result(session, raw_id=raw_id, variant_id=variant.id, reason="invalid_affiliate_url")
+
+    source_updated = str(raw_record.get("source_last_updated") or "").strip()
+    try:
+        updated_at = datetime.fromisoformat(source_updated.replace("Z", "+00:00"))
+        if updated_at.tzinfo is None or updated_at.utcoffset() is None:
+            raise ValueError("timestamp has no timezone")
+    except (TypeError, ValueError):
+        return _held_matched_result(session, raw_id=raw_id, variant_id=variant.id, reason="invalid_source_last_updated")
 
     source_timestamp = str(raw_record.get("captured_at") or "").strip()
     if not source_timestamp:

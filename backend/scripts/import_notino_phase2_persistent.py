@@ -26,7 +26,7 @@ sys.path.insert(0, str(BACKEND))
 
 from app.db import make_engine
 from app.models import (
-    Base, IngestionRaw, LegacyProductIdMap, LegacyVariantIdMap, Offer,
+    Base, IngestionRaw, LegacyProductIdMap, LegacyVariantIdMap, NotinoFeedListing, Offer,
     PriceHistory, ProductVariant, Store,
 )
 from app.services.notino_phase2_adapter import persist_notino_record
@@ -73,6 +73,18 @@ def _stage_unmatched_rows_bulk(
             for row in rows
         ],
     )
+
+
+def _count_retailer_only_listings(session: Session, store_id: UUID) -> int:
+    has_canonical_offer = select(Offer.id).where(
+        Offer.store_id == store_id,
+        Offer.external_product_id == NotinoFeedListing.external_id,
+    ).exists()
+    return session.scalar(
+        select(func.count()).select_from(NotinoFeedListing).where(
+            ~has_canonical_offer
+        )
+    ) or 0
 
 
 def _seed_canonical_catalog(engine, catalog_path: Path) -> bool:
@@ -317,6 +329,7 @@ def main() -> int:
             offers = session.scalar(select(func.count()).select_from(Offer).where(Offer.store_id == store_id)) or 0
             history = session.scalar(select(func.count()).select_from(PriceHistory).join(Offer).where(Offer.store_id == store_id)) or 0
             raw_count = session.scalar(select(func.count()).select_from(IngestionRaw).where(IngestionRaw.store_id == store_id)) or 0
+            retailer_only = _count_retailer_only_listings(session, store_id)
             duplicates = session.execute(
                 select(Offer.external_product_id, func.count())
                 .where(Offer.store_id == store_id, Offer.external_product_id.is_not(None))
@@ -327,6 +340,8 @@ def main() -> int:
                 "feed_rows": len(rows), "adapter_results": dict(counts),
                 "retailer_only_snapshot": feed_snapshot,
                 "hold_reasons": dict(reasons), "persistent_offers": offers,
+                "canonical_offer_count": offers,
+                "retailer_only_listing_count": retailer_only,
                 "unmatched_rows_staged_in_batch": len(unmatched_rows),
                 "price_history_rows": history, "raw_rows_persisted": raw_count,
                 "duplicate_offer_external_ids": len(duplicates),

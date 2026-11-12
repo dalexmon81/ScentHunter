@@ -13,10 +13,13 @@ RUN .venv/bin/pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12.14-slim-bookworm
 
+ARG SCENTHUNTER_BUILD_COMMIT=unknown
+
 WORKDIR /app
 
 COPY --from=builder /app/.venv .venv/
 COPY . .
+RUN printf '%s\n' "$SCENTHUNTER_BUILD_COMMIT" > /app/.build-commit
 # The restored Notino and Amazon public-search adapters require a real Chromium
 # runtime. Install the browser and OS libraries in the final image, not just the
 # Python Playwright package, so production behaves like the tested browser path.
