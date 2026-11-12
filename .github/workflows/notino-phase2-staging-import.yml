@@ -432,3 +432,5 @@ jobs:
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import os,sqlite3,json; p=\"/data/notino-phase2/catalog.sqlite3\"; c=sqlite3.connect(p); q=lambda s:c.execute(s).fetchone()[0]; out={\"db_exists\":os.path.isfile(p),\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"price_history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicate_external_ids\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"db_exists\"] and out[\"offers\"]>0 and out[\"price_history\"]>=out[\"offers\"] and out[\"duplicate_external_ids\"]==0'"
+
+# 2026-11-12: rerun persistent isolated staging import against the current branch head.
