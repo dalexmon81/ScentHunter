@@ -2316,11 +2316,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return []
 
     terms = _catalog_search_terms(query)
-    # Bound the TOTAL candidates sent through ProductMatcher. The former
-    # 64-per-store budget multiplied by expanded terms (before the catalog
-    # engine enforced its per-store aggregate cap), making broad family
-    # searches resolve hundreds to thousands of rows serially.
-    candidate_limit = 32
+    # Keep a bounded per-store candidate window, but do not let 32 rows
+    # per store discard valid matches before ProductMatcher can rank them.
+    # catalog_engine caps each retailer at 64 FTS candidates per query term;
+    # 128 here allows its full bounded window while keeping work predictable.
+    candidate_limit = 128
 
     try:
         # Keep the foreground catalog pass bounded so results are published quickly.
