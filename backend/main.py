@@ -2629,8 +2629,25 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                     f"{phase2_error}: {phase2_exc}",
                     flush=True,
                 )
+            # Notino's legacy catalog rows must not be published before the
+            # CJ/legacy merge. Search jobs collect result callbacks immediately;
+            # publishing legacy rows first would leave them in the job snapshot
+            # even after the authoritative Notino report is replaced below.
+            def _forward_non_notino_report(report):
+                if callable(on_report) and _normalise_store(
+                    report.get("store") if isinstance(report, dict) else "", ""
+                ) != "notino":
+                    on_report(report)
+
+            def _forward_non_notino_result(item):
+                if callable(on_result) and _normalise_store(
+                    item.get("store") or item.get("shop") if isinstance(item, dict) else "", ""
+                ) != "notino":
+                    on_result(item)
+
             reports = _collect_catalog_reports_isolated(
-                query, requested, on_report=on_report, on_result=on_result,
+                query, requested, on_report=_forward_non_notino_report,
+                on_result=_forward_non_notino_result,
                 cancel_event=cancel_event, job_id=job_id,
                 allow_live_fallback=(
                     allow_live_fallback
@@ -2672,7 +2689,7 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                     }
                     if callable(on_report):
                         on_report(notino_report)
-                    for offer in phase2_offers:
+                    for offer in notino_report["results"]:
                         if callable(on_result):
                             on_result(offer)
             except Exception as phase2_exc:
