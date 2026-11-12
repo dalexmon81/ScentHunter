@@ -31,6 +31,32 @@ def test_notino_canonical_product_urls_keep_french_host_and_drop_tracking_query(
     assert category is None
 
 
+def test_notino_accepts_new_slug_only_product_urls_and_rejects_brand_landing_pages():
+    aquatica = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
+    generic = "https://www.notino.fr/rayhaan/aquatica/"
+
+    assert catalog._html_product_url(
+        "notino", aquatica, "https://www.notino.fr/"
+    ) == aquatica
+    assert catalog._looks_product(aquatica, "notino")
+    assert catalog._html_product_url(
+        "notino", generic, "https://www.notino.fr/"
+    ) is None
+    assert not catalog._looks_product(generic, "notino")
+
+
+def test_notino_slug_only_product_grammar_covers_common_fragrance_variants():
+    for slug in (
+        "rayhaan/aquatica-eau-de-parfum-pour-homme",
+        "rayhaan/example-eau-de-toilette-pour-homme",
+        "rayhaan/example-extrait-de-parfum-mixte",
+    ):
+        url = f"https://www.notino.fr/{slug}/"
+        assert catalog._html_product_url(
+            "notino", url, "https://www.notino.fr/"
+        ) == url
+
+
 def test_notino_rejects_non_product_and_foreign_host_urls():
     assert catalog._html_product_url(
         "notino", "https://www.notino.fr/parfums/", "https://www.notino.fr/"
