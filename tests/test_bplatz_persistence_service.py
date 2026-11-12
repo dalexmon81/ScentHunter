@@ -125,8 +125,8 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert "ingestion_raw_id" in offer_columns
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-        assert revision == "0003_store_domain"
-        print("ALEMBIC_REVISION=0003_store_domain")
+        assert revision == "0004_notino_feed_listings"
+        print("ALEMBIC_REVISION=0004_notino_feed_listings")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
