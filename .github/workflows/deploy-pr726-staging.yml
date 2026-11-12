@@ -169,11 +169,6 @@ jobs:
           print("STAGING_AUDITED_OFFERS=" + str(audited_offers))
           print("STAGING_AUDITED_NOTINO_OFFERS=" + str(notino_offers))
           print("STAGING_URL=" + base)
-          print("STAGING_HEALTH=PASS")
-          print("STAGING_CATALOG_SEARCH=PASS")
-          print("STAGING_HAWAS_ICE_GIFT_SET_FILTER=PASS")
-          print("STAGING_HAWAS_ICE_NOTINO_OFFERS=" + str(len(notino_offers)))
-          print("STAGING_URL=" + base)
           PY
 
       - name: Collect read-only catalog hydration diagnostics
