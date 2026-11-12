@@ -332,3 +332,39 @@ def test_legacy_notino_gift_set_is_removed_even_when_affiliate_url_wraps_destina
 
     assert gift_set not in merged
     assert normal_offer in merged
+
+
+
+def test_non_fragrance_bundle_filter_is_generic_across_brands_and_languages():
+    from main import _is_non_fragrance_offer
+    from urllib.parse import quote
+
+    cases = [
+        ("Dior Sauvage", "https://www.notino.fr/dior/sauvage-coffret-cadeau/p-1/"),
+        ("Chanel Coco Mademoiselle", "https://www.notino.fr/chanel/coco-mademoiselle-gift-set/p-2/"),
+        ("YSL Libre", "https://www.notino.fr/yves-saint-laurent/libre-set-regalo/p-3/"),
+        ("Armani My Way", "https://www.notino.fr/armani/my-way-giftbox/p-4/"),
+        ("Paco Rabanne 1 Million", "https://www.notino.fr/paco-rabanne/1-million-discovery-set/p-5/"),
+        ("Prada Paradoxe", "https://www.notino.fr/prada/paradoxe-fragrance-set/p-6/"),
+        ("Jean Paul Gaultier Le Male", "https://www.notino.fr/jpg/le-male-coffret/p-7/"),
+        ("Rasasi Hawas Ice", "https://www.notino.fr/rasasi/hawas-ice-duo/p-8/"),
+        ("Lattafa Asad", "https://www.notino.fr/lattafa/asad-pack-regalo/p-9/"),
+        ("Versace Eros", "https://www.notino.fr/versace/eros-bundle/p-10/"),
+    ]
+
+    for title, destination in cases:
+        wrapped = "https://www.anrdoezrs.net/click?url=" + quote(destination, safe="")
+        assert _is_non_fragrance_offer({
+            "store": "notino", "title": title, "url": wrapped, "price": 29.90,
+        }), f"bundle escaped generic filter: {title} -> {destination}"
+
+    genuine = [
+        {"title": "Dior Sauvage Eau de Parfum 100 ml",
+         "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-11/"},
+        {"title": "Chanel Coco Mademoiselle Eau de Parfum 100 ml",
+         "url": "https://www.notino.fr/chanel/coco-mademoiselle-eau-de-parfum/p-12/"},
+        {"title": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+         "url": "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-13/"},
+    ]
+    for offer in genuine:
+        assert not _is_non_fragrance_offer(offer), f"valid standalone perfume was rejected: {offer}"
