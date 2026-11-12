@@ -509,3 +509,25 @@ class NotinoCandidateMatchingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+    def test_real_catalog_maps_notino_rayhaan_aquatica_gtin_to_100ml_edp_variant(self):
+        import json
+
+        catalog_path = Path(__file__).resolve().parents[1] / "product_catalog.json"
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        candidates = score_row({
+            "id": "RAYAQTM_AEDP10",
+            "gtin": "6297001571330",
+            "brand": "Rayhaan",
+            "title": "Rayhaan Aquatica Eau de Parfum pour homme 100 ml",
+            "size": "100 ml",
+        }, build_catalog_index(catalog))
+
+        exact = [candidate for candidate in candidates if candidate["gtin_match"]]
+        self.assertEqual(len(exact), 1)
+        self.assertEqual(exact[0]["canonical_product_id"], "SH-0066")
+        self.assertEqual(exact[0]["canonical_variant_id"], "VAR-e2cc3951b1445b9f")
+        self.assertEqual(exact[0]["confidence_band"], "review_high")
+        self.assertEqual(exact[0]["review_status"], "needs_human_review")
