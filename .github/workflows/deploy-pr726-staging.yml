@@ -1,145 +1,71 @@
-name: Deploy PR 726 isolated web staging
-# Trigger-only update: validate the latest isolated staging fix.
+name: Temporary read-only Notino staging diagnosis
 
 on:
-  push:
-    branches:
-      - feature/notino-cj-feed-ingestion-2026-11-10
-    paths:
-      - ".github/workflows/deploy-pr726-staging.yml"
-      - "fly.pr726.staging.toml"
-      - "Dockerfile"
-      - "backend/**"
-      - "frontend/**"
-      - "requirements.txt"
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: Type deploy-pr726 to deploy only the isolated PR 726 staging app
-        required: true
-        type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: scenthunter-pr726-staging
-  cancel-in-progress: false
-
 jobs:
-  deploy:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'deploy-pr726' }}
+  diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      FLY_APP: scenthunter-pr726-staging
+    timeout-minutes: 8
     steps:
-      - name: Checkout PR 726 staging branch only
-        uses: actions/checkout@v4
-        with:
-          ref: feature/notino-cj-feed-ingestion-2026-11-10
-
-      - name: Validate isolated target and normalize Fly token
+      - name: Observe CJ redirects and isolated staging results
         shell: bash
         run: |
-          set -euo pipefail
-          test -n "$FLY_API_TOKEN"
-          grep -Fq 'app = "scenthunter-pr726-staging"' fly.pr726.staging.toml
-          ! grep -Fq 'app = "scenthunter"' fly.pr726.staging.toml
-          ! grep -Fq 'source = ' fly.pr726.staging.toml
-          normalized_token="$FLY_API_TOKEN"
-          case "$normalized_token" in
-            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
-          esac
-          echo "::add-mask::$normalized_token"
-          printf 'FLY_API_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
-          echo "Validated isolated staging target; no production app or volume is used."
-
-      - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Enforce one SQLite staging machine and one persistent volume
-        shell: bash
-        run: |
-          set -euo pipefail
-          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
-          existing="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          if [ "$existing" -lt 1 ]; then
-            echo "Creating the single dedicated staging volume in ams."
-            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count 1 --app "$FLY_APP" --yes
-          fi
-          # SQLite is a single-host database. Fly volumes are machine-local,
-          # not a shared filesystem: two machines would maintain divergent
-          # catalogs and independent writer locks. Keep this staging app at
-          # exactly one machine until the catalog moves to PostgreSQL.
-          flyctl scale count 1 --app "$FLY_APP" --yes
-          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
-          verified="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
-          test "$verified" -ge 1
-          echo "Verified a dedicated persistent staging volume; machine count is pinned to one."
-
-      - name: Deploy isolated staging app
-        run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
-
-      - name: Verify isolated staging health
-        shell: bash
-        run: |
-          set -euo pipefail
           python - <<'PY'
-          import json, urllib.request
+          import json, urllib.parse
+          import requests
+          from bs4 import BeautifulSoup
+
           base = "https://scenthunter-pr726-staging.fly.dev"
-          def get(path, timeout=30):
-              req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
-              with urllib.request.urlopen(req, timeout=timeout) as response:
-                  if response.status != 200:
-                      raise RuntimeError(f"{path}: HTTP {response.status}")
-                  return response.read()
-          get("/health")
-          payload = json.loads(get("/search?q=Hawas", timeout=60).decode("utf-8"))
-          assert isinstance(payload.get("results"), list), payload
-          print("STAGING_HEALTH=PASS")
-          print("STAGING_CATALOG_SEARCH=PASS")
-          print("STAGING_URL=" + base)
+          for term in ("Hawas", "Hawas Kobra", "Rasasi Hawas Kobra", "Liquid Brun"):
+              try:
+                  response = requests.get(base + "/search", params={"q": term}, timeout=60)
+                  response.raise_for_status()
+                  payload = response.json()
+                  groups = []
+                  for group in payload.get("results", []):
+                      groups.append({
+                          "id": group.get("catalog_id"), "name": group.get("name"),
+                          "offers": [{key: offer.get(key) for key in
+                              ("store", "price", "price_num", "currency", "size_ml",
+                               "availability", "url", "source")}
+                              for offer in group.get("offers", [])],
+                      })
+                  print("STAGING_SEARCH=" + json.dumps({"query": term, "results": groups}, ensure_ascii=False))
+              except (requests.RequestException, ValueError) as exc:
+                  print("STAGING_SEARCH_ERROR=" + json.dumps({"query": term, "error": str(exc)}))
+
+          click = ("https://www.kqzyfj.com/click-101918103-13485502?url="
+                   "https%3A%2F%2Fwww.notino.fr%2Frasasi%2Fhawas-kobra-eau-de-parfum-pour-homme%2Fp-16334380%2F")
+          agents = {
+              "desktop": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+              "mobile": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          }
+          for device, agent in agents.items():
+              try:
+                  session = requests.Session()
+                  response = session.get(click, headers={"User-Agent": agent, "Accept-Language": "fr-FR,fr;q=0.9"},
+                                         timeout=30, allow_redirects=True)
+                  soup = BeautifulSoup(response.text, "html.parser")
+                  links = [{"text": link.get_text(" ", strip=True)[:150], "href": link.get("href")}
+                           for link in soup.find_all("a", href=True)
+                           if any(word in link.get_text(" ", strip=True).casefold() for word in
+                                  ("voir les détails", "voir les details", "hawas kobra"))][:20]
+                  canonical = soup.find("link", rel=lambda rel: rel and "canonical" in rel)
+                  payload = {
+                      "device": device,
+                      "hops": [{"status": r.status_code, "url": r.url, "location": r.headers.get("Location")}
+                               for r in response.history],
+                      "final_status": response.status_code, "final_url": response.url,
+                      "title": soup.title.get_text(" ", strip=True) if soup.title else None,
+                      "canonical": canonical.get("href") if canonical else None,
+                      "relevant_links": links,
+                      "contains_details": "voir les détails" in soup.get_text(" ", strip=True).casefold(),
+                  }
+                  print("CJ_REDIRECT=" + json.dumps(payload, ensure_ascii=False))
+              except requests.RequestException as exc:
+                  print("CJ_REDIRECT_ERROR=" + json.dumps({"device": device, "error": str(exc)}))
           PY
-
-      - name: Collect read-only catalog hydration diagnostics
-        if: always()
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -u
-          BASE="https://scenthunter-pr726-staging.fly.dev"
-          fetch() {
-            local path="$1"
-            echo "::group::GET ${path}"
-            curl --connect-timeout 10 --max-time 12 -sS -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}${path}" || true
-            echo "::endgroup::"
-          }
-          fetch "/catalog-status"
-          echo "::group::LIQUID_BRUN_TARGETED_REFRESH"
-          refresh() {
-            local store="$1"
-            local url="$2"
-            echo "TARGETED_REFRESH store=${store} url=${url}"
-            curl --connect-timeout 10 --max-time 20 -sS -G \
-              --data-urlencode "store=${store}" \
-              --data-urlencode "url=${url}" \
-              "${BASE}/catalog/refresh-store-url" || echo "TARGETED_REFRESH_TRANSPORT_ERROR store=${store} url=${url}"
-            echo
-          }
-          refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
-          refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
-          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
-          refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
-          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
-          echo "::endgroup::"
-          echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
-          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Liquid Brun" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Liquid Brun"
-          echo
-          echo "::endgroup::"
-          fetch "/catalog/hydration-processing"
-          for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
-            fetch "/catalog/hydration-errors?store=${store}&limit=30"
-          done
-
