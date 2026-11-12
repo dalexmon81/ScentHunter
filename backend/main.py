@@ -1375,19 +1375,18 @@ def result_key(item):
             return str(value or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
     sku = str(item.get('sku') or '').strip().lower()
-    gtin = re.sub(r'\\D', '', str(item.get('gtin') or item.get('gtin13') or item.get('ean') or ''))
+    gtin = re.sub(r'\D', '', str(item.get('gtin') or item.get('gtin13') or item.get('ean') or ''))
+    has_notino_gtin = store == 'notino' and len(gtin) in {8, 12, 13, 14}
+    name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
+    size = _safe_float(item.get('size_ml'))
     # A validated GTIN identifies the sellable variant more reliably than a
     # retailer URL. Notino exposes the same product through catalog URLs and
     # CJ tracking URLs; those must collapse to one offer, not three rows.
-    if store == 'notino' and len(gtin) in {8, 12, 13, 14}:
-        identity_key = f'gtin:{gtin}'
-    name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
-    size = _safe_float(item.get('size_ml'))
-    # A retailer product URL is the strongest cross-catalog identity for the same offer.
-    # Catalog IDs can differ when the same retailer listing is linked to duplicate
-    # canonical records. Explicit size and variant selectors below still keep
-    # genuinely distinct sellable variants separate.
-    identity_key = _offer_url_identity(product_url) or catalog_id or product_id or sku or name
+    # Otherwise use the retailer listing URL and explicit variant selectors.
+    identity_key = (
+        f'gtin:{gtin}' if has_notino_gtin
+        else _offer_url_identity(product_url) or catalog_id or product_id or sku or name
+    )
 
     # Preserve commercial variant identity even when size is known. Size alone
     # is not sufficient: retailers can expose multiple sellable combinations
