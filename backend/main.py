@@ -1178,19 +1178,38 @@ def _is_non_fragrance_offer(item):
         value = item.get(key)
         if value not in (None, ""):
             url_parts.append(str(value))
-    url_text = " ".join(url_parts).lower()
+    # Retailer affiliate links (CJ, Awin, etc.) often wrap the real
+    # destination in a URL query parameter. Inspect both the wrapper and the
+    # decoded destination path; otherwise a gift set can pass as a single
+    # perfume when its title is shortened to just the fragrance name.
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    decoded_destinations = []
+    for raw_url in url_parts:
+        try:
+            parsed = urlsplit(raw_url)
+            for key in ("url", "u", "target", "dest", "destination"):
+                decoded_destinations.extend(parse_qs(parsed.query).get(key, []))
+            decoded_destinations.append(unquote(raw_url))
+        except ValueError:
+            decoded_destinations.append(raw_url)
+    destination_text = " ".join(decoded_destinations).lower()
     non_fragrance_url_re = re.compile(
-        r"(?:^|[/_?&=-])(?:cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|"
-        r"face[-_ ]?wash|facial[-_ ]?cleanser|gesichtswasser|"
-        r"toner|tonique|shampoo|conditioner|moisturizer|moisturiser|"
-        r"carbon[-_ ]negro[-_ ]y[-_ ]cactus)(?:$|[/_?&=.-])",
+        r"(?:^|[/_?&=.% -])(?:gift[-_ ]?set|giftbox|gift[-_ ]?box|"
+        r"coffret(?:[-_ ]?cadeau)?|set[-_ ]?regalo|discovery[-_ ]?set|"
+        r"fragrance[-_ ]?set|perfume[-_ ]?set|parfum[-_ ]?set|"
+        r"bundle|pack[-_ ]?regalo|duo|trio|kit|"
+        r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face[-_ ]?wash|"
+        r"facial[-_ ]?cleanser|gesichtswasser|toner|tonique|shampoo|"
+        r"conditioner|moisturizer|moisturiser|"
+        r"carbon[-_ ]negro[-_ ]y[-_ ]cactus)(?:$|[/_?&=.% -])",
         re.I,
     )
 
     return bool(
         _NON_FRAGRANCE_TITLE_RE.search(title_text)
         or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
-        or non_fragrance_url_re.search(url_text)
+        or non_fragrance_url_re.search(destination_text)
     )
 
 
