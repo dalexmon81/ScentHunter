@@ -348,7 +348,7 @@ class ResultDeduplicationTests(unittest.TestCase):
 
         self.assertEqual(len(reports), 1)
         self.assertEqual(reports[0]["count"], 1)
-        self.assertEqual(reports[0]["results"][0]["source"], "cj_notino_fr_feed")
+        self.assertEqual(reports[0]["results"][0]["source"], "cj_viv_authorized_xml")
         self.assertEqual(reports[0]["results"][0]["catalog_id"], "SH-TEST")
 
 
