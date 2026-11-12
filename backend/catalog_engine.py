@@ -4542,6 +4542,33 @@ def refresh_url(store, url):
                                  variant.get('availability') or item.get('availability'),now,
                                  _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
                             )
+                if store == 'notino' and has_explicit_price:
+                    try:
+                        hydrated_size = float(item.get('size_ml'))
+                    except (TypeError, ValueError):
+                        hydrated_size = None
+                    if hydrated_size is not None and hydrated_size > 0:
+                        coupon_code = str(item.get('coupon_code') or '').strip() or None
+                        try:
+                            regular_price = float(item.get('regular_price_num') or item.get('price_num'))
+                        except (TypeError, ValueError):
+                            regular_price = float(item.get('price_num'))
+                        conn.execute(
+                            '''UPDATE store_product_variants
+                               SET price=?, regular_price=?, coupon_code=?,
+                                   coupon_required=?, currency=?, availability=?, fetched_at=?
+                               WHERE store=? AND url=? AND size_ml IS NOT NULL
+                                 AND ABS(size_ml-?) < 0.01''',
+                            (
+                                float(item.get('price_num')), regular_price, coupon_code,
+                                1 if coupon_code else 0, item.get('currency') or 'EUR',
+                                'in_stock' if item.get('available') is True else (
+                                    'out_of_stock' if item.get('available') is False else item.get('availability')
+                                ),
+                                now, store, url, hydrated_size,
+                            ),
+                        )
+
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
