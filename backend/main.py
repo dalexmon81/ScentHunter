@@ -1443,6 +1443,51 @@ def result_key(item):
 
     return (store, identity_key, round(size, 3) if size is not None else '')
 
+def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
+    """Prefer CJ offers over legacy rows for the same Notino sellable variant.
+
+    Older catalog rows often lack GTINs and use a synthetic variant_id. Match
+    those rows by canonical product, volume and product name, while preserving
+    explicit concentration conflicts as separate variants.
+    """
+    import re
+
+    def normalized(value):
+        return re.sub(r'[^a-z0-9]+', ' ', str(value or '').casefold()).strip()
+
+    def gtin(item):
+        value = re.sub(r'\\D', '', str(
+            item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
+        ))
+        return value if len(value) in {8, 12, 13, 14} else ''
+
+    def same_variant(feed, legacy):
+        feed_gtin, legacy_gtin = gtin(feed), gtin(legacy)
+        if feed_gtin and legacy_gtin:
+            return feed_gtin == legacy_gtin
+        feed_id = str(feed.get('catalog_id') or '').strip().casefold()
+        legacy_id = str(legacy.get('catalog_id') or '').strip().casefold()
+        if not feed_id or feed_id != legacy_id:
+            return False
+        feed_size = _safe_float(feed.get('size_ml'))
+        legacy_size = _safe_float(legacy.get('size_ml'))
+        if feed_size is None or legacy_size is None or abs(feed_size - legacy_size) > 0.01:
+            return False
+        feed_name = normalized(feed.get('name') or feed.get('canonical_name') or feed.get('title'))
+        legacy_name = normalized(legacy.get('name') or legacy.get('canonical_name') or legacy.get('title'))
+        if not feed_name or feed_name != legacy_name:
+            return False
+        feed_variant = normalized(feed.get('variant') or feed.get('concentration'))
+        legacy_variant = normalized(legacy.get('variant') or legacy.get('concentration'))
+        return not (feed_variant and legacy_variant and feed_variant != legacy_variant)
+
+    kept_legacy = [
+        item for item in legacy_offers
+        if not any(same_variant(feed, item) for feed in phase2_offers)
+    ]
+    return list(phase2_offers) + kept_legacy
+
+
 def dedupe_results(results, diagnostics=None):
     """Deduplicate repeated retailer offers across canonical catalog records.
 
@@ -2610,9 +2655,11 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                         item for item in (notino_report.get("results") or [])
                         if isinstance(item, dict)
                     ]
-                    # Prefer the authorized CJ record when a legacy catalog row and feed row
-                    # identify the same GTIN/variant. This retains the tracked clickout.
-                    notino_report["results"] = phase2_offers + existing
+                    # Prefer the authorized CJ clickout and remove matching legacy
+                    # rows even when those older records have no GTIN and use synthetic IDs.
+                    notino_report["results"] = _merge_notino_phase2_offers(
+                        phase2_offers, existing
+                    )
                     notino_report["count"] = len(notino_report["results"])
                     notino_report["status"] = "success"
                     notino_report["verified"] = True
