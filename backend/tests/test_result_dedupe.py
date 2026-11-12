@@ -41,6 +41,38 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(result_key(first), result_key(duplicate))
         self.assertEqual(dedupe_results([first, duplicate]), [first])
 
+    def test_notino_same_gtin_collapses_legacy_and_cj_urls(self):
+        legacy = {
+            "store": "notino",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/",
+            "product_url": "https://www.notino.fr/french-avenue/liquid-brun/",
+            "catalog_id": "SH-0030",
+            "name": "Liquid Brun",
+            "gtin": "6290360375694",
+            "size_ml": 100,
+            "price_num": 36.70,
+        }
+        cj = {
+            **legacy,
+            "url": "https://www.anrdoezrs.net/click?url=https%3A%2F%2Fwww.notino.fr%2Fp-16289640%2F",
+            "product_url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            "source": "cj_notino_fr_feed",
+        }
+        self.assertEqual(result_key(legacy), result_key(cj))
+        self.assertEqual(dedupe_results([cj, legacy]), [cj])
+
+    def test_notino_distinct_gtins_remain_separate(self):
+        first = {
+            "store": "notino", "url": "https://www.notino.fr/p-100/",
+            "gtin": "6290360375694", "size_ml": 100, "price_num": 36.70,
+        }
+        second = {
+            **first, "url": "https://www.notino.fr/p-150/",
+            "gtin": "6298042001831", "size_ml": 150, "price_num": 49.90,
+        }
+        self.assertNotEqual(result_key(first), result_key(second))
+        self.assertEqual(len(dedupe_results([first, second])), 2)
+
     def test_distinct_sizes_of_same_retailer_url_are_preserved(self):
         first = {
             "store": "sabina",
