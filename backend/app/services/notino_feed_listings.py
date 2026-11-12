@@ -59,7 +59,7 @@ def refresh_notino_listings(session, rows: list[dict], captured_at: datetime) ->
         if not external_id or not brand or not title or not valid_time:
             rejected["missing_identity_or_timestamp"] += 1
             continue
-        if ProductMatcher._is_non_fragrance_offer({"name": title, "brand": brand}):
+        if ProductMatcher._is_non_fragrance_offer({"name": title, "brand": brand, "url": url}):
             rejected["non_fragrance"] += 1
             continue
         if not _affiliate_url(url):
