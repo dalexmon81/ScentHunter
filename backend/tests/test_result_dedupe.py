@@ -1,7 +1,10 @@
 """Regression tests for retailer-offer deduplication across canonical catalog records."""
 
+import os
 import unittest
+from unittest.mock import patch
 
+import main
 from main import _public_offer, dedupe_results, result_key
 
 
@@ -182,6 +185,26 @@ class ResultDeduplicationTests(unittest.TestCase):
         duplicate = {"store": "easycosmetic", "url": "https://www.easycosmetic.de/p/b",
                      "name": "Example Eau de Parfum 100 ml", "price_num": 25.99}
         self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
+
+    def test_notino_live_fallback_is_disabled_by_default(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(main, "CATALOG_ENGINE_AVAILABLE", True),
+            patch.object(main, "catalog_search_local", lambda *args, **kwargs: []),
+            patch(
+                "app.services.notino_phase2_search.search_notino_phase2",
+                return_value=[],
+            ),
+            patch(
+                "main._collect_catalog_reports_isolated",
+                return_value=[],
+            ) as collect,
+        ):
+            main.collect_store_reports_isolated("Hawas", ["notino"])
+
+        self.assertFalse(collect.call_args.kwargs["allow_live_fallback"])
+
 
 
 if __name__ == "__main__":
