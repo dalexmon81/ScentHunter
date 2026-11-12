@@ -78,7 +78,12 @@ def refresh_notino_listings(session, rows: list[dict], captured_at: datetime) ->
         if currency != "EUR":
             rejected["non_eur_price"] += 1
             continue
-        if sale is not None and sale_currency == currency and sale < price:
+        if row.get("sale_price") and (
+            sale is None or sale_currency != currency or sale > price
+        ):
+            rejected["invalid_sale_price"] += 1
+            continue
+        if sale is not None:
             price = sale
         image = str(row.get("image_link") or "").strip()
         try:

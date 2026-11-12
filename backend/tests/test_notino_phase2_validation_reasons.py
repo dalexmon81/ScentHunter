@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 import os
@@ -7,6 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import create_engine, select
 from sqlalchemy import event
@@ -243,6 +245,35 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                 self.assertEqual(unresolved, [])
                 self.assertEqual(groups[0]["offers"][0]["price_num"], 25.41)
                 self.assertEqual(groups[0]["offers"][0]["url"], offers[0]["url"])
+
+                from app.models import NotinoFeedListing
+                from app.services.notino_feed_listings import refresh_notino_listings
+                now = datetime.now(timezone.utc)
+                updated_url = "https://www.kqzyfj.com/click-test?url=https%3A%2F%2Fwww.notino.fr%2Fp%2Fupdated%2F"
+                with Session(engine) as session, session.begin():
+                    refresh_notino_listings(session, [{
+                        "id": "MAPPED-SKU", "brand": "Mapped Brand",
+                        "title": "Mapped Fragrance Eau de Parfum 100 ml",
+                        "gtin": "4006381333931", "price": "23.00 EUR",
+                        "availability": "in stock", "link": updated_url,
+                        "last_updated": (now - timedelta(days=2)).isoformat(),
+                    }], now)
+                with patch.dict(os.environ, {
+                    "NOTINO_PHASE2_DATABASE": str(database),
+                    "NOTINO_CJ_STANDALONE_ENABLED": "1",
+                }):
+                    current = search_notino_phase2("Mapped Fragrance")
+                    self.assertEqual(current[0]["price_num"], 23.00)
+                    self.assertEqual(current[0]["url"], updated_url)
+                    self.assertTrue(current[0]["price_stale"])
+                    with Session(engine) as session, session.begin():
+                        session.get(NotinoFeedListing, "MAPPED-SKU").availability = "out of stock"
+                    self.assertEqual(search_notino_phase2("Mapped Fragrance"), [])
+                    with Session(engine) as session, session.begin():
+                        session.delete(session.get(NotinoFeedListing, "MAPPED-SKU"))
+                    self.assertEqual(search_notino_phase2("Mapped Fragrance"), [])
+                    NotinoFeedListing.__table__.drop(engine)
+                    self.assertEqual(len(search_notino_phase2("Mapped Fragrance")), 1)
             finally:
                 engine.dispose()
 

@@ -14,7 +14,9 @@ identity or a cross-retailer match. Exact-GTIN offers remain preferred, and
 standalone listings are excluded when that same listing is already returned
 as an exact match. Prices are labeled old after 24 hours from the earlier of
 the feed's source update and the import; re-importing an old file cannot make
-its prices appear fresh.
+its prices appear fresh. When the snapshot table exists, canonical Notino
+offers also use its validated current price and CJ URL, and disappear if their
+listing is absent, unavailable, or no longer has the same GTIN.
 The switch defaults off outside staging. Normalized brand-plus-product queries
 work across the two fields without accepting SQL wildcard input.
 
