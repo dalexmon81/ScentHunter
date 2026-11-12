@@ -2,13 +2,13 @@ name: Deploy PR 726 isolated web staging
 # Deploy the current isolated search, schema migration, and multi-brand staging verification.
 
 on:
-  workflow_run:
-    workflows:
-      - Notino Phase 2 persistent staging import
-    types:
-      - completed
+  push:
     branches:
       - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-pr726-staging.yml"
+      - "fly.pr726.staging.toml"
   workflow_dispatch:
     inputs:
       confirm:
