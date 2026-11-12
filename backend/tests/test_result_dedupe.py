@@ -312,5 +312,45 @@ class ResultDeduplicationTests(unittest.TestCase):
 
 
 
+    def test_catalog_search_includes_authorized_notino_feed_variants(self):
+        feed_offer = {
+            "store": "notino", "shop": "Notino",
+            "brand": "French Avenue", "name": "Liquid Brun Eau de Parfum",
+            "price": "36.70 €", "price_num": 36.70, "currency": "EUR",
+            "availability": "in_stock", "available": True,
+            "size_ml": 100, "concentration": "Eau de Parfum",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/p-123/",
+            "gtin": "6290360375694", "source": "cj_viv_authorized_xml",
+        }
+        feed_module = type("FeedModule", (), {
+            "search_feed": staticmethod(lambda query: {
+                "status": "success", "verified": True,
+                "results": [feed_offer],
+                "details": {"catalog_candidates": 9533, "matched_offers": 1},
+            })
+        })()
+        resolved = {
+            **feed_offer, "store": "Notino", "shop": "Notino",
+            "_match_status": "matched", "catalog_id": "SH-TEST",
+            "canonical_name": "Liquid Brun",
+        }
+
+        with (
+            patch.object(main, "catalog_search_local", lambda *args, **kwargs: []),
+            patch.object(main, "catalog_refresh_candidates", None),
+            patch.object(main, "_catalog_indexed_flags", lambda stores: {"notino": True}),
+            patch.object(main.importlib, "import_module", return_value=feed_module),
+            patch.object(main, "_resolve_offer_identity", return_value=resolved),
+        ):
+            reports = main._collect_catalog_reports_isolated(
+                "Liquid Brun", ["notino"], allow_live_fallback=False,
+            )
+
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0]["count"], 1)
+        self.assertEqual(reports[0]["results"][0]["source"], "cj_notino_fr_feed")
+        self.assertEqual(reports[0]["results"][0]["catalog_id"], "SH-TEST")
+
+
 if __name__ == "__main__":
     unittest.main()
