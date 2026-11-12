@@ -143,7 +143,6 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     NotinoFeedListing.availability == "in stock",
                     NotinoFeedListing.currency == "EUR",
                     NotinoFeedListing.price > 0,
-                    NotinoFeedListing.affiliate_url.like("https://www.notino.fr/%"),
                     and_(*(
                         or_(
                             NotinoFeedListing.brand.ilike(f"%{word}%", escape="\\"),
