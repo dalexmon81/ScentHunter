@@ -1375,6 +1375,12 @@ def result_key(item):
             return str(value or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
     sku = str(item.get('sku') or '').strip().lower()
+    gtin = re.sub(r'\\D', '', str(item.get('gtin') or item.get('gtin13') or item.get('ean') or ''))
+    # A validated GTIN identifies the sellable variant more reliably than a
+    # retailer URL. Notino exposes the same product through catalog URLs and
+    # CJ tracking URLs; those must collapse to one offer, not three rows.
+    if store == 'notino' and len(gtin) in {8, 12, 13, 14}:
+        identity_key = f'gtin:{gtin}'
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
     # A retailer product URL is the strongest cross-catalog identity for the same offer.
@@ -2575,7 +2581,9 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                         item for item in (notino_report.get("results") or [])
                         if isinstance(item, dict)
                     ]
-                    notino_report["results"] = existing + phase2_offers
+                    # Prefer the authorized CJ record when a legacy catalog row and feed row
+                    # identify the same GTIN/variant. This retains the tracked clickout.
+                    notino_report["results"] = phase2_offers + existing
                     notino_report["count"] = len(notino_report["results"])
                     notino_report["status"] = "success"
                     notino_report["verified"] = True
