@@ -306,3 +306,29 @@ def test_retailer_only_snapshot_rejects_gift_set_when_feed_title_hides_it_in_url
             rows=[row],
             captured_at=datetime(2026, 11, 12, tzinfo=timezone.utc),
         )
+
+
+def test_legacy_notino_gift_set_is_removed_even_when_affiliate_url_wraps_destination():
+    from main import _merge_notino_phase2_offers
+
+    gift_set = {
+        "store": "notino",
+        "name": "Rasasi Hawas Ice",
+        "price": 32.50,
+        "url": (
+            "https://www.kqzyfj.com/click-101918103-13485502?"
+            "url=https%3A%2F%2Fwww.notino.fr%2Frasasi%2F"
+            "hawas-ice-coffret-cadeau-pour-homme%2Fp-123456%2F"
+        ),
+    }
+    normal_offer = {
+        "store": "notino",
+        "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+        "price": 37.40,
+        "url": "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/",
+    }
+
+    merged = _merge_notino_phase2_offers([], [gift_set, normal_offer])
+
+    assert gift_set not in merged
+    assert normal_offer in merged
