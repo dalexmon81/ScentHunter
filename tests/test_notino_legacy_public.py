@@ -71,6 +71,8 @@ def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock
       <body>
         <h1>Rayhaan Aquatica Eau de Parfum pour homme</h1>
         <button>100 ml - Ajouter au panier</button>
+        <div>32,72 € avec le code BFSALE</div>
+        <div>Prix actuel 40,90 € -20%</div>
       </body>
     </html>
     """
@@ -80,7 +82,12 @@ def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock
     assert row is not None
     assert row["url"] == url
     assert row["name"] == "Rayhaan Aquatica Eau de Parfum pour homme"
-    assert row["price_num"] == 40.90
+    assert row["price_num"] == 32.72
+    assert row["price"] == "32.72 €"
+    assert row["regular_price_num"] == 40.90
+    assert row["regular_price"] == "40.90 €"
+    assert row["coupon_code"] == "BFSALE"
+    assert row["coupon_required"] is True
     assert row["currency"] == "EUR"
     assert row["size_ml"] == 100
     assert row["availability"] == "in stock"
