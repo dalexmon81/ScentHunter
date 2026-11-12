@@ -1,13 +1,22 @@
 name: Notino Phase 2 persistent staging import
 
 on:
-  workflow_run:
-    workflows:
-      - Deploy PR 726 isolated web staging
-    types:
-      - completed
+  push:
     branches:
       - feature/notino-cj-feed-ingestion-2026-11-10
+    paths:
+      - ".github/workflows/notino-phase2-staging-import.yml"
+      - "backend/scripts/import_notino_phase2_persistent.py"
+      - "backend/scripts/verify_notino_phase2_persistent.py"
+      - "backend/product_catalog.json"
+      - "backend/app/services/notino_phase2_adapter.py"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/scripts/build_notino_match_candidates.py"
+      - "backend/app/models/**"
+      - "backend/app/services/notino_phase2_search.py"
+      - "backend/main.py"
+      - "fly.pr726.staging.toml"
   workflow_dispatch:
     inputs:
       confirm:
@@ -25,7 +34,7 @@ concurrency:
 
 jobs:
   import:
-    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'import-notino-staging') }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'import-notino-staging') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -63,6 +72,14 @@ jobs:
           echo "FLY_API_TOKEN=$normalized_token" >> "$GITHUB_ENV"
           curl -L https://fly.io/install.sh | sh
           echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy current branch to isolated staging before import
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=20s 840s flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --yes
+          echo "STAGING_IMAGE_DEPLOYED_FROM_BRANCH=$GITHUB_SHA"
 
       - name: Select every PR staging machine with a mounted data volume
         id: machine
