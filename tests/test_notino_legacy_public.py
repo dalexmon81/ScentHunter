@@ -1,6 +1,6 @@
 """Regression tests for bounded Notino external-discovery fallback."""
 
-from backend.scrapers.notino import legacy_public
+from backend.scrapers.notino import legacy_public, scraper as notino_scraper
 
 
 def test_price_bearing_search_result_returns_before_blocked_product_browser(monkeypatch):
@@ -60,11 +60,13 @@ def test_discovery_uses_external_rss_before_blocked_store_browser(monkeypatch):
 def test_descriptive_notino_product_slug_without_numeric_id_is_accepted():
     url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
     assert legacy_public.lookslikeproducturl(url)
+    assert notino_scraper.lookslikeproducturl(url)
 
 
 def test_generic_notino_brand_product_root_without_product_identity_is_rejected():
     url = "https://www.notino.fr/rayhaan/aquatica/"
     assert not legacy_public.lookslikeproducturl(url)
+    assert not notino_scraper.lookslikeproducturl(url)
 
 
 def test_legacy_notino_product_id_url_remains_accepted():
