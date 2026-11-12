@@ -1502,7 +1502,11 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
 
     kept_legacy = [
         item for item in legacy_offers
-        if not any(same_variant(feed, item) for feed in phase2_offers)
+        # Legacy retailer rows can contain a gift set under a shortened
+        # perfume-only title. Reject these before merging into canonical
+        # fragrance cards, using the decoded retailer destination URL too.
+        if not _is_non_fragrance_offer(item)
+        and not any(same_variant(feed, item) for feed in phase2_offers)
     ]
     return list(phase2_offers) + kept_legacy
 
