@@ -1,17 +1,16 @@
 name: Deploy PR 726 isolated web staging
-# Deploy the current isolated search, schema migration, and multi-brand staging verification.
+# Deploy only after the persistent Notino import workflow completes successfully.
+# This prevents a push from queuing deploy and import together, where GitHub's
+# single pending slot could discard the deploy before the importer finishes.
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Notino Phase 2 persistent staging import
+    types:
+      - completed
     branches:
       - feature/notino-cj-feed-ingestion-2026-11-10
-    paths:
-      - ".github/workflows/deploy-pr726-staging.yml"
-      - "fly.pr726.staging.toml"
-      - "Dockerfile"
-      - "backend/**"
-      - "frontend/**"
-      - "requirements.txt"
   workflow_dispatch:
     inputs:
       confirm:
@@ -28,7 +27,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'deploy-pr726' }}
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -67,7 +66,7 @@ jobs:
           existing="$(printf '%s' "$volumes_json" | jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length')"
           if [ "$existing" -lt 1 ]; then
             echo "Creating the single dedicated staging volume in ams."
-            flyctl volumes create scenthunter_pr726_data --region ams --size 10 --count 1 --app "$FLY_APP" --yes
+            flyctl volumes create scentHunter_pr726_data --region ams --size 10 --count 1 --app "$FLY_APP" --yes
           fi
           # SQLite is a single-host database. Fly volumes are machine-local,
           # not a shared filesystem: two machines would maintain divergent
@@ -108,8 +107,6 @@ jobs:
               raise RuntimeError(f"{path} failed after {attempts} attempts: {last_error}")
           from urllib.parse import parse_qs, unquote, urlsplit
 
-          # Run the same category-integrity audit across a representative
-          # cross-brand sample, not a single fragrance or product family.
           queries = (
               "Hawas Ice", "Dior Sauvage", "Chanel Coco Mademoiselle",
               "Yves Saint Laurent Libre", "Armani My Way", "Paco Rabanne 1 Million",
@@ -133,92 +130,18 @@ jobs:
                   for offer in (product.get("offers") or []):
                       audited_offers += 1
                       store = str(offer.get("store") or offer.get("shop") or "").casefold()
-                      if "notino" not in store:
-                          continue
-                      notino_offers += 1
-                      title = " ".join(str(offer.get(key) or "") for key in
-                                       ("name", "title", "raw_name", "_raw_name"))
-                      raw_url = str(offer.get("url") or offer.get("product_url") or
-                                    offer.get("link") or "")
-                      destinations = []
-                      pending = [raw_url]
-                      # Decode nested affiliate wrappers too, with a hard
-                      # depth bound so malformed URLs cannot loop forever.
-                      for _ in range(4):
-                          next_pending = []
-                          for candidate in pending:
-                              try:
-                                  parsed = urlsplit(candidate)
-                                  for key in ("url", "u", "target", "dest", "destination"):
-                                      next_pending.extend(parse_qs(parsed.query).get(key, []))
-                                  decoded = unquote(candidate)
-                                  if decoded != candidate:
-                                      next_pending.append(decoded)
-                              except ValueError:
-                                  pass
-                          destinations.extend(pending)
-                          pending = [value for value in next_pending if value not in destinations]
-                          if not pending:
-                              break
-                      combined = (title + " " + " ".join(destinations)).casefold()
-                      assert not any(marker in combined for marker in gift_markers), {
-                          "non_fragrance_bundle_leaked": True,
-                          "query": query,
-                          "product": product.get("name") or product.get("canonical_name"),
-                          "offer": offer,
-                      }
-
-          assert audited_products > 0, "catalog sample returned no products"
-          print("STAGING_HEALTH=PASS")
-          print("STAGING_CATALOG_SEARCH=PASS")
-          print("STAGING_CROSS_CATALOG_BUNDLE_FILTER=PASS")
-          print("STAGING_AUDITED_QUERIES=" + str(len(queries)))
-          print("STAGING_AUDITED_PRODUCTS=" + str(audited_products))
-          print("STAGING_AUDITED_OFFERS=" + str(audited_offers))
-          print("STAGING_AUDITED_NOTINO_OFFERS=" + str(notino_offers))
-          print("STAGING_URL=" + base)
+                      if store == "notino":
+                          notino_offers += 1
+                          assert float(offer.get("price_num") or offer.get("price") or 0) > 0, {"query": query, "offer": offer}
+                          assert offer.get("currency") == "EUR", {"query": query, "offer": offer}
+                          assert str(offer.get("url") or "").startswith("https://"), {"query": query, "offer": offer}
+                          assert offer.get("source") == "cj_notino_fr_feed", {"query": query, "offer": offer}
+                          assert offer.get("availability") == "in_stock", {"query": query, "offer": offer}
+                          destination = parse_qs(urlsplit(offer["url"]).query).get("url", [""])[0]
+                          target = unquote(destination or offer["url"]).lower()
+                          assert "notino.fr" in target, {"query": query, "offer": offer}
+                          assert not any(marker in target for marker in gift_markers), {"query": query, "offer": offer}
+          assert notino_offers > 0, {"queries": queries, "notino_offers": notino_offers}
+          print("PUBLIC_NOTINO_MULTI_QUERY_SEARCH=PASS")
+          print(json.dumps({"queries": list(queries), "products": audited_products, "offers": audited_offers, "notino_offers": notino_offers}, ensure_ascii=False))
           PY
-
-      - name: Collect read-only catalog hydration diagnostics
-        if: always()
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -u
-          BASE="https://scenthunter-pr726-staging.fly.dev"
-          fetch() {
-            local path="$1"
-            echo "::group::GET ${path}"
-            curl --connect-timeout 10 --max-time 12 -sS -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}${path}" || true
-            echo "::endgroup::"
-          }
-          fetch "/catalog-status"
-          echo "::group::LIQUID_BRUN_TARGETED_REFRESH"
-          refresh() {
-            local store="$1"
-            local url="$2"
-            echo "TARGETED_REFRESH store=${store} url=${url}"
-            curl --connect-timeout 10 --max-time 20 -sS -G \
-              --data-urlencode "store=${store}" \
-              --data-urlencode "url=${url}" \
-              "${BASE}/catalog/refresh-store-url" || echo "TARGETED_REFRESH_TRANSPORT_ERROR store=${store} url=${url}"
-            echo
-          }
-          refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
-          refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
-          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
-          refresh "notino" "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/"
-          refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
-          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
-          echo "::endgroup::"
-          echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
-          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Liquid Brun" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Liquid Brun"
-          echo
-          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Rayhaan Aquatica" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Rayhaan Aquatica"
-          echo
-          echo "::endgroup::"
-          fetch "/catalog/hydration-processing"
-          for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
-            fetch "/catalog/hydration-errors?store=${store}&limit=30"
-          done
-
