@@ -674,13 +674,24 @@ def _start_catalog_bootstrap():
         if missing_stores:
             print(
                 'CATALOG BOOTSTRAP: stores without valid indexed URLs: '
-                f'{missing_stores}; shared round-robin discovery will handle them',
+                f'{missing_stores}; starting immediate background discovery',
                 flush=True,
             )
         else:
             print('CATALOG BOOTSTRAP: all stores have indexed URLs; shared discovery remains enabled', flush=True)
         _start_catalog_hydration()
         _start_catalog_discovery()
+        if missing_stores:
+            # A partially populated persistent volume must not be treated as a
+            # fully bootstrapped catalog. Start discovery for every missing
+            # retailer immediately; the shared round-robin loop remains the
+            # ongoing maintenance path. This runs outside /search.
+            threading.Thread(
+                target=_discover_missing_catalog_stores,
+                args=(tuple(missing_stores),),
+                daemon=True,
+                name='scenthunter-missing-store-bootstrap',
+            ).start()
         return
     threading.Thread(
         target=_catalog_bootstrap_worker,
