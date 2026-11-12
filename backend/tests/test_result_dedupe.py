@@ -63,6 +63,10 @@ class ResultDeduplicationTests(unittest.TestCase):
         }
         self.assertEqual(result_key(legacy), result_key(cj))
         self.assertEqual(dedupe_results([cj, legacy]), [cj])
+        diagnostics = []
+        self.assertEqual(dedupe_results([legacy, cj], diagnostics), [cj])
+        self.assertEqual(diagnostics[0]["kept"]["url"], cj["url"])
+        self.assertEqual(diagnostics[0]["dropped"]["url"], legacy["url"])
 
     def test_notino_distinct_gtins_remain_separate(self):
         first = {

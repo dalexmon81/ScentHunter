@@ -1526,12 +1526,23 @@ def dedupe_results(results, diagnostics=None):
         fp = fingerprint(item)
         keeper_entry = seen.get(key) or (seen.get(fp) if fp is not None else None)
         if keeper_entry is None:
-            entry = {"index": index, "item": item}
+            entry = {"index": index, "output_index": len(output), "item": item}
             seen[key] = entry
             if fp is not None:
                 seen.setdefault(fp, entry)
             output.append(item)
             continue
+
+        if (
+            key[0] == 'notino'
+            and key[1].startswith('gtin:')
+            and item.get('source') == 'cj_notino_fr_feed'
+            and keeper_entry["item"].get('source') != 'cj_notino_fr_feed'
+        ):
+            previous = keeper_entry["item"]
+            output[keeper_entry["output_index"]] = item
+            keeper_entry["item"] = item
+            item = previous
 
         if diagnostics is not None:
             keeper = keeper_entry["item"]

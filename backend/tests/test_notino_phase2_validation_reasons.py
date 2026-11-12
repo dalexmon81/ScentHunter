@@ -205,7 +205,10 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                     session.flush()
                     persisted = persist_notino_record(
                         session, store_id=store.id,
-                        raw_record=_notino_record("MAPPED-SKU"),
+                        raw_record=_notino_record(
+                            "MAPPED-SKU", price="29.90", sale_price="25.41",
+                            affiliate_url="https://www.kqzyfj.com/click-test?url=https%3A%2F%2Fwww.notino.fr%2Fp%2F",
+                        ),
                     )
                     self.assertEqual(persisted.status, "promoted")
                 metrics = verify_notino_phase2_persistent._metrics(database)
@@ -228,6 +231,12 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                 self.assertEqual(offers[0]["currency"], "EUR")
                 self.assertEqual(offers[0]["availability"], "in_stock")
                 self.assertEqual(offers[0]["source"], "cj_notino_fr_feed")
+                self.assertEqual(offers[0]["price_num"], 25.41)
+                from main import _aggregate_identity_results
+                groups, unresolved = _aggregate_identity_results(offers)
+                self.assertEqual(unresolved, [])
+                self.assertEqual(groups[0]["offers"][0]["price_num"], 25.41)
+                self.assertEqual(groups[0]["offers"][0]["url"], offers[0]["url"])
             finally:
                 engine.dispose()
 
