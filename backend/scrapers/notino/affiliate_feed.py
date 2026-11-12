@@ -430,14 +430,30 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                             offer.price, None, 0,
                         ),
                     )
+                # Feed rows provide a reliable base price, but background
+                # hydration must still inspect the product page for coupon-only
+                # prices and richer variant evidence. Never scrape during search.
                 conn.execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,priority,attempts,available_at,first_seen_at)
-                       VALUES(?,?,'DONE',0,0,?,?)
+                       VALUES(?,?,'PENDING',25,0,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
-                         state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
-                         leased_until=NULL,lease_token=NULL,last_error=NULL""",
-                    (STORE_KEY, url, now, now),
+                         state=CASE
+                           WHEN hydration_queue.state='PROCESSING'
+                                AND hydration_queue.leased_until > ?
+                           THEN 'PROCESSING' ELSE 'PENDING' END,
+                         priority=MIN(hydration_queue.priority,25),
+                         attempts=CASE WHEN hydration_queue.state='PROCESSING'
+                                       THEN hydration_queue.attempts ELSE 0 END,
+                         available_at=excluded.available_at,
+                         leased_until=CASE WHEN hydration_queue.state='PROCESSING'
+                                           AND hydration_queue.leased_until > ?
+                                      THEN hydration_queue.leased_until ELSE NULL END,
+                         lease_token=CASE WHEN hydration_queue.state='PROCESSING'
+                                          AND hydration_queue.leased_until > ?
+                                     THEN hydration_queue.lease_token ELSE NULL END,
+                         last_error=NULL""",
+                    (STORE_KEY, url, now, now, now, now, now),
                 )
     finally:
         conn.close()
