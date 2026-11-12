@@ -1139,7 +1139,16 @@ def _looks_product(url, store=None):
     # marker; a plain brand/fragrance landing slug must remain navigation.
     if store == 'notino':
         path = urllib.parse.unquote(p.path or '').rstrip('/').lower()
-        if re.search(r'(?:^|/)p-[0-9]+
+        if re.search(r'(?:^|/)p-[0-9]+/?$', path, re.I):
+            return True
+        slug = path.rsplit('/', 1)[-1]
+        return bool(re.search(
+            r'(?:^|[- ])(?:eau-de-parfum|eau-de-toilette|eau-de-cologne|'
+            r'extrait-de-parfum|parfum-pour|parfum-mixte|pour-homme|'
+            r'pour-femme|for-men|for-women)(?:$|[- ])',
+            slug,
+            re.I,
+        ))
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
@@ -1637,7 +1646,17 @@ def _html_product_url(store, raw_url, base_url):
         # product/concentration. Plain brand/category slugs are not products.
         decoded_path = urllib.parse.unquote(p.path or '').rstrip('/')
         slug = decoded_path.rsplit('/', 1)[-1]
-        has_product_id = bool(re.search(r'(?:^|/)p-[0-9]+
+        has_product_id = bool(re.search(r'(?:^|/)p-[0-9]+/?$', decoded_path, re.I))
+        has_product_marker = bool(re.search(
+            r'(?:^|[- ])(?:eau-de-parfum|eau-de-toilette|eau-de-cologne|'
+            r'extrait-de-parfum|parfum-pour|parfum-mixte|pour-homme|'
+            r'pour-femme|for-men|for-women)(?:$|[- ])',
+            slug,
+            re.I,
+        ))
+        if not (has_product_id or has_product_marker):
+            return None
+        return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
 
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
