@@ -70,8 +70,7 @@ def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock
       </head>
       <body>
         <h1>Rayhaan Aquatica Eau de Parfum pour homme</h1>
-        <div>100 ml</div>
-        <button>Ajouter au panier</button>
+        <button>100 ml - Ajouter au panier</button>
       </body>
     </html>
     """
