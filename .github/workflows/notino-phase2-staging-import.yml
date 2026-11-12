@@ -136,14 +136,12 @@ jobs:
           expected_sha=""
           missing_machine_ids=""
           for machine_id in "${ids[@]}"; do
-            # Do not parse all 9.5k XML rows over Fly SSH. A snapshot check only
-            # needs a readable non-empty file and a matching SHA-256 marker.
-            if ! remote_sha="$(timeout --signal=TERM --kill-after=5s 25s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); m=Path(str(p)+\".sha256\"); assert p.is_file() and p.stat().st_size>0; d=hashlib.file_digest(p.open(\"rb\"),\"sha256\").hexdigest(); assert not m.exists() or m.read_text().strip()==d; m.write_text(d+\"\\n\"); print(d)'"); then
-              snapshot_complete=false
-              missing_machine_ids="${missing_machine_ids:+$missing_machine_ids,}$machine_id"
-              continue
+            # Use coreutils only: no nested Python/shell quoting over SSH.
+            if remote_sha="$(timeout --signal=TERM --kill-after=5s 25s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -s /data/notino-phase2/notino-cj-feed.xml && sha256sum /data/notino-phase2/notino-cj-feed.xml | cut -c1-64")"; then
+              machine_sha="$(printf '%s' "$remote_sha" | tr -d '\r\n')"
+            else
+              machine_sha=""
             fi
-            machine_sha="$(printf '%s' "$remote_sha" | tr -d '\r\n')"
             if [ -z "$machine_sha" ]; then
               snapshot_complete=false
               missing_machine_ids="${missing_machine_ids:+$missing_machine_ids,}$machine_id"
@@ -160,8 +158,6 @@ jobs:
           done
           if [ -z "$source_machine" ]; then
             snapshot_complete=false
-            # All selected machines need a fresh snapshot. Use the IDs from
-            # this step's parsed array; do not reference an unset shell variable.
             missing_machine_ids="$(IFS=,; printf '%s' "${ids[*]}")"
           fi
           echo "available=$snapshot_available" >> "$GITHUB_OUTPUT"
