@@ -216,6 +216,14 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
     brand_key = _brand_key(feed_brand)
     raw_title = row.get("title", "")
     feed_name = strip_product_noise(raw_title)
+    # Retailer titles often repeat the brand while canonical product names do
+    # not. Remove only an exact leading brand prefix before comparing names;
+    # this keeps "Rayhaan Kiss" distinct from "Rayhaan Aquatica" without
+    # penalizing legitimate "Rabanne 1 Million" -> "1 Million" matches.
+    title_brand_tokens = normalize(feed_brand).split()
+    feed_name_tokens = feed_name.split()
+    if title_brand_tokens and feed_name_tokens[:len(title_brand_tokens)] == title_brand_tokens:
+        feed_name = " ".join(feed_name_tokens[len(title_brand_tokens):])
     feed_size = parse_size(row.get("size", "")) or parse_size(raw_title) or parse_size(row.get("description", ""))
     feed_concentration = extract_concentration(raw_title) or extract_concentration(row.get("product_type", ""))
     feed_gender = extract_gender(raw_title)
