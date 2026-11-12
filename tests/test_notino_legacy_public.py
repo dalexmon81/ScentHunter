@@ -196,3 +196,45 @@ def test_public_offer_preserves_notino_coupon_price_metadata():
     assert offer["coupon_code"] == "BFSALE"
     assert offer["coupon_required"] is True
 
+
+
+
+def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_concentration():
+    from backend.main import _merge_notino_phase2_offers
+
+    feed_offer = {
+        "catalog_id": "SH-0066",
+        "name": "Aquatica",
+        "brand": "Rayhaan",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "gtin": "6297001571330",
+        "external_id": "RAYAQTM_AEDP10",
+        "source": "cj_notino_fr_feed",
+        "url": "https://www.dpbolvw.net/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Frayhaan%2Faquatica-eau-de-parfum-pour-homme%2Fp-16407892%2F",
+        "price_num": 32.72,
+    }
+    legacy_same_variant = {
+        "catalog_id": "SH-0066",
+        "name": "Aquatica",
+        "brand": "Rayhaan",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "url": "https://www.notino.fr/rayhaan/aquatica/",
+        "price_num": 40.90,
+    }
+    legacy_other_concentration = {
+        "catalog_id": "SH-0066",
+        "name": "Aquatica",
+        "brand": "Rayhaan",
+        "size_ml": 100,
+        "concentration": "Eau de Toilette",
+        "url": "https://www.notino.fr/rayhaan/aquatica-eau-de-toilette/",
+        "price_num": 39.90,
+    }
+
+    merged = _merge_notino_phase2_offers(
+        [feed_offer], [legacy_same_variant, legacy_other_concentration]
+    )
+
+    assert merged == [feed_offer, legacy_other_concentration]
