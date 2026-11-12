@@ -969,7 +969,19 @@ def _resolve_offer_identity(result, query):
         })
         return output
 
-    # The central matcher returns the resolved offer directly.  Do not replace
+    # The central matcher may explicitly reject an offer when its retailer
+    # size conflicts with the canonical sellable variant. Never turn that
+    # rejection into a successful identity match.
+    if str(match.get("status") or "").strip().lower() == "rejected":
+        output.update({
+            "_match_status": "rejected",
+            "_reject_reason": match.get("reject_reason") or "matcher_rejected",
+            "catalog_id": None,
+            "canonical_name": None,
+        })
+        return output
+
+    # The central matcher returns the resolved offer directly. Do not replace
     # the retailer's raw brand/name fields; canonical identity is exposed in
     # its dedicated canonical_* fields.
     output.update(match)
