@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models import (
     Brand, Fragrance, LegacyProductIdMap, NotinoFeedListing, Offer, ProductVariant, Store,
 )
+from app.services.notino_feed_listings import is_notino_cj_affiliate_url
 
 DEFAULT_DATABASE = Path("/data/notino-phase2/catalog.sqlite3")
 
@@ -52,10 +53,11 @@ def search_notino_phase2(query: str, limit: int = 30) -> list[dict]:
         pool_pre_ping=True,
     )
     try:
-        use_snapshot = (
-            str(os.environ.get("NOTINO_CJ_STANDALONE_ENABLED", "0")).strip().lower()
-            in {"1", "true", "yes", "on"}
-            and inspect(engine).has_table(NotinoFeedListing.__tablename__)
+        standalone_enabled = str(
+            os.environ.get("NOTINO_CJ_STANDALONE_ENABLED", "0")
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        use_snapshot = standalone_enabled and inspect(engine).has_table(
+            NotinoFeedListing.__tablename__
         )
         with Session(engine) as session:
             stmt = (
@@ -111,8 +113,13 @@ def search_notino_phase2(query: str, limit: int = 30) -> list[dict]:
             for row in rows:
                 offer, legacy_product_id = row[:2]
                 listing = row[2] if use_snapshot else None
+                if standalone_enabled and not listing and not is_notino_cj_affiliate_url(offer.url):
+                    continue
                 variant = offer.product_variant
                 fragrance = variant.fragrance
+                observed = offer.captured_at
+                if observed.tzinfo is None:
+                    observed = observed.replace(tzinfo=timezone.utc)
                 results.append({
                     "catalog_id": legacy_product_id,
                     "brand": fragrance.brand.name,
@@ -128,7 +135,10 @@ def search_notino_phase2(query: str, limit: int = 30) -> list[dict]:
                     "shop": "notino",
                     "price": float(listing.price if listing else offer.price),
                     "price_num": float(listing.price if listing else offer.price),
-                    "price_stale": _listing_is_stale(listing) if listing else False,
+                    "price_stale": (
+                        _listing_is_stale(listing) if listing else
+                        (datetime.now(timezone.utc) - observed).total_seconds() > 24 * 60 * 60
+                    ),
                     "currency": offer.currency,
                     "format": f"{variant.size_ml} ml" if variant.size_ml else None,
                     "size_ml": variant.size_ml,

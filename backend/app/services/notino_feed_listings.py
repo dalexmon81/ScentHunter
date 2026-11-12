@@ -19,7 +19,7 @@ _CJ_HOSTS = {
 }
 
 
-def _affiliate_url(value: str) -> bool:
+def is_notino_cj_affiliate_url(value: str) -> bool:
     try:
         parsed = urlsplit(value)
         destinations = parse_qs(parsed.query).get("url", [])
@@ -62,7 +62,7 @@ def refresh_notino_listings(session, rows: list[dict], captured_at: datetime) ->
         if ProductMatcher._is_non_fragrance_offer({"name": title, "brand": brand}):
             rejected["non_fragrance"] += 1
             continue
-        if not _affiliate_url(url):
+        if not is_notino_cj_affiliate_url(url):
             rejected["invalid_affiliate_url"] += 1
             continue
         availability = str(row.get("availability") or "").strip().casefold()

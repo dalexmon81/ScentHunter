@@ -274,6 +274,9 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                     self.assertEqual(search_notino_phase2("Mapped Fragrance"), [])
                     NotinoFeedListing.__table__.drop(engine)
                     self.assertEqual(len(search_notino_phase2("Mapped Fragrance")), 1)
+                    with Session(engine) as session, session.begin():
+                        session.scalar(select(Offer)).url = "https://www.notino.fr/p/old/"
+                    self.assertEqual(search_notino_phase2("Mapped Fragrance"), [])
             finally:
                 engine.dispose()
 
