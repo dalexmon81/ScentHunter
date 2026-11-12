@@ -96,6 +96,33 @@ def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock
 
 
 
+def test_catalog_hydration_adapter_uses_coupon_aware_product_parser():
+    url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
+    html = """
+    <html>
+      <head>
+        <meta property="product:price:amount" content="40.90">
+        <meta property="product:price:currency" content="EUR">
+      </head>
+      <body>
+        <h1>Rayhaan Aquatica Eau de Parfum pour homme</h1>
+        <button>100 ml - Ajouter au panier</button>
+        <div>32,72 € avec le code BFSALE</div>
+      </body>
+    </html>
+    """
+
+    row = notino_scraper.extract_product_page(None, url, "rayhaan aquatica", html=html)
+
+    assert row is not None
+    assert row["price_num"] == 32.72
+    assert row["regular_price_num"] == 40.90
+    assert row["coupon_code"] == "BFSALE"
+
+
+
+
+
 def test_catalog_search_returns_coupon_price_and_keeps_regular_price(monkeypatch):
     from backend.scrapers.notino import affiliate_feed
     import catalog_engine
