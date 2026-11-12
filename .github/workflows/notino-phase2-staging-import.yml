@@ -138,7 +138,7 @@ jobs:
           for machine_id in "${ids[@]}"; do
             # Do not parse all 9.5k XML rows over Fly SSH. A snapshot check only
             # needs a readable non-empty file and a matching SHA-256 marker.
-            if ! remote_sha="$(timeout --signal=TERM --kill-after=5s 25s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; p=Path(\\"/data/notino-phase2/notino-cj-feed.xml\\"); m=Path(str(p)+\\".sha256\\"); assert p.is_file() and p.stat().st_size>0; d=hashlib.file_digest(p.open(\\"rb\\"),\\"sha256\\").hexdigest(); assert not m.exists() or m.read_text().strip()==d; m.write_text(d+\\"\\\\n\\"); print(d)'"); then
+            if ! remote_sha="$(timeout --signal=TERM --kill-after=5s 25s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); m=Path(str(p)+\".sha256\"); assert p.is_file() and p.stat().st_size>0; d=hashlib.file_digest(p.open(\"rb\"),\"sha256\").hexdigest(); assert not m.exists() or m.read_text().strip()==d; m.write_text(d+\"\\n\"); print(d)'"); then
               snapshot_complete=false
               missing_machine_ids="${missing_machine_ids:+$missing_machine_ids,}$machine_id"
               continue
@@ -390,7 +390,7 @@ jobs:
         run: |
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
-          BRANDS_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); rows=c.execute(\"SELECT brand FROM notino_feed_listings WHERE availability=\\\"in stock\\\" GROUP BY brand HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, brand LIMIT 8\").fetchall(); print(json.dumps([r[0] for r in rows]))'")"
+          BRANDS_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); rows=c.execute(\"SELECT brand FROM notino_feed_listings WHERE availability=\\"in stock\\" GROUP BY brand HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, brand LIMIT 8\").fetchall(); print(json.dumps([r[0] for r in rows]))'")"
           python - "$BRANDS_RAW" <<'PY'
           import json, sys, urllib.parse, urllib.request
           raw = sys.argv[1]
@@ -444,6 +444,6 @@ jobs:
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           flyctl machine start "$MACHINE_ID" --app "$FLY_APP" || true
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import os,sqlite3,json; p=\"/data/notino-phase2/catalog.sqlite3\"; c=sqlite3.connect(p); q=lambda s:c.execute(s).fetchone()[0]; out={\"db_exists\":os.path.isfile(p),\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"price_history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\"\"),\"duplicate_external_ids\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\\"notino-fr\\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"db_exists\"] and out[\"offers\"]>0 and out[\"price_history\"]>=out[\"offers\"] and out[\"duplicate_external_ids\"]==0'"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import os,sqlite3,json; p=\"/data/notino-phase2/catalog.sqlite3\"; c=sqlite3.connect(p); q=lambda s:c.execute(s).fetchone()[0]; out={\"db_exists\":os.path.isfile(p),\"offers\":q(\"select count(*) from offers o join stores s on s.id=o.store_id where s.slug=\\"notino-fr\\"\"),\"price_history\":q(\"select count(*) from price_history h join offers o on o.id=h.offer_id join stores s on s.id=o.store_id where s.slug=\\"notino-fr\\"\"),\"duplicate_external_ids\":q(\"select count(*) from (select external_product_id from offers o join stores s on s.id=o.store_id where s.slug=\\"notino-fr\\" group by external_product_id having count(*)>1)\")}; print(json.dumps(out)); assert out[\"db_exists\"] and out[\"offers\"]>0 and out[\"price_history\"]>=out[\"offers\"] and out[\"duplicate_external_ids\"]==0'"
 
 # 2026-11-12: rerun persistent isolated staging import against the current branch head.
