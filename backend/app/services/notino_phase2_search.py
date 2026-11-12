@@ -81,7 +81,6 @@ def search_notino_phase2(query: str, limit: int = 30) -> list[dict]:
                     "variant": variant.concentration,
                     "variant_id": str(variant.id),
                     "gtin": variant.gtin,
-                    "sku": variant.sku,
                     "store": "notino",
                     "shop": "notino",
                     "price": float(offer.price),
