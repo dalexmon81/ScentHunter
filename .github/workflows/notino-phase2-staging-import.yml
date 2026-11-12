@@ -125,7 +125,7 @@ jobs:
 
       - name: Find a valid persistent snapshot on the staging volumes
         id: snapshot
-        timeout-minutes: 5
+        timeout-minutes: 3
         shell: bash
         run: |
           set -euo pipefail
@@ -136,12 +136,19 @@ jobs:
           expected_sha=""
           missing_machine_ids=""
           for machine_id in "${ids[@]}"; do
-            if ! timeout --signal=TERM --kill-after=10s 90s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib,sys; from pathlib import Path; sys.path.insert(0,\"/app/backend\"); from scripts.build_notino_match_candidates import iter_perfume_rows; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); marker=Path(str(p)+\".sha256\"); n=sum(1 for _ in iter_perfume_rows(p)); assert n>0; digest=hashlib.file_digest(p.open(\"rb\"),\"sha256\").hexdigest(); assert not marker.exists() or marker.read_text().strip()==digest; marker.write_text(digest+\"\\n\"); print(\"Validated existing feed rows=\"+str(n)+\" sha256=\"+digest)'"; then
+            # Do not parse all 9.5k XML rows over Fly SSH. A snapshot check only
+            # needs a readable non-empty file and a matching SHA-256 marker.
+            if ! remote_sha="$(timeout --signal=TERM --kill-after=5s 25s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; p=Path(\\"/data/notino-phase2/notino-cj-feed.xml\\"); m=Path(str(p)+\\".sha256\\"); assert p.is_file() and p.stat().st_size>0; d=hashlib.file_digest(p.open(\\"rb\\"),\\"sha256\\").hexdigest(); assert not m.exists() or m.read_text().strip()==d; m.write_text(d+\\"\\\\n\\"); print(d)'"); then
               snapshot_complete=false
               missing_machine_ids="${missing_machine_ids:+$missing_machine_ids,}$machine_id"
               continue
             fi
-            machine_sha="$(timeout --signal=TERM --kill-after=10s 30s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "cat /data/notino-phase2/notino-cj-feed.xml.sha256" | tr -d '\r\n')"
+            machine_sha="$(printf '%s' "$remote_sha" | tr -d '\r\n')"
+            if [ -z "$machine_sha" ]; then
+              snapshot_complete=false
+              missing_machine_ids="${missing_machine_ids:+$missing_machine_ids,}$machine_id"
+              continue
+            fi
             if [ -z "$source_machine" ]; then
               source_machine="$machine_id"
               expected_sha="$machine_sha"
@@ -153,7 +160,9 @@ jobs:
           done
           if [ -z "$source_machine" ]; then
             snapshot_complete=false
-            missing_machine_ids="$machine_ids"
+            # All selected machines need a fresh snapshot. Use the IDs from
+            # this step's parsed array; do not reference an unset shell variable.
+            missing_machine_ids="$(IFS=,; printf '%s' "${ids[*]}")"
           fi
           echo "available=$snapshot_available" >> "$GITHUB_OUTPUT"
           echo "complete=$snapshot_complete" >> "$GITHUB_OUTPUT"
