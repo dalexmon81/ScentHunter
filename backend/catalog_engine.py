@@ -690,14 +690,22 @@ def _ensure_schema(conn):
             name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
             size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
             availability TEXT, fetched_at REAL, variant_url TEXT,
+            regular_price REAL, coupon_code TEXT, coupon_required INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY(store,url,variant_key))""")
         # Migrate existing catalogs in place: retailer variant URLs are distinct
         # from the canonical product URL (e.g. Sabina's #/dimensione-100_ml).
+        # Coupon metadata is retained alongside the effective offer price.
         variant_columns = {row['name'] for row in conn.execute(
             'PRAGMA table_info(store_product_variants)'
         ).fetchall()}
         if 'variant_url' not in variant_columns:
             conn.execute('ALTER TABLE store_product_variants ADD COLUMN variant_url TEXT')
+        if 'regular_price' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN regular_price REAL')
+        if 'coupon_code' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN coupon_code TEXT')
+        if 'coupon_required' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN coupon_required INTEGER NOT NULL DEFAULT 0')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
         _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
