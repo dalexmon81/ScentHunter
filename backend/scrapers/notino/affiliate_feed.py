@@ -411,13 +411,15 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                     conn.execute(
                         """INSERT INTO store_product_variants(
                                store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                               concentration,gender,price,currency,availability,fetched_at,variant_url)
-                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                               concentration,gender,price,currency,availability,fetched_at,variant_url,
+                               regular_price,coupon_code,coupon_required)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                            ON CONFLICT(store,url,variant_key) DO UPDATE SET
                              name=excluded.name,brand=excluded.brand,image=excluded.image,
                              sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
                              size_ml=excluded.size_ml,concentration=excluded.concentration,
                              price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
+                             regular_price=excluded.regular_price,coupon_code=NULL,coupon_required=0,
                              currency=excluded.currency,availability=excluded.availability,
                              fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
                         (
@@ -425,6 +427,7 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                             offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
                             offer.size_ml, offer.concentration, None,
                             offer.price, offer.currency, offer.availability, now, url,
+                            offer.price, None, 0,
                         ),
                     )
                 conn.execute(
@@ -520,6 +523,16 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "name": name,
             "price": f"{price:.2f} €",
             "price_num": price,
+            "regular_price": (
+                f"{float(row['regular_price']):.2f} €"
+                if row["regular_price"] is not None and row["coupon_required"] else None
+            ),
+            "regular_price_num": (
+                float(row["regular_price"])
+                if row["regular_price"] is not None and row["coupon_required"] else None
+            ),
+            "coupon_code": row["coupon_code"],
+            "coupon_required": bool(row["coupon_required"]),
             "currency": "EUR",
             "available": True,
             "availability": row["availability"],
