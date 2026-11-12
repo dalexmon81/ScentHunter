@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import main
-from main import _public_offer, dedupe_results, result_key
+from main import _merge_notino_phase2_offers, _public_offer, dedupe_results, result_key
 
 
 class ResultDeduplicationTests(unittest.TestCase):
@@ -186,6 +186,52 @@ class ResultDeduplicationTests(unittest.TestCase):
                      "name": "Example Eau de Parfum 100 ml", "price_num": 25.99}
         self.assertEqual(len(dedupe_results([first, duplicate])), 1)
 
+
+    def test_notino_cj_offer_replaces_legacy_row_without_gtin(self):
+        cj = {
+            "catalog_id": "SH-0030", "brand": "French Avenue",
+            "name": "Liquid Brun", "variant": "Eau de Parfum",
+            "size_ml": 100, "price_num": 36.70,
+            "gtin": "6290360375694", "store": "notino",
+            "url": "https://affiliate.example/cj-clickout",
+            "source": "cj_notino_fr_feed",
+        }
+        legacy = {
+            "catalog_id": "SH-0030", "brand": "French Avenue",
+            "name": "Liquid Brun", "size_ml": 100,
+            "price_num": 36.70, "store": "Notino",
+            "variant_id": "SH-0030:100",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/",
+        }
+
+        merged = _merge_notino_phase2_offers([cj], [legacy])
+
+        self.assertEqual(merged, [cj])
+        self.assertEqual(merged[0]["source"], "cj_notino_fr_feed")
+
+    def test_notino_cj_merge_preserves_distinct_sizes_and_concentrations(self):
+        cj = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "variant": "Eau de Parfum", "size_ml": 100,
+            "gtin": "6290360375694", "store": "notino",
+        }
+        different_size = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "size_ml": 150, "store": "Notino",
+        }
+        different_concentration = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "variant": "Extrait de Parfum", "size_ml": 100,
+            "store": "Notino",
+        }
+
+        merged = _merge_notino_phase2_offers(
+            [cj], [different_size, different_concentration]
+        )
+
+        self.assertEqual(len(merged), 3)
+        self.assertIn(different_size, merged)
+        self.assertIn(different_concentration, merged)
 
     def test_notino_live_fallback_is_disabled_by_default(self):
         with (
