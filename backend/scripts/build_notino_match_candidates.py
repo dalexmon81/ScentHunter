@@ -238,7 +238,7 @@ def score_row(row: dict[str, str], catalog_index: list[dict]) -> list[dict]:
             (SequenceMatcher(None, feed_name, candidate).ratio() for candidate in item["names"]),
             default=0.0,
         )
-        if not feed_name or best_name < 0.45:
+        if not feed_name or (not gtin_match and best_name < 0.70):
             continue
 
         size_match = feed_size is not None and item["size_ml"] is not None and abs(feed_size - float(item["size_ml"])) < 0.01
