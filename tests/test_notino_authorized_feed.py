@@ -3,6 +3,8 @@ import gzip
 import sqlite3
 import tempfile
 from pathlib import Path
+import tempfile
+from pathlib import Path
 import logging
 import xml.etree.ElementTree as ET
 
