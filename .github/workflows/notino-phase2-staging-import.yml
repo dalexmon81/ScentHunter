@@ -72,8 +72,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install -r backend/requirements.txt
+          python -m pip install -r backend/requirements.txt pytest
           PYTHONPATH=.:backend python -c 'from scripts import build_notino_match_candidates as parser; import lxml; assert parser.ET.__name__ == "lxml.etree"; print("RUNNER_LXML=" + lxml.__version__ + " PARSER=" + parser.ET.__name__)'
+          PYTHONPATH=.:backend python -m pytest -q tests/test_notino_phase2_adapter.py
           for test_file in backend/tests/test_notino*.py; do
             echo "RUN=$test_file"
             PYTHONPATH=.:backend python "$test_file"

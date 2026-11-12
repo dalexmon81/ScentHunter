@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 import sys
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
@@ -52,7 +53,11 @@ def _record(external_id: str, *, price: str = "49.90", **changes):
         "sale_price": None,
         "currency": "EUR",
         "availability": "in stock",
-        "affiliate_url": f"https://notino.fr/p/{external_id}",
+        "affiliate_url": (
+            "https://www.anrdoezrs.net/click-test?url="
+            + quote(f"https://www.notino.fr/p/{external_id}", safe="")
+        ),
+        "source_last_updated": "2026-11-10T12:00:00Z",
         "captured_at": "2026-11-10T12:00:00Z",
     }
     record.update(changes)
@@ -146,6 +151,27 @@ def test_unknown_availability_is_matched_but_not_promoted():
         with Session(engine) as session:
             raw = session.get(IngestionRaw, result.ingestion_raw_id)
             assert raw is not None and raw.status == "matched"
+            assert session.scalars(select(Offer)).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_invalid_affiliate_clickout_is_matched_but_not_promoted():
+    engine, (store_id, _variant_id) = _database()
+    try:
+        with Session(engine) as session, session.begin():
+            result = persist_notino_record(
+                session, store_id=store_id,
+                raw_record=_record(
+                    "SKU-NOT-AFFILIATE",
+                    affiliate_url="https://www.notino.fr/p/SKU-NOT-AFFILIATE",
+                ),
+            )
+            assert result.status == "matched"
+            assert result.offer_id is None
+            assert result.reason == "invalid_affiliate_url"
+
+        with Session(engine) as session:
             assert session.scalars(select(Offer)).all() == []
     finally:
         engine.dispose()
