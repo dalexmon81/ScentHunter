@@ -343,6 +343,49 @@ jobs:
           print("PUBLIC_SEARCH_START_NOTINO_CATALOG_FIRST=PASS")
           PY
 
+      - name: Verify public Notino search across multiple feed brands
+        shell: bash
+        run: |
+          set -euo pipefail
+          MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
+          BRANDS_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); rows=c.execute(\"SELECT brand FROM notino_feed_listings WHERE availability=\\\"in stock\\\" GROUP BY brand HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, brand LIMIT 8\").fetchall(); print(json.dumps([r[0] for r in rows]))'")"
+          python - "$BRANDS_RAW" <<'PY'
+          import json, sys, urllib.parse, urllib.request
+          raw = sys.argv[1]
+          start, end = raw.find("["), raw.rfind("]")
+          assert start >= 0 and end >= start, f"Could not read feed brand sample: {raw[-1000:]}"
+          brands = json.loads(raw[start:end + 1])
+          assert len(brands) >= 3, {"feed_brands": brands}
+          base = "https://scenthunter-pr726-staging.fly.dev"
+          verified = []
+          for brand in brands:
+              url = base + "/search?" + urllib.parse.urlencode({"q": brand})
+              request = urllib.request.Request(url, headers={"Accept": "application/json"})
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+              offers = [
+                  offer
+                  for product in (payload.get("results") or [])
+                  for offer in (product.get("offers") or [])
+                  if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"
+              ]
+              valid = [
+                  offer for offer in offers
+                  if float(offer.get("price_num") or 0) > 0
+                  and offer.get("currency") == "EUR"
+                  and offer.get("availability") == "in_stock"
+                  and offer.get("source") == "cj_notino_fr_feed"
+                  and str(offer.get("url") or "").startswith("https://")
+              ]
+              if valid:
+                  verified.append({"brand": brand, "notino_offers": len(valid)})
+          assert len(verified) >= 3, {
+              "brands_tested": brands, "brands_with_public_notino_results": verified
+          }
+          print("PUBLIC_NOTINO_MULTI_BRAND_SEARCH=PASS")
+          print(json.dumps(verified, ensure_ascii=False))
+          PY
+
       - name: Restart machines and verify persistent database on every volume
         shell: bash
         run: |
