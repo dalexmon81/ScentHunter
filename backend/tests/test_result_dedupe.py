@@ -233,6 +233,51 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertIn(different_size, merged)
         self.assertIn(different_concentration, merged)
 
+    def test_notino_callbacks_publish_only_after_cj_merge(self):
+        cj = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "variant": "Eau de Parfum", "size_ml": 100,
+            "gtin": "6290360375694", "store": "notino",
+            "source": "cj_notino_fr_feed",
+        }
+        legacy = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "size_ml": 100, "store": "notino",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/",
+        }
+        legacy_report = {
+            "store": "notino", "status": "success", "verified": True,
+            "results": [legacy], "count": 1,
+        }
+        published_reports = []
+        published_results = []
+
+        def collect(*args, **kwargs):
+            kwargs["on_report"](legacy_report)
+            kwargs["on_result"](legacy)
+            return [legacy_report]
+
+        with (
+            patch.object(main, "CATALOG_ENGINE_AVAILABLE", True),
+            patch.object(main, "catalog_search_local", lambda *args, **kwargs: []),
+            patch(
+                "app.services.notino_phase2_search.search_notino_phase2",
+                return_value=[cj],
+            ),
+            patch.object(main, "_collect_catalog_reports_isolated", side_effect=collect),
+        ):
+            reports = main.collect_store_reports_isolated(
+                "Liquid Brun", ["notino"],
+                on_report=published_reports.append,
+                on_result=published_results.append,
+            )
+
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0]["results"], [cj])
+        self.assertEqual(len(published_reports), 1)
+        self.assertEqual(published_reports[0]["results"], [cj])
+        self.assertEqual(published_results, [cj])
+
     def test_notino_live_fallback_is_disabled_by_default(self):
         with (
             patch.dict(os.environ, {}, clear=True),
