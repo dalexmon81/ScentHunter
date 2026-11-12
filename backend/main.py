@@ -2576,7 +2576,12 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
             reports = _collect_catalog_reports_isolated(
                 query, requested, on_report=on_report, on_result=on_result,
                 cancel_event=cancel_event, job_id=job_id,
-                allow_live_fallback=allow_live_fallback and not phase2_offers,
+                allow_live_fallback=(
+                    allow_live_fallback
+                    and not phase2_offers
+                    and str(os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')).strip().lower()
+                    in {'1', 'true', 'yes', 'on'}
+                ),
             )
             # Merge the separately persisted CJ Phase 2 offers into the same
             # authoritative Notino report consumed by /search and /search-start.
