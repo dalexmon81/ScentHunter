@@ -60,6 +60,33 @@ def test_generic_notino_brand_product_root_without_product_identity_is_rejected(
     assert not notino_scraper.lookslikeproducturl(url)
 
 
+def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock():
+    url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
+    html = """
+    <html>
+      <head>
+        <meta property="product:price:amount" content="40.90">
+        <meta property="product:price:currency" content="EUR">
+      </head>
+      <body>
+        <h1>Rayhaan Aquatica Eau de Parfum pour homme</h1>
+        <div>100 ml</div>
+        <button>Ajouter au panier</button>
+      </body>
+    </html>
+    """
+
+    row = notino_scraper._parse_product(url, html, "Rayhaan Aquatica")
+
+    assert row is not None
+    assert row["url"] == url
+    assert row["name"] == "Rayhaan Aquatica Eau de Parfum pour homme"
+    assert row["price_num"] == 40.90
+    assert row["currency"] == "EUR"
+    assert row["size_ml"] == 100
+    assert row["availability"] == "in stock"
+
+
 def test_legacy_notino_product_id_url_remains_accepted():
     url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/"
     assert legacy_public.lookslikeproducturl(url)
