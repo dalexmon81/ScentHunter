@@ -1659,6 +1659,24 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     }
 
 
+
+def extract_product_page(
+    session: requests.Session,
+    url: str,
+    slug: str = "",
+    html: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Product-page adapter used by catalog hydration; reuses its fetched HTML."""
+    if html is None:
+        response = _request(session, url)
+        html = response.text or ""
+        url = response.url or url
+    path_identity = unquote(urlparse(url).path).strip("/").replace("-", " ")
+    query = _clean(path_identity or slug)
+    return _parse_product(url, html or "", query)
+
+
+
 def search(query: str) -> Dict[str, Any]:
     """Return a verified feed-first Notino search report with public fallback."""
     query = _clean(query)
