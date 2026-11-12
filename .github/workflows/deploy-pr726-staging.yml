@@ -1,5 +1,5 @@
 name: Deploy PR 726 isolated web staging
-# Trigger-only update: validate the latest isolated staging fix.
+# Deploy the current isolated search, schema migration, and multi-brand staging verification.
 
 on:
   push:
