@@ -61,8 +61,14 @@ class NotinoRetailerListingTests(unittest.TestCase):
             stats = refresh_notino_listings(session, [
                 feed_row("TWO", availability="out of stock"),
                 feed_row("BAD", link="https://notino.fr/example"),
+                feed_row("BAD-SALE", sale_price="19 USD"),
+                feed_row("INVALID-SALE", sale_price="invalid"),
+                feed_row("HIGH-SALE", sale_price="35 EUR"),
             ], now)
-            self.assertEqual(stats, {"listings": 1, "rejected": {"invalid_affiliate_url": 1}})
+            self.assertEqual(stats, {
+                "listings": 1,
+                "rejected": {"invalid_affiliate_url": 1, "invalid_sale_price": 3},
+            })
         with Session(engine) as session:
             self.assertEqual([x.external_id for x in session.scalars(select(NotinoFeedListing))], ["TWO"])
         with Session(engine) as session, session.begin():
