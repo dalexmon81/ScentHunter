@@ -2414,6 +2414,48 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         item['shop'] = item['store']
         grouped_raw[store_key].append(item)
 
+    # The authorized CJ feed is persisted in store_product_variants, not
+    # store_products. The generic catalog FTS query above only searches the
+    # latter, so without this explicit read path thousands of valid feed offers
+    # can be present in SQLite yet invisible to normal searches.
+    notino_feed_candidate_count = 0
+    if 'notino' in grouped_raw and not (cancel_event is not None and cancel_event.is_set()):
+        try:
+            feed_module = importlib.import_module('scrapers.notino.affiliate_feed')
+            feed_report = feed_module.search_feed(query)
+            if isinstance(feed_report, dict) and feed_report.get('status') == 'success':
+                feed_rows = feed_report.get('results') or []
+                for feed_row in feed_rows[:candidate_limit]:
+                    if not isinstance(feed_row, dict):
+                        continue
+                    candidate = dict(feed_row)
+                    candidate['store_key'] = 'notino'
+                    candidate['store'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['shop'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['source'] = 'cj_notino_fr_feed'
+                    candidate['feed_source'] = 'cj_viv_authorized_xml'
+                    grouped_raw['notino'].append(candidate)
+                notino_feed_candidate_count = min(len(feed_rows), candidate_limit)
+                if notino_feed_candidate_count:
+                    print(
+                        f'NOTINO CJ SEARCH query={query!r} '
+                        f'candidates={notino_feed_candidate_count} '
+                        f'catalog_candidates={feed_report.get("details", {}).get("catalog_candidates", 0)}',
+                        flush=True,
+                    )
+            elif isinstance(feed_report, dict) and feed_report.get('status') == 'unavailable':
+                print(
+                    f'NOTINO CJ SEARCH UNAVAILABLE error={feed_report.get("error")}',
+                    flush=True,
+                )
+        except Exception as exc:
+            # Feed-backed search is additive: a feed read error must not break
+            # searches against the other retailers or the persistent catalog.
+            print(
+                f'NOTINO CJ SEARCH ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+
     # Do not open the write-capable catalog connection on the successful
     # foreground path.  The search above has already proved that the
     # persistent catalog contains active rows; opening db() here only to ask
