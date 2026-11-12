@@ -209,6 +209,20 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(merged, [cj])
         self.assertEqual(merged[0]["source"], "cj_notino_fr_feed")
 
+    def test_notino_cj_merge_keeps_different_valid_gtins(self):
+        cj = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "size_ml": 100, "gtin": "6290360375694", "store": "notino",
+        }
+        other_gtin = {
+            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "size_ml": 100, "gtin": "6290360375601", "store": "Notino",
+        }
+
+        merged = _merge_notino_phase2_offers([cj], [other_gtin])
+
+        self.assertEqual(len(merged), 2)
+
     def test_notino_cj_merge_preserves_distinct_sizes_and_concentrations(self):
         cj = {
             "catalog_id": "SH-0030", "name": "Liquid Brun",
