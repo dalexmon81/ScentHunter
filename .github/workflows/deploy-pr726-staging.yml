@@ -96,10 +96,38 @@ jobs:
                       raise RuntimeError(f"{path}: HTTP {response.status}")
                   return response.read()
           get("/health")
-          payload = json.loads(get("/search?q=Hawas", timeout=60).decode("utf-8"))
+          from urllib.parse import parse_qs, unquote, urlsplit
+
+          payload = json.loads(get("/search?q=Hawas%20Ice", timeout=60).decode("utf-8"))
           assert isinstance(payload.get("results"), list), payload
+
+          # Regression guard: a gift set must never be presented as the
+          # standalone Hawas Ice fragrance, even when CJ wraps the destination.
+          notino_offers = [
+              offer
+              for product in payload["results"]
+              for offer in (product.get("offers") or [])
+              if str(offer.get("store") or offer.get("shop") or "").casefold() == "notino"
+          ]
+          gift_markers = ("coffret", "gift-set", "gift_set", "giftbox", "gift-box",
+                          "set-regalo", "discovery-set", "fragrance-set", "perfume-set")
+          for offer in notino_offers:
+              title = " ".join(str(offer.get(key) or "") for key in ("name", "title", "raw_name"))
+              raw_url = str(offer.get("url") or offer.get("product_url") or "")
+              parsed = urlsplit(raw_url)
+              destinations = []
+              for key in ("url", "u", "target", "dest", "destination"):
+                  destinations.extend(parse_qs(parsed.query).get(key, []))
+              destination_text = " ".join([unquote(raw_url), *destinations]).casefold()
+              combined = (title + " " + destination_text).casefold()
+              assert not any(marker in combined for marker in gift_markers), {
+                  "gift_set_leaked_into_hawas_ice": offer
+              }
+
           print("STAGING_HEALTH=PASS")
           print("STAGING_CATALOG_SEARCH=PASS")
+          print("STAGING_HAWAS_ICE_GIFT_SET_FILTER=PASS")
+          print("STAGING_HAWAS_ICE_NOTINO_OFFERS=" + str(len(notino_offers)))
           print("STAGING_URL=" + base)
           PY
 
