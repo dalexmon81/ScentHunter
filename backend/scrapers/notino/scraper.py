@@ -1498,6 +1498,23 @@ def _price(value: Any) -> Optional[float]:
     return amount if amount > 0 else None
 
 
+def _extract_coupon_price(soup: BeautifulSoup) -> Tuple[Optional[float], Optional[str]]:
+    """Extract a coupon price only when the page explicitly ties it to a code."""
+    page_text = _clean(soup.get_text(" ", strip=True))
+    match = re.search(
+        r"(?P<price>\\d{1,4}(?:[.,]\\d{1,2})?)\\s*€\\s*"
+        r"(?:avec\\s+le\\s+code|with\\s+code)\\s+"
+        r"(?P<code>[A-Z0-9][A-Z0-9_-]{2,24})\\b",
+        page_text,
+        re.I,
+    )
+    if not match:
+        return None, None
+    price = _price(match.group("price"))
+    code = match.group("code").upper()
+    return (price, code) if price is not None else (None, None)
+
+
 def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
     """Admit only Notino.fr product-shaped URLs; reject navigation and foreign hosts."""
     absolute = urljoin(str(base).rstrip("/") + "/", str(raw_url or "").strip())
@@ -1572,9 +1589,13 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
             "product:price:amount", "og:price:amount", "price", "itemprop:price",
         ) if meta_values.get(key)
     ), "")
-    price = _price(raw_price)
-    if price is None:
+    regular_price = _price(raw_price)
+    if regular_price is None:
         return None
+    coupon_price, coupon_code = _extract_coupon_price(soup)
+    # Coupon prices are the effective comparison price, but keep the
+    # undiscounted price and code so the UI can disclose the condition.
+    price = coupon_price if coupon_price is not None else regular_price
     raw_currency = next((
         meta_values[key] for key in (
             "product:price:currency", "og:price:currency", "pricecurrency",
@@ -1622,6 +1643,10 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         "brand": brand,
         "price": f"{price:.2f} €",
         "price_num": price,
+        "regular_price": f"{regular_price:.2f} €" if coupon_price is not None else None,
+        "regular_price_num": regular_price if coupon_price is not None else None,
+        "coupon_code": coupon_code,
+        "coupon_required": coupon_code is not None,
         "currency": "EUR",
         "availability": availability,
         "available": True if stock is False else False if stock is True else None,
