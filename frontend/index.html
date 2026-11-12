@@ -744,10 +744,15 @@ function shPrice(o){
    * marker while preserving the existing Italian decimal presentation. */
   const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
   const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
-  if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
+  const currency=String(o?.currency||"EUR").trim().toUpperCase();
+  if(Number.isFinite(parsed)&&parsed>0){
+    if(currency==="EUR")return formatEuro(parsed);
+    return `${parsed.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})} ${currency}`;
+  }
   return "Prezzo non disponibile";
 }
 function shNum(o){
+  if(String(o?.currency||"EUR").trim().toUpperCase()!=="EUR")return Infinity;
   const n=Number(o&&o.price_num);
   if(Number.isFinite(n)&&n>0)return n;
   const p=parsePrice(o&&o.price);
@@ -801,6 +806,7 @@ function shGroupData(data){
     const fallback_image=fallback_images.find(url=>url!==image) || fallback_images[0] || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
+      retailer_only:Boolean(group.retailer_only),
       identity_only,
       brand:String(group.canonical_brand||group.brand||"").trim(),
       canonical_brand:String(group.canonical_brand||group.brand||"").trim(),
@@ -923,18 +929,20 @@ function showProducts(groups){
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
-       <div class="product-choice-main"><div class="name">${esc(title)}</div><div class="bestprice ${best?"":"no-price"}">${esc(priceLabel)}</div></div>
+       <div class="product-choice-main"><div class="name">${esc(title)}</div>${g.retailer_only?'<div class="offer-meta">Solo Notino · confronto non verificato</div>':""}<div class="bestprice ${best?"":"no-price"}">${esc(priceLabel)}</div></div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
 }
 
 function renderOffersHtml(g,img,offers,saved){
-  return (offers||[]).map((o,n)=>{
+  const best=getBestPricedOffer(offers);
+  return (offers||[]).map(o=>{
     const out=isOfferOutOfStock(o);
+    const isBest=o===best;
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    return `<div class="offer ${isBest?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBest?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · DA AGGIORNARE</div>':(isBest?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
   }).join("");
 }
 

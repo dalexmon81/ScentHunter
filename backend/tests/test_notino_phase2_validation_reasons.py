@@ -222,12 +222,18 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                 os.environ["NOTINO_PHASE2_DATABASE"] = str(database)
                 try:
                     offers = search_notino_phase2("Mapped Fragrance")
+                    combined_offers = search_notino_phase2("Mapped Brand Mapped Fragrance")
+                    unrelated_offers = search_notino_phase2("Mapped Brand Other")
+                    wildcard_offers = search_notino_phase2("%")
                 finally:
                     if previous_database is None:
                         os.environ.pop("NOTINO_PHASE2_DATABASE", None)
                     else:
                         os.environ["NOTINO_PHASE2_DATABASE"] = previous_database
                 self.assertEqual(len(offers), 1)
+                self.assertEqual(combined_offers, offers)
+                self.assertEqual(unrelated_offers, [])
+                self.assertEqual(wildcard_offers, [])
                 self.assertEqual(offers[0]["currency"], "EUR")
                 self.assertEqual(offers[0]["availability"], "in_stock")
                 self.assertEqual(offers[0]["source"], "cj_notino_fr_feed")

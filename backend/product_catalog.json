@@ -28988,7 +28988,9 @@
       "variant_id": "VAR-767495d4fa3107d5",
       "product_id": "SH-0004",
       "size_ml": 100,
-      "gtins": [],
+      "gtins": [
+        "614514178065"
+      ],
       "mpns": [],
       "aliases": [
         "Hawas Fire",
@@ -29018,7 +29020,9 @@
       "variant_id": "VAR-66abc1eb1054f27d",
       "product_id": "SH-0002",
       "size_ml": 100,
-      "gtins": [],
+      "gtins": [
+        "614514331040"
+      ],
       "mpns": [],
       "aliases": [
         "Hawas Ice",
@@ -29032,7 +29036,9 @@
       "variant_id": "VAR-6fa5ac5ea0fcc6b4",
       "product_id": "SH-0003",
       "size_ml": 100,
-      "gtins": [],
+      "gtins": [
+        "614514331064"
+      ],
       "mpns": [],
       "aliases": [
         "Hawas Kobra",
@@ -33890,6 +33896,160 @@
         "Guerlain Vol de Nuit"
       ],
       "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwam_aedp10",
+      "product_id": "SH-FAMILY-39645c038db3",
+      "size_ml": 100,
+      "gtins": [
+        "614514555125"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Atlantis",
+        "Rasasi Hawas Atlantis"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwcm_aedp10",
+      "product_id": "SH-FAMILY-f52fda444407",
+      "size_ml": 100,
+      "gtins": [
+        "614514331095"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Chrome",
+        "Rasasi Hawas Chrome"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwdw_aedp10",
+      "product_id": "SH-FAMILY-1e130319e80c",
+      "size_ml": 100,
+      "gtins": [
+        "614514331088"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Diva",
+        "Rasasi Hawas Diva"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshgdm_aedp10",
+      "product_id": "SH-FAMILY-08366a51d7b1",
+      "size_ml": 100,
+      "gtins": [
+        "614514331262"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Gold Digger",
+        "Rasasi Hawas Gold Digger"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwhm_aedp10",
+      "product_id": "SH-FAMILY-44a8c8fd45bd",
+      "size_ml": 100,
+      "gtins": [
+        "614514575284"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Highness",
+        "Rasasi Hawas Highness"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwmu_aedp10",
+      "product_id": "SH-FAMILY-218eadc6ff8b",
+      "size_ml": 100,
+      "gtins": [
+        "614514331071"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Malibu",
+        "Rasasi Hawas Malibu"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshnsm_aedp10",
+      "product_id": "SH-FAMILY-aa2cc1af2271",
+      "size_ml": 100,
+      "gtins": [
+        "614514465172"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Nautilus",
+        "Rasasi Hawas Nautilus"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwom_aedp10",
+      "product_id": "SH-FAMILY-ccc6d026b6aa",
+      "size_ml": 100,
+      "gtins": [
+        "614514575291"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Overdose",
+        "Rasasi Hawas Overdose"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwrw_aedp10",
+      "product_id": "SH-FAMILY-189ca1f9cac0",
+      "size_ml": 100,
+      "gtins": [
+        "614514339213"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Rouge",
+        "Rasasi Hawas Rouge"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwtm_aedp10",
+      "product_id": "SH-FAMILY-aa11dc284ad3",
+      "size_ml": 100,
+      "gtins": [
+        "614514464441"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Tropical",
+        "Rasasi Hawas Tropical"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cj-notino-rsshwvm_aedp10",
+      "product_id": "SH-FAMILY-2498bbc34032",
+      "size_ml": 100,
+      "gtins": [
+        "614514555132"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Viper",
+        "Rasasi Hawas Viper"
+      ],
+      "store_mappings": []
     }
   ],
   "offers": [],
@@ -33905,7 +34065,7 @@
     "product_count": 1389,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 511,
+    "variant_count": 522,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
@@ -34241,6 +34401,84 @@
       "records_added": 83,
       "status": "PR review enrichment; feed candidates not independently human-confirmed",
       "policy": "No offers imported; no automatic match approval or production write"
+    },
+    "notino_hawas_cj_evidence_2026_11_11": {
+      "source": "NOTINO.fr authorized CJ review artifact notino-feed-review-60, 2026-11-11",
+      "method": "Unique exact canonical brand and normalized product name, 100 ml EDP, unique valid GTIN; directly observed in retailer feed, not independently verified.",
+      "new_variants": 11,
+      "existing_variants_enriched": 3,
+      "records": [
+        {
+          "product_id": "SH-FAMILY-39645c038db3",
+          "external_id": "RSSHWAM_AEDP10",
+          "gtin": "614514555125"
+        },
+        {
+          "product_id": "SH-FAMILY-f52fda444407",
+          "external_id": "RSSHWCM_AEDP10",
+          "gtin": "614514331095"
+        },
+        {
+          "product_id": "SH-FAMILY-1e130319e80c",
+          "external_id": "RSSHWDW_AEDP10",
+          "gtin": "614514331088"
+        },
+        {
+          "product_id": "SH-0004",
+          "external_id": "RSSHWFU_AEDP10",
+          "gtin": "614514178065"
+        },
+        {
+          "product_id": "SH-FAMILY-08366a51d7b1",
+          "external_id": "RSSHGDM_AEDP10",
+          "gtin": "614514331262"
+        },
+        {
+          "product_id": "SH-FAMILY-44a8c8fd45bd",
+          "external_id": "RSSHWHM_AEDP10",
+          "gtin": "614514575284"
+        },
+        {
+          "product_id": "SH-0002",
+          "external_id": "RSSHWIM_AEDP10",
+          "gtin": "614514331040"
+        },
+        {
+          "product_id": "SH-0003",
+          "external_id": "RSSHWKM_AEDP10",
+          "gtin": "614514331064"
+        },
+        {
+          "product_id": "SH-FAMILY-218eadc6ff8b",
+          "external_id": "RSSHWMU_AEDP10",
+          "gtin": "614514331071"
+        },
+        {
+          "product_id": "SH-FAMILY-aa2cc1af2271",
+          "external_id": "RSSHNSM_AEDP10",
+          "gtin": "614514465172"
+        },
+        {
+          "product_id": "SH-FAMILY-ccc6d026b6aa",
+          "external_id": "RSSHWOM_AEDP10",
+          "gtin": "614514575291"
+        },
+        {
+          "product_id": "SH-FAMILY-189ca1f9cac0",
+          "external_id": "RSSHWRW_AEDP10",
+          "gtin": "614514339213"
+        },
+        {
+          "product_id": "SH-FAMILY-aa11dc284ad3",
+          "external_id": "RSSHWTM_AEDP10",
+          "gtin": "614514464441"
+        },
+        {
+          "product_id": "SH-FAMILY-2498bbc34032",
+          "external_id": "RSSHWVM_AEDP10",
+          "gtin": "614514555132"
+        }
+      ]
     }
   }
 }

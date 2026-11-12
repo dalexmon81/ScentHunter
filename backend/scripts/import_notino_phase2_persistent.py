@@ -30,6 +30,7 @@ from app.models import (
     PriceHistory, ProductVariant, Store,
 )
 from app.services.notino_phase2_adapter import persist_notino_record
+from app.services.notino_feed_listings import refresh_notino_listings
 from scripts.build_notino_match_candidates import iter_perfume_rows
 from scripts.seed_catalog import stable_id
 from gtin import is_valid_gtin
@@ -192,7 +193,8 @@ def main() -> int:
             flush=True,
         )
         counts, reasons = Counter(), Counter()
-        observed_at = datetime.now(timezone.utc).isoformat()
+        snapshot_time = datetime.now(timezone.utc)
+        observed_at = snapshot_time.isoformat()
         with Session(engine) as session, session.begin():
             store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
             if store is None:
@@ -297,6 +299,7 @@ def main() -> int:
                 flush=True,
             )
             _stage_unmatched_rows_bulk(session, store_id, unmatched_rows)
+            feed_snapshot = refresh_notino_listings(session, rows, snapshot_time)
             offers = session.scalar(select(func.count()).select_from(Offer).where(Offer.store_id == store_id)) or 0
             history = session.scalar(select(func.count()).select_from(PriceHistory).join(Offer).where(Offer.store_id == store_id)) or 0
             raw_count = session.scalar(select(func.count()).select_from(IngestionRaw).where(IngestionRaw.store_id == store_id)) or 0
@@ -308,6 +311,7 @@ def main() -> int:
             result = {
                 "status": "passed" if offers > 0 and history >= offers and not duplicates else "failed",
                 "feed_rows": len(rows), "adapter_results": dict(counts),
+                "retailer_only_snapshot": feed_snapshot,
                 "hold_reasons": dict(reasons), "persistent_offers": offers,
                 "unmatched_rows_staged_in_batch": len(unmatched_rows),
                 "price_history_rows": history, "raw_rows_persisted": raw_count,

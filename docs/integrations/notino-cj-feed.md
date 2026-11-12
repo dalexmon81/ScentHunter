@@ -1,5 +1,28 @@
 # NOTINO.fr CJ feed integration
 
+## Isolated staging: retailer-only feed search
+
+The staging import additionally keeps a complete, atomically replaced snapshot
+of valid, in-stock/out-of-stock CJ listings. Price, source timestamp and the
+original CJ click URL are retained; malformed links, timestamps and non-fragrance
+rows are rejected and counted. An older observation for an existing listing
+rejects the snapshot instead of overwriting newer data.
+
+With `NOTINO_CJ_STANDALONE_ENABLED=1` on isolated staging, an unmatched
+listing can be displayed as a **Notino-only** result. It is not a canonical
+identity or a cross-retailer match. Exact-GTIN offers remain preferred, and
+standalone listings are excluded when that same listing is already returned
+as an exact match. Prices are labeled old after 24 hours from the earlier of
+the feed's source update and the import; re-importing an old file cannot make
+its prices appear fresh.
+The switch defaults off outside staging. Normalized brand-plus-product queries
+work across the two fields without accepting SQL wildcard input.
+
+The 2026-11-11 CJ review snapshot also supplied 14 unique Hawas 100 ml EDP
+GTINs with exact catalog brand/name agreement. Eleven previously missing
+variants and three existing variants are annotated in the catalog metadata.
+These are retailer-feed observations, not independent manufacturer verification.
+
 ## Source and scope
 - Source: CJ Affiliate Shopping XML export for NOTINO.fr.
 - The feed is delivered by CJ HTTP and is processed as an offline file.

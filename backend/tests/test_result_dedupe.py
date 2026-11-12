@@ -80,6 +80,23 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertNotEqual(result_key(first), result_key(second))
         self.assertEqual(len(dedupe_results([first, second])), 2)
 
+    def test_shopify_locales_collapse_only_equivalent_listings(self):
+        unknown = {
+            "store": "parfumcity", "url": "https://www.parfumcity.nl/fr/products/example",
+            "catalog_id": "example", "variant_id": "example:100", "size_ml": 100,
+            "price_num": None, "availability": "unknown",
+        }
+        priced = {
+            **unknown, "url": "https://www.parfumcity.nl/products/example",
+            "price_num": 29.90, "currency": "EUR", "availability": "in_stock",
+        }
+        same = {**priced, "url": "https://www.parfumcity.nl/it/products/example"}
+        other_price = {**priced, "url": "https://www.parfumcity.nl/de/products/example", "price_num": 31.90}
+        other_variant = {**priced, "url": "https://www.parfumcity.nl/es/products/example", "variant_id": "example:150", "size_ml": 150}
+        self.assertEqual(dedupe_results([unknown, priced, same, other_price, other_variant]), [
+            priced, other_price, other_variant,
+        ])
+
     def test_distinct_sizes_of_same_retailer_url_are_preserved(self):
         first = {
             "store": "sabina",
@@ -313,6 +330,20 @@ class ResultDeduplicationTests(unittest.TestCase):
             main.collect_store_reports_isolated("Hawas", ["notino"])
 
         self.assertFalse(collect.call_args.kwargs["allow_live_fallback"])
+
+    def test_notino_legacy_results_are_published_when_feed_has_no_matches(self):
+        legacy = {"store": "notino", "name": "Example", "url": "https://notino.fr/example"}
+        report = {"store": "notino", "results": [legacy], "count": 1}
+        published = []
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(main, "CATALOG_ENGINE_AVAILABLE", True),
+            patch.object(main, "catalog_search_local", lambda *args, **kwargs: []),
+            patch("app.services.notino_phase2_search.search_notino_phase2", return_value=[]),
+            patch.object(main, "_collect_catalog_reports_isolated", return_value=[report]),
+        ):
+            main.collect_store_reports_isolated("Example", ["notino"], on_result=published.append)
+        self.assertEqual(published, [legacy])
 
 
 

@@ -1499,8 +1499,45 @@ def dedupe_results(results, diagnostics=None):
     seen = {}
     output = []
 
+    def localized_shopify_key(item):
+        from urllib.parse import parse_qsl, urlsplit
+        store = _normalise_store(item.get('store') or item.get('shop'), '')
+        if store not in {'parfumcity', 'perfumemarket', 'orioudh'}:
+            return None
+        try:
+            parsed = urlsplit(str(item.get('product_url') or item.get('url') or '').strip())
+            host = (parsed.hostname or '').lower().removeprefix('www.')
+            path = re.sub(r'^/(?:en|fr|de|it|es|nl)(?=/products/)', '', parsed.path.lower())
+            if not host or not path.startswith('/products/'):
+                return None
+            query = tuple(sorted(
+                (key.lower(), value) for key, value in parse_qsl(parsed.query)
+                if key.lower() in {'variant', 'variant_id', 'sku'}
+            ))
+        except ValueError:
+            return None
+        size = _safe_float(item.get('size_ml'))
+        variant = str(item.get('variant_key') or item.get('variant_id') or '').strip().lower()
+        return (store, host, path.rstrip('/'), query, round(size, 3) if size is not None else None, variant)
+
+    def commercial_evidence(item):
+        price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
+        if price is not None and price <= 0:
+            price = None
+        state = str(item.get('availability') or item.get('stock_status') or '').strip().lower().replace(' ', '_')
+        return price, str(item.get('currency') or '').strip().upper(), state
+
+    known_localized = {
+        key for item in results if isinstance(item, dict)
+        if (key := localized_shopify_key(item)) is not None
+        and (commercial_evidence(item)[0] is not None or commercial_evidence(item)[2] in {'in_stock', 'out_of_stock'})
+    }
+
     def fingerprint(item):
         store = _normalise_store(item.get('store') or item.get('shop'), '')
+        localized = localized_shopify_key(item)
+        if localized is not None:
+            return ('localized-shopify', *localized, *commercial_evidence(item))
         if store not in {'easycosmetic', 'sabina'}:
             return None
         name = ' '.join(str(item.get('name') or item.get('canonical_name') or item.get('title') or '').lower().split())
@@ -1522,6 +1559,10 @@ def dedupe_results(results, diagnostics=None):
         return ('offer-fingerprint', store, name, round(size, 3), round(price, 2), variant)
 
     for index, item in enumerate(results):
+        localized = localized_shopify_key(item)
+        price, _, state = commercial_evidence(item)
+        if localized in known_localized and price is None and state in {'', 'unknown'}:
+            continue
         key = result_key(item)
         fp = fingerprint(item)
         keeper_entry = seen.get(key) or (seen.get(fp) if fp is not None else None)
@@ -1702,6 +1743,7 @@ def _public_offer(item):
         "shop": item.get("shop"),
         "price": item.get("price"),
         "price_num": item.get("price_num"),
+        "price_stale": item.get("price_stale"),
         "currency": item.get("currency"),
         "format": item.get("format"),
         "size_ml": item.get("size_ml"),
@@ -1749,7 +1791,11 @@ def _aggregate_identity_results(offers):
             or "unresolved"
         ).lower()
 
-        if status == "matched" and offer.get("catalog_id"):
+        retailer_only = (
+            status == "notino_retailer_only"
+            and offer.get("source") == "cj_notino_fr_feed"
+        )
+        if (status == "matched" or retailer_only) and offer.get("catalog_id"):
             # Final generic publication guard: non-fragrance commercial rows
             # (samples, testers, gift sets, bundles, cosmetics, etc.) must
             # never enter public offer groups even if an upstream path marked
@@ -1779,6 +1825,7 @@ def _aggregate_identity_results(offers):
                         "canonical_name"
                     ),
                     "image": offer.get("canonical_image") or "",
+                    "retailer_only": retailer_only,
                     "offers": [],
                 }
 
@@ -2673,8 +2720,17 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
             phase2_offers = []
             phase2_error = None
             try:
-                from app.services.notino_phase2_search import search_notino_phase2
-                phase2_offers = search_notino_phase2(query)
+                from app.services.notino_phase2_search import (
+                    search_notino_phase2, search_notino_retailer_listings,
+                )
+                if "notino" in requested:
+                    phase2_offers = search_notino_phase2(query, limit=100)
+                    if str(os.environ.get("NOTINO_CJ_STANDALONE_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+                        matched_ids = {
+                            offer["external_id"] for offer in phase2_offers
+                            if offer.get("external_id")
+                        }
+                        phase2_offers += search_notino_retailer_listings(query, matched_ids)
             except Exception as phase2_exc:
                 phase2_error = type(phase2_exc).__name__
                 print(
@@ -2740,11 +2796,6 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                         "phase2_offer_count": len(phase2_offers),
                         "live_scraping": False,
                     }
-                    if callable(on_report):
-                        on_report(notino_report)
-                    for offer in notino_report["results"]:
-                        if callable(on_result):
-                            on_result(offer)
             except Exception as phase2_exc:
                 # Preserve the rest of the catalog search if the isolated
                 # Notino database is unavailable; expose the issue explicitly.
@@ -2761,13 +2812,18 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                     notino_report.setdefault("details", {})["phase2_error"] = (
                         type(phase2_exc).__name__
                     )
-            if phase2_error and not phase2_offers:
-                notino_report = next(
-                    (item for item in reports if item.get("store") == "notino"),
-                    None,
-                )
-                if notino_report is not None:
+            notino_report = next(
+                (item for item in reports if item.get("store") == "notino"),
+                None,
+            )
+            if notino_report is not None:
+                if phase2_error:
                     notino_report.setdefault("details", {})["phase2_error"] = phase2_error
+                if callable(on_report):
+                    on_report(notino_report)
+                if callable(on_result):
+                    for offer in notino_report.get("results") or []:
+                        on_result(offer)
             return reports
         except Exception as exc:
             # Normal search is catalog-only. Never fall back to the legacy live
