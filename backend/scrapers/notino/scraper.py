@@ -1502,9 +1502,9 @@ def _extract_coupon_price(soup: BeautifulSoup) -> Tuple[Optional[float], Optiona
     """Extract a coupon price only when the page explicitly ties it to a code."""
     page_text = _clean(soup.get_text(" ", strip=True))
     match = re.search(
-        r"(?P<price>\\d{1,4}(?:[.,]\\d{1,2})?)\\s*€\\s*"
-        r"(?:avec\\s+le\\s+code|with\\s+code)\\s+"
-        r"(?P<code>[A-Z0-9][A-Z0-9_-]{2,24})\\b",
+        r"(?P<price>\d{1,4}(?:[.,]\d{1,2})?)\s*€\s*"
+        r"(?:avec\s+le\s+code|with\s+code)\s+"
+        r"(?P<code>[A-Z0-9][A-Z0-9_-]{2,24})\b",
         page_text,
         re.I,
     )
