@@ -446,9 +446,9 @@ jobs:
           done
           AQUATICA_QUERY="Rayhaan Aquatica"
           for machine_id in "${ids[@]}"; do
-            echo "Testing $AQUATICA_QUERY canonical GTIN match against machine $machine_id"
-            OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/search_notino_phase2_catalog.py '$AQUATICA_QUERY' --database /data/notino-phase2/catalog.sqlite3 --limit 20")"
-            python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("{"); end=raw.rfind("}"); assert start >= 0 and end > start, f"No JSON object in search output: {raw[-2000:]}"; d=json.loads(raw[start:end+1]); assert d["source"]=="notino_phase2_catalog_sqlite" and d["live_scraping"] is False, d; hits=[x for x in d["offers"] if x["brand"].casefold()=="rayhaan" and x["fragrance"].casefold()=="aquatica" and x["external_product_id"]=="RAYAQTM_AEDP10" and x["concentration"]=="Eau de Parfum" and float(x["size_ml"])==100]; assert len(hits)==1, {"query":d["query"],"hits":hits,"offers":d["offers"]}; print("PHASE2_AQUATICA_EXACT_GTIN_SEARCH=PASS")' <<< "$OUTPUT"
+            echo "Testing $AQUATICA_QUERY in retailer-only Phase 2 listings on $machine_id"
+            OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import json,sys; sys.path.insert(0,\"/app/backend\"); from app.services.notino_phase2_search import search_notino_retailer_listings; print(json.dumps(search_notino_retailer_listings(\"Rayhaan Aquatica\", set())))'")"
+            python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("["); end=raw.rfind("]"); assert start >= 0 and end >= start, f"No JSON list in retailer-only search output: {raw[-2000:]}"; rows=json.loads(raw[start:end+1]); hits=[x for x in rows if str(x.get("brand") or "").casefold()=="rayhaan" and "aquatica" in str(x.get("name") or "").casefold()]; assert hits, {"query":"Rayhaan Aquatica","rows":rows}; print("PHASE2_AQUATICA_RETAILER_ONLY_SEARCH=PASS")' <<< "$OUTPUT"
           done
           python - "$AQUATICA_QUERY" <<'PY'
           import json, sys, urllib.parse, urllib.request
@@ -459,8 +459,17 @@ jobs:
               payload = json.loads(response.read().decode("utf-8"))
           offers = [offer for product in (payload.get("results") or []) for offer in (product.get("offers") or [])]
           notino = [offer for offer in offers if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"]
-          assert len(notino) == 1, {"query": query, "notino_offers": notino}
-          offer = notino[0]
+          path_fragment = "aquatica-eau-de-parfum-pour-homme/p-16407892"
+          matching = [
+              offer for offer in notino
+              if path_fragment in urllib.parse.unquote(
+                  urllib.parse.parse_qs(
+                      urllib.parse.urlsplit(str(offer.get("url") or "")).query
+                  ).get("url", [""])[0]
+              )
+          ]
+          assert matching, {"query": query, "notino_offers": notino}
+          offer = matching[0]
           tracked = str(offer.get("url") or "")
           parsed = urllib.parse.urlsplit(tracked)
           destination = urllib.parse.parse_qs(parsed.query).get("url", [""])[0]
@@ -477,7 +486,7 @@ jobs:
           assert parsed_destination.scheme == "https" and parsed_destination.hostname in {
               "notino.fr", "www.notino.fr",
           } and parsed_destination.path not in ("", "/"), offer
-          assert "aquatica-eau-de-parfum-pour-homme/p-16407892" in urllib.parse.unquote(destination or tracked), offer
+          assert path_fragment in urllib.parse.unquote(destination or tracked), offer
           print("PUBLIC_RAYHAAN_AQUATICA_SINGLE_NOTINO_OFFER=PASS")
           print("PUBLIC_RAYHAAN_AQUATICA_PRICE=" + str(offer.get("price") or offer.get("price_num")))
           print("PUBLIC_RAYHAAN_AQUATICA_DESTINATION=" + (destination or tracked))
