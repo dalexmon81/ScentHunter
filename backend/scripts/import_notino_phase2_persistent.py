@@ -170,7 +170,21 @@ def main() -> int:
     os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"] = f"sqlite:///{db_path}"
 
     import_started = time.monotonic()
-    rows = list(iter_perfume_rows(args.feed))
+    rows = []
+    parsed_entries = 0
+    print(
+        f"IMPORT_PHASE feed_parse_started bytes={args.feed.stat().st_size}",
+        flush=True,
+    )
+    for row in iter_perfume_rows(args.feed):
+        rows.append(row)
+        parsed_entries += 1
+        if parsed_entries % 1000 == 0:
+            print(
+                f"IMPORT_PROGRESS feed_rows_parsed={parsed_entries} "
+                f"elapsed_seconds={time.monotonic() - import_started:.1f}",
+                flush=True,
+            )
     ids = [str(row.get("id") or "").strip() for row in rows]
     if not rows or any(not x for x in ids) or len(ids) != len(set(ids)):
         raise SystemExit("STOP: feed has empty or duplicate retailer product IDs")
