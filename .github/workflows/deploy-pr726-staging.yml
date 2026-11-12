@@ -98,32 +98,77 @@ jobs:
           get("/health")
           from urllib.parse import parse_qs, unquote, urlsplit
 
-          payload = json.loads(get("/search?q=Hawas%20Ice", timeout=60).decode("utf-8"))
-          assert isinstance(payload.get("results"), list), payload
+          from urllib.parse import parse_qs, unquote, urlsplit
 
-          # Regression guard: a gift set must never be presented as the
-          # standalone Hawas Ice fragrance, even when CJ wraps the destination.
-          notino_offers = [
-              offer
-              for product in payload["results"]
-              for offer in (product.get("offers") or [])
-              if str(offer.get("store") or offer.get("shop") or "").casefold() == "notino"
-          ]
-          gift_markers = ("coffret", "gift-set", "gift_set", "giftbox", "gift-box",
-                          "set-regalo", "discovery-set", "fragrance-set", "perfume-set")
-          for offer in notino_offers:
-              title = " ".join(str(offer.get(key) or "") for key in ("name", "title", "raw_name"))
-              raw_url = str(offer.get("url") or offer.get("product_url") or "")
-              parsed = urlsplit(raw_url)
-              destinations = []
-              for key in ("url", "u", "target", "dest", "destination"):
-                  destinations.extend(parse_qs(parsed.query).get(key, []))
-              destination_text = " ".join([unquote(raw_url), *destinations]).casefold()
-              combined = (title + " " + destination_text).casefold()
-              assert not any(marker in combined for marker in gift_markers), {
-                  "gift_set_leaked_into_hawas_ice": offer
-              }
+          # Run the same category-integrity audit across a representative
+          # cross-brand sample, not a single fragrance or product family.
+          queries = (
+              "Hawas Ice", "Dior Sauvage", "Chanel Coco Mademoiselle",
+              "Yves Saint Laurent Libre", "Armani My Way", "Paco Rabanne 1 Million",
+              "Prada Paradoxe", "Lattafa Asad", "Versace Eros", "perfume",
+          )
+          audited_products = 0
+          audited_offers = 0
+          notino_offers = 0
+          gift_markers = (
+              "coffret", "coffret-cadeau", "gift-set", "gift_set", "giftbox",
+              "gift-box", "set-regalo", "pack-regalo", "discovery-set",
+              "fragrance-set", "perfume-set", "parfum-set", "bundle",
+              "duo", "trio", "mystery-box", "box-set",
+          )
+          for query in queries:
+              from urllib.parse import quote
+              payload = json.loads(get("/search?q=" + quote(query), timeout=60).decode("utf-8"))
+              assert isinstance(payload.get("results"), list), {"query": query, "payload": payload}
+              audited_products += len(payload["results"])
+              for product in payload["results"]:
+                  for offer in (product.get("offers") or []):
+                      audited_offers += 1
+                      store = str(offer.get("store") or offer.get("shop") or "").casefold()
+                      if "notino" not in store:
+                          continue
+                      notino_offers += 1
+                      title = " ".join(str(offer.get(key) or "") for key in
+                                       ("name", "title", "raw_name", "_raw_name"))
+                      raw_url = str(offer.get("url") or offer.get("product_url") or
+                                    offer.get("link") or "")
+                      destinations = []
+                      pending = [raw_url]
+                      # Decode nested affiliate wrappers too, with a hard
+                      # depth bound so malformed URLs cannot loop forever.
+                      for _ in range(4):
+                          next_pending = []
+                          for candidate in pending:
+                              try:
+                                  parsed = urlsplit(candidate)
+                                  for key in ("url", "u", "target", "dest", "destination"):
+                                      next_pending.extend(parse_qs(parsed.query).get(key, []))
+                                  decoded = unquote(candidate)
+                                  if decoded != candidate:
+                                      next_pending.append(decoded)
+                              except ValueError:
+                                  pass
+                          destinations.extend(pending)
+                          pending = [value for value in next_pending if value not in destinations]
+                          if not pending:
+                              break
+                      combined = (title + " " + " ".join(destinations)).casefold()
+                      assert not any(marker in combined for marker in gift_markers), {
+                          "non_fragrance_bundle_leaked": True,
+                          "query": query,
+                          "product": product.get("name") or product.get("canonical_name"),
+                          "offer": offer,
+                      }
 
+          assert audited_products > 0, "catalog sample returned no products"
+          print("STAGING_HEALTH=PASS")
+          print("STAGING_CATALOG_SEARCH=PASS")
+          print("STAGING_CROSS_CATALOG_BUNDLE_FILTER=PASS")
+          print("STAGING_AUDITED_QUERIES=" + str(len(queries)))
+          print("STAGING_AUDITED_PRODUCTS=" + str(audited_products))
+          print("STAGING_AUDITED_OFFERS=" + str(audited_offers))
+          print("STAGING_AUDITED_NOTINO_OFFERS=" + str(notino_offers))
+          print("STAGING_URL=" + base)
           print("STAGING_HEALTH=PASS")
           print("STAGING_CATALOG_SEARCH=PASS")
           print("STAGING_HAWAS_ICE_GIFT_SET_FILTER=PASS")
