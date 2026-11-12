@@ -29,3 +29,5 @@ primary_region = "ams"
   memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
+
+# 2026-11-12: redeploy isolated PR staging against the current branch head after feed import.
