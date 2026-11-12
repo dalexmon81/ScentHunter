@@ -1,6 +1,8 @@
 """Regression tests for Notino public discovery and product URL recognition."""
 
 from types import SimpleNamespace
+import sqlite3
+import time
 
 from backend.scrapers.notino import legacy_public, scraper as notino_scraper
 
@@ -91,6 +93,52 @@ def test_active_scraper_parses_descriptive_rayhaan_aquatica_page_price_and_stock
     assert row["currency"] == "EUR"
     assert row["size_ml"] == 100
     assert row["availability"] == "in stock"
+
+
+
+def test_catalog_search_returns_coupon_price_and_keeps_regular_price(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed
+    import catalog_engine
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE store_urls(store TEXT, url TEXT, active INTEGER);
+        CREATE TABLE store_product_variants(
+            store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
+            image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+            concentration TEXT, gender TEXT, price REAL, currency TEXT,
+            availability TEXT, fetched_at REAL, variant_url TEXT,
+            regular_price REAL, coupon_code TEXT, coupon_required INTEGER
+        );
+    """)
+    url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
+    now = time.time()
+    conn.execute("INSERT INTO store_urls VALUES(?,?,1)", ("notino", url))
+    conn.execute(
+        """INSERT INTO store_product_variants(
+               store,url,variant_key,name,brand,size_ml,price,currency,
+               availability,fetched_at,variant_url,regular_price,coupon_code,coupon_required)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            "notino", url, "100ml:SKU", "Rayhaan Aquatica Eau de Parfum pour homme",
+            "Rayhaan", 100, 32.72, "EUR", "in_stock", now, url,
+            40.90, "BFSALE", 1,
+        ),
+    )
+    conn.commit()
+    monkeypatch.setattr(catalog_engine, "db", lambda: conn)
+
+    report = affiliate_feed.search_feed("Rayhaan Aquatica")
+
+    assert report["status"] == "success"
+    assert len(report["results"]) == 1
+    row = report["results"][0]
+    assert row["price_num"] == 32.72
+    assert row["regular_price_num"] == 40.90
+    assert row["coupon_code"] == "BFSALE"
+    assert row["coupon_required"] is True
+    assert row["url"] == url
 
 
 def test_legacy_notino_product_id_url_remains_accepted():
