@@ -2471,8 +2471,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             item['shop'] = item['store']
             refreshed_by_key[(store_key, url)] = item
 
+    standalone_cj_enabled = str(
+        os.environ.get('NOTINO_CJ_STANDALONE_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
     grouped_raw = {store: [] for store in stores}
     pending_by_store = {store: 0 for store in stores}
+    suppressed_notino_legacy = 0
     for row in raw_rows:
         if not isinstance(row, dict):
             continue
@@ -2481,6 +2485,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         replacement = refreshed_by_key.get((store_key, url))
         item = replacement if replacement is not None else dict(row)
         if store_key not in grouped_raw:
+            continue
+        if store_key == 'notino' and standalone_cj_enabled:
+            suppressed_notino_legacy += 1
             continue
         if replacement is None and item.get('_needs_refresh'):
             # Keep the last catalog price visible, but mark it explicitly as stale.
@@ -2500,9 +2507,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # latter, so without this explicit read path thousands of valid feed offers
     # can be present in SQLite yet invisible to normal searches.
     notino_feed_candidate_count = 0
-    standalone_cj_enabled = str(
-        os.environ.get('NOTINO_CJ_STANDALONE_ENABLED', '0')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
     if (
         'notino' in grouped_raw and not standalone_cj_enabled
         and not (cancel_event is not None and cancel_event.is_set())
@@ -2609,6 +2613,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             'error': error,
             'details': {
                 'source': 'persistent_catalog',
+                'suppressed_untracked_notino': suppressed_notino_legacy if store == 'notino' else 0,
                 'candidate_count': len(store_rows) + pending_by_store.get(store, 0),
                 'pending_refresh_count': pending_by_store.get(store, 0),
                 'unresolved_count': unresolved_count,
@@ -2650,6 +2655,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     live_bridge_stores = [
         store for store in ('notino',)
         if allow_live_fallback
+        and not standalone_cj_enabled
         and store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
         and notino_live_fallback_enabled

@@ -17,6 +17,10 @@ the feed's source update and the import; re-importing an old file cannot make
 its prices appear fresh. When the snapshot table exists, canonical Notino
 offers also use its validated current price and CJ URL, and disappear if their
 listing is absent, unavailable, or no longer has the same GTIN.
+In this staging mode, legacy Notino catalog and live-fallback results are
+suppressed because their links and identities are not validated against CJ.
+This intentionally reduces Notino coverage when the feed is unavailable rather
+than displaying untracked or duplicate offers; other stores are unaffected.
 The switch defaults off outside staging. Normalized brand-plus-product queries
 work across the two fields without accepting SQL wildcard input.
 

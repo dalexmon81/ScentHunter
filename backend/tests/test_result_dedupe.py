@@ -399,6 +399,23 @@ class ResultDeduplicationTests(unittest.TestCase):
             )
         importer.assert_not_called()
 
+    def test_isolated_cj_snapshot_suppresses_untracked_legacy_notino(self):
+        legacy = {
+            "store": "notino", "name": "Liquid Brun",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/",
+            "size_ml": 100, "price_num": 36.70,
+        }
+        with (
+            patch.dict(os.environ, {"NOTINO_CJ_STANDALONE_ENABLED": "1"}),
+            patch.object(main, "catalog_search_local", return_value=[legacy]),
+            patch.object(main, "catalog_refresh_candidates", None),
+        ):
+            reports = main._collect_catalog_reports_isolated(
+                "Liquid Brun", ["notino"], allow_live_fallback=False,
+            )
+        self.assertEqual(reports[0]["results"], [])
+        self.assertEqual(reports[0]["details"]["suppressed_untracked_notino"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
