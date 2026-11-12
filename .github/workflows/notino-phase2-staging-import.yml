@@ -1,22 +1,13 @@
 name: Notino Phase 2 persistent staging import
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Deploy PR 726 isolated web staging
+    types:
+      - completed
     branches:
       - feature/notino-cj-feed-ingestion-2026-11-10
-    paths:
-      - ".github/workflows/notino-phase2-staging-import.yml"
-      - "backend/scripts/import_notino_phase2_persistent.py"
-      - "backend/scripts/verify_notino_phase2_persistent.py"
-      - "backend/product_catalog.json"
-      - "backend/app/services/notino_phase2_adapter.py"
-      - "backend/app/services/ingestion_persistence.py"
-      - "backend/scripts/seed_catalog.py"
-      - "backend/scripts/build_notino_match_candidates.py"
-      - "backend/app/models/**"
-      - "backend/app/services/notino_phase2_search.py"
-      - "backend/main.py"
-      - "fly.pr726.staging.toml"
   workflow_dispatch:
     inputs:
       confirm:
@@ -34,7 +25,7 @@ concurrency:
 
 jobs:
   import:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'import-notino-staging' }}
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'import-notino-staging') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -107,13 +98,15 @@ jobs:
           set -euo pipefail
           IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
           EXPECTED_IMPORTER_SHA="$(sha256sum backend/scripts/import_notino_phase2_persistent.py | cut -d ' ' -f 1)"
+          EXPECTED_PARSER_SHA="$(sha256sum backend/scripts/build_notino_match_candidates.py | cut -d ' ' -f 1)"
           EXPECTED_VERIFIER_SHA="$(sha256sum backend/scripts/verify_notino_phase2_persistent.py | cut -d ' ' -f 1)"
           EXPECTED_MAIN_SHA="$(sha256sum backend/main.py | cut -d ' ' -f 1)"
           EXPECTED_CATALOG_SHA="$(sha256sum backend/product_catalog.json | cut -d ' ' -f 1)"
           for machine_id in "${ids[@]}"; do
             REMOTE_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; root=Path(\"/app/backend\"); files=(\"scripts/import_notino_phase2_persistent.py\",\"scripts/verify_notino_phase2_persistent.py\",\"main.py\",\"product_catalog.json\"); [print(path+\"=\"+hashlib.sha256((root/path).read_bytes()).hexdigest()) for path in files]'")"
             if ! grep -Fq "scripts/import_notino_phase2_persistent.py=$EXPECTED_IMPORTER_SHA" <<< "$REMOTE_OUTPUT" \
-              || ! grep -Fq "scripts/verify_notino_phase2_persistent.py=$EXPECTED_VERIFIER_SHA" <<< "$REMOTE_OUTPUT" \
+              || ! grep -Fq "scripts/build_notino_match_candidates.py=$EXPECTED_PARSER_SHA" <<< "$REMOTE_OUTPUT" \
+            || ! grep -Fq "scripts/verify_notino_phase2_persistent.py=$EXPECTED_VERIFIER_SHA" <<< "$REMOTE_OUTPUT" \
               || ! grep -Fq "main.py=$EXPECTED_MAIN_SHA" <<< "$REMOTE_OUTPUT" \
               || ! grep -Fq "product_catalog.json=$EXPECTED_CATALOG_SHA" <<< "$REMOTE_OUTPUT"; then
               echo "::error::Staging machine $machine_id does not contain this branch's importer, verifier, search path, and canonical catalog."
@@ -237,12 +230,14 @@ jobs:
           done
 
       - name: Import into the dedicated persistent Phase 2 SQLite database
+        timeout-minutes: 12
         shell: bash
         run: |
           set -euo pipefail
           IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
           for machine_id in "${ids[@]}"; do
-            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+            echo "Starting observable Notino feed import on $machine_id"
+            timeout --signal=TERM --kill-after=20s 660s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -u /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
           done
 
       - name: Capture offer baseline before re-import
