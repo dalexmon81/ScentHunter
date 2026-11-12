@@ -271,3 +271,38 @@ def test_older_feed_observation_cannot_overwrite_newer_offer():
             assert history[0].price == Decimal("29.90")
     finally:
         engine.dispose()
+
+
+
+def test_retailer_only_snapshot_rejects_gift_set_when_feed_title_hides_it_in_url():
+    from datetime import datetime, timezone
+
+    import pytest
+
+    from app.services.notino_feed_listings import refresh_notino_listings
+
+    destination = (
+        "https://www.notino.fr/rasasi/hawas-ice-coffret-cadeau-pour-homme/p-123456/"
+    )
+    affiliate = (
+        "https://www.anrdoezrs.net/click-101918103-13485502?url="
+        + __import__("urllib.parse", fromlist=["quote"]).quote(destination, safe="")
+    )
+    row = {
+        "id": "HAWAS-ICE-GIFT-SET",
+        "brand": "Rasasi",
+        # Some affiliate-feed rows omit the gift-set wording from their title.
+        "title": "Rasasi Hawas Ice",
+        "link": affiliate,
+        "last_updated": "2026-11-12T05:00:00+00:00",
+        "availability": "in stock",
+        "price": "32.50 EUR",
+        "size": "",
+    }
+
+    with pytest.raises(ValueError, match="no_valid_listings"):
+        refresh_notino_listings(
+            session=None,
+            rows=[row],
+            captured_at=datetime(2026, 11, 12, tzinfo=timezone.utc),
+        )
