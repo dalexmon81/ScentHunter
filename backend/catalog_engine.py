@@ -4050,7 +4050,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         }
         missing = sorted(required_tables - tables)
         revision = revision_row[0] if revision_row else None
-        if revision not in {"0002_ingestion_raw", "0003_store_domain"} or missing:
+        if revision not in {"0002_ingestion_raw", "0003_store_domain", "0004_notino_feed_listings"} or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
                 f"revision={revision!r} missing_tables={missing}", flush=True,
