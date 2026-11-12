@@ -72,9 +72,12 @@ jobs:
           machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines_json")"
           volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
           verified="$(jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
-          test "$verified" -eq 1
+          test "$verified" -ge 1
           machine_status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
-          grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$machine_status"
+          mapfile -t attached_volumes < <(grep -Eo 'vol_[[:alnum:]]+' <<< "$machine_status" | sort -u)
+          test "${#attached_volumes[@]}" -eq 1
+          attached_target="$(jq --arg id "${attached_volumes[0]}" '[.[] | select(.id == $id and .name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
+          test "$attached_target" -eq 1
           echo "Verified one existing machine and volume without creating, removing, or scaling either."
 
       - name: Deploy isolated staging app

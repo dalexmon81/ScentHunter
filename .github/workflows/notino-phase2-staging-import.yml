@@ -125,10 +125,24 @@ jobs:
           machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines")"
           volumes="$(flyctl volumes list --app "$FLY_APP" --json)"
           volume_count="$(jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes")"
-          test "$volume_count" -eq 1
+          if [ "$volume_count" -lt 1 ]; then
+            echo "::error::The dedicated staging volume is missing; refusing deployment."
+            exit 1
+          fi
           status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
-          grep -Eq "Volume[[:space:]]*│[[:space:]]*vol_" <<< "$status"
-          echo "Preflight confirmed one existing staging machine and its persistent volume; no topology or volume changes requested."
+          printf '%s\n' "$status"
+          mapfile -t attached_volumes < <(grep -Eo 'vol_[[:alnum:]]+' <<< "$status" | sort -u)
+          if [ "${#attached_volumes[@]}" -ne 1 ]; then
+            echo "::error::Expected one attached volume on $machine_id; found ${#attached_volumes[@]}."
+            exit 1
+          fi
+          attached_id="${attached_volumes[0]}"
+          attached_target="$(jq --arg id "$attached_id" '[.[] | select(.id == $id and .name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes")"
+          if [ "$attached_target" -ne 1 ]; then
+            echo "::error::Machine $machine_id is attached to $attached_id, not the dedicated PR 726 staging volume."
+            exit 1
+          fi
+          echo "Preflight confirmed one existing staging machine with its dedicated mounted volume; no topology or volume changes requested."
 
       - name: Build and deploy the exact commit to isolated staging
         timeout-minutes: 15
@@ -167,7 +181,21 @@ jobs:
           fi
           volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
           volume_count="$(jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
-          test "$volume_count" -eq 1
+          if [ "$volume_count" -lt 1 ]; then
+            echo "::error::The dedicated staging volume is missing after deployment."
+            exit 1
+          fi
+          mapfile -t attached_volumes < <(grep -Eo 'vol_[[:alnum:]]+' <<< "$status" | sort -u)
+          if [ "${#attached_volumes[@]}" -ne 1 ]; then
+            echo "::error::Expected one attached volume on $machine_id; found ${#attached_volumes[@]}."
+            exit 1
+          fi
+          attached_id="${attached_volumes[0]}"
+          attached_target="$(jq --arg id "$attached_id" '[.[] | select(.id == $id and .name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
+          if [ "$attached_target" -ne 1 ]; then
+            echo "::error::Machine $machine_id is attached to $attached_id, not the dedicated PR 726 staging volume."
+            exit 1
+          fi
           echo "machine_ids=$machine_ids" >> "$GITHUB_OUTPUT"
           echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
           echo "Verified exactly one staging machine with its existing dedicated persistent volume; no volume was created or removed."
