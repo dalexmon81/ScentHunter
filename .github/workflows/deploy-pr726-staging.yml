@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726') }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
