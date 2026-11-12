@@ -280,7 +280,20 @@ def lookslikeproducturl(url: str) -> bool:
         "www.notino.es", "notino.es", "www.notino.pt", "notino.pt", "www.notino.ie", "notino.ie",
         "www.notino.co.uk", "notino.co.uk",
     }
-    return host in allowed_hosts and bool(PRODUCT_RE.search(parsed.path or ""))
+    path = (parsed.path or "").rstrip("/")
+    # Notino has begun exposing product detail pages with descriptive slugs
+    # and no /p-<id>/ suffix. Accept only unmistakable product slugs (for
+    # example "...-eau-de-parfum-pour-homme"), never brand/category roots
+    # such as /rayhaan/aquatica/.
+    slug = unquote(path.rsplit("/", 1)[-1]).casefold()
+    descriptive_product = bool(re.search(
+        r"(?:^|[-_])(?:eau[-_]?de[-_]?parfum|eau[-_]?de[-_]?toilette|"
+        r"eau[-_]?de[-_]?cologne|extrait[-_]?de[-_]?parfum|"
+        r"parfum[-_]?pour[-_]?(?:homme|femme)|"
+        r"(?:pour[-_]?(?:homme|femme)))(?:$|[-_])",
+        slug,
+    ))
+    return host in allowed_hosts and bool(PRODUCT_RE.search(path) or descriptive_product)
 
 
 _looks_like_product_url = lookslikeproducturl
