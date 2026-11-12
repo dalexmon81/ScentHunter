@@ -113,7 +113,7 @@ jobs:
           queries = (
               "Hawas Ice", "Dior Sauvage", "Chanel Coco Mademoiselle",
               "Yves Saint Laurent Libre", "Armani My Way", "Paco Rabanne 1 Million",
-              "Prada Paradoxe", "Lattafa Asad", "Versace Eros", "perfume",
+              "Prada Paradoxe", "Lattafa Asad", "Versace Eros", "Rayhaan Aquatica", "perfume",
           )
           audited_products = 0
           audited_offers = 0
@@ -207,11 +207,14 @@ jobs:
           refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
           refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
           refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+          refresh "notino" "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/"
           refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
           refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
           echo "::endgroup::"
           echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
           curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Liquid Brun" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Liquid Brun"
+          echo
+          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Rayhaan Aquatica" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Rayhaan Aquatica"
           echo
           echo "::endgroup::"
           fetch "/catalog/hydration-processing"
