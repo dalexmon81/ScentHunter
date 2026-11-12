@@ -12,7 +12,11 @@ import csv
 import json
 import re
 import unicodedata
-import xml.etree.ElementTree as ET
+try:
+    # lxml's C parser is substantially faster for the 244 MB CJ XML feed.
+    from lxml import etree as ET
+except ImportError:  # Keep the parser usable in minimal local test environments.
+    import xml.etree.ElementTree as ET
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -129,14 +133,25 @@ CORE_PRODUCT_TYPES = {
 
 
 def iter_perfume_rows(feed_path: str | Path):
-    """Yield core fragrance listings, excluding gift sets and accessories."""
-    for _, entry in ET.iterparse(str(feed_path), events=("end",)):
-        if entry.tag.rsplit("}", 1)[-1] == "entry":
-            row = _entry_values(entry)
-            terminal_type = row.get("product_type", "").split(">")[-1].strip().casefold()
-            if row.get("google_product_category") == "479" and terminal_type in CORE_PRODUCT_TYPES:
-                yield row
-            entry.clear()
+    """Yield core fragrance listings, excluding gift sets and accessories.
+
+    Use lxml's streaming C parser when available and release completed sibling
+    nodes as well as their contents. The CJ export is ~244 MB despite containing
+    only ~10k fragrance entries; retaining cleared XML nodes wastes memory.
+    """
+    context = ET.iterparse(str(feed_path), events=("end",))
+    for _, entry in context:
+        if entry.tag.rsplit("}", 1)[-1] != "entry":
+            continue
+        row = _entry_values(entry)
+        terminal_type = row.get("product_type", "").split(">")[-1].strip().casefold()
+        if row.get("google_product_category") == "479" and terminal_type in CORE_PRODUCT_TYPES:
+            yield row
+        entry.clear()
+        parent = entry.getparent() if hasattr(entry, "getparent") else None
+        if parent is not None:
+            while entry.getprevious() is not None:
+                del parent[0]
 
 
 BRAND_ALIASES = {
