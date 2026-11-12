@@ -1392,9 +1392,11 @@ def result_key(item):
     # Preserve commercial variant identity even when size is known. Size alone
     # is not sufficient: retailers can expose multiple sellable combinations
     # with the same volume, and their selector URLs must not be merged.
-    variant_identity = next((str(item.get(field) or '').strip().lower()
-                             for field in ('variant_key', 'variant_id', 'variant_sku')
-                             if str(item.get(field) or '').strip()), '')
+    variant_identity = '' if store == 'notino' and len(gtin) in {8, 12, 13, 14} else next((
+        str(item.get(field) or '').strip().lower()
+        for field in ('variant_key', 'variant_id', 'variant_sku')
+        if str(item.get(field) or '').strip()
+    ), '')
     if not variant_identity and url:
         # Keep explicit query selectors and selector-like fragments, while
         # ignoring ordinary page anchors and unrelated tracking parameters.
