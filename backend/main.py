@@ -2736,7 +2736,32 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                             offer["external_id"] for offer in phase2_offers
                             if offer.get("external_id")
                         }
-                        phase2_offers += search_notino_retailer_listings(query, matched_ids)
+                        retailer_listings = search_notino_retailer_listings(query, matched_ids)
+                        for listing in retailer_listings:
+                            # A retailer-only feed row has no canonical ID by
+                            # design. Give the central ProductMatcher one
+                            # conservative opportunity to attach it to an
+                            # existing catalog product. Keep it retailer-only
+                            # unless the matcher returns a canonical identity
+                            # with high confidence; never guess from title text.
+                            resolved = _resolve_offer_identity(listing, query)
+                            try:
+                                confidence = float(
+                                    resolved.get("match_confidence")
+                                    or resolved.get("confidence")
+                                    or 0
+                                ) if isinstance(resolved, dict) else 0
+                            except (TypeError, ValueError):
+                                confidence = 0
+                            if (
+                                isinstance(resolved, dict)
+                                and resolved.get("_match_status") == "matched"
+                                and resolved.get("catalog_id")
+                                and confidence >= 0.90
+                            ):
+                                phase2_offers.append(resolved)
+                            else:
+                                phase2_offers.append(listing)
             except Exception as phase2_exc:
                 phase2_error = type(phase2_exc).__name__
                 print(
