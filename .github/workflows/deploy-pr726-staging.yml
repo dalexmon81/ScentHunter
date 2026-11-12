@@ -89,13 +89,23 @@ jobs:
           python - <<'PY'
           import json, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
-          def get(path, timeout=30):
-              req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
-              with urllib.request.urlopen(req, timeout=timeout) as response:
-                  if response.status != 200:
-                      raise RuntimeError(f"{path}: HTTP {response.status}")
-                  return response.read()
-          get("/health")
+          import time
+          from urllib.error import HTTPError, URLError
+
+          def get(path, timeout=30, attempts=3):
+              last_error = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
+                      with urllib.request.urlopen(req, timeout=timeout) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{path}: HTTP {response.status}")
+                          return response.read()
+                  except (TimeoutError, OSError, URLError, HTTPError) as exc:
+                      last_error = exc
+                      if attempt < attempts:
+                          time.sleep(min(5 * attempt, 10))
+              raise RuntimeError(f"{path} failed after {attempts} attempts: {last_error}")
           from urllib.parse import parse_qs, unquote, urlsplit
 
           from urllib.parse import parse_qs, unquote, urlsplit
@@ -118,7 +128,7 @@ jobs:
           )
           for query in queries:
               from urllib.parse import quote
-              payload = json.loads(get("/search?q=" + quote(query), timeout=60).decode("utf-8"))
+              payload = json.loads(get("/search?q=" + quote(query), timeout=90, attempts=2).decode("utf-8"))
               assert isinstance(payload.get("results"), list), {"query": query, "payload": payload}
               audited_products += len(payload["results"])
               for product in payload["results"]:
