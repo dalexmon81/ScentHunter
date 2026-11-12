@@ -249,12 +249,14 @@ jobs:
           done
 
       - name: Re-import same snapshot and verify offer idempotency
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
           IFS=',' read -ra ids <<< "${{ steps.machine.outputs.machine_ids }}"
           for machine_id in "${ids[@]}"; do
-            flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
+            echo "Re-importing the same Notino snapshot on $machine_id with a hard 8-minute SSH/process limit."
+            timeout --signal=TERM --kill-after=20s 480s flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "timeout --signal=TERM --kill-after=20s 420s /app/.venv/bin/python /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
           done
 
       - name: Verify offer count is stable and re-import adds observations only
