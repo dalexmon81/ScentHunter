@@ -33,8 +33,8 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertEqual(by_size[150].price, 69.9)
         self.assertEqual(by_size[100].gtin, "6291108730001")
         self.assertEqual(by_size[150].availability, "in_stock")
-        self.assertEqual(by_size[100].url, "https://www.notino.fr/french-avenue/liquid-brun/")
-        self.assertEqual(by_size[150].url, "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/")
+        self.assertEqual(by_size[100].url, "https://www.notino.fr/french-avenue/liquid-brun/p-12345601/")
+        self.assertEqual(by_size[150].url, "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/p-12345602/")
         self.assertEqual(by_size[100].image, "https://cdn.example.test/liquid-brun.jpg")
 
     def test_gzip_and_european_price_formats(self):
