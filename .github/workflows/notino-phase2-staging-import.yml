@@ -500,7 +500,21 @@ jobs:
           export FLY_SSH_TIMEOUT_SECONDS=420
           machine_id="${{ steps.machine.outputs.machine_id }}"
           snapshot_sha="$NOTINO_XML_SHA"
-          flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3"
+          VERIFY_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3")"
+          printf '%s\\n' "$VERIFY_OUTPUT"
+          python - "$VERIFY_OUTPUT" "${{ steps.snapshot_audit.outputs.accepted_listings }}" <<'PY'
+          import json, sys
+          raw = sys.argv[1]
+          start, end = raw.find("{"), raw.rfind("}")
+          assert start >= 0 and end > start, f"Missing DB verification JSON: {raw[-2000:]}"
+          result = json.loads(raw[start:end + 1])
+          assert result.get("status") == "passed", result
+          assert int(result["retailer_listings"]) == int(sys.argv[2]), {
+              "database_retailer_listings": result["retailer_listings"],
+              "snapshot_accepted_listings": sys.argv[2],
+          }
+          print("PERSISTED_SNAPSHOT_COUNT_MATCH=PASS")
+          PY
           flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.imported.sha256\"); t=Path(str(p)+\".tmp\"); t.write_text(\"$snapshot_sha\\n\", encoding=\"ascii\"); t.replace(p)'"
 
       - name: Verify Phase 2 and public catalog-first Notino search
