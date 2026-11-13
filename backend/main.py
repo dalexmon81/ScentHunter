@@ -1616,7 +1616,13 @@ def dedupe_results(results, diagnostics=None):
                     and parsed_offer_url.username is None
                     and parsed_offer_url.password is None
                     and parsed_offer_url.port in (None, 443)
-                    and bool(re.search(r'/p-\\d+/?        # Do not publish a generic/stale duplicate as "Prezzo non disponibile".
+                    and bool(re.search(r'/p-\d+/?$', parsed_offer_url.path, re.I))
+                )
+            except ValueError:
+                direct_detail = False
+            if not direct_detail and not is_valid_notino_affiliate_url(offer_url):
+                continue
+        # Do not publish a generic/stale duplicate as "Prezzo non disponibile".
         if store == 'notino' and price is None:
             continue
         if localized in known_localized and price is None and state in {'', 'unknown'}:
