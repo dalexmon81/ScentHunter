@@ -652,13 +652,17 @@ jobs:
           brands = json.loads(brands_raw[start:end + 1])
           assert len(brands) >= 5, {"feed_brands": brands}
           base = "https://scenthunter-pr726-staging.fly.dev"
+          overall_deadline = time.time() + 480
 
           def get(path):
-              with urllib.request.urlopen(base + path, timeout=60) as response:
+              remaining = overall_deadline - time.time()
+              if remaining <= 0:
+                  raise TimeoutError("multi-brand verification exceeded its 8-minute overall budget")
+              with urllib.request.urlopen(base + path, timeout=min(20, remaining)) as response:
                   return json.loads(response.read().decode("utf-8"))
 
           def search(query, require_notino=True):
-              deadline = time.time() + 180
+              deadline = min(time.time() + 45, overall_deadline)
               start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
               while True:
                   payload = get(start_url)
