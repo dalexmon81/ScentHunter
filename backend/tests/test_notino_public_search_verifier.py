@@ -1,7 +1,7 @@
 import unittest
 from urllib.parse import parse_qs, urlsplit
 
-from scripts.verify_notino_public_search import poll_public_search
+from scripts.verify_notino_public_search import _phase2_brand_offers, poll_public_search
 
 
 JOB_ID = "0123456789abcdef0123456789abcdef"
@@ -150,6 +150,29 @@ class PublicNotinoSearchPollingTests(unittest.TestCase):
                     "completed": True,
                 },
             ])
+
+    def test_brand_verification_ignores_legacy_rows(self):
+        payload = {
+            "results": [{
+                "offers": [
+                    {"store": "Notino", "brand": "Armaf", "source": "legacy"},
+                    {
+                        "store": "Notino",
+                        "brand": "Armaf",
+                        "source": "cj_notino_fr_feed",
+                    },
+                    {
+                        "store": "Notino",
+                        "brand": "Lattafa",
+                        "source": "cj_notino_fr_feed",
+                    },
+                ],
+            }],
+        }
+        self.assertEqual(
+            _phase2_brand_offers(payload, "armaf"),
+            [payload["results"][0]["offers"][1]],
+        )
 
 
 if __name__ == "__main__":

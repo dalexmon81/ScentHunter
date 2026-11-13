@@ -197,6 +197,16 @@ def _notino_offers(payload: dict) -> list[tuple[dict, dict]]:
     ]
 
 
+def _phase2_brand_offers(payload: dict, brand: str) -> list[dict]:
+    return [
+        offer
+        for _group, offer in _notino_offers(payload)
+        if offer.get("source") == "cj_notino_fr_feed"
+        and str(offer.get("brand") or offer.get("canonical_brand") or "").casefold()
+        == brand.casefold()
+    ]
+
+
 def valid_affiliate(value: str) -> bool:
     parsed = urllib.parse.urlsplit(value)
     destinations = urllib.parse.parse_qs(parsed.query).get("url", [])
@@ -311,11 +321,10 @@ def verify_multiple_brands(
         payload = poll_public_search(query, base_url, overall_deadline)
         _notino_report(payload, query)
         matching = []
-        for group, offer in _notino_offers(payload):
-            if str(offer.get("brand") or offer.get("canonical_brand") or "").casefold() == query.casefold():
-                _validate_offer(offer, query)
-                if offer.get("availability") == "in_stock":
-                    matching.append(offer)
+        for offer in _phase2_brand_offers(payload, query):
+            _validate_offer(offer, query)
+            if offer.get("availability") == "in_stock":
+                matching.append(offer)
         if matching:
             verified.append({"brand": query, "notino_offers": len(matching)})
             print(
