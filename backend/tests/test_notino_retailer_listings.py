@@ -170,7 +170,9 @@ class NotinoRetailerListingTests(unittest.TestCase):
             reports = main.collect_store_reports_isolated("Example", ["notino"])
 
         report = next(item for item in reports if item["store"] == "notino")
-        self.assertEqual(report["results"], [retailer_listing])
+        # A feed-only price is not publishable until the matching Notino
+        # product page has been hydrated in the background.
+        self.assertEqual(report["results"], [])
         self.assertEqual(report["status"], "success")
 
     def test_snapshot_search_and_public_api_keep_price_and_tracking(self):
