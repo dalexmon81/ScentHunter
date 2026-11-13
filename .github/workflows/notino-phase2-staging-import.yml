@@ -431,7 +431,7 @@ jobs:
           print("NOTINO_REJECTION_REASONS=" + json.dumps(result["rejected"], sort_keys=True))
           print("NOTINO_NONFATAL_WARNINGS=" + json.dumps(result["nonfatal_validation_warnings"], sort_keys=True))
           with open(sys.argv[2], "a", encoding="utf-8") as handle:
-              handle.write("accepted_listings=" + str(result["accepted_listings"]) + "\\n")
+              print("accepted_listings=" + str(result["accepted_listings"]), file=handle)
           PY
 
       - name: Inspect persistent DB before deciding whether import is needed
