@@ -2801,31 +2801,12 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
                             if offer.get("external_id")
                         }
                         retailer_listings = search_notino_retailer_listings(query, matched_ids)
-                        for listing in retailer_listings:
-                            # A retailer-only feed row has no canonical ID by
-                            # design. Give the central ProductMatcher one
-                            # conservative opportunity to attach it to an
-                            # existing catalog product. Keep it retailer-only
-                            # unless the matcher returns a canonical identity
-                            # with high confidence; never guess from title text.
-                            resolved = _resolve_offer_identity(listing, query)
-                            try:
-                                confidence = float(
-                                    resolved.get("match_confidence")
-                                    or resolved.get("confidence")
-                                    or 0
-                                ) if isinstance(resolved, dict) else 0
-                            except (TypeError, ValueError):
-                                confidence = 0
-                            if (
-                                isinstance(resolved, dict)
-                                and resolved.get("_match_status") == "matched"
-                                and resolved.get("catalog_id")
-                                and confidence >= 0.90
-                            ):
-                                phase2_offers.append(resolved)
-                            else:
-                                phase2_offers.append(listing)
+                        # The canonical Phase 2 search already returns exact-GTIN
+                        # mapped offers. Do not run every remaining retailer-only
+                        # row through the legacy matcher: it is both costly for
+                        # broad brand queries and risks blurring the identity
+                        # boundary of this explicitly retailer-only result set.
+                        phase2_offers.extend(retailer_listings)
             except Exception as phase2_exc:
                 phase2_error = type(phase2_exc).__name__
                 print(
@@ -3033,12 +3014,13 @@ def _cancel_active_jobs(wait_timeout=2.5):
 
 
 
-def _new_job(query):
+def _new_job(query, requested_stores=None):
     job_id = uuid.uuid4().hex
     with JOBS_LOCK:
         JOBS[job_id] = {
             "job_id": job_id,
             "query": query,
+            "requested_stores": list(requested_stores or STORES),
             "started_at": time.time(),
             "completed": False,
             "status": "searching",
@@ -3080,22 +3062,22 @@ def _snapshot(job_id):
             }
 
         query = job.get("query", "")
-        # Last-resort lifecycle watchdog: a worker must never leave the UI
-        # polling forever. Preserve the latest published snapshot, request
-        # cancellation, and release the job slot if the search exceeds its
-        # bounded execution window plus a small finalization allowance.
+        # Preserve the latest snapshot and expose a terminal timeout without
+        # pretending the worker finished. Its slot stays occupied until the
+        # worker reaches its finalizer.
         started_at = float(job.get("started_at") or time.time())
-        if not job.get("completed") and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0):
-            job["completed"] = True
-            job["status"] = "completed_with_store_issues"
+        if (
+            not job.get("completed")
+            and not job.get("watchdog_timed_out")
+            and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0)
+        ):
+            job["watchdog_timed_out"] = True
+            job["status"] = "timed_out"
             job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
             cancel_event = job.get("cancel_event")
             if cancel_event is not None:
                 cancel_event.set()
-            done_event = job.get("done_event")
-            if done_event is not None:
-                done_event.set()
-            print(f"SEARCH WATCHDOG FINALIZED job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
+            print(f"SEARCH WATCHDOG CANCELLING job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
         completed = bool(job.get("completed"))
         status = job.get("status") or ("completed" if completed else "searching")
         elapsed = float(job.get("elapsed") or max(0.0, time.time() - started_at))
@@ -3320,6 +3302,7 @@ def _run_job(job_id, query):
 
             current_job["thread"] = threading.current_thread()
             cancel_event = current_job.get("cancel_event")
+            requested_stores = list(current_job.get("requested_stores") or STORES)
             job = current_job
 
         def on_report(r):
@@ -3331,7 +3314,7 @@ def _run_job(job_id, query):
         collect_started = time.monotonic()
         reports = collect_store_reports_isolated(
             query,
-            STORES,
+            requested_stores,
             on_report=on_report,
             on_result=on_result,
             cancel_event=cancel_event,
@@ -3415,7 +3398,9 @@ def _run_job(job_id, query):
                         )
                     ]
 
-                    if cancelled:
+                    if current_job.get("watchdog_timed_out"):
+                        current_job["status"] = "timed_out"
+                    elif cancelled:
                         # A cancellation can race with already-published store
                         # results. Never describe a non-empty result set as
                         # "cancelled (no results)".
@@ -5138,7 +5123,7 @@ def diagnose_hawas_ice_offers_read_only():
 
 
 @app.get('/search-start')
-def search_start(q: str):
+def search_start(q: str, store: str = ''):
     query = str(q or '').strip()
     if not query:
         return {
@@ -5154,6 +5139,26 @@ def search_start(q: str):
             'errors': {},
             'stores': {},
         }
+
+    requested_stores = list(STORES)
+    if str(store or '').strip():
+        selected_store = _normalise_store(store, '')
+        if selected_store not in STORES:
+            return {
+                'job_id': '',
+                'query': query,
+                'completed': True,
+                'status': 'error',
+                'count': 0,
+                'offer_count': 0,
+                'results': [],
+                'unresolved_offers': [],
+                'identity_scope': [],
+                'comparisons': [],
+                'errors': {'store': 'unknown_store'},
+                'stores': {},
+            }
+        requested_stores = [selected_store]
 
     # IMPORTANT: /search-start must remain a lightweight orchestration
     # endpoint. Do not call catalog_store_status() / _catalog_is_ready() here:
@@ -5223,7 +5228,7 @@ def search_start(q: str):
             'stores': {},
         }
 
-    job_id = _new_job(query)
+    job_id = _new_job(query, requested_stores)
     threading.Thread(
         target=_run_job,
         args=(job_id, query),

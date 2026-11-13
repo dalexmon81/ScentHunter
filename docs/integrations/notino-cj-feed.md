@@ -373,3 +373,10 @@ Fly configuration disables Notino's live search fallback, so `/search` and
 the frontend's `/search-start` path cannot scrape Notino when an imported
 catalog offer is available (or when the catalog has no match). This setting
 does not change production configuration.
+
+The public `/search-start?q=...&store=notino` form can verify the Notino path
+without running unrelated retailer matchers; omitting `store` preserves the
+normal all-retailer search. Public Phase 2 rows with no canonical exact-GTIN
+offer remain explicitly retailer-only. Polling clients must wait for
+`status=completed` and `completed=true`; `timed_out`, `error`, and
+`completed_with_store_issues` are not successful empty searches.

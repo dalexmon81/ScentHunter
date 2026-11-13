@@ -14,6 +14,7 @@ on:
       - "backend/scripts/seed_catalog.py"
       - "backend/scripts/build_notino_match_candidates.py"
       - "backend/scripts/search_notino_phase2_catalog.py"
+      - "backend/scripts/verify_notino_public_search.py"
       - "backend/app/models/**"
       - "backend/app/db.py"
       - "backend/app/services/notino_feed_listings.py"
@@ -488,6 +489,7 @@ jobs:
           flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -u /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --database /data/notino-phase2/catalog.sqlite3 --apply"
 
       - name: Verify DB invariants and persist the imported snapshot SHA
+        id: persisted
         timeout-minutes: 8
         shell: bash
         run: |
@@ -497,8 +499,8 @@ jobs:
           snapshot_sha="$NOTINO_XML_SHA"
           VERIFY_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3")"
           printf '%s\\n' "$VERIFY_OUTPUT"
-          python - "$VERIFY_OUTPUT" "${{ steps.snapshot_audit.outputs.accepted_listings }}" <<'PY'
-          import json, sys
+          python - "$VERIFY_OUTPUT" "${{ steps.snapshot_audit.outputs.accepted_listings }}" "$snapshot_sha" <<'PY'
+          import json, os, sys
           raw = sys.argv[1]
           start, end = raw.find("{"), raw.rfind("}")
           assert start >= 0 and end > start, f"Missing DB verification JSON: {raw[-2000:]}"
@@ -509,10 +511,15 @@ jobs:
               "snapshot_accepted_listings": sys.argv[2],
           }
           print("PERSISTED_SNAPSHOT_COUNT_MATCH=PASS")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"canonical_offers={result['canonical_offers']}\n")
+              output.write(f"retailer_listings={result['retailer_listings']}\n")
+              output.write(f"snapshot_sha={sys.argv[3]}\n")
           PY
           flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.imported.sha256\"); t=Path(str(p)+\".tmp\"); t.write_text(\"$snapshot_sha\\n\", encoding=\"ascii\"); t.replace(p)'"
 
       - name: Verify Phase 2 and public catalog-first Notino search
+        timeout-minutes: 8
         shell: bash
         run: |
           set -euo pipefail
@@ -530,104 +537,10 @@ jobs:
             OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import json,sys; sys.path.insert(0,\"/app/backend\"); from app.services.notino_phase2_search import search_notino_retailer_listings; print(json.dumps(search_notino_retailer_listings(\"Rayhaan Aquatica\", set())))'")"
             python -c 'import json,sys; raw=sys.stdin.read(); start=raw.find("["); end=raw.rfind("]"); assert start >= 0 and end >= start, f"No JSON list in retailer-only search output: {raw[-2000:]}"; rows=json.loads(raw[start:end+1]); hits=[x for x in rows if str(x.get("brand") or "").casefold()=="rayhaan" and "aquatica" in str(x.get("name") or "").casefold()]; assert hits, {"query":"Rayhaan Aquatica","rows":rows}; print("PHASE2_AQUATICA_RETAILER_ONLY_SEARCH=PASS")' <<< "$OUTPUT"
           done
-          python - "$AQUATICA_QUERY" "$QUERY" <<'PY'
-          import json, sys, time, urllib.parse, urllib.request
-          base = "https://scenthunter-pr726-staging.fly.dev"
-
-          overall_deadline = time.time() + 480
-
-          def get(path):
-              with urllib.request.urlopen(base + path, timeout=20) as response:
-                  return json.loads(response.read().decode("utf-8"))
-
-          def search(query):
-              deadline = min(time.time() + 45, overall_deadline)
-              start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
-              while True:
-                  payload = get(start_url)
-                  if payload.get("status") != "busy":
-                      break
-                  if time.time() >= deadline:
-                      raise TimeoutError("public /search-start remained busy")
-                  time.sleep(float(payload.get("retry_after_ms", 250)) / 1000)
-              job_id = payload.get("job_id")
-              if job_id and not payload.get("completed"):
-                  status_url = "/search-status?" + urllib.parse.urlencode({"job_id": job_id})
-                  while time.time() < deadline:
-                      payload = get(status_url)
-                      if payload.get("completed"):
-                          break
-                      time.sleep(0.5)
-              assert payload.get("completed"), {
-                  "query": query, "status": payload.get("status"),
-                  "errors": payload.get("errors"),
-              }
-              report = (payload.get("stores") or {}).get("notino") or {}
-              details = report.get("details") or {}
-              assert details.get("phase2_source") == "persistent_notino_cj_catalog", details
-              assert details.get("live_scraping") is False, details
-              assert not (details.get("live_fallback") or {}).get("attempted"), details
-              offers = [
-                  offer for group in (payload.get("results") or [])
-                  for offer in (group.get("offers") or [])
-                  if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"
-              ]
-              return offers
-
-          def valid_affiliate(value):
-              parsed = urllib.parse.urlsplit(value)
-              destinations = urllib.parse.parse_qs(parsed.query).get("url", [])
-              if parsed.scheme != "https" or parsed.hostname not in {
-                  "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
-                  "www.kqzyfj.com", "www.tkqlhce.com",
-              } or not parsed.path.startswith("/click-") or len(destinations) != 1:
-                  return False
-              target = urllib.parse.urlsplit(destinations[0])
-              return target.scheme == "https" and target.hostname in {
-                  "notino.fr", "www.notino.fr",
-              } and target.path not in ("", "/")
-
-          aquatica_query, liquid_query = sys.argv[1:]
-          aquatica = search(aquatica_query)
-          aquatica_path = "aquatica-eau-de-parfum-pour-homme/p-16407892"
-          aquatica_hits = [
-              offer for offer in aquatica
-              if offer.get("source") == "cj_notino_fr_feed"
-              and float(offer.get("price") or offer.get("price_num") or 0) > 0
-              and offer.get("currency") == "EUR"
-              and offer.get("availability") == "in_stock"
-              and valid_affiliate(str(offer.get("url") or ""))
-              and aquatica_path in urllib.parse.unquote(
-                  urllib.parse.parse_qs(
-                      urllib.parse.urlsplit(str(offer.get("url") or "")).query
-                  ).get("url", [""])[0]
-              )
-          ]
-          assert aquatica_hits, {"query": aquatica_query, "notino_offers": aquatica}
-          print("PUBLIC_RAYHAAN_AQUATICA_RETAILER_ONLY_SEARCH=PASS")
-          print("PUBLIC_RAYHAAN_AQUATICA_PRICE=" + str(
-              aquatica_hits[0].get("price") or aquatica_hits[0].get("price_num")
-          ))
-          print("PUBLIC_RAYHAAN_AQUATICA_URL=" + str(aquatica_hits[0].get("url")))
-
-          liquid = search(liquid_query)
-          liquid_hits = [
-              offer for offer in liquid
-              if "liquid brun" in str(offer.get("name") or "").casefold()
-              and float(offer.get("price") or offer.get("price_num") or 0) > 0
-              and offer.get("currency") == "EUR"
-              and offer.get("availability") in {"in_stock", "out_of_stock"}
-              and offer.get("source") == "cj_notino_fr_feed"
-              and valid_affiliate(str(offer.get("url") or ""))
-          ]
-          assert liquid_hits, {"query": liquid_query, "notino_offers": liquid}
-          print("PUBLIC_LIQUID_BRUN_CATALOG_FIRST_SEARCH=PASS")
-          print("PUBLIC_LIQUID_BRUN_PRICE=" + str(
-              liquid_hits[0].get("price") or liquid_hits[0].get("price_num")
-          ))
-          print("PUBLIC_LIQUID_BRUN_CURRENCY=" + str(liquid_hits[0].get("currency")))
-          print("PUBLIC_LIQUID_BRUN_URL=" + str(liquid_hits[0].get("url")))
-          PY
+          python backend/scripts/verify_notino_public_search.py \
+            --base-url https://scenthunter-pr726-staging.fly.dev \
+            --overall-timeout-seconds 480 \
+            --known-products
 
       - name: Verify public Notino search across multiple feed brands
         timeout-minutes: 10
@@ -636,140 +549,12 @@ jobs:
           set -euo pipefail
           MACHINE_ID="${{ steps.machine.outputs.machine_id }}"
           BRANDS_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); rows=c.execute(\"SELECT brand FROM notino_feed_listings WHERE availability=char(105,110,32,115,116,111,99,107) GROUP BY brand HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, brand LIMIT 12\").fetchall(); print(json.dumps([r[0] for r in rows]))'")"
-          RETAILER_ONLY_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); row=c.execute(\"SELECT f.brand,f.title,f.external_id FROM notino_feed_listings f WHERE f.availability=char(105,110,32,115,116,111,99,107) AND (f.gtin IS NULL OR trim(f.gtin)=\u0027\u0027 OR NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.gtin=f.gtin)) AND NOT EXISTS (SELECT 1 FROM brands b WHERE lower(trim(b.name))=lower(trim(f.brand))) AND NOT EXISTS (SELECT 1 FROM offers o JOIN stores s ON s.id=o.store_id WHERE s.slug=\u0027notino-fr\u0027 AND o.external_product_id=f.external_id) ORDER BY f.brand,f.external_id LIMIT 1\").fetchone(); print(json.dumps(row))'")"
-          python - "$BRANDS_RAW" "$RETAILER_ONLY_RAW" <<'PY'
-          import json, sys, time, urllib.parse, urllib.request
-          brands_raw, retailer_only_raw = sys.argv[1:]
-          start, end = brands_raw.find("["), brands_raw.rfind("]")
-          assert start >= 0 and end >= start, f"Could not read feed brand sample: {brands_raw[-1000:]}"
-          brands = json.loads(brands_raw[start:end + 1])
-          assert len(brands) >= 5, {"feed_brands": brands}
-          base = "https://scenthunter-pr726-staging.fly.dev"
-          overall_deadline = time.time() + 480
-
-          def get(path):
-              remaining = overall_deadline - time.time()
-              if remaining <= 0:
-                  raise TimeoutError("multi-brand verification exceeded its 8-minute overall budget")
-              with urllib.request.urlopen(base + path, timeout=min(20, remaining)) as response:
-                  return json.loads(response.read().decode("utf-8"))
-
-          def search(query, require_notino=True):
-              deadline = min(time.time() + 45, overall_deadline)
-              start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
-              while True:
-                  payload = get(start_url)
-                  if payload.get("status") != "busy":
-                      break
-                  if time.time() >= deadline:
-                      raise TimeoutError(f"public /search-start remained busy for {query!r}")
-                  time.sleep(float(payload.get("retry_after_ms", 250)) / 1000)
-              job_id = payload.get("job_id")
-              if job_id and not payload.get("completed"):
-                  status_url = "/search-status?" + urllib.parse.urlencode({"job_id": job_id})
-                  while time.time() < deadline:
-                      payload = get(status_url)
-                      if payload.get("completed"):
-                          break
-                      time.sleep(0.5)
-              assert payload.get("completed"), {
-                  "query": query, "status": payload.get("status"),
-                  "errors": payload.get("errors"),
-              }
-              report = (payload.get("stores") or {}).get("notino") or {}
-              details = report.get("details") or {}
-              if require_notino:
-                  assert details.get("phase2_source") == "persistent_notino_cj_catalog", {
-                      "query": query, "details": details,
-                  }
-                  assert details.get("live_scraping") is False, {
-                      "query": query, "details": details,
-                  }
-                  assert not (details.get("live_fallback") or {}).get("attempted"), {
-                      "query": query, "details": details,
-                  }
-              return payload
-
-          def valid_affiliate(value):
-              parsed = urllib.parse.urlsplit(value)
-              destinations = urllib.parse.parse_qs(parsed.query).get("url", [])
-              if parsed.scheme != "https" or parsed.hostname not in {
-                  "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
-                  "www.kqzyfj.com", "www.tkqlhce.com",
-              } or not parsed.path.startswith("/click-") or len(destinations) != 1:
-                  return False
-              target = urllib.parse.urlsplit(destinations[0])
-              return target.scheme == "https" and target.hostname in {
-                  "notino.fr", "www.notino.fr",
-              } and target.path not in ("", "/")
-
-          verified = []
-          for brand in brands:
-              if time.time() >= overall_deadline:
-                  raise TimeoutError("multi-brand verification exceeded its 8-minute overall budget")
-              print("PUBLIC_BRAND_QUERY=" + brand, flush=True)
-              payload = search(brand, require_notino=False)
-              report = (payload.get("stores") or {}).get("notino") or {}
-              details = report.get("details") or {}
-              if not details:
-                  print("PUBLIC_BRAND_NO_NOTINO_RESULTS=" + brand, flush=True)
-                  continue
-              assert details.get("phase2_source") == "persistent_notino_cj_catalog", {
-                  "query": brand, "details": details,
-              }
-              assert details.get("live_scraping") is False, {
-                  "query": brand, "details": details,
-              }
-              assert not (details.get("live_fallback") or {}).get("attempted"), {
-                  "query": brand, "details": details,
-              }
-              offers = [
-                  offer for group in (payload.get("results") or [])
-                  for offer in (group.get("offers") or [])
-                  if str(offer.get("store") or offer.get("shop") or "").strip().casefold() == "notino"
-              ]
-              valid = [
-                  offer for offer in offers
-                  if float(offer.get("price_num") or 0) > 0
-                  and offer.get("currency") == "EUR"
-                  and offer.get("availability") == "in_stock"
-                  and offer.get("source") == "cj_notino_fr_feed"
-                  and valid_affiliate(str(offer.get("url") or ""))
-              ]
-              if valid:
-                  verified.append({"brand": brand, "notino_offers": len(valid)})
-              if len(verified) >= 5:
-                  break
-          assert len(verified) >= 5, {
-              "brands_tested": brands, "brands_with_public_notino_results": verified
-          }
-          print("PUBLIC_NOTINO_MULTI_BRAND_SEARCH=PASS")
-          print(json.dumps(verified, ensure_ascii=False))
-          start, end = retailer_only_raw.find("["), retailer_only_raw.rfind("]")
-          assert start >= 0 and end >= start, (
-              f"Could not read retailer-only sample: {retailer_only_raw[-1000:]}"
-          )
-          brand, title, external_id = json.loads(retailer_only_raw[start:end + 1])
-          query = brand + " " + title
-          retailer_payload = search(query)
-          hits = [
-              (group, offer)
-              for group in (retailer_payload.get("results") or [])
-              for offer in (group.get("offers") or [])
-              if group.get("retailer_only")
-              and str(group.get("catalog_id") or "").startswith("notino-feed-")
-              and offer.get("source") == "cj_notino_fr_feed"
-              and float(offer.get("price_num") or 0) > 0
-              and offer.get("currency") == "EUR"
-              and valid_affiliate(str(offer.get("url") or ""))
-          ]
-          assert hits, {
-              "query": query, "external_id": external_id,
-              "results": retailer_payload.get("results"),
-          }
-          print("PUBLIC_NOTINO_RETAILER_ONLY_SEARCH=PASS")
-          print(json.dumps({"brand": brand, "external_id": external_id, "query": query}))
-          PY
+          RETAILER_ONLY_RAW="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python -c 'import json,sqlite3; c=sqlite3.connect(\"/data/notino-phase2/catalog.sqlite3\"); row=c.execute(\"SELECT f.brand,f.title,f.external_id FROM notino_feed_listings f WHERE f.availability=char(105,110,32,115,116,111,99,107) AND (f.gtin IS NULL OR trim(f.gtin)=\u0027\u0027 OR NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.gtin=f.gtin)) AND NOT EXISTS (SELECT 1 FROM brands b WHERE lower(trim(b.name))=lower(trim(f.brand))) AND NOT EXISTS (SELECT 1 FROM offers o JOIN stores s ON s.id=o.store_id WHERE s.slug=\u0027notino-fr\u0027 AND o.external_product_id=f.external_id) ORDER BY f.price,f.external_id LIMIT 1\").fetchone(); print(json.dumps(row))'")"
+          PYTHONPATH=backend python backend/scripts/verify_notino_public_search.py \
+            --base-url https://scenthunter-pr726-staging.fly.dev \
+            --overall-timeout-seconds 480 \
+            --brands-json "$BRANDS_RAW" \
+            --retailer-only-json "$RETAILER_ONLY_RAW"
 
       - name: Restart staging and verify the persistent DB after health returns
         timeout-minutes: 8
@@ -794,4 +579,40 @@ jobs:
               raise TimeoutError("Staging health did not return after machine restart.")
           PY
           export FLY_SSH_TIMEOUT_SECONDS=420
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3"
+          PREFLIGHT_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3 --preflight")"
+          printf '%s\n' "$PREFLIGHT_OUTPUT"
+          python - "$PREFLIGHT_OUTPUT" "${{ steps.persisted.outputs.snapshot_sha }}" "${{ steps.persisted.outputs.canonical_offers }}" "${{ steps.persisted.outputs.retailer_listings }}" <<'PY'
+          import json, sys
+          raw = sys.argv[1]
+          start, end = raw.find("{"), raw.rfind("}")
+          assert start >= 0 and end > start, f"Missing post-restart preflight JSON: {raw[-2000:]}"
+          result = json.loads(raw[start:end + 1])
+          assert result.get("status") == "passed", result
+          assert result.get("imported_snapshot_sha") == sys.argv[2], result
+          assert int(result["canonical_offers"]) == int(sys.argv[3]), result
+          assert int(result["retailer_listings"]) == int(sys.argv[4]), result
+          print("POST_RESTART_PREFLIGHT_SHA_AND_COUNTS=PASS")
+          PY
+          VERIFY_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          python - "$VERIFY_OUTPUT" "${{ steps.persisted.outputs.canonical_offers }}" "${{ steps.persisted.outputs.retailer_listings }}" <<'PY'
+          import json, sys
+          raw = sys.argv[1]
+          start, end = raw.find("{"), raw.rfind("}")
+          assert start >= 0 and end > start, f"Missing post-restart verification JSON: {raw[-2000:]}"
+          result = json.loads(raw[start:end + 1])
+          assert result.get("status") == "passed", result
+          assert int(result["canonical_offers"]) == int(sys.argv[2]), result
+          assert int(result["retailer_listings"]) == int(sys.argv[3]), result
+          print("POST_RESTART_DATABASE_INTEGRITY_AND_COUNTS=PASS")
+          PY
+
+      - name: Repeat public Notino searches after staging restart
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          python backend/scripts/verify_notino_public_search.py \
+            --base-url https://scenthunter-pr726-staging.fly.dev \
+            --overall-timeout-seconds 240 \
+            --known-products

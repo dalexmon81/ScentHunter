@@ -29,6 +29,111 @@ def feed_row(external_id="ONE", **changes):
 
 
 class NotinoRetailerListingTests(unittest.TestCase):
+    def test_watchdog_does_not_finalize_a_worker_that_is_still_running(self):
+        job_id = "watchdog-test"
+        cancel_event = main.threading.Event()
+        done_event = main.threading.Event()
+        job = {
+            "job_id": job_id,
+            "query": "unregistered test query",
+            "started_at": main.time.time() - 25,
+            "completed": False,
+            "status": "searching",
+            "cancel_event": cancel_event,
+            "done_event": done_event,
+            "errors": {},
+            "stores": {},
+            "results": [],
+            "offers": [],
+        }
+        with patch.object(main, "JOB_TIMEOUT_SECONDS", 1):
+            with main.JOBS_LOCK:
+                main.JOBS[job_id] = job
+            try:
+                snapshot = main._snapshot(job_id)
+            finally:
+                with main.JOBS_LOCK:
+                    main.JOBS.pop(job_id, None)
+
+        self.assertFalse(snapshot["completed"])
+        self.assertEqual(snapshot["status"], "timed_out")
+        self.assertTrue(cancel_event.is_set())
+        self.assertFalse(done_event.is_set())
+
+    def test_public_search_can_run_only_the_requested_retailer(self):
+        class FakeThread:
+            def __init__(self, *, target, args, **kwargs):
+                self.target = target
+                self.args = args
+                self.kwargs = kwargs
+
+            def start(self):
+                return None
+
+        with (
+            patch.object(main, "_CATALOG_BOOTSTRAP_RUNNING", False),
+            patch.object(main, "_CATALOG_BOOTSTRAP_DONE", True),
+            patch.object(main, "_CATALOG_BOOTSTRAP_ERROR", None),
+            patch.object(main, "_cancel_active_jobs", return_value=True),
+            patch.object(main, "_snapshot", side_effect=lambda job_id: {"job_id": job_id}),
+            patch.object(main.threading, "Thread", FakeThread),
+        ):
+            result = main.search_start(q="Lattafa", store="notino")
+        try:
+            self.assertEqual(main.JOBS[result["job_id"]]["requested_stores"], ["notino"])
+        finally:
+            main.JOBS.pop(result["job_id"], None)
+
+    def test_public_phase2_search_does_not_run_legacy_matcher_on_retailer_only_rows(self):
+        retailer_listing = {
+            "catalog_id": "notino-feed-sample",
+            "external_id": "RETAIL_ONLY",
+            "brand": "Example",
+            "name": "Example Night Eau de Parfum 100 ml",
+            "store": "notino",
+            "price": 25.41,
+            "price_num": 25.41,
+            "currency": "EUR",
+            "url": feed_row()["link"],
+            "availability": "in_stock",
+            "source": "cj_notino_fr_feed",
+            "_match_status": "notino_retailer_only",
+        }
+        notino_report = {
+            "store": "notino",
+            "status": "no_match",
+            "verified": True,
+            "count": 0,
+            "results": [],
+            "details": {},
+        }
+        with (
+            patch.dict("os.environ", {"NOTINO_CJ_STANDALONE_ENABLED": "1"}),
+            patch.object(main, "CATALOG_ENGINE_AVAILABLE", True),
+            patch.object(main, "catalog_search_local", lambda *_args, **_kwargs: []),
+            patch(
+                "app.services.notino_phase2_search.search_notino_phase2",
+                return_value=[],
+            ),
+            patch(
+                "app.services.notino_phase2_search.search_notino_retailer_listings",
+                return_value=[retailer_listing],
+            ),
+            patch.object(
+                main, "_collect_catalog_reports_isolated", return_value=[notino_report],
+            ),
+            patch.object(
+                main,
+                "_resolve_offer_identity",
+                side_effect=AssertionError("legacy matcher must not see retailer-only rows"),
+            ),
+        ):
+            reports = main.collect_store_reports_isolated("Example", ["notino"])
+
+        report = next(item for item in reports if item["store"] == "notino")
+        self.assertEqual(report["results"], [retailer_listing])
+        self.assertEqual(report["status"], "success")
+
     def test_snapshot_search_and_public_api_keep_price_and_tracking(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "notino.sqlite"
