@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 from app.models import Base, NotinoFeedListing
 from app.services.notino_feed_listings import refresh_notino_listings
 from app.services.notino_phase2_search import search_notino_retailer_listings
-from main import _aggregate_identity_results
+from product_matcher import ProductMatcher
+from scripts.import_notino_phase2_persistent import _duplicate_valid_feed_gtins
+from main import _aggregate_identity_results, _resolve_offer_identity
+import main
 
 
 def feed_row(external_id="ONE", **changes):
@@ -50,6 +53,39 @@ class NotinoRetailerListingTests(unittest.TestCase):
             self.assertEqual(public["url"], feed_row()["link"])
             self.assertFalse(public["price_stale"])
             engine.dispose()
+
+    def test_retailer_only_feed_rows_cannot_be_fuzzy_promoted(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "notino.sqlite"
+            engine = create_engine(f"sqlite:///{path}")
+            Base.metadata.create_all(engine)
+            now = datetime.now(timezone.utc)
+            with Session(engine) as session, session.begin():
+                refresh_notino_listings(
+                    session, [feed_row(last_updated=now.isoformat())], now,
+                )
+            with patch.dict("os.environ", {"NOTINO_PHASE2_DATABASE": str(path)}):
+                offers = search_notino_retailer_listings("Example Night", set())
+            self.assertEqual(len(offers), 1)
+            self.assertEqual(offers[0]["_match_policy"], "exact_gtin_only")
+            matcher = ProductMatcher([])
+            self.assertIsNone(matcher.match(offers[0], "Example Night"))
+            with patch.object(main, "PRODUCT_MATCHER", matcher):
+                resolved = _resolve_offer_identity(offers[0], "Example Night")
+            self.assertNotEqual(resolved.get("_match_status"), "matched")
+            self.assertIsNone(resolved.get("catalog_id"))
+            engine.dispose()
+
+    def test_duplicate_valid_feed_gtins_are_held_for_retailer_only_publication(self):
+        rows = [
+            feed_row("FIRST"),
+            feed_row("SECOND"),
+            feed_row("THIRD", gtin="invalid"),
+        ]
+        self.assertEqual(
+            _duplicate_valid_feed_gtins(rows),
+            {"4006381333931"},
+        )
 
     def test_refresh_replaces_old_snapshot_and_keeps_rejected_rows_out(self):
         engine = create_engine("sqlite:///:memory:")

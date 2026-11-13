@@ -52,6 +52,16 @@ def money(value: str):
         return None, currency.upper()
 
 
+def _duplicate_valid_feed_gtins(rows: list[dict]) -> set[str]:
+    """Return valid GTINs repeated across distinct feed rows; never auto-match them."""
+    counts = Counter(
+        str(row.get("gtin") or "").strip()
+        for row in rows
+        if is_valid_gtin(str(row.get("gtin") or "").strip())
+    )
+    return {gtin for gtin, count in counts.items() if count > 1}
+
+
 def _stage_unmatched_rows_bulk(
     session: Session, store_id: UUID, rows: list[dict],
 ) -> None:
@@ -200,8 +210,15 @@ def main() -> int:
     ids = [str(row.get("id") or "").strip() for row in rows]
     if not rows or any(not x for x in ids) or len(ids) != len(set(ids)):
         raise SystemExit("STOP: feed has empty or duplicate retailer product IDs")
+    duplicate_feed_gtins = _duplicate_valid_feed_gtins(rows)
+    duplicate_feed_gtin_rows = sum(
+        1 for row in rows
+        if str(row.get("gtin") or "").strip() in duplicate_feed_gtins
+    )
     print(
         f"IMPORT_PHASE feed_parsed rows={len(rows)} "
+        f"duplicate_valid_gtin_values={len(duplicate_feed_gtins)} "
+        f"duplicate_gtin_rows={duplicate_feed_gtin_rows} "
         f"elapsed_seconds={time.monotonic() - import_started:.1f}",
         flush=True,
     )
@@ -243,6 +260,18 @@ def main() -> int:
                     IngestionRaw.external_product_id.is_not(None),
                 )
             ).all())
+            already_published_duplicate_ids = {
+                str(row.get("id") or "").strip()
+                for row in rows
+                if str(row.get("gtin") or "").strip() in duplicate_feed_gtins
+                and str(row.get("id") or "").strip() in existing_offer_ids
+            }
+            if already_published_duplicate_ids:
+                raise RuntimeError(
+                    "duplicate_feed_gtin_conflicts_with_existing_canonical_offers:"
+                    + ",".join(sorted(already_published_duplicate_ids)[:10])
+                )
+
             variants_by_gtin: dict[str, list] = {}
             for gtin, variant_id in session.execute(
                 select(ProductVariant.gtin, ProductVariant.id).where(
@@ -264,7 +293,9 @@ def main() -> int:
                 external_id = str(row.get("id") or "").strip()
                 gtin = str(row.get("gtin") or "").strip()
                 matching_variants = (
-                    variants_by_gtin.get(gtin, []) if is_valid_gtin(gtin) else []
+                    variants_by_gtin.get(gtin, [])
+                    if is_valid_gtin(gtin) and gtin not in duplicate_feed_gtins
+                    else []
                 )
                 # Do not re-stage thousands of unchanged unmatched feed rows.
                 # Existing published offers are re-observed to refresh price/stock.
@@ -294,7 +325,10 @@ def main() -> int:
                     "title": str(row.get("title") or "").strip(),
                 }
                 if len(matching_variants) != 1:
-                    if not is_valid_gtin(gtin):
+                    if gtin in duplicate_feed_gtins:
+                        reason = "duplicate_gtin_in_feed_snapshot"
+                        method = "notino_duplicate_gtin"
+                    elif not is_valid_gtin(gtin):
                         reason = "invalid_gtin_check_digit"
                         method = "notino_gtin_check_digit"
                     elif not matching_variants:
@@ -342,6 +376,8 @@ def main() -> int:
                 "hold_reasons": dict(reasons), "persistent_offers": offers,
                 "canonical_offer_count": offers,
                 "retailer_only_listing_count": retailer_only,
+                "duplicate_feed_gtin_values": len(duplicate_feed_gtins),
+                "duplicate_feed_gtin_rows": duplicate_feed_gtin_rows,
                 "unmatched_rows_staged_in_batch": len(unmatched_rows),
                 "price_history_rows": history, "raw_rows_persisted": raw_count,
                 "duplicate_offer_external_ids": len(duplicates),

@@ -48,6 +48,9 @@ def _metrics(database: Path) -> dict:
             "SELECT external_id, brand, title, price, currency, availability, "
             "affiliate_url, source_last_updated FROM notino_feed_listings"
         ).fetchall()
+        brand_count = connection.execute(
+            "SELECT COUNT(DISTINCT brand) FROM notino_feed_listings"
+        ).fetchone()[0]
         integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
         foreign_key_errors = connection.execute("PRAGMA foreign_key_check").fetchall()
 
@@ -98,6 +101,7 @@ def _metrics(database: Path) -> dict:
         "distinct_matched_variants": len({row[6] for row in offers if row[6]}),
         "retailer_listings": len(retailer_listings),
         "retailer_only_listings": len(retailer_external_ids - canonical_external_ids),
+        "feed_brand_count": int(brand_count or 0),
         "price_history": history,
         "raw_rows": raw_rows,
         "duplicate_external_ids": duplicates,
@@ -184,6 +188,10 @@ def main() -> int:
         failures.append("no_published_notino_offers")
     if result["retailer_listings"] <= 0:
         failures.append("no_persisted_retailer_listings")
+    if result["retailer_only_listings"] <= 0:
+        failures.append("no_retailer_only_listings")
+    if result["feed_brand_count"] < 5:
+        failures.append("insufficient_feed_brand_coverage")
     if result["price_history"] < result["offers"]:
         failures.append("missing_price_history")
     if result["raw_rows"] < result["offers"]:

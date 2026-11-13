@@ -1836,6 +1836,20 @@ class ProductMatcher:
         offer: Dict[str, Any],
         query: str,
     ) -> Optional[Dict[str, Any]]:
+        # Notino feed rows marked retailer-only must never be promoted by fuzzy
+        # name/brand matching. Their only route to canonical identity is the
+        # exact-GTIN persistence adapter; the public bridge preserves them as
+        # independent retailer listings.
+        if str(offer.get("_match_policy") or "").strip().casefold() == "exact_gtin_only":
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={offer.get('store')!r} name={offer.get('name')!r} "
+                    "method=exact_gtin_only_policy",
+                    flush=True,
+                )
+            return None
+
         started = time.perf_counter()
 
         store = str(offer.get("store") or "")

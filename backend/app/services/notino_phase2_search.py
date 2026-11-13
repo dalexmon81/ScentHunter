@@ -179,6 +179,7 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     "availability": listing.availability,
                     "source": "cj_notino_fr_feed",
                     "_match_status": "notino_retailer_only",
+                    "_match_policy": "exact_gtin_only",
                     "captured_at": observed.isoformat(),
                 })
             return results

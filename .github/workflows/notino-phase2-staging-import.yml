@@ -206,7 +206,7 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE_FILES=(
-            requirements.txt fly.pr726.staging.toml
+            Dockerfile .dockerignore requirements.txt fly.pr726.staging.toml
             backend/main.py backend/product_catalog.json backend/gtin.py
             backend/product_matcher.py backend/connectors/notino_cj.py
             backend/app/db.py backend/app/models/__init__.py
@@ -393,11 +393,19 @@ jobs:
           assert start >= 0 and end > start, f"Missing preflight JSON: {raw[-2000:]}"
           state = json.loads(raw[start:end + 1])
           assert state.get("status") == "passed", state
-          print("SKIP_IMPORT=" + str(
-              state.get("imported_snapshot_sha") == sys.argv[2]
-          ).lower())
-          print("PREIMPORT_CANONICAL_OFFERS=" + str(state["canonical_offers"]))
-          print("PREIMPORT_RETAILER_LISTINGS=" + str(state["retailer_listings"]))
+          marker_matches = state.get("imported_snapshot_sha") == sys.argv[2]
+          canonical = int(state.get("canonical_offers") or 0)
+          retailer = int(state.get("retailer_listings") or 0)
+          if not marker_matches and (canonical or retailer):
+              raise SystemExit(
+                  "STOP: Notino Phase 2 DB already contains data but its import "
+                  "marker does not match this XML snapshot. Refusing a second "
+                  "import; inspect and reconcile the existing DB first."
+              )
+          print("SKIP_IMPORT=" + str(marker_matches).lower())
+          print("PREIMPORT_CANONICAL_OFFERS=" + str(canonical))
+          print("PREIMPORT_RETAILER_LISTINGS=" + str(retailer))
+          print("PREIMPORT_IMPORTED_SNAPSHOT_SHA=" + str(state.get("imported_snapshot_sha")))
           PY
           )"
           printf '%s\n' "$STATE_RESULT"
