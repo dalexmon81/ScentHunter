@@ -62,7 +62,7 @@ def test_google_shopping_namespace_parses_prices_variant_sizes_stock_and_fr_link
     assert by_size[150].price == 69.9
     assert by_size[100].gtin == "6291108730001"
     assert by_size[150].availability == "in_stock"
-    assert by_size[150].url == "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/"
+    assert by_size[150].url == "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/p-12345602/"
     assert by_size[100].url == "https://www.notino.fr/french-avenue/liquid-brun/"
     assert by_size[100].image == "https://cdn.example.test/liquid-brun.jpg"
 
