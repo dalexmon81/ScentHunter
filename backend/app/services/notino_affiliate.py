@@ -26,7 +26,7 @@ def is_valid_notino_affiliate_url(value: str) -> bool:
             and destination.hostname in {"notino.fr", "www.notino.fr"}
             and not destination.username and not destination.password
             and destination.port in (None, 443)
-            and destination.path not in ("", "/")
+            and bool(__import__("re").search(r"/p-\\d+/?$", destination.path))
         )
     except ValueError:
         return False
