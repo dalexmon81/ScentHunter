@@ -77,13 +77,19 @@ class NotinoRetailerListingTests(unittest.TestCase):
             engine.dispose()
 
     def test_read_only_snapshot_audit_reports_acceptance_and_rejections(self):
+        image_warning = feed_row("IMAGE")
+        image_warning["image_link"] = "http://not-secure.example/image.jpg"
         audit = _audit_feed_rows([
             feed_row("GOOD"),
             feed_row("BAD", link="https://notino.fr/example"),
+            image_warning,
         ])
-        self.assertEqual(audit["accepted_listings"], 1)
+        self.assertEqual(audit["accepted_listings"], 2)
         self.assertEqual(audit["accepted_brand_count"], 1)
-        self.assertEqual(audit["rejected"], {"invalid_affiliate_url": 1})
+        self.assertEqual(
+            audit["rejected"],
+            {"invalid_affiliate_url": 1, "invalid_image_url": 1},
+        )
 
     def test_duplicate_valid_feed_gtins_are_held_for_retailer_only_publication(self):
         rows = [

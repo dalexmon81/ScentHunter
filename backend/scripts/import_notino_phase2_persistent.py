@@ -248,7 +248,14 @@ def main() -> int:
 
     if args.audit_only:
         audit = _audit_feed_rows(rows)
-        rejected_count = sum(audit["rejected"].values())
+        nonfatal_warnings = {
+            reason: count for reason, count in audit["rejected"].items()
+            if reason == "invalid_image_url"
+        }
+        rejected_count = sum(
+            count for reason, count in audit["rejected"].items()
+            if reason != "invalid_image_url"
+        )
         result = {
             "status": "passed" if audit["accepted_listings"] + rejected_count == len(rows) else "failed",
             "mode": "read_only_in_memory_audit",
@@ -259,6 +266,7 @@ def main() -> int:
             "accepted_brand_count": audit["accepted_brand_count"],
             "rejected_rows": rejected_count,
             "rejected": audit["rejected"],
+            "nonfatal_validation_warnings": nonfatal_warnings,
             "duplicate_feed_gtin_values": len(duplicate_feed_gtins),
             "duplicate_feed_gtin_rows": duplicate_feed_gtin_rows,
             "persistent_database_touched": False,
