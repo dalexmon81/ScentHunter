@@ -233,7 +233,7 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                         session, store_id=store.id,
                         raw_record=_notino_record(
                             "MAPPED-SKU", price="29.90", sale_price="25.41",
-                            affiliate_url="https://www.kqzyfj.com/click-test?url=https%3A%2F%2Fwww.notino.fr%2Fp%2F",
+                            affiliate_url="https://www.kqzyfj.com/click-test?url=https%3A%2F%2Fwww.notino.fr%2Fmapped-fragrance%2Fp-12345680%2F",
                         ),
                     )
                     self.assertEqual(persisted.status, "promoted")
