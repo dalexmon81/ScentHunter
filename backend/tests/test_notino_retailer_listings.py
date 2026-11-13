@@ -7,17 +7,33 @@ from unittest.mock import patch
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.models import Base, NotinoFeedListing\nfrom app.services.notino_affiliate import is_valid_notino_affiliate_url\nfrom scrapers.notino.affiliate_feed import _product_url
+from app.models import Base, NotinoFeedListing
+from app.services.notino_affiliate import is_valid_notino_affiliate_url
 from app.services.notino_feed_listings import refresh_notino_listings
 from app.services.notino_phase2_search import search_notino_retailer_listings
 from product_matcher import ProductMatcher
 from scripts.import_notino_phase2_persistent import _audit_feed_rows, _duplicate_valid_feed_gtins
 from main import _aggregate_identity_results, _resolve_offer_identity
+from scrapers.notino.affiliate_feed import _product_url
 import main
 from scripts.select_notino_retailer_only_sample import find_publicable_sample
 
 
-def affiliate(destination):\n    from urllib.parse import quote\n    return \"https://www.kqzyfj.com/click-123-456?url=\" + quote(destination, safe=\")\n\n\ndef row(external_id, title, destination):\n    now = datetime.now(timezone.utc).isoformat()\n    return {\"id\": external_id, \"brand\": \"Rasasi\", \"title\": title,\"link\": affiliate(destination), \"last_updated\": now, \"availability\": \"in stock\", \"price\": \"29.90 EUR\", \"size\": \"100 ml\"}\n\n\ndef feed_row(external_id=\"ONE\", **changes):
+def affiliate(destination):
+    from urllib.parse import quote
+    return "https://www.kqzyfj.com/click-123-456?url=" + quote(destination, safe="")
+
+
+def row(external_id, title, destination):
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "id": external_id, "brand": "Rasasi", "title": title,
+        "link": affiliate(destination), "last_updated": now,
+        "availability": "in stock", "price": "29.90 EUR", "size": "100 ml",
+    }
+
+
+def feed_row(external_id=\"ONE\", **changes):
     row = {
         "id": external_id, "brand": "Example", "title": "Example Night Eau de Parfum 100 ml",
         "size": "100 ml", "gtin": "4006381333931", "price": "29.90 EUR",
