@@ -33,7 +33,7 @@ def row(external_id, title, destination):
     }
 
 
-def feed_row(external_id=\"ONE\", **changes):
+def feed_row(external_id="ONE", **changes):
     row = {
         "id": external_id, "brand": "Example", "title": "Example Night Eau de Parfum 100 ml",
         "size": "100 ml", "gtin": "4006381333931", "price": "29.90 EUR",
