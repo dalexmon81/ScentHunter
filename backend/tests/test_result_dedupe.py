@@ -57,7 +57,7 @@ class ResultDeduplicationTests(unittest.TestCase):
         }
         cj = {
             **legacy,
-            "url": "https://www.anrdoezrs.net/click?url=https%3A%2F%2Fwww.notino.fr%2Fp-16289640%2F",
+            "url": "https://www.anrdoezrs.net/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Fp-16289640%2F",
             "product_url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
             "source": "cj_notino_fr_feed",
         }
