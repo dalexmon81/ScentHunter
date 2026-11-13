@@ -541,12 +541,14 @@ jobs:
           import json, sys, time, urllib.parse, urllib.request
           base = "https://scenthunter-pr726-staging.fly.dev"
 
+          overall_deadline = time.time() + 480
+
           def get(path):
-              with urllib.request.urlopen(base + path, timeout=60) as response:
+              with urllib.request.urlopen(base + path, timeout=20) as response:
                   return json.loads(response.read().decode("utf-8"))
 
           def search(query):
-              deadline = time.time() + 180
+              deadline = min(time.time() + 45, overall_deadline)
               start_url = "/search-start?" + urllib.parse.urlencode({"q": query})
               while True:
                   payload = get(start_url)
@@ -635,6 +637,7 @@ jobs:
           PY
 
       - name: Verify public Notino search across multiple feed brands
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
@@ -705,6 +708,8 @@ jobs:
 
           verified = []
           for brand in brands:
+              if time.time() >= overall_deadline:
+                  raise TimeoutError("multi-brand verification exceeded its 8-minute overall budget")
               print("PUBLIC_BRAND_QUERY=" + brand, flush=True)
               payload = search(brand, require_notino=False)
               report = (payload.get("stores") or {}).get("notino") or {}
