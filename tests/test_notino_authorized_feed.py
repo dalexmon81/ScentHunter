@@ -25,7 +25,7 @@ SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
       <g:mpn>LB100</g:mpn>
       <g:price>49,90 EUR</g:price>
       <g:availability>in stock</g:availability>
-      <g:link>https://www.notino.fr/french-avenue/liquid-brun/?utm_source=feed</g:link>
+      <g:link>https://www.notino.fr/french-avenue/liquid-brun/p-12345601/?utm_source=feed</g:link>
       <g:image_link>https://cdn.example.test/liquid-brun.jpg</g:image_link>
       <g:size>100 ml</g:size>
     </item>
@@ -37,7 +37,7 @@ SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
       <g:mpn>LB150LE</g:mpn>
       <g:price>69.90 EUR</g:price>
       <g:availability>in stock</g:availability>
-      <g:link>https://notino.fr/french-avenue/liquid-brun-limited-edition/</g:link>
+      <g:link>https://notino.fr/french-avenue/liquid-brun-limited-edition/p-12345602/</g:link>
       <g:size>150 ml</g:size>
     </item>
     <item>
