@@ -140,7 +140,7 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
             stmt = (
                 select(NotinoFeedListing)
                 .where(
-                    NotinoFeedListing.availability == "in stock",
+                    NotinoFeedListing.availability.in_(["in stock", "out of stock"]),
                     NotinoFeedListing.currency == "EUR",
                     NotinoFeedListing.price > 0,
                     and_(*(
@@ -175,7 +175,8 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     "price_stale": age > 24 * 60 * 60,
                     "currency": listing.currency, "size_ml": listing.size_ml,
                     "url": listing.affiliate_url, "image": listing.image_url,
-                    "available": True, "availability": "in_stock",
+                    "available": listing.availability == "in stock",
+                    "availability": listing.availability,
                     "source": "cj_notino_fr_feed",
                     "_match_status": "notino_retailer_only",
                     "captured_at": observed.isoformat(),
