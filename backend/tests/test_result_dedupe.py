@@ -19,7 +19,7 @@ class ResultDeduplicationTests(unittest.TestCase):
             "price_num": 36.70,
             "currency": "EUR",
             "availability": "in_stock",
-            "url": "https://www.anrdoezrs.net/click?url=https%3A%2F%2Fnotino.fr%2Fp",
+            "url": "https://www.anrdoezrs.net/click-1-2?url=https%3A%2F%2Fnotino.fr%2Fp",
             "source": "cj_notino_fr_feed",
         })
 
@@ -298,10 +298,15 @@ class ResultDeduplicationTests(unittest.TestCase):
             "url": "https://www.notino.fr/french-avenue/liquid-brun/",
         }
 
+        cj["url"] = "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Ffrench-avenue%2Fliquid-brun%2Fp-16289640%2F"
+        legacy["url"] = "https://www.notino.fr/french-avenue/liquid-brun/p-16289640/"
+        legacy["price_num"] = 34.90
         merged = _merge_notino_phase2_offers([cj], [legacy])
 
-        self.assertEqual(merged, [cj])
+        self.assertEqual(len(merged), 1)
         self.assertEqual(merged[0]["source"], "cj_notino_fr_feed")
+        self.assertEqual(merged[0]["price_num"], 34.90)
+        self.assertEqual(merged[0]["url"], cj["url"])
 
     def test_notino_cj_merge_keeps_different_valid_gtins(self):
         cj = {
@@ -313,9 +318,15 @@ class ResultDeduplicationTests(unittest.TestCase):
             "size_ml": 100, "gtin": "6290360375601", "store": "Notino",
         }
 
+        cj["url"] = "https://www.notino.fr/liquid-brun/p-100/"
+        other_gtin["url"] = "https://www.notino.fr/liquid-brun/p-101/"
+        other_gtin["price_num"] = 31.00
         merged = _merge_notino_phase2_offers([cj], [other_gtin])
 
-        self.assertEqual(len(merged), 2)
+        # A feed offer is withheld without a hydrated row for its exact page;
+        # the unrelated edition remains separate.
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["url"], other_gtin["url"])
 
     def test_notino_cj_merge_preserves_distinct_sizes_and_concentrations(self):
         cj = {
@@ -333,11 +344,17 @@ class ResultDeduplicationTests(unittest.TestCase):
             "store": "Notino",
         }
 
+        cj["url"] = "https://www.notino.fr/liquid-brun/p-100/"
+        hydrated_same = {
+            "store": "notino", "url": cj["url"], "size_ml": 100,
+            "price_num": 29.90, "price": "29.90 €",
+        }
         merged = _merge_notino_phase2_offers(
-            [cj], [different_size, different_concentration]
+            [cj], [hydrated_same, different_size, different_concentration]
         )
 
         self.assertEqual(len(merged), 3)
+        self.assertEqual(merged[0]["price_num"], 29.90)
         self.assertIn(different_size, merged)
         self.assertIn(different_concentration, merged)
 
@@ -347,11 +364,12 @@ class ResultDeduplicationTests(unittest.TestCase):
             "variant": "Eau de Parfum", "size_ml": 100,
             "gtin": "6290360375694", "store": "notino",
             "source": "cj_notino_fr_feed",
+            "url": "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Ffrench-avenue%2Fliquid-brun%2Fp-100%2F",
         }
         legacy = {
             "catalog_id": "SH-0030", "name": "Liquid Brun",
-            "size_ml": 100, "store": "notino",
-            "url": "https://www.notino.fr/french-avenue/liquid-brun/",
+            "size_ml": 100, "store": "notino", "price_num": 36.70,
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/p-100/",
         }
         legacy_report = {
             "store": "notino", "status": "success", "verified": True,
@@ -381,10 +399,11 @@ class ResultDeduplicationTests(unittest.TestCase):
             )
 
         self.assertEqual(len(reports), 1)
-        self.assertEqual(reports[0]["results"], [cj])
+        self.assertEqual(len(reports[0]["results"]), 1)
+        self.assertEqual(reports[0]["results"][0]["price_num"], 36.70)
         self.assertEqual(len(published_reports), 1)
-        self.assertEqual(published_reports[0]["results"], [cj])
-        self.assertEqual(published_results, [cj])
+        self.assertEqual(published_reports[0]["results"][0]["price_num"], 36.70)
+        self.assertEqual(published_results[0]["price_num"], 36.70)
 
     def test_notino_live_fallback_is_disabled_by_default(self):
         with (
