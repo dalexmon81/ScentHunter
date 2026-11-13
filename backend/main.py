@@ -1611,10 +1611,10 @@ def dedupe_results(results, diagnostics=None):
         if keeper_entry is None and fp is not None:
             candidate = seen.get(fp)
             if candidate is not None:
-                candidate_gtin = re.sub(r'\\D', '', str(
+                candidate_gtin = re.sub(r'\D', '', str(
                     candidate['item'].get('gtin') or candidate['item'].get('gtin13') or candidate['item'].get('ean') or ''
                 ))
-                item_gtin = re.sub(r'\\D', '', str(
+                item_gtin = re.sub(r'\D', '', str(
                     item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
                 ))
                 if not (
