@@ -221,7 +221,12 @@ def build_catalog_index(catalog: dict) -> list[dict]:
                     (variant or {}).get("concentration") or product.get("concentration", "")
                 ),
                 "gender": _catalog_gender(product, names),
-                "gtins": (variant or {}).get("gtins") or [],
+                # Match seed_catalog.py: legacy/singular GTIN values are valid canonical evidence too.
+                "gtins": (
+                    (variant or {}).get("gtins")
+                    if isinstance((variant or {}).get("gtins"), list)
+                    else [(variant or {}).get("gtin")]
+                ) or [],
             })
     return indexed
 
