@@ -427,5 +427,69 @@ class NotinoHawasRegressionTests(unittest.TestCase):
 
 
 
+    def test_feed_search_hides_price_until_background_page_hydration_is_done(self):
+        import sqlite3
+        import time
+        from scrapers.notino.affiliate_feed import search_feed
+        import catalog_engine
+
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.executescript("""
+            CREATE TABLE store_product_variants (
+                store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
+                image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+                concentration TEXT, gender TEXT, price REAL, currency TEXT,
+                availability TEXT, fetched_at REAL, variant_url TEXT,
+                regular_price REAL, coupon_code TEXT, coupon_required INTEGER
+            );
+            CREATE TABLE store_urls (store TEXT, url TEXT, active INTEGER);
+            CREATE TABLE hydration_queue (
+                store TEXT, url TEXT, state TEXT, last_error TEXT, first_seen_at REAL
+            );
+            CREATE TABLE store_products (
+                store TEXT, url TEXT, fetch_status TEXT, price REAL, fetched_at REAL
+            );
+        """)
+        now = time.time()
+        url = "https://www.notino.fr/rasasi/hawas-diva/p-16337384/"
+        conn.execute(
+            "INSERT INTO store_product_variants VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ("notino", url, "100ml:614514331088", "Rasasi Hawas Diva 100 ml",
+             "Rasasi", "", "", "614514331088", "", 100, "EDP", "women",
+             26.77, "EUR", "in_stock", now, url, 31.50, None, 0),
+        )
+        conn.execute("INSERT INTO store_urls VALUES(?,?,1)", ("notino", url))
+        conn.execute(
+            "INSERT INTO hydration_queue VALUES(?,?,?,?,?)",
+            ("notino", url, "PENDING", None, now - 60),
+        )
+        conn.execute(
+            "INSERT INTO store_products VALUES(?,?,?,?,?)",
+            ("notino", url, "OK", None, now),
+        )
+        conn.commit()
+        with patch.object(catalog_engine, "db", return_value=conn):
+            self.assertEqual(search_feed("Hawas Diva")["results"], [])
+            conn.execute(
+                "UPDATE hydration_queue SET state='DONE' WHERE store='notino' AND url=?",
+                (url,),
+            )
+            conn.execute(
+                "UPDATE store_product_variants SET price=25.50, fetched_at=? WHERE store='notino' AND url=?",
+                (now + 1, url),
+            )
+            conn.execute(
+                "UPDATE store_products SET price=25.50, fetched_at=? WHERE store='notino' AND url=?",
+                (now + 1, url),
+            )
+            conn.commit()
+            result = search_feed("Hawas Diva")
+        self.assertEqual(len(result["results"]), 1)
+        self.assertEqual(result["results"][0]["price_num"], 25.50)
+        conn.close()
+
+
+
 if __name__ == "__main__":
     unittest.main()
