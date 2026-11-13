@@ -70,7 +70,7 @@ def _notino_record(external_id: str, **changes):
         "source_last_updated": "2026-11-10T12:00:00Z",
         "affiliate_url": (
             "https://www.kqzyfj.com/click-test?url="
-            f"https%3A%2F%2Fwww.notino.fr%2Fp%2F{external_id}"
+            f"https%3A%2F%2Fwww.notino.fr%2Fmapped-fragrance%2Fp-12345678%2F"
         ),
         "captured_at": "2026-11-10T12:00:00Z",
     }
@@ -222,7 +222,7 @@ class NotinoPersistenceValidationTests(unittest.TestCase):
                         "availability": "in stock",
                         "link": (
                             "https://www.kqzyfj.com/click-test?url="
-                            "https%3A%2F%2Fwww.notino.fr%2Fp%2Funmapped"
+                            "https%3A%2F%2Fwww.notino.fr%2Funmapped-fragrance%2Fp-12345679%2F"
                         ),
                         "last_updated": now.isoformat(),
                     }], now)
