@@ -63,10 +63,9 @@ class ResultDeduplicationTests(unittest.TestCase):
         }
         self.assertEqual(result_key(legacy), result_key(cj))
         self.assertEqual(dedupe_results([cj, legacy]), [cj])
-        diagnostics = []
-        self.assertEqual(dedupe_results([legacy, cj], diagnostics), [cj])
-        self.assertEqual(diagnostics[0]["kept"]["url"], cj["url"])
-        self.assertEqual(diagnostics[0]["dropped"]["url"], legacy["url"])
+        # The generic legacy destination is filtered before deduplication;
+        # the exact CJ product-detail clickout is the only public offer.
+        self.assertEqual(dedupe_results([legacy, cj]), [cj])
 
     def test_notino_cj_replaces_unpriced_legacy_generic_url_without_gtin(self):
         legacy = {
