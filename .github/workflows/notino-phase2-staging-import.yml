@@ -410,6 +410,7 @@ jobs:
           ACTUAL_SHA="$(sha256sum "$XML" | cut -d ' ' -f 1)"
           test "$ACTUAL_SHA" = "$NOTINO_XML_SHA"
           echo "NOTINO_AUDIT_SNAPSHOT_SHA=$ACTUAL_SHA"
+          export PYTHONPATH=.:backend
           python -u backend/scripts/import_notino_phase2_persistent.py "$XML" --audit-only | tee "$AUDIT_LOG"
           python - "$AUDIT_LOG" "$GITHUB_OUTPUT" <<'PY'
           import json, sys
