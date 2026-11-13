@@ -68,6 +68,49 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(diagnostics[0]["kept"]["url"], cj["url"])
         self.assertEqual(diagnostics[0]["dropped"]["url"], legacy["url"])
 
+    def test_notino_cj_replaces_unpriced_legacy_generic_url_without_gtin(self):
+        legacy = {
+            "store": "notino", "catalog_id": "hawas-diva",
+            "canonical_name": "Hawas Diva", "name": "Hawas Diva",
+            "size_ml": 100, "variant": "Eau de Parfum",
+            "price": None, "price_num": None,
+            "url": "https://www.notino.fr/rasasi/hawas-diva/",
+        }
+        cj = {
+            "store": "notino", "catalog_id": "hawas-diva",
+            "canonical_name": "Hawas Diva", "name": "Hawas Diva",
+            "size_ml": 100, "variant": "Eau de Parfum",
+            "gtin": "614514331036", "price": 26.77, "price_num": 26.77,
+            "currency": "EUR",
+            "url": "https://www.kqzyfj.com/click-123?url=https%3A%2F%2Fwww.notino.fr%2Frasasi%2Fhawas-diva%2Fp-123%2F",
+            "source": "cj_notino_fr_feed",
+        }
+
+        self.assertEqual(dedupe_results([legacy, cj]), [cj])
+
+    def test_notino_unpriced_standalone_row_is_not_public(self):
+        unpriced = {
+            "store": "Notino", "catalog_id": "hawas-chrome",
+            "name": "Hawas Chrome", "canonical_name": "Hawas Chrome",
+            "size_ml": 100, "url": "https://www.notino.fr/rasasi/hawas-chrome/",
+            "price": None, "price_num": None,
+        }
+        self.assertEqual(dedupe_results([unpriced]), [])
+
+    def test_notino_fallback_does_not_merge_different_valid_gtins(self):
+        first = {
+            "store": "notino", "catalog_id": "hawas",
+            "name": "Hawas", "canonical_name": "Hawas",
+            "size_ml": 100, "variant": "Eau de Parfum",
+            "gtin": "6290360375694", "price_num": 30.00,
+            "url": "https://www.notino.fr/p-100/",
+        }
+        second = {
+            **first, "gtin": "6298042001831", "price_num": 31.00,
+            "url": "https://www.notino.fr/p-101/",
+        }
+        self.assertEqual(len(dedupe_results([first, second])), 2)
+
     def test_notino_distinct_gtins_remain_separate(self):
         first = {
             "store": "notino", "url": "https://www.notino.fr/p-100/",

@@ -1561,12 +1561,26 @@ def dedupe_results(results, diagnostics=None):
         localized = localized_shopify_key(item)
         if localized is not None:
             return ('localized-shopify', *localized, *commercial_evidence(item))
-        if store not in {'easycosmetic', 'sabina'}:
-            return None
-        name = ' '.join(str(item.get('name') or item.get('canonical_name') or item.get('title') or '').lower().split())
+        name = ' '.join(str(item.get('canonical_name') or item.get('name') or item.get('title') or '').lower().split())
         name = re.sub(r'[^a-z0-9]+', ' ', name).strip()
         size = _safe_float(item.get('size_ml'))
         price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
+        if price is not None and price <= 0:
+            price = None
+        if store == 'notino':
+            # Notino legacy rows may lack a GTIN and carry a generic URL.
+            # Use canonical sellable identity only as a fallback; two distinct
+            # valid GTINs are explicitly kept separate in the dedupe loop.
+            catalog_id = str(item.get('catalog_id') or '').strip().casefold()
+            concentration = re.sub(
+                r'[^a-z0-9]+', ' ',
+                str(item.get('variant') or item.get('concentration') or '').casefold()
+            ).strip()
+            if catalog_id and name and size is not None:
+                return ('notino-canonical-variant', catalog_id, name, round(size, 3), concentration)
+            return None
+        if store not in {'easycosmetic', 'sabina'}:
+            return None
         variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
         if price is None:
             return None
@@ -1584,11 +1598,32 @@ def dedupe_results(results, diagnostics=None):
     for index, item in enumerate(results):
         localized = localized_shopify_key(item)
         price, _, state = commercial_evidence(item)
+        store = _normalise_store(item.get('store') or item.get('shop'), '')
+        # A Notino row without a positive price is not a purchasable offer.
+        # Do not publish a generic/stale duplicate as "Prezzo non disponibile".
+        if store == 'notino' and price is None:
+            continue
         if localized in known_localized and price is None and state in {'', 'unknown'}:
             continue
         key = result_key(item)
         fp = fingerprint(item)
-        keeper_entry = seen.get(key) or (seen.get(fp) if fp is not None else None)
+        keeper_entry = seen.get(key)
+        if keeper_entry is None and fp is not None:
+            candidate = seen.get(fp)
+            if candidate is not None:
+                candidate_gtin = re.sub(r'\\D', '', str(
+                    candidate['item'].get('gtin') or candidate['item'].get('gtin13') or candidate['item'].get('ean') or ''
+                ))
+                item_gtin = re.sub(r'\\D', '', str(
+                    item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
+                ))
+                if not (
+                    store == 'notino'
+                    and len(candidate_gtin) in {8, 12, 13, 14}
+                    and len(item_gtin) in {8, 12, 13, 14}
+                    and candidate_gtin != item_gtin
+                ):
+                    keeper_entry = candidate
         if keeper_entry is None:
             entry = {"index": index, "output_index": len(output), "item": item}
             seen[key] = entry
@@ -1599,7 +1634,6 @@ def dedupe_results(results, diagnostics=None):
 
         if (
             key[0] == 'notino'
-            and key[1].startswith('gtin:')
             and item.get('source') == 'cj_notino_fr_feed'
             and keeper_entry["item"].get('source') != 'cj_notino_fr_feed'
         ):
