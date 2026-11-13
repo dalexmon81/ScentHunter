@@ -228,11 +228,29 @@ jobs:
               print(f"{name}={hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()}")
           PY
           )"
-          FILES_CSV="$(IFS=,; printf '%s' "${IMAGE_FILES[*]}")"
-          REMOTE_COMMAND="/app/.venv/bin/python -c 'import hashlib,lxml; from pathlib import Path; import sys; sys.path.insert(0,\"/app/backend\"); from scripts import build_notino_match_candidates as parser; root=Path(\"/app\"); files=\"$FILES_CSV\".split(\",\"); [print(name+\"=\"+hashlib.sha256((root/name).read_bytes()).hexdigest()) for name in files]; print(\"BUILD_COMMIT=\"+Path(\"/app/.build-commit\").read_text().strip()); print(\"LXML_VERSION=\"+lxml.__version__); print(\"PARSER_BACKEND=\"+parser.ET.__name__); assert parser.ET.__name__ == \"lxml.etree\"'"
+          REMOTE_SCRIPT="$(python - "${IMAGE_FILES[@]}" <<'PY'
+          import base64, sys
+          files = repr(sys.argv[1:])
+          script = (
+              "import hashlib, lxml, sys; "
+              "from pathlib import Path; "
+              "sys.path.insert(0, '/app/backend'); "
+              "from scripts import build_notino_match_candidates as parser; "
+              "root = Path('/app'); "
+              "files = " + files + "; "
+              "[print(name + '=' + hashlib.sha256((root / name).read_bytes()).hexdigest()) for name in files]; "
+              "print('BUILD_COMMIT=' + (root / '.build-commit').read_text().strip()); "
+              "print('LXML_VERSION=' + lxml.__version__); "
+              "print('PARSER_BACKEND=' + parser.ET.__name__); "
+              "assert parser.ET.__name__ == 'lxml.etree'"
+          )
+          print(base64.b64encode(script.encode('utf-8')).decode('ascii'))
+          PY
+          )"
+          REMOTE_COMMAND="/app/.venv/bin/python -c 'exec(__import__(\"base64\").b64decode(\"$REMOTE_SCRIPT\"))'"
           machine_id="${{ steps.machine.outputs.machine_id }}"
           REMOTE_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "$REMOTE_COMMAND")"
-          printf '%s\n' "$REMOTE_OUTPUT"
+          printf '%s\\n' "$REMOTE_OUTPUT"
           while IFS= read -r expected_line; do
             grep -Fqx "$expected_line" <<< "$REMOTE_OUTPUT" || {
               echo "::error::Staging image differs from checked-out source: $expected_line"
