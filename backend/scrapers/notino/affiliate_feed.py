@@ -543,6 +543,7 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "name": name,
             "price": f"{price:.2f} €",
             "price_num": price,
+            "price_stale": (time.time() - float(row["fetched_at"] or 0)) > 24 * 60 * 60,
             "regular_price": (
                 f"{float(row['regular_price']):.2f} €"
                 if row["regular_price"] is not None and row["coupon_required"] else None
