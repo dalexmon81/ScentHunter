@@ -206,7 +206,7 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE_FILES=(
-            Dockerfile .dockerignore requirements.txt fly.pr726.staging.toml
+            requirements.txt fly.pr726.staging.toml
             backend/main.py backend/product_catalog.json backend/gtin.py
             backend/product_matcher.py backend/connectors/notino_cj.py
             backend/app/db.py backend/app/models/__init__.py
