@@ -1463,52 +1463,93 @@ def result_key(item):
     return (store, identity_key, round(size, 3) if size is not None else '')
 
 def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
-    """Prefer CJ offers over legacy rows for the same Notino sellable variant.
+    """Publish CJ identities only when the same Notino product page was hydrated.
 
-    Older catalog rows often lack GTINs and use a synthetic variant_id. Match
-    those rows by canonical product, volume and product name, while preserving
-    explicit concentration conflicts as separate variants.
+    CJ supplies identity, GTIN and affiliate clickout. The background product-page
+    hydration supplies the displayed price and stock. Feed prices alone are not
+    treated as verified retail prices. Matching uses Notino's immutable /p-ID/
+    destination plus size/concentration, never a fuzzy fragrance-name match.
     """
     import re
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    def product_id(item):
+        raw = str(item.get("url") or item.get("product_url") or "").strip()
+        try:
+            parsed = urlsplit(raw)
+            if parsed.hostname in {
+                "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
+                "www.kqzyfj.com", "www.tkqlhce.com",
+            }:
+                targets = parse_qs(parsed.query).get("url", [])
+                if len(targets) != 1:
+                    return None
+                raw = unquote(targets[0])
+                parsed = urlsplit(raw)
+            if parsed.scheme != "https" or parsed.hostname not in {"notino.fr", "www.notino.fr"}:
+                return None
+            match = re.search(r"/p-(\d+)/?$", parsed.path, re.I)
+            return match.group(1) if match else None
+        except ValueError:
+            return None
 
     def normalized(value):
-        return re.sub(r'[^a-z0-9]+', ' ', str(value or '').casefold()).strip()
+        return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
 
-    def gtin(item):
-        value = re.sub(r'\D', '', str(
-            item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
-        ))
-        return value if len(value) in {8, 12, 13, 14} else ''
+    def compatible(feed, hydrated):
+        feed_size = _safe_float(feed.get("size_ml"))
+        hydrated_size = _safe_float(hydrated.get("size_ml"))
+        if feed_size is not None and hydrated_size is not None and abs(feed_size - hydrated_size) > 0.01:
+            return False
+        feed_concentration = normalized(feed.get("variant") or feed.get("concentration"))
+        hydrated_concentration = normalized(hydrated.get("variant") or hydrated.get("concentration"))
+        return not (
+            feed_concentration and hydrated_concentration
+            and feed_concentration != hydrated_concentration
+        )
 
-    def same_variant(feed, legacy):
-        feed_gtin, legacy_gtin = gtin(feed), gtin(legacy)
-        if feed_gtin and legacy_gtin:
-            return feed_gtin == legacy_gtin
-        feed_id = str(feed.get('catalog_id') or '').strip().casefold()
-        legacy_id = str(legacy.get('catalog_id') or '').strip().casefold()
-        if not feed_id or feed_id != legacy_id:
-            return False
-        feed_size = _safe_float(feed.get('size_ml'))
-        legacy_size = _safe_float(legacy.get('size_ml'))
-        if feed_size is None or legacy_size is None or abs(feed_size - legacy_size) > 0.01:
-            return False
-        feed_name = normalized(feed.get('name') or feed.get('canonical_name') or feed.get('title'))
-        legacy_name = normalized(legacy.get('name') or legacy.get('canonical_name') or legacy.get('title'))
-        if not feed_name or feed_name != legacy_name:
-            return False
-        feed_variant = normalized(feed.get('variant') or feed.get('concentration'))
-        legacy_variant = normalized(legacy.get('variant') or legacy.get('concentration'))
-        return not (feed_variant and legacy_variant and feed_variant != legacy_variant)
+    remaining = list(legacy_offers)
+    published = []
+    for feed in phase2_offers:
+        identity = product_id(feed)
+        if not identity:
+            continue
+        candidates = [
+            (index, item) for index, item in enumerate(remaining)
+            if product_id(item) == identity and compatible(feed, item)
+        ]
+        if not candidates:
+            # A raw CJ price is not proof of the current checkout price.
+            # Keep the listing staged until background page hydration succeeds.
+            continue
+        index, hydrated = max(
+            candidates,
+            key=lambda pair: (
+                _safe_float(pair[1].get("fetched_at")) or 0,
+                _safe_float(pair[1].get("price_num")) or 0,
+            ),
+        )
+        if _safe_float(hydrated.get("price_num") if hydrated.get("price_num") is not None else hydrated.get("price")) is None:
+            continue
+        merged = {**hydrated, **feed}
+        for field in (
+            "price", "price_num", "currency", "availability", "available",
+            "in_stock", "stock", "stock_status", "availability_status",
+            "price_stale", "regular_price", "regular_price_num",
+            "coupon_code", "coupon_required", "fetched_at",
+        ):
+            if field in hydrated:
+                merged[field] = hydrated[field]
+        # Keep the CJ tracked clickout and source identity, but never its
+        # unverified price. Preserve separate GTINs and retailer external IDs.
+        merged["price_source"] = "notino_product_page_hydration"
+        published.append(merged)
+        remaining.pop(index)
 
-    kept_legacy = [
-        item for item in legacy_offers
-        # Legacy retailer rows can contain a gift set under a shortened
-        # perfume-only title. Reject these before merging into canonical
-        # fragrance cards, using the decoded retailer destination URL too.
+    return published + [
+        item for item in remaining
         if not _is_non_fragrance_offer(item)
-        and not any(same_variant(feed, item) for feed in phase2_offers)
     ]
-    return list(phase2_offers) + kept_legacy
 
 
 def dedupe_results(results, diagnostics=None):
