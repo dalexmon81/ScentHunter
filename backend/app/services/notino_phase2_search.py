@@ -164,10 +164,15 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     listing.source_last_updated.replace("Z", "+00:00")
                 )
                 age = (datetime.now(timezone.utc) - min(observed, source_updated)).total_seconds()
+                availability = {
+                    "in stock": "in_stock",
+                    "out of stock": "out_of_stock",
+                }[listing.availability]
                 results.append({
                     "catalog_id": "notino-feed-" + hashlib.sha256(
                         listing.external_id.encode("utf-8")
                     ).hexdigest()[:24],
+                    "external_id": listing.external_id,
                     "brand": listing.brand, "canonical_brand": listing.brand,
                     "name": listing.title, "canonical_name": listing.title,
                     "store": "notino", "shop": "notino",
@@ -175,8 +180,10 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                     "price_stale": age > 24 * 60 * 60,
                     "currency": listing.currency, "size_ml": listing.size_ml,
                     "url": listing.affiliate_url, "image": listing.image_url,
-                    "available": listing.availability == "in stock",
-                    "availability": listing.availability,
+                    "available": availability == "in_stock",
+                    "in_stock": availability == "in_stock",
+                    "availability": availability,
+                    "status": "active",
                     "source": "cj_notino_fr_feed",
                     "_match_status": "notino_retailer_only",
                     "_match_policy": "exact_gtin_only",
