@@ -497,9 +497,16 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
                 """SELECT v.*, u.active
                      FROM store_product_variants v
                      JOIN store_urls u ON u.store=v.store AND u.url=v.url
+                     JOIN hydration_queue q ON q.store=v.store AND q.url=v.url
+                     JOIN store_products p ON p.store=v.store AND p.url=v.url
                     WHERE v.store=? AND u.active=1
                       AND v.fetched_at>=? AND v.price>0
                       AND upper(COALESCE(v.currency,''))='EUR'
+                      AND q.state='DONE'
+                      AND q.last_error IS NULL
+                      AND p.fetch_status='OK' AND p.price>0
+                      AND v.fetched_at>q.first_seen_at
+                      AND v.fetched_at>=p.fetched_at
                     ORDER BY v.fetched_at DESC""",
                 (STORE_KEY, cutoff),
             ).fetchall()
