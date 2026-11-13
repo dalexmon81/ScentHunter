@@ -55,7 +55,7 @@ def _record(external_id: str, *, price: str = "49.90", **changes):
         "availability": "in stock",
         "affiliate_url": (
             "https://www.anrdoezrs.net/click-test?url="
-            + quote(f"https://www.notino.fr/p/{external_id}", safe="")
+            + quote(f"https://www.notino.fr/test-fragrance/p-12345678/", safe="")
         ),
         "source_last_updated": "2026-11-10T12:00:00Z",
         "captured_at": "2026-11-10T12:00:00Z",
