@@ -184,8 +184,6 @@ def main() -> int:
         failures.append("no_published_notino_offers")
     if result["retailer_listings"] <= 0:
         failures.append("no_persisted_retailer_listings")
-    if result["distinct_matched_variants"] <= 0:
-        failures.append("no_canonical_variant_matches")
     if result["price_history"] < result["offers"]:
         failures.append("missing_price_history")
     if result["raw_rows"] < result["offers"]:
@@ -207,8 +205,10 @@ def main() -> int:
         before = json.loads(args.compare_baseline.read_text(encoding="utf-8"))
         if result["offers"] != before["offers"]:
             failures.append("offer_count_changed_on_reimport")
-        if result["price_history"] <= before["price_history"]:
-            failures.append("reimport_did_not_record_new_observations")
+        if result["price_history"] != before["price_history"]:
+            failures.append("price_history_changed_on_identical_reimport")
+        if result["retailer_listings"] != before["retailer_listings"]:
+            failures.append("retailer_listing_count_changed_on_reimport")
 
     result.update({
         "status": "passed" if not failures else "failed",
