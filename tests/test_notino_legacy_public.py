@@ -131,6 +131,8 @@ def test_catalog_search_returns_coupon_price_and_keeps_regular_price(monkeypatch
     conn.row_factory = sqlite3.Row
     conn.executescript("""
         CREATE TABLE store_urls(store TEXT, url TEXT, active INTEGER);
+        CREATE TABLE hydration_queue(store TEXT, url TEXT, state TEXT, last_error TEXT, first_seen_at REAL);
+        CREATE TABLE store_products(store TEXT, url TEXT, fetch_status TEXT, price REAL, fetched_at REAL);
         CREATE TABLE store_product_variants(
             store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
             image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
@@ -139,9 +141,11 @@ def test_catalog_search_returns_coupon_price_and_keeps_regular_price(monkeypatch
             regular_price REAL, coupon_code TEXT, coupon_required INTEGER
         );
     """)
-    url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/"
+    url = "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/"
     now = time.time()
     conn.execute("INSERT INTO store_urls VALUES(?,?,1)", ("notino", url))
+    conn.execute("INSERT INTO hydration_queue VALUES(?,?,?,?,?)", ("notino", url, "DONE", None, now - 60))
+    conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?)", ("notino", url, "OK", 32.72, now + 1))
     conn.execute(
         """INSERT INTO store_product_variants(
                store,url,variant_key,name,brand,size_ml,price,currency,
@@ -220,7 +224,7 @@ def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_con
         "brand": "Rayhaan",
         "size_ml": 100,
         "concentration": "Eau de Parfum",
-        "url": "https://www.notino.fr/rayhaan/aquatica/",
+        "url": "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/",
         "price_num": 40.90,
     }
     legacy_other_concentration = {
@@ -237,4 +241,8 @@ def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_con
         [feed_offer], [legacy_same_variant, legacy_other_concentration]
     )
 
-    assert merged == [feed_offer, legacy_other_concentration]
+    assert len(merged) == 2
+    assert merged[0]["price_num"] == 40.90
+    assert merged[0]["url"] == feed_offer["url"]
+    assert merged[0]["price_source"] == "notino_product_page_hydration"
+    assert merged[1] == legacy_other_concentration
