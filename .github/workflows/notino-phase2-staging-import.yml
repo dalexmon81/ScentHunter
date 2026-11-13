@@ -396,17 +396,24 @@ jobs:
 
       - name: Audit the full XML snapshot without persistent writes
         id: snapshot_audit
-        timeout-minutes: 12
+        timeout-minutes: 15
         shell: bash
         run: |
           set -euo pipefail
           export FLY_SSH_TIMEOUT_SECONDS=660
           machine_id="${{ steps.machine.outputs.machine_id }}"
-          AUDIT_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -u /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --audit-only")"
-          printf '%s\n' "$AUDIT_OUTPUT"
-          python - "$AUDIT_OUTPUT" <<'PY'
+          mkdir -p /tmp/notino-snapshot-audit
+          XML=/tmp/notino-snapshot-audit/notino-cj-feed.xml
+          AUDIT_LOG=/tmp/notino-snapshot-audit/audit.log
+          flyctl ssh sftp get /data/notino-phase2/notino-cj-feed.xml "$XML" --app "$FLY_APP" --machine "$machine_id"
+          test -s "$XML"
+          ACTUAL_SHA="$(sha256sum "$XML" | cut -d ' ' -f 1)"
+          test "$ACTUAL_SHA" = "$NOTINO_XML_SHA"
+          echo "NOTINO_AUDIT_SNAPSHOT_SHA=$ACTUAL_SHA"
+          python -u backend/scripts/import_notino_phase2_persistent.py "$XML" --audit-only | tee "$AUDIT_LOG"
+          python - "$AUDIT_LOG" "$GITHUB_OUTPUT" <<'PY'
           import json, sys
-          raw = sys.argv[1]
+          raw = open(sys.argv[1], encoding="utf-8").read()
           start, end = raw.find("{"), raw.rfind("}")
           assert start >= 0 and end > start, f"Missing feed audit JSON: {raw[-2000:]}"
           result = json.loads(raw[start:end + 1])
@@ -422,16 +429,10 @@ jobs:
           print("NOTINO_FEED_BRANDS=" + str(result["feed_brand_count"]))
           print("NOTINO_ACCEPTED_BRANDS=" + str(result["accepted_brand_count"]))
           print("NOTINO_REJECTION_REASONS=" + json.dumps(result["rejected"], sort_keys=True))
+          print("NOTINO_NONFATAL_WARNINGS=" + json.dumps(result["nonfatal_validation_warnings"], sort_keys=True))
+          with open(sys.argv[2], "a", encoding="utf-8") as handle:
+              handle.write("accepted_listings=" + str(result["accepted_listings"]) + "\\n")
           PY
-          AUDIT_ACCEPTED="$(python - "$AUDIT_OUTPUT" <<'PY'
-          import json, sys
-          raw = sys.argv[1]
-          start, end = raw.find("{"), raw.rfind("}")
-          result = json.loads(raw[start:end + 1])
-          print(result["accepted_listings"])
-          PY
-          )"
-          echo "accepted_listings=$AUDIT_ACCEPTED" >> "$GITHUB_OUTPUT"
 
       - name: Inspect persistent DB before deciding whether import is needed
         id: db_state
