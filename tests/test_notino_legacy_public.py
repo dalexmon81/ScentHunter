@@ -153,7 +153,7 @@ def test_catalog_search_returns_coupon_price_and_keeps_regular_price(monkeypatch
            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             "notino", url, "100ml:SKU", "Rayhaan Aquatica Eau de Parfum pour homme",
-            "Rayhaan", 100, 32.72, "EUR", "in_stock", now, url,
+            "Rayhaan", 100, 32.72, "EUR", "in_stock", now + 1, url,
             40.90, "BFSALE", 1,
         ),
     )
