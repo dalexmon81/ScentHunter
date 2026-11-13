@@ -157,10 +157,14 @@ def _product_url(raw: str) -> str | None:
     ):
         return None
     path = re.sub(r"/{2,}", "/", parsed.path or "")
-    if not path or path == "/" or path.lower().startswith((
-        "/search", "/parfums", "/marques", "/login", "/account", "/cart",
-        "/checkout", "/customer-service", "/wishlist",
-    )):
+    if (
+        not path
+        or not re.search(r"/p-\d+/?$", path, re.I)
+        or path.lower().startswith((
+            "/search", "/parfums", "/marques", "/login", "/account", "/cart",
+            "/checkout", "/customer-service", "/wishlist",
+        ))
+    ):
         return None
     # Canonical product links remain on the French host. Feed redirects and
     # tracking query parameters do not become duplicate source offers.
