@@ -394,6 +394,43 @@ jobs:
             flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'import hashlib; from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.xml\"); digest=hashlib.file_digest(p.open(\"rb\"),\"sha256\").hexdigest(); assert p.is_file() and p.stat().st_size>0 and digest==\"$EXPECTED_SHA\"; Path(str(p)+\".sha256\").write_text(digest+\"\\n\")'"
           done
 
+      - name: Audit the full XML snapshot without persistent writes
+        id: snapshot_audit
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          export FLY_SSH_TIMEOUT_SECONDS=660
+          machine_id="${{ steps.machine.outputs.machine_id }}"
+          AUDIT_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -u /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --audit-only")"
+          printf '%s\n' "$AUDIT_OUTPUT"
+          python - "$AUDIT_OUTPUT" <<'PY'
+          import json, sys
+          raw = sys.argv[1]
+          start, end = raw.find("{"), raw.rfind("}")
+          assert start >= 0 and end > start, f"Missing feed audit JSON: {raw[-2000:]}"
+          result = json.loads(raw[start:end + 1])
+          assert result.get("status") == "passed", result
+          assert result.get("mode") == "read_only_in_memory_audit", result
+          assert result.get("persistent_database_touched") is False, result
+          assert result["feed_rows"] >= 9000, result
+          assert result["accepted_listings"] + result["rejected_rows"] == result["feed_rows"], result
+          print("NOTINO_SNAPSHOT_AUDIT=PASS")
+          print("NOTINO_FEED_ROWS=" + str(result["feed_rows"]))
+          print("NOTINO_ACCEPTED_LISTINGS=" + str(result["accepted_listings"]))
+          print("NOTINO_REJECTED_ROWS=" + str(result["rejected_rows"]))
+          print("NOTINO_FEED_BRANDS=" + str(result["feed_brand_count"]))
+          print("NOTINO_ACCEPTED_BRANDS=" + str(result["accepted_brand_count"]))
+          print("NOTINO_REJECTION_REASONS=" + json.dumps(result["rejected"], sort_keys=True))
+          PY
+          python - "$AUDIT_OUTPUT" <<'PY'
+          import json, sys
+          raw=sys.argv[1]; start,end=raw.find("{"),raw.rfind("}")
+          result=json.loads(raw[start:end+1])
+          print("accepted_listings=" + str(result["accepted_listings"])) 
+          PY
+          echo "accepted_listings=$(python -c 'import json,sys; d=json.loads(sys.stdin.read()[sys.stdin.read().find("{"):]); print(d["accepted_listings"])' <<< "$AUDIT_OUTPUT")" >> "$GITHUB_OUTPUT"
+
       - name: Inspect persistent DB before deciding whether import is needed
         id: db_state
         timeout-minutes: 5
@@ -404,7 +441,7 @@ jobs:
           snapshot_sha="$NOTINO_XML_SHA"
           PREFLIGHT_OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/verify_notino_phase2_persistent.py --database /data/notino-phase2/catalog.sqlite3 --preflight")"
           printf '%s\n' "$PREFLIGHT_OUTPUT"
-          STATE_RESULT="$(python - "$PREFLIGHT_OUTPUT" "$snapshot_sha" <<'PY'
+          STATE_RESULT="$(python - "$PREFLIGHT_OUTPUT" "$snapshot_sha" "${{ steps.snapshot_audit.outputs.accepted_listings }}" <<'PY'
           import json, sys
           raw = sys.argv[1]
           start, end = raw.find("{"), raw.rfind("}")
@@ -414,6 +451,12 @@ jobs:
           marker_matches = state.get("imported_snapshot_sha") == sys.argv[2]
           canonical = int(state.get("canonical_offers") or 0)
           retailer = int(state.get("retailer_listings") or 0)
+          audited_retailer = int(sys.argv[3])
+          if marker_matches and retailer != audited_retailer:
+              raise SystemExit(
+                  f"STOP: persistent retailer listing count {retailer} does not "
+                  f"match the read-only snapshot audit {audited_retailer}."
+              )
           if not marker_matches and (canonical or retailer):
               raise SystemExit(
                   "STOP: Notino Phase 2 DB already contains data but its import "

@@ -11,7 +11,7 @@ from app.models import Base, NotinoFeedListing
 from app.services.notino_feed_listings import refresh_notino_listings
 from app.services.notino_phase2_search import search_notino_retailer_listings
 from product_matcher import ProductMatcher
-from scripts.import_notino_phase2_persistent import _duplicate_valid_feed_gtins
+from scripts.import_notino_phase2_persistent import _audit_feed_rows, _duplicate_valid_feed_gtins
 from main import _aggregate_identity_results, _resolve_offer_identity
 import main
 
@@ -75,6 +75,15 @@ class NotinoRetailerListingTests(unittest.TestCase):
             self.assertNotEqual(resolved.get("_match_status"), "matched")
             self.assertIsNone(resolved.get("catalog_id"))
             engine.dispose()
+
+    def test_read_only_snapshot_audit_reports_acceptance_and_rejections(self):
+        audit = _audit_feed_rows([
+            feed_row("GOOD"),
+            feed_row("BAD", link="https://notino.fr/example"),
+        ])
+        self.assertEqual(audit["accepted_listings"], 1)
+        self.assertEqual(audit["accepted_brand_count"], 1)
+        self.assertEqual(audit["rejected"], {"invalid_affiliate_url": 1})
 
     def test_duplicate_valid_feed_gtins_are_held_for_retailer_only_publication(self):
         rows = [

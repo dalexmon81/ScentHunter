@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +60,27 @@ def _duplicate_valid_feed_gtins(rows: list[dict]) -> set[str]:
         if is_valid_gtin(str(row.get("gtin") or "").strip())
     )
     return {gtin for gtin, count in counts.items() if count > 1}
+
+
+def _audit_feed_rows(rows: list[dict]) -> dict:
+    """Validate a feed snapshot in isolated in-memory SQLite; never touch /data."""
+    engine = create_engine("sqlite:///:memory:")
+    try:
+        Base.metadata.create_all(engine)
+        with Session(engine) as session, session.begin():
+            snapshot = refresh_notino_listings(
+                session, rows, datetime.now(timezone.utc),
+            )
+            accepted_brands = session.scalars(
+                select(NotinoFeedListing.brand).distinct()
+            ).all()
+        return {
+            "accepted_listings": int(snapshot["listings"]),
+            "accepted_brand_count": len(accepted_brands),
+            "rejected": dict(snapshot["rejected"]),
+        }
+    finally:
+        engine.dispose()
 
 
 def _stage_unmatched_rows_bulk(
@@ -179,17 +200,19 @@ def main() -> int:
     parser.add_argument("--database", type=Path, default=Path("/data/notino-phase2/catalog.sqlite3"))
     parser.add_argument("--catalog", type=Path, default=BACKEND / "product_catalog.json")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--audit-only", action="store_true")
     args = parser.parse_args()
 
-    if not args.apply:
-        raise SystemExit("STOP: persistent writes require explicit --apply")
+    if args.apply == args.audit_only:
+        raise SystemExit("STOP: choose exactly one of --apply or --audit-only")
     if not args.feed.is_file() or args.feed.stat().st_size == 0:
         raise SystemExit("STOP: feed missing or empty")
-    db_path = args.database.resolve()
-    if Path("/data") not in db_path.parents:
-        raise SystemExit("STOP: persistent Phase 2 database must be below /data")
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"] = f"sqlite:///{db_path}"
+    if args.apply:
+        db_path = args.database.resolve()
+        if Path("/data") not in db_path.parents:
+            raise SystemExit("STOP: persistent Phase 2 database must be below /data")
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        os.environ["SCENTHUNTER_CATALOG_DATABASE_URL"] = f"sqlite:///{db_path}"
 
     import_started = time.monotonic()
     rows = []
@@ -222,6 +245,26 @@ def main() -> int:
         f"elapsed_seconds={time.monotonic() - import_started:.1f}",
         flush=True,
     )
+
+    if args.audit_only:
+        audit = _audit_feed_rows(rows)
+        rejected_count = sum(audit["rejected"].values())
+        result = {
+            "status": "passed" if audit["accepted_listings"] + rejected_count == len(rows) else "failed",
+            "mode": "read_only_in_memory_audit",
+            "feed_bytes": args.feed.stat().st_size,
+            "feed_rows": len(rows),
+            "feed_brand_count": len({str(row.get("brand") or "").strip() for row in rows if str(row.get("brand") or "").strip()}),
+            "accepted_listings": audit["accepted_listings"],
+            "accepted_brand_count": audit["accepted_brand_count"],
+            "rejected_rows": rejected_count,
+            "rejected": audit["rejected"],
+            "duplicate_feed_gtin_values": len(duplicate_feed_gtins),
+            "duplicate_feed_gtin_rows": duplicate_feed_gtin_rows,
+            "persistent_database_touched": False,
+        }
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] == "passed" else 2
 
     # Idempotently seed canonical identities into this isolated database.
     engine = make_engine()
