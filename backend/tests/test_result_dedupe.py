@@ -251,6 +251,36 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(len(dedupe_results([first, duplicate])), 1)
 
 
+    def test_notino_generic_hawas_category_url_is_never_public(self):
+        generic = {
+            "store": "Notino", "name": "Rasasi Hawas Ice",
+            "catalog_id": "hawas-ice", "size_ml": 100,
+            "price_num": 32.50, "currency": "EUR",
+            "url": "https://www.notino.fr/rasasi/hawas-ice/",
+        }
+        exact = {
+            **generic,
+            "url": "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum-pour-homme/p-16242201/",
+            "price_num": 36.00,
+            "source": "cj_notino_fr_feed",
+        }
+        self.assertEqual(dedupe_results([generic]), [])
+        self.assertEqual(dedupe_results([generic, exact]), [exact])
+
+    def test_notino_hawas_editions_keep_separate_exact_product_pages(self):
+        editions = [
+            {"store": "Notino", "name": name, "catalog_id": name.lower(),
+             "size_ml": 100, "price_num": price, "currency": "EUR",
+             "gtin": gtin, "url": f"https://www.notino.fr/rasasi/{slug}/p-{pid}/"}
+            for name, price, gtin, slug, pid in [
+                ("Hawas Ice", 36.00, "614514331040", "hawas-ice-eau-de-parfum-pour-homme", "16242201"),
+                ("Hawas Elixir", 26.35, "614514331057", "hawas-elixir-eau-de-parfum-mixte", "16306315"),
+                ("Hawas La Mer", 32.30, "614514331279", "hawas-la-mer-eau-de-parfum-pour-homme", "16403740"),
+                ("Hawas Majestic", 32.21, "614514331118", "hawas-majestic-eau-de-parfum-mixte", "16403346"),
+            ]
+        ]
+        self.assertEqual(dedupe_results(editions), editions)
+
     def test_notino_cj_offer_replaces_legacy_row_without_gtin(self):
         cj = {
             "catalog_id": "SH-0030", "brand": "French Avenue",
