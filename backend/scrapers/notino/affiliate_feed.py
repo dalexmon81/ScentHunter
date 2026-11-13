@@ -159,7 +159,7 @@ def _product_url(raw: str) -> str | None:
     path = re.sub(r"/{2,}", "/", parsed.path or "")
     if (
         not path
-        or not re.search(r"/p-\\d+/?$", path, re.I)
+        or not re.search(r"/p-\d+/?$", path, re.I)
         or path.lower().startswith((
             "/search", "/parfums", "/marques", "/login", "/account", "/cart",
             "/checkout", "/customer-service", "/wishlist",
