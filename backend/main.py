@@ -1659,7 +1659,90 @@ def dedupe_results(results, diagnostics=None):
                     and parsed_offer_url.username is None
                     and parsed_offer_url.password is None
                     and parsed_offer_url.port in (None, 443)
-                    and bool(re.search(r'/p-\d+/?$'def _public_offer_url(item):
+                    and bool(re.search(r'/p-\d+/?$', parsed_offer_url.path, re.I))
+                )
+            except ValueError:
+                direct_detail = False
+            if not direct_detail and not is_valid_notino_affiliate_url(offer_url):
+                continue
+        # Do not publish a generic/stale duplicate as "Prezzo non disponibile".
+        if store == 'notino' and price is None:
+            continue
+        if localized in known_localized and price is None and state in {'', 'unknown'}:
+            continue
+        key = result_key(item)
+        fp = fingerprint(item)
+        keeper_entry = seen.get(key)
+        if keeper_entry is None and fp is not None:
+            candidate = seen.get(fp)
+            if candidate is not None:
+                candidate_gtin = re.sub(r'\D', '', str(
+                    candidate['item'].get('gtin') or candidate['item'].get('gtin13') or candidate['item'].get('ean') or ''
+                ))
+                item_gtin = re.sub(r'\D', '', str(
+                    item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
+                ))
+                if not (
+                    store == 'notino'
+                    and len(candidate_gtin) in {8, 12, 13, 14}
+                    and len(item_gtin) in {8, 12, 13, 14}
+                    and candidate_gtin != item_gtin
+                ):
+                    keeper_entry = candidate
+        if keeper_entry is None:
+            entry = {"index": index, "output_index": len(output), "item": item}
+            seen[key] = entry
+            if fp is not None:
+                seen.setdefault(fp, entry)
+            output.append(item)
+            continue
+
+        if (
+            key[0] == 'notino'
+            and item.get('source') == 'cj_notino_fr_feed'
+            and keeper_entry["item"].get('source') != 'cj_notino_fr_feed'
+        ):
+            previous = keeper_entry["item"]
+            output[keeper_entry["output_index"]] = item
+            keeper_entry["item"] = item
+            item = previous
+
+        if diagnostics is not None:
+            keeper = keeper_entry["item"]
+            diagnostics.append({
+                "action": "DROP",
+                "reason": "same_store_name_size_price" if fp is not None and fp in seen and key not in seen else "duplicate_dedupe_key",
+                "dedupe_key": [key[0], key[1], key[2]],
+                "dropped": {
+                    "store": item.get("store") or item.get("shop"),
+                    "url": item.get("url") or item.get("product_url"),
+                    "product_id": item.get("store_product_id") or item.get("product_id") or item.get("sku"),
+                    "sku": item.get("sku"),
+                    "name": item.get("name") or item.get("title"),
+                    "size_ml": item.get("size_ml"),
+                    "price": item.get("price"),
+                    "price_num": item.get("price_num"),
+                    "catalog_id": item.get("catalog_id"),
+                    "canonical_name": item.get("canonical_name"),
+                    "raw_name": item.get("_raw_name"),
+                },
+                "kept": {
+                    "store": keeper.get("store") or keeper.get("shop"),
+                    "url": keeper.get("url") or keeper.get("product_url"),
+                    "product_id": keeper.get("store_product_id") or keeper.get("product_id") or keeper.get("sku"),
+                    "sku": keeper.get("sku"),
+                    "name": keeper.get("name") or keeper.get("title"),
+                    "size_ml": keeper.get("size_ml"),
+                    "price": keeper.get("price"),
+                    "price_num": keeper.get("price_num"),
+                    "catalog_id": keeper.get("catalog_id"),
+                    "canonical_name": keeper.get("canonical_name"),
+                    "raw_name": keeper.get("_raw_name"),
+                },
+            })
+    return output
+
+def _public_offer_url(item):
     """Return a Sabina URL that opens the Spanish storefront and the offer's
     actual size variant.
 
