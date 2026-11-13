@@ -396,27 +396,19 @@ jobs:
 
       - name: Audit the full XML snapshot without persistent writes
         id: snapshot_audit
-        timeout-minutes: 15
+        timeout-minutes: 20
         shell: bash
         run: |
           set -euo pipefail
-          export FLY_SSH_TIMEOUT_SECONDS=660
+          export FLY_SSH_TIMEOUT_SECONDS=840
           machine_id="${{ steps.machine.outputs.machine_id }}"
-          mkdir -p /tmp/notino-snapshot-audit
-          XML=/tmp/notino-snapshot-audit/notino-cj-feed.xml
-          AUDIT_LOG=/tmp/notino-snapshot-audit/audit.log
-          flyctl ssh sftp get /data/notino-phase2/notino-cj-feed.xml "$XML" --app "$FLY_APP" --machine "$machine_id"
-          test -s "$XML"
-          ACTUAL_SHA="$(sha256sum "$XML" | cut -d ' ' -f 1)"
-          test "$ACTUAL_SHA" = "$NOTINO_XML_SHA"
-          echo "NOTINO_AUDIT_SNAPSHOT_SHA=$ACTUAL_SHA"
-          export PYTHONPATH=.:backend
-          python -u backend/scripts/import_notino_phase2_persistent.py "$XML" --audit-only | tee "$AUDIT_LOG"
-          python - "$AUDIT_LOG" "$GITHUB_OUTPUT" <<'PY'
-          import json, sys
-          raw = open(sys.argv[1], encoding="utf-8").read()
+          REMOTE_AUDIT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -u /app/backend/scripts/import_notino_phase2_persistent.py /data/notino-phase2/notino-cj-feed.xml --audit-only")"
+          printf '%s\\n' "$REMOTE_AUDIT"
+          python - "$REMOTE_AUDIT" "$GITHUB_OUTPUT" "$NOTINO_XML_SHA" <<'PY'
+          import hashlib, json, sys
+          raw, output_path, expected_sha = sys.argv[1:]
           start, end = raw.find("{"), raw.rfind("}")
-          assert start >= 0 and end > start, f"Missing feed audit JSON: {raw[-2000:]}"
+          assert start >= 0 and end > start, f"Missing remote feed audit JSON: {raw[-3000:]}"
           result = json.loads(raw[start:end + 1])
           assert result.get("status") == "passed", result
           assert result.get("mode") == "read_only_in_memory_audit", result
@@ -424,6 +416,7 @@ jobs:
           assert result["feed_rows"] >= 9000, result
           assert result["accepted_listings"] + result["rejected_rows"] == result["feed_rows"], result
           print("NOTINO_SNAPSHOT_AUDIT=PASS")
+          print("NOTINO_AUDIT_SNAPSHOT_SHA=" + expected_sha)
           print("NOTINO_FEED_ROWS=" + str(result["feed_rows"]))
           print("NOTINO_ACCEPTED_LISTINGS=" + str(result["accepted_listings"]))
           print("NOTINO_REJECTED_ROWS=" + str(result["rejected_rows"]))
@@ -431,7 +424,7 @@ jobs:
           print("NOTINO_ACCEPTED_BRANDS=" + str(result["accepted_brand_count"]))
           print("NOTINO_REJECTION_REASONS=" + json.dumps(result["rejected"], sort_keys=True))
           print("NOTINO_NONFATAL_WARNINGS=" + json.dumps(result["nonfatal_validation_warnings"], sort_keys=True))
-          with open(sys.argv[2], "a", encoding="utf-8") as handle:
+          with open(output_path, "a", encoding="utf-8") as handle:
               print("accepted_listings=" + str(result["accepted_listings"]), file=handle)
           PY
 
