@@ -423,13 +423,15 @@ jobs:
           print("NOTINO_ACCEPTED_BRANDS=" + str(result["accepted_brand_count"]))
           print("NOTINO_REJECTION_REASONS=" + json.dumps(result["rejected"], sort_keys=True))
           PY
-          python - "$AUDIT_OUTPUT" <<'PY'
+          AUDIT_ACCEPTED="$(python - "$AUDIT_OUTPUT" <<'PY'
           import json, sys
-          raw=sys.argv[1]; start,end=raw.find("{"),raw.rfind("}")
-          result=json.loads(raw[start:end+1])
-          print("accepted_listings=" + str(result["accepted_listings"])) 
+          raw = sys.argv[1]
+          start, end = raw.find("{"), raw.rfind("}")
+          result = json.loads(raw[start:end + 1])
+          print(result["accepted_listings"])
           PY
-          echo "accepted_listings=$(python -c 'import json,sys; d=json.loads(sys.stdin.read()[sys.stdin.read().find("{"):]); print(d["accepted_listings"])' <<< "$AUDIT_OUTPUT")" >> "$GITHUB_OUTPUT"
+          )"
+          echo "accepted_listings=$AUDIT_ACCEPTED" >> "$GITHUB_OUTPUT"
 
       - name: Inspect persistent DB before deciding whether import is needed
         id: db_state
