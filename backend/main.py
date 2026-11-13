@@ -1465,10 +1465,10 @@ def result_key(item):
 def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
     """Publish CJ identities only when the same Notino product page was hydrated.
 
-    CJ supplies identity, GTIN and affiliate clickout. The background product-page
+    CJ supplies identity, GTIN and affiliate clickout. Background product-page
     hydration supplies the displayed price and stock. Feed prices alone are not
-    treated as verified retail prices. Matching uses Notino's immutable /p-ID/
-    destination plus size/concentration, never a fuzzy fragrance-name match.
+    treated as verified retail prices. Matching uses the immutable /p-ID/
+    destination plus size/concentration, never fuzzy fragrance-name matching.
     """
     import re
     from urllib.parse import parse_qs, unquote, urlsplit
@@ -1520,7 +1520,7 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
         ]
         if not candidates:
             # A raw CJ price is not proof of the current checkout price.
-            # Keep the listing staged until background page hydration succeeds.
+            # Keep the listing unpublished until background page hydration succeeds.
             continue
         index, hydrated = max(
             candidates,
@@ -1529,7 +1529,11 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
                 _safe_float(pair[1].get("price_num")) or 0,
             ),
         )
-        if _safe_float(hydrated.get("price_num") if hydrated.get("price_num") is not None else hydrated.get("price")) is None:
+        verified_price = _safe_float(
+            hydrated.get("price_num") if hydrated.get("price_num") is not None
+            else hydrated.get("price")
+        )
+        if verified_price is None or verified_price <= 0:
             continue
         merged = {**hydrated, **feed}
         for field in (
@@ -1540,8 +1544,6 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
         ):
             if field in hydrated:
                 merged[field] = hydrated[field]
-        # Keep the CJ tracked clickout and source identity, but never its
-        # unverified price. Preserve separate GTINs and retailer external IDs.
         merged["price_source"] = "notino_product_page_hydration"
         published.append(merged)
         remaining.pop(index)
