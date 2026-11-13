@@ -433,7 +433,8 @@ class NotinoHawasRegressionTests(unittest.TestCase):
         from scrapers.notino.affiliate_feed import search_feed
         import catalog_engine
 
-        conn = sqlite3.connect(":memory:")
+        database_uri = "file:notino-hydration-test?mode=memory&cache=shared"
+        conn = sqlite3.connect(database_uri, uri=True)
         conn.row_factory = sqlite3.Row
         conn.executescript("""
             CREATE TABLE store_product_variants (
@@ -469,7 +470,12 @@ class NotinoHawasRegressionTests(unittest.TestCase):
             ("notino", url, "OK", None, now),
         )
         conn.commit()
-        with patch.object(catalog_engine, "db", return_value=conn):
+        def open_connection():
+            connection = sqlite3.connect(database_uri, uri=True)
+            connection.row_factory = sqlite3.Row
+            return connection
+
+        with patch.object(catalog_engine, "db", side_effect=open_connection):
             self.assertEqual(search_feed("Hawas Diva")["results"], [])
             conn.execute(
                 "UPDATE hydration_queue SET state='DONE' WHERE store='notino' AND url=?",
