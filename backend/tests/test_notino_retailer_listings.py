@@ -14,6 +14,7 @@ from product_matcher import ProductMatcher
 from scripts.import_notino_phase2_persistent import _audit_feed_rows, _duplicate_valid_feed_gtins
 from main import _aggregate_identity_results, _resolve_offer_identity
 import main
+from scripts.select_notino_retailer_only_sample import find_publicable_sample
 
 
 def feed_row(external_id="ONE", **changes):
@@ -29,6 +30,28 @@ def feed_row(external_id="ONE", **changes):
 
 
 class NotinoRetailerListingTests(unittest.TestCase):
+    def test_retailer_only_sample_selector_skips_rows_rejected_by_public_guards(self):
+        candidates = [
+            ("Vivian Gray", "Love Bomb Eau de Toilette 10 ml", "BLOCKED"),
+            ("Example", "Night Eau de Parfum 100 ml", "PUBLISHABLE"),
+        ]
+
+        def lookup(query):
+            if "Love Bomb" in query:
+                return [{"external_id": "BLOCKED"}]
+            return [{"external_id": "PUBLISHABLE"}]
+
+        selected = find_publicable_sample(
+            candidates,
+            lookup,
+            lambda offer: offer["external_id"] == "PUBLISHABLE",
+        )
+
+        self.assertEqual(
+            selected,
+            ("Example", "Night Eau de Parfum 100 ml", "PUBLISHABLE"),
+        )
+
     def test_watchdog_does_not_finalize_a_worker_that_is_still_running(self):
         job_id = "watchdog-test"
         cancel_event = main.threading.Event()
