@@ -51,6 +51,9 @@ class NotinoRetailerListingTests(unittest.TestCase):
             public = groups[0]["offers"][0]
             self.assertEqual(public["price_num"], 25.41)
             self.assertEqual(public["url"], feed_row()["link"])
+            self.assertEqual(public["availability"], "in_stock")
+            self.assertTrue(public["available"])
+            self.assertTrue(public["in_stock"])
             self.assertFalse(public["price_stale"])
             engine.dispose()
 
