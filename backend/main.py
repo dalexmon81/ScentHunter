@@ -452,9 +452,12 @@ def _start_catalog_hydration():
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
             # Queue enough stale rows to keep the bounded worker pool busy.
-            'batch_size': 16,
-            'workers': 8,
-            'pause_seconds': 0.25,
+            # A smaller worker pool prevents a burst of retailer HTTP/browser
+            # fetches from competing with the first foreground searches.
+            'batch_size': 4,
+            'workers': 4,
+            'pause_seconds': 1.0,
+            'startup_grace_seconds': 20.0,
         },
         daemon=True,
         name='scenthunter-catalog-hydration',
