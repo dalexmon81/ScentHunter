@@ -3523,7 +3523,10 @@ def discover_store(store):
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
     if notino_feed_error:
-        details.append('notino_feed=' + str(notino_feed_error)[:180])
+        # FeedImportError contains aggregate-only parser rejection counters;
+        # retain the complete bounded summary so the production monitor can
+        # distinguish missing fields from a feed transport/access failure.
+        details.append('notino_feed=' + str(notino_feed_error)[:512])
     if deloox_graph is not None:
         details.append(
             f'deloox_category_graph=visited:{deloox_graph["visited"]};'
