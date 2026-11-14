@@ -1,5 +1,7 @@
 """Regression tests for Notino's authorized CJ/VIV product feed."""
 import gzip
+import io
+import zipfile
 import os
 import unittest
 from unittest.mock import patch
@@ -37,8 +39,12 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertEqual(by_size[150].url, "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/")
         self.assertEqual(by_size[100].image, "https://cdn.example.test/liquid-brun.jpg")
 
-    def test_gzip_and_european_price_formats(self):
+    def test_gzip_zip_and_european_price_formats(self):
         self.assertEqual(len(feed.parse_feed(gzip.compress(SAMPLE))), 2)
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("NOTINO_fr-shopping.xml", SAMPLE)
+        self.assertEqual(len(feed.parse_feed(buffer.getvalue())), 2)
         price, currency = feed._money("1.299,90 EUR")
         self.assertEqual(float(price), 1299.9)
         self.assertEqual(currency, "EUR")
@@ -67,9 +73,15 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         values = {
             "NOTINO_CJ_FEED_URL": "",
             "NOTINO_CJ_FEED_USERNAME": "",
-            "NOTINO_CJ_FEED_PASSWORD": "secret-canary-value",
+            "NOTINO_CJ_FEED_PASSWORD": "",
+            "CJ_HTTP_USERNAME": "",
+            "CJ_HTTP_PASSWORD": "secret-canary-value",
         }
         with patch.dict(os.environ, values, clear=False):
             with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing") as raised:
                 feed.import_configured_feed()
         self.assertNotIn("secret-canary-value", str(raised.exception))
+
+    def test_default_cj_subscription_url_is_configured(self):
+        self.assertIn("/324587/", feed.DEFAULT_CJ_FEED_URL)
+        self.assertTrue(feed.DEFAULT_CJ_FEED_URL.endswith(".xml.zip"))
