@@ -1,6 +1,9 @@
 name: Notino CJ production feed monitor
 
 on:
+  pull_request:
+    paths:
+      - .github/workflows/notino-cj-production-feed-monitor.yml
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
