@@ -457,7 +457,13 @@ _SEARCH_FTS_SCHEMA_VERSION = '2'
 
 
 def _ensure_search_fts(conn):
-    """Create and maintain the persistent local-search FTS5 index."""
+    """Create and maintain the persistent local-search FTS5 index.
+
+    FTS5 does not provide a normal B-tree index for its UNINDEXED URL column.
+    Triggers therefore use a small relational mapping table whose primary key
+    is also the FTS rowid. This keeps per-(store,url) replacement O(log n)
+    instead of scanning the complete FTS index for every catalog mutation.
+    """
     try:
         conn.execute(
             """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
@@ -479,11 +485,8 @@ def _ensure_search_fts(conn):
         ).fetchone()
         version = str(row['value']) if row else ''
         if version != _SEARCH_FTS_SCHEMA_VERSION:
-            # A schema-version change may alter FTS column indexing options;
-            # DELETE alone does not migrate an existing virtual-table schema.
-            # Drop catalog triggers first: SQLite otherwise retains triggers on
-            # store_urls/store_products that reference the removed FTS table.
-            # Leaving those behind would make the next catalog write fail.
+            # Rebuild once when upgrading from the unindexed URL-delete design.
+            # The catalog source tables remain untouched and are the source of truth.
             for trigger_name in (
                 "catalog_search_fts_store_urls_ai",
                 "catalog_search_fts_store_urls_au",
@@ -494,6 +497,7 @@ def _ensure_search_fts(conn):
             ):
                 conn.execute(f"DROP TRIGGER IF EXISTS {trigger_name}")
             conn.execute("DROP TABLE IF EXISTS catalog_search_fts")
+            conn.execute("DROP TABLE IF EXISTS catalog_search_fts_map")
             conn.execute(
                 """CREATE VIRTUAL TABLE catalog_search_fts
                    USING fts5(
@@ -504,16 +508,29 @@ def _ensure_search_fts(conn):
                    )"""
             )
             conn.execute(
-                """INSERT INTO catalog_search_fts(store,url,search_text)
-                   SELECT u.store,u.url,
-                          trim(COALESCE(u.slug,'') || ' ' ||
+                """CREATE TABLE catalog_search_fts_map(
+                       id INTEGER PRIMARY KEY,
+                       store TEXT NOT NULL,
+                       url TEXT NOT NULL,
+                       UNIQUE(store,url)
+                   )"""
+            )
+            conn.execute(
+                """INSERT INTO catalog_search_fts_map(store,url)
+                   SELECT store,url FROM store_urls AS su WHERE active=1"""
+            )
+            conn.execute(
+                """INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+                   SELECT m.id,su.store,su.url,
+                          trim(COALESCE(su.slug,'') || ' ' ||
                                COALESCE(p.name,'') || ' ' ||
                                COALESCE(p.brand,''))
-                     FROM store_urls u
+                     FROM catalog_search_fts_map m
+                     JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
                      LEFT JOIN store_products p
-                       ON p.store=u.store AND p.url=u.url
+                       ON p.store=su.store AND p.url=su.url
                       AND p.fetch_status='OK'
-                    WHERE u.active=1"""
+                    WHERE su.active=1"""
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts_meta(key,value)
@@ -522,6 +539,15 @@ def _ensure_search_fts(conn):
                 (_SEARCH_FTS_SCHEMA_VERSION,),
             )
             conn.commit()
+        else:
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS catalog_search_fts_map(
+                       id INTEGER PRIMARY KEY,
+                       store TEXT NOT NULL,
+                       url TEXT NOT NULL,
+                       UNIQUE(store,url)
+                   )"""
+            )
         _ensure_search_fts_triggers(conn)
         return True
     except sqlite3.OperationalError:
@@ -529,85 +555,127 @@ def _ensure_search_fts(conn):
 
 
 def _ensure_search_fts_triggers(conn):
-    """Keep the FTS candidate index synchronized with catalog mutations."""
+    """Keep FTS synchronized using indexed map lookups, never URL scans."""
     trigger_sql = (
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ai
         AFTER INSERT ON store_urls
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT NEW.store,NEW.url,
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=NEW.store AND url=NEW.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts_map(store,url)
+            SELECT NEW.store,NEW.url WHERE NEW.active=1;
+            INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+            SELECT m.id,NEW.store,NEW.url,
                    trim(COALESCE(NEW.slug,'') || ' ' ||
                         COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
-              FROM (SELECT 1) AS one
+              FROM catalog_search_fts_map m
               LEFT JOIN store_products p
                 ON p.store=NEW.store AND p.url=NEW.url
                AND p.fetch_status='OK'
-             WHERE NEW.active=1;
+             WHERE m.store=NEW.store AND m.url=NEW.url AND NEW.active=1;
         END
         """,
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_au
         AFTER UPDATE OF store,url,slug,active ON store_urls
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT NEW.store,NEW.url,
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=OLD.store AND url=OLD.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=OLD.store AND url=OLD.url;
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=NEW.store AND url=NEW.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts_map(store,url)
+            SELECT NEW.store,NEW.url WHERE NEW.active=1;
+            INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+            SELECT m.id,NEW.store,NEW.url,
                    trim(COALESCE(NEW.slug,'') || ' ' ||
                         COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
-              FROM (SELECT 1) AS one
+              FROM catalog_search_fts_map m
               LEFT JOIN store_products p
                 ON p.store=NEW.store AND p.url=NEW.url
                AND p.fetch_status='OK'
-             WHERE NEW.active=1;
+             WHERE m.store=NEW.store AND m.url=NEW.url AND NEW.active=1;
         END
         """,
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ad
         AFTER DELETE ON store_urls
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=OLD.store AND url=OLD.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=OLD.store AND url=OLD.url;
         END
         """,
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ai
         AFTER INSERT ON store_products
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=NEW.store AND url=NEW.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts_map(store,url)
+            SELECT su.store,su.url FROM store_urls AS su
+             WHERE su.store=NEW.store AND su.url=NEW.url AND su.active=1;
+            INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+            SELECT m.id,su.store,su.url,
+                   trim(COALESCE(su.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
-              FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url
-               AND u.active=1;
+              FROM catalog_search_fts_map m
+              JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND su.active=1;
         END
         """,
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_au
         AFTER UPDATE OF store,url,name,brand,fetch_status ON store_products
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=OLD.store AND url=OLD.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=OLD.store AND url=OLD.url;
+            INSERT INTO catalog_search_fts_map(store,url)
+            SELECT su.store,su.url FROM store_urls AS su
+             WHERE su.store=NEW.store AND su.url=NEW.url AND su.active=1;
+            INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+            SELECT m.id,su.store,su.url,
+                   trim(COALESCE(su.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
-              FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url
-               AND u.active=1;
+              FROM catalog_search_fts_map m
+              JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND su.active=1;
         END
         """,
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ad
         AFTER DELETE ON store_products
         BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,trim(COALESCE(u.slug,''))
-              FROM store_urls u
-             WHERE u.store=OLD.store AND u.url=OLD.url AND u.active=1;
+            DELETE FROM catalog_search_fts
+             WHERE rowid=(SELECT id FROM catalog_search_fts_map
+                           WHERE store=OLD.store AND url=OLD.url);
+            DELETE FROM catalog_search_fts_map
+             WHERE store=OLD.store AND url=OLD.url;
+            INSERT INTO catalog_search_fts_map(store,url)
+            SELECT su.store,su.url FROM store_urls AS su
+             WHERE su.store=OLD.store AND su.url=OLD.url AND su.active=1;
+            INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+            SELECT m.id,su.store,su.url,trim(COALESCE(su.slug,''))
+              FROM catalog_search_fts_map m
+              JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
+             WHERE m.store=OLD.store AND m.url=OLD.url;
         END
         """,
     )
