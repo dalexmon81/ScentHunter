@@ -50,14 +50,14 @@ class CatalogSearchFTSMappingTests(unittest.TestCase):
         self.assertIn("INDEX", details)
 
     def test_url_and_product_triggers_keep_fts_and_mapping_consistent(self):
-        self.assertEqual(len(self._matches("initial-fragrance")), 1)
+        self.assertEqual(len(self._matches("initial")), 1)
 
         self.conn.execute(
             "UPDATE store_urls SET slug=? WHERE store=? AND url=?",
             ("updated-fragrance", "notino", "https://www.notino.fr/a/"),
         )
-        self.assertEqual(len(self._matches("initial-fragrance")), 0)
-        self.assertEqual(len(self._matches("updated-fragrance")), 1)
+        self.assertEqual(len(self._matches("initial")), 0)
+        self.assertEqual(len(self._matches("updated")), 1)
 
         self.conn.execute(
             """INSERT INTO store_products(store,url,name,brand,fetch_status)
@@ -79,7 +79,7 @@ class CatalogSearchFTSMappingTests(unittest.TestCase):
             ("notino", "https://www.notino.fr/a/"),
         )
         self.assertEqual(len(self._matches("lattafa")), 0)
-        self.assertEqual(len(self._matches("updated-fragrance")), 1)
+        self.assertEqual(len(self._matches("updated")), 1)
 
         self.conn.execute(
             "DELETE FROM store_urls WHERE store=? AND url=?",
@@ -96,9 +96,9 @@ class CatalogSearchFTSMappingTests(unittest.TestCase):
         self.conn.execute(
             """INSERT INTO store_urls(store,url,slug,discovered_at,active)
                VALUES(?,?,?,?,0)""",
-            ("notino", "https://www.notino.fr/inactive/", "inactive-fragrance", 2.0, 0),
+            ("notino", "https://www.notino.fr/inactive/", "inactive-fragrance", 2.0),
         )
-        self.assertEqual(len(self._matches("inactive-fragrance")), 0)
+        self.assertEqual(len(self._matches("inactive")), 0)
         self.assertEqual(self.conn.execute(
             "SELECT COUNT(*) FROM catalog_search_fts_map WHERE url LIKE '%inactive%'"
         ).fetchone()[0], 0)
