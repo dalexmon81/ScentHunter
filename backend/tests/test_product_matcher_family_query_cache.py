@@ -23,6 +23,7 @@ class ProductMatcherSiblingFamilyCacheTests(unittest.TestCase):
         self.assertEqual(
             variant["_url_alias_token_sequences"],
             (
+                tuple(ProductMatcher._url_catalog_identity_text("Hawas Ice").split()),
                 tuple(ProductMatcher._url_catalog_identity_text("Rasasi Hawas Ice").split()),
                 tuple(ProductMatcher._url_catalog_identity_text("Hawas Ice Eau de Parfum").split()),
             ),
