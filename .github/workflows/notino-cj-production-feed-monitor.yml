@@ -26,6 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - name: Check out repository for read-only feed parser diagnostics
+        uses: actions/checkout@v4
+
+      - name: Set up Python for feed parser diagnostics
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install minimal feed parser dependency
+        run: python -m pip install "requests>=2.31,<3"
+
       - name: Check production catalog status
         shell: bash
         run: |
@@ -122,3 +133,45 @@ jobs:
               raise RuntimeError("Notino CJ feed reports success but has no indexed URLs")
           print("Notino CJ production feed verification: PASS")
           PY
+      - name: Diagnose authorized CJ feed parser rejections without importing
+        if: ${{ always() }}
+        env:
+          CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+          CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=backend python - <<'PY'
+          import json
+          from scrapers.notino.affiliate_feed import FeedImportError, _fetch_feed, parse_feed
+
+          try:
+              payload = _fetch_feed()
+          except FeedImportError as exc:
+              print("NOTINO_CJ_FEED_DIAGNOSTIC=FETCH_REJECTED " + str(exc), flush=True)
+              raise SystemExit(1)
+          except Exception as exc:
+              print("NOTINO_CJ_FEED_DIAGNOSTIC=FETCH_FAILED " + type(exc).__name__, flush=True)
+              raise SystemExit(1)
+
+          try:
+              offers = parse_feed(payload)
+          except FeedImportError as exc:
+              # FeedImportError is aggregate-only: no product titles, URLs,
+              # feed body, username, or password are included.
+              detail = str(exc)
+              print("NOTINO_CJ_FEED_DIAGNOSTIC=PARSE_REJECTED " + detail, flush=True)
+              summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
+              if summary_path:
+                  with open(summary_path, "a", encoding="utf-8") as stream:
+                      stream.write("## Notino CJ parser diagnostic (read-only)\n\n")
+                      stream.write("Parser diagnostic: " + detail + "\n")
+              raise SystemExit(1)
+
+          print(
+              "NOTINO_CJ_FEED_DIAGNOSTIC=PARSE_OK "
+              + json.dumps({"accepted_offers": len(offers)}, sort_keys=True),
+              flush=True,
+          )
+          PY
+
