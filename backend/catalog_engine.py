@@ -7148,14 +7148,25 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
         conn.close()
 
 
-def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Continuously hydrate discovered product pages in the background."""
+def catalog_hydration_loop(
+    stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0,
+    startup_grace_seconds=20.0,
+):
+    """Continuously hydrate discovered product pages in the background.
+
+    Give the newly started API a quiet window before background network work
+    begins. This protects the first real user searches after a deploy/restart;
+    once traffic settles, the normal durable hydration queue resumes.
+    """
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
-    coverage_next_at = 0.0
+    startup_ready_at = time.monotonic() + max(0.0, float(startup_grace_seconds))
+    # Do not launch canonical coverage immediately after process startup either.
+    coverage_next_at = startup_ready_at + _COVERAGE_INTERVAL_SECONDS
     print(
-        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} '
+        f'startup_grace={startup_grace_seconds:g}s recovered={recovered}',
         flush=True,
     )
     print(
@@ -7165,6 +7176,17 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     )
     while stop_event is None or not stop_event.is_set():
         try:
+            # Keep background network/SQLite work out of the API's cold-start
+            # window. The first catalog searches after a deploy take priority.
+            now_mono = time.monotonic()
+            if now_mono < startup_ready_at:
+                wait_for = min(0.25, max(0.05, startup_ready_at - now_mono))
+                if stop_event is not None:
+                    stop_event.wait(wait_for)
+                else:
+                    time.sleep(wait_for)
+                continue
+
             # Background coverage/hydration is lower priority than the
             # foreground catalog search.  Never start another retailer
             # scraper or hydration batch while a user search is active.
