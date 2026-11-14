@@ -1,0 +1,117 @@
+name: Notino CJ Feed Import
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/notino-cj-feed-import.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notino-cj-feed-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Import authorized Notino CJ feed
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Import CJ offers into the persistent production catalog
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_python=$(cat <<'PY'
+          import json
+          import sys
+          import time
+
+          sys.path.insert(0, "/app/backend")
+          import catalog_engine
+
+          def state():
+              conn = catalog_engine.db()
+              try:
+                  row = conn.execute(
+                      "SELECT status,started_at,finished_at,discovered_count,error "
+                      "FROM sync_state WHERE store=?",
+                      ("notino",),
+                  ).fetchone()
+                  return dict(row) if row else None
+              finally:
+                  conn.close()
+
+          def is_fresh_feed(value):
+              return bool(
+                  value
+                  and value.get("status") == "FEED_IMPORTED"
+                  and value.get("finished_at") is not None
+                  and time.time() - float(value["finished_at"]) < 23 * 60 * 60
+                  and int(value.get("discovered_count") or 0) > 0
+              )
+
+          before = state()
+          print("NOTINO_IMPORT_BEFORE=" + json.dumps({
+              key: before.get(key) for key in (
+                  "status", "started_at", "finished_at", "discovered_count", "error"
+              )
+          }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
+
+          result = None
+          if is_fresh_feed(before):
+              result = {
+                  "status": "FEED_RECENT",
+                  "count": int(before.get("discovered_count") or 0),
+                  "source": "cj_viv_authorized_xml",
+              }
+          else:
+              # If the normal background discovery already owns Notino, let it
+              # finish rather than starting a duplicate feed download.
+              if before and before.get("status") == "DISCOVERY_RUNNING":
+                  for _ in range(24):
+                      time.sleep(15)
+                      current = state()
+                      if is_fresh_feed(current):
+                          before = current
+                          result = {
+                              "status": "FEED_RECENT",
+                              "count": int(current.get("discovered_count") or 0),
+                              "source": "cj_viv_authorized_xml",
+                          }
+                          break
+                      if not current or current.get("status") != "DISCOVERY_RUNNING":
+                          before = current
+                          break
+
+              if result is None:
+                  result = catalog_engine.discover_store("notino")
+
+          after = state()
+          print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
+          print("NOTINO_IMPORT_AFTER=" + json.dumps({
+              key: after.get(key) for key in (
+                  "status", "started_at", "finished_at", "discovered_count", "error"
+              )
+          } if after else None, ensure_ascii=False, default=str), flush=True)
+
+          if not is_fresh_feed(after):
+              raise SystemExit("Notino CJ feed import did not reach a fresh FEED_IMPORTED state.")
+          if int(after.get("discovered_count") or 0) < 1:
+              raise SystemExit("Notino CJ feed import returned zero offers.")
+          print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
+          PY
+          )
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c $(printf %s "$remote_python" | python -c "import shlex,sys; print(shlex.quote(sys.stdin.read()))")'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
