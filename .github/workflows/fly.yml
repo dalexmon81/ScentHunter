@@ -917,9 +917,9 @@ jobs:
           PY
 
       - name: Read-only persisted-vs-live price diagnostic
-        if: ${{ always() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
+        if: ${{ always() && failure() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         continue-on-error: true
-        timeout-minutes: 3
+        timeout-minutes: 1
         shell: bash
         run: |
           python - <<'PY'
@@ -928,7 +928,7 @@ jobs:
           url = "https://scenthunter.fly.dev/diagnose-hawas-ice-offers-read-only"
           request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "ScentHunter-price-diagnostic/1.0"})
           try:
-              with urllib.request.urlopen(request, timeout=90) as response:
+              with urllib.request.urlopen(request, timeout=25) as response:
                   payload = json.loads(response.read().decode("utf-8"))
                   print("PERSISTED_VS_LIVE_PRICE_DIAGNOSTIC=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
           except Exception as exc:
