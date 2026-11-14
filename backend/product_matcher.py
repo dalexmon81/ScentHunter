@@ -376,6 +376,10 @@ class ProductMatcher:
         family_registry: Optional[Dict[str, Any] | Iterable[Dict[str, Any]]] = None,
     ) -> None:
         self.family_registry = self._normalize_family_registry(family_registry)
+        # Family resolution is query-scoped but match() calls it once per offer.
+        # Cache both hits and misses so a broad search does not rescan the full
+        # family registry for every retailer candidate.
+        self._family_query_cache: Dict[str, Optional[Dict[str, Any]]] = {}
 
         if isinstance(catalog, dict):
             raw_products = catalog.get("products") or []
@@ -1019,16 +1023,22 @@ class ProductMatcher:
         query_key = catalog_variant_key(query)
         if not query_key:
             return None
+        cached = self._family_query_cache.get(query_key)
+        if cached is not None or query_key in self._family_query_cache:
+            return cached
 
         for family in self.family_registry:
             if query_key in family["normalized_query_aliases"]:
+                self._family_query_cache[query_key] = family
                 return family
 
         padded = f" {query_key} "
         for family in self.family_registry:
             for alias in family["normalized_query_aliases"]:
                 if alias and f" {alias} " in padded:
+                    self._family_query_cache[query_key] = family
                     return family
+        self._family_query_cache[query_key] = None
         return None
 
     def _requested_variant(
