@@ -13,6 +13,30 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "backend" / "product_catalog.json"
 
 
+def test_notino_liquid_brun_cj_gtin_resolves_to_existing_100ml_variant():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            "brand": "French Avenue",
+            "size_ml": 100,
+            "price": 36.70,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/",
+            "gtin": "6290360375694",
+        }],
+        retailer="NOTINO.fr",
+    )
+
+    assert result.rejected_rows == ()
+    assert result.matched_offer_count == 1
+    assert result.unresolved == ()
+    assert result.ambiguous == ()
+    assert result.groups[0].canonical_product_id == "SH-0030"
+    assert result.groups[0].canonical_variant_id == "VAR-f87146c82d167f4c"
+
+
 def test_live_profondo_125ml_edp_resolves_by_verified_gtin_variant_evidence():
     service = NextEngineService.from_catalog_file(CATALOG)
     result = service.process_records(

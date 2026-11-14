@@ -16,6 +16,7 @@ def test_phase2_declares_all_core_tables():
         "brands", "fragrances", "product_variants", "stores",
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
+        "notino_feed_listings",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
@@ -58,7 +59,7 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
             "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
-            "alembic_version",
+            "notino_feed_listings", "alembic_version",
         } <= tables
         with engine.begin() as connection:
             store_id = "00000000-0000-0000-0000-000000000001"

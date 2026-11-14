@@ -10,6 +10,7 @@ on:
       - fix/catalog-hydration-mainline
       - fix/catalog-hydration-slug-normalization
       - fix/notino-authorized-feed-import
+      - feature/notino-cj-feed-ingestion-2026-11-10
 
 jobs:
   parser-regression:
@@ -45,4 +46,6 @@ jobs:
           tests/test_notino_authorized_feed.py
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
+          tests/test_notino_phase2_adapter.py
+          tests/test_notino_legacy_public.py
           backend/tests/test_seed_catalog_store_safety.py

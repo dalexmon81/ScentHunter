@@ -96,6 +96,23 @@ class CatalogWriterLockTests(unittest.TestCase):
             finally:
                 check.close()
 
+    def test_connection_local_pragmas_do_not_wait_for_another_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            first = connect(database, timeout=0.2)
+            second = connect(database, timeout=0.05)
+            try:
+                first.execute("CREATE TABLE writes(value INTEGER)")
+                first.execute("INSERT INTO writes VALUES (1)")
+                second.execute("PRAGMA busy_timeout=100")
+                second.execute("PRAGMA synchronous=NORMAL")
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.execute("INSERT INTO writes VALUES (2)")
+            finally:
+                first.rollback()
+                first.close()
+                second.close()
+
     def test_lock_detection_covers_comments_and_with_statements(self):
         self.assertTrue(_needs_writer_lock("  -- comment\nUPDATE writes SET value=2"))
         self.assertTrue(_needs_writer_lock("/* comment */ DELETE FROM writes"))

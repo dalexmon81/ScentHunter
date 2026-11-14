@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z "${FLYCTL_REAL_BIN:-}" || ! -x "$FLYCTL_REAL_BIN" ]]; then
+  echo "::error::FLYCTL_REAL_BIN is not configured or executable."
+  exit 127
+fi
+
+if [[ "${1:-}" == "ssh" ]]; then
+  timeout_seconds="${FLY_SSH_TIMEOUT_SECONDS:-180}"
+  printf 'FLY_SSH_START timeout=%ss command=' "$timeout_seconds" >&2
+  printf '%q ' "$@" >&2
+  printf '\n' >&2
+  if timeout --signal=TERM --kill-after=20s "${timeout_seconds}s" \
+    "$FLYCTL_REAL_BIN" "$@"; then
+    printf 'FLY_SSH_END status=success\n' >&2
+  else
+    status=$?
+    printf '::error::Fly SSH command failed or timed out (status=%s).\n' "$status" >&2
+    return_code="$status"
+    exit "$return_code"
+  fi
+else
+  exec "$FLYCTL_REAL_BIN" "$@"
+fi

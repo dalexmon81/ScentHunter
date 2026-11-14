@@ -24,6 +24,7 @@ import heapq
 import importlib
 import inspect
 import json
+import math
 import re
 import sqlite3
 try:
@@ -156,7 +157,10 @@ HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
-SYNC_WORKERS = 8
+# Bootstrap discovery writes all retailers into one SQLite database. Keep
+# store-level writers serialized to avoid advisory-lock timeouts; each store
+# still uses bounded parallel HTTP workers for sitemap retrieval.
+SYNC_WORKERS = 2
 REFRESH_WORKERS = 2
 
 # Persistent hydration queue configuration.
@@ -309,6 +313,24 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
         # Use the same browser-class headers as the production Easycosmetic
         # scraper. This is transport only; discovery remains generic.
         response = _session().get(url, headers=EASY_COSMETIC_HEADERS, timeout=timeout, allow_redirects=True)
+    elif host in {'parfumcity.nl', 'www.parfumcity.nl'}:
+        # ParfumCity's public Shopify storefront can stall or return an
+        # incomplete response to the generic ScentHunterBot identity. Use
+        # the retailer connector's ordinary browser-class request headers;
+        # this is a normal public-page request, not challenge bypass.
+        parfumcity_headers = {
+            'User-Agent': (
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/131.0 Safari/537.36'
+            ),
+            'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'nl-NL,nl;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+        }
+        response = _session().get(
+            url, headers=parfumcity_headers, timeout=timeout,
+            allow_redirects=True,
+        )
     elif host in {
         'deloox.be', 'www.deloox.be',
         'deloox.com', 'www.deloox.com',
@@ -669,14 +691,22 @@ def _ensure_schema(conn):
             name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
             size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
             availability TEXT, fetched_at REAL, variant_url TEXT,
+            regular_price REAL, coupon_code TEXT, coupon_required INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY(store,url,variant_key))""")
         # Migrate existing catalogs in place: retailer variant URLs are distinct
         # from the canonical product URL (e.g. Sabina's #/dimensione-100_ml).
+        # Coupon metadata is retained alongside the effective offer price.
         variant_columns = {row['name'] for row in conn.execute(
             'PRAGMA table_info(store_product_variants)'
         ).fetchall()}
         if 'variant_url' not in variant_columns:
             conn.execute('ALTER TABLE store_product_variants ADD COLUMN variant_url TEXT')
+        if 'regular_price' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN regular_price REAL')
+        if 'coupon_code' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN coupon_code TEXT')
+        if 'coupon_required' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN coupon_required INTEGER NOT NULL DEFAULT 0')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
         _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
@@ -817,11 +847,15 @@ def _ensure_schema(conn):
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = connect_catalog_db(DB_PATH, timeout=45)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=45000')
-    _ensure_schema(conn)
-    conn.execute('PRAGMA synchronous=NORMAL')
-    return conn
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=45000')
+        _ensure_schema(conn)
+        conn.execute('PRAGMA synchronous=NORMAL')
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def catalog_price_freshness_snapshot(conn, now=None):
@@ -1107,23 +1141,32 @@ def _looks_product(url, store=None):
         return False
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
-    # because their slugs contain multiple words, so exclude them here while
-    # keeping the generic heuristic unchanged for the other stores.
+    # because their slugs contain multiple words, so exclude them here.
     if re.match(r'^/[a-z]{2}/(?:l|s)(?:/|$)', p.path, re.I):
         return False
-    # ParfumZentrum exposes product pages with a `_z<id>` suffix, while
-    # brand/category/navigation pages use a `_v<id>` suffix. Keep the rule
-    # retailer-generic: it distinguishes URL grammar, not product identity.
+    # ParfumZentrum product URLs use the _z<number> suffix.
     if store == 'parfumzentrum':
-        return bool(re.search(r'(?:^|_)z\d+/?$', p.path, re.I))
+        return bool(re.search(r'(?:^|_)z[0-9]+/?$', p.path, re.I))
+    # Notino's newer French product URLs can be slug-only (no /p-<id>/).
+    # Admit those only when the slug carries an explicit product/concentration
+    # marker; a plain brand/fragrance landing slug must remain navigation.
+    if store == 'notino':
+        path = urllib.parse.unquote(p.path or '').rstrip('/').lower()
+        if re.search(r'(?:^|/)p-[0-9]+/?$', path, re.I):
+            return True
+        slug = path.rsplit('/', 1)[-1]
+        return bool(re.search(
+            r'(?:^|[- ])(?:eau-de-parfum|eau-de-toilette|eau-de-cologne|'
+            r'extrait-de-parfum|parfum-pour|parfum-mixte|pour-homme|'
+            r'pour-femme|for-men|for-women)(?:$|[- ])',
+            slug,
+            re.I,
+        ))
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
-    # Query-only product URLs are accepted if the path is meaningful.
     slug = url_slug(url)
     return len(slug.split()) >= 2
-
-
 def _fetch_sitemap(store, sm):
     try:
         resp = _http_fetch(sm, timeout=SITEMAP_TIMEOUT)
@@ -1611,21 +1654,23 @@ def _html_product_url(store, raw_url, base_url):
             return canonical
         return None
     if store == 'notino':
-        # Notino's canonical product URLs commonly use brand/product slugs
-        # without a numeric ID. Exclude known navigation/utility routes and
-        # accept paths with at least two meaningful segments; the page hydrator
-        # remains responsible for verifying that the page is actually a product.
-        blocked = (
-            '/search', '/parfums', '/parfums-damen', '/parfums-herren',
-            '/parfums-homme', '/marques', '/marken', '/login', '/account',
-            '/cart', '/checkout', '/wishlist', '/customer-service',
-        )
-        if any(low == part or low.startswith(part + '/') for part in blocked):
+        # Keep legacy /p-<id>/ URLs and admit the newer slug-only product
+        # grammar only when its final slug explicitly identifies a fragrance
+        # product/concentration. Plain brand/category slugs are not products.
+        decoded_path = urllib.parse.unquote(p.path or '').rstrip('/')
+        slug = decoded_path.rsplit('/', 1)[-1]
+        has_product_id = bool(re.search(r'(?:^|/)p-[0-9]+/?$', decoded_path, re.I))
+        has_product_marker = bool(re.search(
+            r'(?:^|[- ])(?:eau-de-parfum|eau-de-toilette|eau-de-cologne|'
+            r'extrait-de-parfum|parfum-pour|parfum-mixte|pour-homme|'
+            r'pour-femme|for-men|for-women)(?:$|[- ])',
+            slug,
+            re.I,
+        ))
+        if not (has_product_id or has_product_marker):
             return None
-        segments = [part for part in p.path.split('/') if part]
-        if len(segments) >= 2:
-            return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
-        return None
+        return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
+
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
         # a slug and end in .html. Sabina's legacy storefront also exposes
@@ -4062,7 +4107,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         }
         missing = sorted(required_tables - tables)
         revision = revision_row[0] if revision_row else None
-        if revision not in {"0002_ingestion_raw", "0003_store_domain"} or missing:
+        if revision not in {"0002_ingestion_raw", "0003_store_domain", "0004_notino_feed_listings"} or missing:
             print(
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
                 f"revision={revision!r} missing_tables={missing}", flush=True,
@@ -4270,6 +4315,19 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
+        if store == 'notino':
+            from scrapers.notino.scraper import _allowed_url, _product_id
+            requested_url = _allowed_url(url)
+            final_url = _allowed_url(final)
+            if not requested_url or not final_url:
+                raise RuntimeError('invalid_notino_product_destination')
+            requested_id = _product_id(requested_url)
+            final_id = _product_id(final_url)
+            if (requested_id or final_id) and requested_id != final_id:
+                raise RuntimeError('notino_product_redirect_mismatch')
+            if not requested_id and requested_url.rstrip('/') != final_url.rstrip('/'):
+                raise RuntimeError('notino_product_redirect_mismatch')
+
         if store == 'easycosmetic':
             # Never hydrate or publish a German catalog entry from a response
             # that redirected to a different regional storefront.
@@ -4304,7 +4362,7 @@ def refresh_url(store, url):
             except Exception as exc:
                 parser_error = f'{type(exc).__name__}:{exc}'
                 item = None
-            if not item or not item.get('name'):
+            if store != 'notino' and (not item or not item.get('name')):
                 fallback_item = parse_product(store, final, data)
                 if fallback_item and fallback_item.get('name'):
                     item = fallback_item
@@ -4392,6 +4450,15 @@ def refresh_url(store, url):
             )
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
+
+        if store == 'notino':
+            try:
+                page_size = float(item.get('size_ml'))
+                page_price = float(item.get('price_num'))
+            except (TypeError, ValueError):
+                raise RuntimeError('notino_page_missing_price_or_size') from None
+            if not (math.isfinite(page_size) and page_size > 0 and math.isfinite(page_price) and page_price > 0):
+                raise RuntimeError('notino_page_invalid_price_or_size')
 
         conn = db()
         try:
@@ -4525,6 +4592,33 @@ def refresh_url(store, url):
                                  variant.get('availability') or item.get('availability'),now,
                                  _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
                             )
+                if store == 'notino' and has_explicit_price:
+                    try:
+                        hydrated_size = float(item.get('size_ml'))
+                    except (TypeError, ValueError):
+                        hydrated_size = None
+                    if hydrated_size is not None and hydrated_size > 0:
+                        coupon_code = str(item.get('coupon_code') or '').strip() or None
+                        try:
+                            regular_price = float(item.get('regular_price_num') or item.get('price_num'))
+                        except (TypeError, ValueError):
+                            regular_price = float(item.get('price_num'))
+                        conn.execute(
+                            '''UPDATE store_product_variants
+                               SET price=?, regular_price=?, coupon_code=?,
+                                   coupon_required=?, currency=?, availability=?, fetched_at=?
+                               WHERE store=? AND url=? AND size_ml IS NOT NULL
+                                 AND ABS(size_ml-?) < 0.01''',
+                            (
+                                float(item.get('price_num')), regular_price, coupon_code,
+                                1 if coupon_code else 0, item.get('currency') or 'EUR',
+                                'in_stock' if item.get('available') is True else (
+                                    'out_of_stock' if item.get('available') is False else item.get('availability')
+                                ),
+                                now, store, url, hydrated_size,
+                            ),
+                        )
+
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
@@ -4552,7 +4646,9 @@ def refresh_url(store, url):
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
                         item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                        item.get('price_num'), item.get('currency'), item.get('availability'),
+                        item.get('price_num'), item.get('currency'),
+                        (str(item.get('availability') or '').replace(' ', '_')
+                         if store == 'notino' else item.get('availability')),
                         item.get('fetched_at'), 'OK',
                     ),
                 )
@@ -5935,6 +6031,17 @@ def _queue_mark_done(task):
         conn.close()
 
 
+def _hydration_retry_delay(attempts, http_status=None):
+    """Choose a bounded retry delay, respecting retailer rate limits."""
+    if http_status == 429:
+        # A retailer rate limit is store-side backpressure, not a transient
+        # parser failure. Pause this URL for six hours instead of retrying
+        # repeatedly and worsening the block.
+        return 6 * 60 * 60
+    idx = min(max(int(attempts or 1) - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
+    return float(HYDRATION_BACKOFF_SECONDS[idx])
+
+
 def _queue_mark_error(task, error, http_status=None):
     """Record a retryable error using bounded exponential backoff."""
     now = time.time()
@@ -5949,8 +6056,7 @@ def _queue_mark_error(task, error, http_status=None):
             return
 
         attempts = int(row['attempts'] or 0)
-        idx = min(max(attempts - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
-        delay = float(HYDRATION_BACKOFF_SECONDS[idx])
+        delay = _hydration_retry_delay(attempts, http_status=http_status)
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
 
@@ -7318,7 +7424,11 @@ def sync_all():
                error=excluded.error""",
                (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
     conn.close()
-    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
+    # SQLite has one WAL writer. Launching every retailer at once causes
+    # competing discovery transactions, writer-lock timeouts and starves
+    # hydration. Three concurrent retailers keep network discovery moving
+    # while bounding pressure on the shared persistent catalog.
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(3, SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
         futures = {pool.submit(discover_store, store): store for store in ACTIVE_STORES}
         for future in as_completed(futures):
             store = futures[future]

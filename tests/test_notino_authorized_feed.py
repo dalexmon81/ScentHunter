@@ -1,5 +1,10 @@
 """Tests for the authenticated Notino CJ/VIV XML feed importer."""
 import gzip
+import sqlite3
+import tempfile
+from pathlib import Path
+import tempfile
+from pathlib import Path
 import logging
 import xml.etree.ElementTree as ET
 
@@ -20,7 +25,7 @@ SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
       <g:mpn>LB100</g:mpn>
       <g:price>49,90 EUR</g:price>
       <g:availability>in stock</g:availability>
-      <g:link>https://www.notino.fr/french-avenue/liquid-brun/?utm_source=feed</g:link>
+      <g:link>https://www.notino.fr/french-avenue/liquid-brun/p-12345601/?utm_source=feed</g:link>
       <g:image_link>https://cdn.example.test/liquid-brun.jpg</g:image_link>
       <g:size>100 ml</g:size>
     </item>
@@ -32,7 +37,7 @@ SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
       <g:mpn>LB150LE</g:mpn>
       <g:price>69.90 EUR</g:price>
       <g:availability>in stock</g:availability>
-      <g:link>https://notino.fr/french-avenue/liquid-brun-limited-edition/</g:link>
+      <g:link>https://notino.fr/french-avenue/liquid-brun-limited-edition/p-12345602/</g:link>
       <g:size>150 ml</g:size>
     </item>
     <item>
@@ -57,8 +62,8 @@ def test_google_shopping_namespace_parses_prices_variant_sizes_stock_and_fr_link
     assert by_size[150].price == 69.9
     assert by_size[100].gtin == "6291108730001"
     assert by_size[150].availability == "in_stock"
-    assert by_size[150].url == "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/"
-    assert by_size[100].url == "https://www.notino.fr/french-avenue/liquid-brun/"
+    assert by_size[150].url == "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/p-12345602/"
+    assert by_size[100].url == "https://www.notino.fr/french-avenue/liquid-brun/p-12345601/"
     assert by_size[100].image == "https://cdn.example.test/liquid-brun.jpg"
 
 
@@ -90,6 +95,64 @@ def test_item_url_rejects_non_fr_host_credentials_and_non_https():
     assert feed._product_url("https://www.notino.de/brand/item/") is None
     assert feed._product_url("http://www.notino.fr/brand/item/") is None
     assert feed._product_url("https://user:pass@www.notino.fr/brand/item/") is None
+
+
+
+def test_feed_import_queues_background_hydration_for_coupon_price_refresh(monkeypatch):
+    import catalog_engine
+
+    with tempfile.TemporaryDirectory() as temp:
+        database_path = Path(temp) / "notino.sqlite"
+
+        def open_db():
+            conn = sqlite3.connect(database_path)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        conn = open_db()
+        conn.executescript("""
+            CREATE TABLE store_urls(
+                store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+                discovered_at REAL, active INTEGER, PRIMARY KEY(store,url)
+            );
+            CREATE TABLE store_products(
+                store TEXT, url TEXT, name TEXT, brand TEXT, image TEXT,
+                sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT,
+                gender TEXT, price REAL, currency TEXT, availability TEXT,
+                fetched_at REAL, fetch_status TEXT, PRIMARY KEY(store,url)
+            );
+            CREATE TABLE store_product_variants(
+                store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
+                image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+                concentration TEXT, gender TEXT, price REAL, currency TEXT,
+                availability TEXT, fetched_at REAL, variant_url TEXT,
+                regular_price REAL, coupon_code TEXT, coupon_required INTEGER,
+                PRIMARY KEY(store,url,variant_key)
+            );
+            CREATE TABLE hydration_queue(
+                store TEXT, url TEXT, state TEXT, priority INTEGER, attempts INTEGER,
+                available_at REAL, leased_until REAL, lease_token TEXT,
+                first_seen_at REAL, last_error TEXT, PRIMARY KEY(store,url)
+            );
+        """)
+        conn.close()
+        monkeypatch.setattr(catalog_engine, "db", open_db)
+        offers = feed.parse_feed(SAMPLE)
+
+        assert feed._persist_offers(offers) == 2
+        conn = open_db()
+        rows = conn.execute(
+            "SELECT state,priority FROM hydration_queue ORDER BY url"
+        ).fetchall()
+        assert len(rows) == 2
+        assert all(row["state"] == "PENDING" for row in rows)
+        assert all(row["priority"] == 25 for row in rows)
+        variants = conn.execute(
+            "SELECT price,regular_price,coupon_code,coupon_required FROM store_product_variants"
+        ).fetchall()
+        assert all(row["price"] == row["regular_price"] for row in variants)
+        assert all(row["coupon_code"] is None and row["coupon_required"] == 0 for row in variants)
+        conn.close()
 
 
 def test_no_credentials_fail_without_logging_values(monkeypatch, caplog):

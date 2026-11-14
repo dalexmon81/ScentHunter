@@ -268,6 +268,21 @@ def main() -> int:
                     ))
                     variant_id = stable_id("variant", source_id)
                     variant_row = session.get(ProductVariant, variant_id)
+                    # Canonical JSON stores GTIN evidence as variants[].gtins[];
+                    # older rows may still use the singular gtin field.
+                    # Phase 2 has one GTIN column, so select a deterministic,
+                    # checksum-valid value without altering the source digits.
+                    raw_gtins = variant.get("gtins")
+                    if not isinstance(raw_gtins, list):
+                        raw_gtins = [variant.get("gtin")]
+                    candidate_gtins = sorted({
+                        str(value).strip() for value in raw_gtins
+                        if value not in (None, "")
+                    })
+                    from gtin import is_valid_gtin
+                    valid_gtins = [value for value in candidate_gtins if is_valid_gtin(value)]
+                    selected_gtin = valid_gtins[0] if valid_gtins else None
+
                     if variant_row is None:
                         variant_row = ProductVariant(
                             id=variant_id,
@@ -277,14 +292,20 @@ def main() -> int:
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
-                            gtin=variant.get("gtin"),
+                            gtin=selected_gtin,
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
+                        session.add(variant_row)
+                    elif not variant_row.gtin and selected_gtin:
+                        variant_row.gtin = selected_gtin
                         session.add(variant_row)
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
 
+                    # Ensure the referenced variant row exists before inserting
+                    # its legacy ID map (SQLite enforces this FK immediately).
+                    session.flush()
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
                         session.add(LegacyVariantIdMap(

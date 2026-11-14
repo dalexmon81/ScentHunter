@@ -130,6 +130,7 @@ body{position:relative}
 .bestline{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:4px 0 12px}
 .bestlabel{font-size:11px;color:#a9aaa9;text-transform:uppercase;font-weight:800;letter-spacing:.5px}
 .bestprice{font-size:24px;color:#55ce78;font-weight:950}
+.bestprice.no-price{color:#a9aaa9;font-size:18px}
 .offer{padding:13px 0}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
@@ -743,10 +744,15 @@ function shPrice(o){
    * marker while preserving the existing Italian decimal presentation. */
   const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
   const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
-  if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
+  const currency=String(o?.currency||"EUR").trim().toUpperCase();
+  if(Number.isFinite(parsed)&&parsed>0){
+    if(currency==="EUR")return formatEuro(parsed);
+    return `${parsed.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})} ${currency}`;
+  }
   return "Prezzo non disponibile";
 }
 function shNum(o){
+  if(String(o?.currency||"EUR").trim().toUpperCase()!=="EUR")return Infinity;
   const n=Number(o&&o.price_num);
   if(Number.isFinite(n)&&n>0)return n;
   const p=parsePrice(o&&o.price);
@@ -800,6 +806,7 @@ function shGroupData(data){
     const fallback_image=fallback_images.find(url=>url!==image) || fallback_images[0] || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
+      retailer_only:Boolean(group.retailer_only),
       identity_only,
       brand:String(group.canonical_brand||group.brand||"").trim(),
       canonical_brand:String(group.canonical_brand||group.brand||"").trim(),
@@ -899,6 +906,12 @@ function getSizeGroups(g){
 function productGroupKey(g){return String(g?.catalog_id||"").trim()}
 function clearOpenProduct(){currentOpenProductKey="";currentOpenSizeKey=null}
 
+function getBestPricedOffer(offers){
+  return (Array.isArray(offers)?offers:[])
+    .filter(o=>!isOfferOutOfStock(o)&&Number.isFinite(shNum(o)))
+    .sort((a,b)=>shNum(a)-shNum(b))[0]||null;
+}
+
 function showProducts(groups){
   const list=[...(Array.isArray(groups)?groups:[])].sort((a,b)=>{
     const aa=displayPerfumeName(a?.name||"",a?.brand||"");
@@ -909,22 +922,30 @@ function showProducts(groups){
   clearOpenProduct();
   statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
-    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const best=getBestPricedOffer(offers);
+    const hasAvailableOffer=offers.some(o=>!isOfferOutOfStock(o));
+    const priceLabel=best?`da ${esc(shPrice(best))}`:hasAvailableOffer?"Prezzo non disponibile":offers.length?"OUT OF STOCK":"Nessuna offerta verificata";
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
-      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
+       <div class="product-choice-main"><div class="name">${esc(title)}</div>${g.retailer_only?'<div class="offer-meta">Solo Notino · confronto non verificato</div>':""}<div class="bestprice ${best?"":"no-price"}">${esc(priceLabel)}</div></div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
 }
 
 function renderOffersHtml(g,img,offers,saved){
-  return (offers||[]).map((o,n)=>{
+  const best=getBestPricedOffer(offers);
+  return (offers||[]).map(o=>{
     const out=isOfferOutOfStock(o);
+    const isBest=o===best;
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    const couponMeta=o.coupon_required&&o.coupon_code
+      ? `<div class="offer-meta">Con codice ${esc(o.coupon_code)} · prezzo normale ${esc(shPrice({price:o.regular_price,price_num:o.regular_price_num,currency:o.currency}))}</div>`
+      : "";
+    return `<div class="offer ${isBest?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBest?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · DA AGGIORNARE</div>':(isBest?'<div class="offer-meta">MIGLIOR PREZZO</div>':"")}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${couponMeta}${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
   }).join("");
 }
 
@@ -937,7 +958,7 @@ function renderFormatChoiceCard(gi,g,sizes){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
-    return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
+    return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best&&Number.isFinite(shNum(best))?`da ${esc(shPrice(best))}`:`Prezzo non disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
   }).join("")}</article>`;
 }
 
@@ -1238,3 +1259,4 @@ queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault()
 renderWishlist();syncHearts();
 </script>
 </body></html>
+\n<!-- PR726 staging deploy trigger: rebuild full branch image after backend identity fix. -->\n

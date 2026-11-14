@@ -165,10 +165,14 @@ def _product_url(raw: str) -> str | None:
     ):
         return None
     path = re.sub(r"/{2,}", "/", parsed.path or "")
-    if not path or path == "/" or path.lower().startswith((
-        "/search", "/parfums", "/marques", "/login", "/account", "/cart",
-        "/checkout", "/customer-service", "/wishlist",
-    )):
+    if (
+        not path
+        or not re.search(r"/p-\d+/?$", path, re.I)
+        or path.lower().startswith((
+            "/search", "/parfums", "/marques", "/login", "/account", "/cart",
+            "/checkout", "/customer-service", "/wishlist",
+        ))
+    ):
         return None
     # Canonical product links remain on the French host. Feed redirects and
     # tracking query parameters do not become duplicate source offers.
@@ -452,13 +456,15 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                     conn.execute(
                         """INSERT INTO store_product_variants(
                                store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                               concentration,gender,price,currency,availability,fetched_at,variant_url)
-                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                               concentration,gender,price,currency,availability,fetched_at,variant_url,
+                               regular_price,coupon_code,coupon_required)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                            ON CONFLICT(store,url,variant_key) DO UPDATE SET
                              name=excluded.name,brand=excluded.brand,image=excluded.image,
                              sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
                              size_ml=excluded.size_ml,concentration=excluded.concentration,
                              price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
+                             regular_price=excluded.regular_price,coupon_code=NULL,coupon_required=0,
                              currency=excluded.currency,availability=excluded.availability,
                              fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
                         (
@@ -466,16 +472,33 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                             offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
                             offer.size_ml, offer.concentration, None,
                             offer.price, offer.currency, offer.availability, now, url,
+                            offer.price, None, 0,
                         ),
                     )
+                # Feed rows provide a reliable base price, but background
+                # hydration must still inspect the product page for coupon-only
+                # prices and richer variant evidence. Never scrape during search.
                 conn.execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,priority,attempts,available_at,first_seen_at)
-                       VALUES(?,?,'DONE',0,0,?,?)
+                       VALUES(?,?,'PENDING',25,0,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
-                         state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
-                         leased_until=NULL,lease_token=NULL,last_error=NULL""",
-                    (STORE_KEY, url, now, now),
+                         state=CASE
+                           WHEN hydration_queue.state='PROCESSING'
+                                AND hydration_queue.leased_until > ?
+                           THEN 'PROCESSING' ELSE 'PENDING' END,
+                         priority=MIN(hydration_queue.priority,25),
+                         attempts=CASE WHEN hydration_queue.state='PROCESSING'
+                                       THEN hydration_queue.attempts ELSE 0 END,
+                         available_at=excluded.available_at,
+                         leased_until=CASE WHEN hydration_queue.state='PROCESSING'
+                                           AND hydration_queue.leased_until > ?
+                                      THEN hydration_queue.leased_until ELSE NULL END,
+                         lease_token=CASE WHEN hydration_queue.state='PROCESSING'
+                                          AND hydration_queue.leased_until > ?
+                                     THEN hydration_queue.lease_token ELSE NULL END,
+                         last_error=NULL""",
+                    (STORE_KEY, url, now, now, now, now, now),
                 )
     finally:
         conn.close()
@@ -515,9 +538,16 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
                 """SELECT v.*, u.active
                      FROM store_product_variants v
                      JOIN store_urls u ON u.store=v.store AND u.url=v.url
+                     JOIN hydration_queue q ON q.store=v.store AND q.url=v.url
+                     JOIN store_products p ON p.store=v.store AND p.url=v.url
                     WHERE v.store=? AND u.active=1
                       AND v.fetched_at>=? AND v.price>0
                       AND upper(COALESCE(v.currency,''))='EUR'
+                      AND q.state='DONE'
+                      AND q.last_error IS NULL
+                      AND p.fetch_status='OK' AND p.price>0
+                      AND v.fetched_at>q.first_seen_at
+                      AND v.fetched_at>=p.fetched_at
                     ORDER BY v.fetched_at DESC""",
                 (STORE_KEY, cutoff),
             ).fetchall()
@@ -561,6 +591,17 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "name": name,
             "price": f"{price:.2f} €",
             "price_num": price,
+            "price_stale": (time.time() - float(row["fetched_at"] or 0)) > 24 * 60 * 60,
+            "regular_price": (
+                f"{float(row['regular_price']):.2f} €"
+                if row["regular_price"] is not None and row["coupon_required"] else None
+            ),
+            "regular_price_num": (
+                float(row["regular_price"])
+                if row["regular_price"] is not None and row["coupon_required"] else None
+            ),
+            "coupon_code": row["coupon_code"],
+            "coupon_required": bool(row["coupon_required"]),
             "currency": "EUR",
             "available": True,
             "availability": row["availability"],

@@ -1,0 +1,33 @@
+# Isolated web staging for PR #726. Dedicated persistent SQLite volume; no production DB.
+app = "scenthunter-pr726-staging"
+primary_region = "ams"
+
+[build]
+
+[env]
+  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  CATALOG_BACKGROUND_WORKERS_ENABLED = "1"
+  NOTINO_PUBLIC_FALLBACK_ENABLED = "0"
+  NOTINO_CJ_STANDALONE_ENABLED = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Keep the staging machine alive while the separate CJ import workflow
+  # transfers, expands, imports, and verifies the feed over Fly SSH/SFTP.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "scenthunter_pr726_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# 2026-11-12: redeploy isolated PR staging against the current branch head after feed import.

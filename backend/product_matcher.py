@@ -1682,22 +1682,30 @@ class ProductMatcher:
         )
 
         resolved_size = size_ml(offer)
-        if resolved_size is None:
-            variant_sizes = []
-            raw_sizes = variant.get("formats_ml") or variant.get("sizes_ml") or []
-            if isinstance(raw_sizes, (str, int, float)):
-                raw_sizes = [raw_sizes]
-            for raw_size in raw_sizes:
-                try:
-                    value = float(raw_size)
-                except (TypeError, ValueError):
-                    continue
-                if value not in variant_sizes:
-                    variant_sizes.append(value)
-            if not variant_sizes and catalog_product is not None:
-                variant_sizes = list(catalog_product.formats_ml)
-            if len(variant_sizes) == 1:
-                resolved_size = variant_sizes[0]
+        variant_sizes = []
+        raw_sizes = variant.get("formats_ml") or variant.get("sizes_ml") or []
+        if isinstance(raw_sizes, (str, int, float)):
+            raw_sizes = [raw_sizes]
+        for raw_size in raw_sizes:
+            try:
+                value = float(raw_size)
+            except (TypeError, ValueError):
+                continue
+            if value not in variant_sizes:
+                variant_sizes.append(value)
+        if not variant_sizes and catalog_product is not None:
+            variant_sizes = list(catalog_product.formats_ml)
+        # A product-family alias is not permission to publish every bottle
+        # size under every variant. When the canonical variant has declared
+        # formats, an explicit retailer size outside that set is a mismatch.
+        if (
+            resolved_size is not None
+            and variant_sizes
+            and not any(abs(resolved_size - allowed) < 0.01 for allowed in variant_sizes)
+        ):
+            return {"status": "rejected", "reject_reason": "canonical_variant_size_mismatch"}
+        if resolved_size is None and len(variant_sizes) == 1:
+            resolved_size = variant_sizes[0]
 
         if resolved_size is not None:
             result["size_ml"] = resolved_size
@@ -1828,6 +1836,20 @@ class ProductMatcher:
         offer: Dict[str, Any],
         query: str,
     ) -> Optional[Dict[str, Any]]:
+        # Notino feed rows marked retailer-only must never be promoted by fuzzy
+        # name/brand matching. Their only route to canonical identity is the
+        # exact-GTIN persistence adapter; the public bridge preserves them as
+        # independent retailer listings.
+        if str(offer.get("_match_policy") or "").strip().casefold() == "exact_gtin_only":
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={offer.get('store')!r} name={offer.get('name')!r} "
+                    "method=exact_gtin_only_policy",
+                    flush=True,
+                )
+            return None
+
         started = time.perf_counter()
 
         store = str(offer.get("store") or "")
@@ -2695,6 +2717,12 @@ class ProductMatcher:
             "matched_alias": best_alias,
         }
         resolved_size = size_ml(offer)
+        if (
+            resolved_size is not None
+            and best_product.formats_ml
+            and not any(abs(resolved_size - allowed) < 0.01 for allowed in best_product.formats_ml)
+        ):
+            return {"status": "rejected", "reject_reason": "canonical_variant_size_mismatch"}
         if resolved_size is None and len(best_product.formats_ml) == 1:
             resolved_size = best_product.formats_ml[0]
         if resolved_size is not None:

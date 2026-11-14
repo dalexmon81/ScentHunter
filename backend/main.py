@@ -452,8 +452,11 @@ def _start_catalog_hydration():
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
             # Queue enough stale rows to keep the bounded worker pool busy.
-            'batch_size': 16,
-            'workers': 8,
+            # Keep the durable queue full and use the catalog engine's
+            # bounded worker ceiling. SQLite writes remain coordinated by
+            # the writer lock; network fetches can run concurrently.
+            'batch_size': 24,
+            'workers': 6,
             'pause_seconds': 0.25,
         },
         daemon=True,
@@ -487,8 +490,14 @@ def _catalog_bootstrap_worker():
     try:
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
             raise RuntimeError('catalog_engine_unavailable')
-        result = catalog_sync_all()
+        # Start hydration before the full-store discovery pass completes.
+        # Discovery persists URLs incrementally; the hydrator can consume those
+        # batches immediately instead of leaving every discovered URL queued
+        # until the slowest retailer (often a large sitemap/HTML fallback) ends.
+        # Keep hydration concurrency deliberately low because discovery and
+        # hydration share the same SQLite volume and writer coordination lock.
         _start_catalog_hydration()
+        result = catalog_sync_all()
         _start_catalog_discovery()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
@@ -637,26 +646,52 @@ def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
 
 @app.on_event('startup')
 def _start_catalog_bootstrap():
-    global _CATALOG_BOOTSTRAP_STARTED
+    global _CATALOG_BOOTSTRAP_STARTED, _CATALOG_BOOTSTRAP_DONE
     with _CATALOG_BOOTSTRAP_LOCK:
         if _CATALOG_BOOTSTRAP_STARTED:
             return
         _CATALOG_BOOTSTRAP_STARTED = True
+
+    # Isolated smoke-test deployments can opt out of broad discovery and
+    # hydration. Those background workers compete with targeted verification
+    # for the same SQLite writer lock and can starve API/search requests.
+    background_enabled = str(
+        os.environ.get('CATALOG_BACKGROUND_WORKERS_ENABLED', '1')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if not background_enabled:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_DONE = _catalog_is_ready()
+        print(
+            'CATALOG BOOTSTRAP SKIP: background workers disabled by configuration',
+            flush=True,
+        )
+        return
+
     if _catalog_is_ready():
         missing_stores = _stores_missing_catalog()
         with _CATALOG_BOOTSTRAP_LOCK:
-            global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
         if missing_stores:
             print(
                 'CATALOG BOOTSTRAP: stores without valid indexed URLs: '
-                f'{missing_stores}; shared round-robin discovery will handle them',
+                f'{missing_stores}; starting immediate background discovery',
                 flush=True,
             )
         else:
             print('CATALOG BOOTSTRAP: all stores have indexed URLs; shared discovery remains enabled', flush=True)
         _start_catalog_hydration()
         _start_catalog_discovery()
+        if missing_stores:
+            # A partially populated persistent volume must not be treated as a
+            # fully bootstrapped catalog. Start discovery for every missing
+            # retailer immediately; the shared round-robin loop remains the
+            # ongoing maintenance path. This runs outside /search.
+            threading.Thread(
+                target=_discover_missing_catalog_stores,
+                args=(tuple(missing_stores),),
+                daemon=True,
+                name='scenthunter-missing-store-bootstrap',
+            ).start()
         return
     threading.Thread(
         target=_catalog_bootstrap_worker,
@@ -945,7 +980,19 @@ def _resolve_offer_identity(result, query):
         })
         return output
 
-    # The central matcher returns the resolved offer directly.  Do not replace
+    # The central matcher may explicitly reject an offer when its retailer
+    # size conflicts with the canonical sellable variant. Never turn that
+    # rejection into a successful identity match.
+    if str(match.get("status") or "").strip().lower() == "rejected":
+        output.update({
+            "_match_status": "rejected",
+            "_reject_reason": match.get("reject_reason") or "matcher_rejected",
+            "catalog_id": None,
+            "canonical_name": None,
+        })
+        return output
+
+    # The central matcher returns the resolved offer directly. Do not replace
     # the retailer's raw brand/name fields; canonical identity is exposed in
     # its dedicated canonical_* fields.
     output.update(match)
@@ -1131,19 +1178,38 @@ def _is_non_fragrance_offer(item):
         value = item.get(key)
         if value not in (None, ""):
             url_parts.append(str(value))
-    url_text = " ".join(url_parts).lower()
+    # Retailer affiliate links (CJ, Awin, etc.) often wrap the real
+    # destination in a URL query parameter. Inspect both the wrapper and the
+    # decoded destination path; otherwise a gift set can pass as a single
+    # perfume when its title is shortened to just the fragrance name.
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    decoded_destinations = []
+    for raw_url in url_parts:
+        try:
+            parsed = urlsplit(raw_url)
+            for key in ("url", "u", "target", "dest", "destination"):
+                decoded_destinations.extend(parse_qs(parsed.query).get(key, []))
+            decoded_destinations.append(unquote(raw_url))
+        except ValueError:
+            decoded_destinations.append(raw_url)
+    destination_text = " ".join(decoded_destinations).lower()
     non_fragrance_url_re = re.compile(
-        r"(?:^|[/_?&=-])(?:cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|"
-        r"face[-_ ]?wash|facial[-_ ]?cleanser|gesichtswasser|"
-        r"toner|tonique|shampoo|conditioner|moisturizer|moisturiser|"
-        r"carbon[-_ ]negro[-_ ]y[-_ ]cactus)(?:$|[/_?&=.-])",
+        r"(?:^|[/_?&=.% -])(?:gift[-_ ]?set|giftbox|gift[-_ ]?box|"
+        r"coffret(?:[-_ ]?cadeau)?|set[-_ ]?regalo|discovery[-_ ]?set|"
+        r"fragrance[-_ ]?set|perfume[-_ ]?set|parfum[-_ ]?set|"
+        r"bundle|pack[-_ ]?regalo|duo|trio|kit|"
+        r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face[-_ ]?wash|"
+        r"facial[-_ ]?cleanser|gesichtswasser|toner|tonique|shampoo|"
+        r"conditioner|moisturizer|moisturiser|"
+        r"carbon[-_ ]negro[-_ ]y[-_ ]cactus)(?:$|[/_?&=.% -])",
         re.I,
     )
 
     return bool(
         _NON_FRAGRANCE_TITLE_RE.search(title_text)
         or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
-        or non_fragrance_url_re.search(url_text)
+        or non_fragrance_url_re.search(destination_text)
     )
 
 
@@ -1351,20 +1417,27 @@ def result_key(item):
             return str(value or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
     sku = str(item.get('sku') or '').strip().lower()
+    gtin = re.sub(r'\D', '', str(item.get('gtin') or item.get('gtin13') or item.get('ean') or ''))
+    has_notino_gtin = store == 'notino' and len(gtin) in {8, 12, 13, 14}
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    # A retailer product URL is the strongest cross-catalog identity for the same offer.
-    # Catalog IDs can differ when the same retailer listing is linked to duplicate
-    # canonical records. Explicit size and variant selectors below still keep
-    # genuinely distinct sellable variants separate.
-    identity_key = _offer_url_identity(product_url) or catalog_id or product_id or sku or name
+    # A validated GTIN identifies the sellable variant more reliably than a
+    # retailer URL. Notino exposes the same product through catalog URLs and
+    # CJ tracking URLs; those must collapse to one offer, not three rows.
+    # Otherwise use the retailer listing URL and explicit variant selectors.
+    identity_key = (
+        f'gtin:{gtin}' if has_notino_gtin
+        else _offer_url_identity(product_url) or catalog_id or product_id or sku or name
+    )
 
     # Preserve commercial variant identity even when size is known. Size alone
     # is not sufficient: retailers can expose multiple sellable combinations
     # with the same volume, and their selector URLs must not be merged.
-    variant_identity = next((str(item.get(field) or '').strip().lower()
-                             for field in ('variant_key', 'variant_id', 'variant_sku')
-                             if str(item.get(field) or '').strip()), '')
+    variant_identity = '' if store == 'notino' and len(gtin) in {8, 12, 13, 14} else next((
+        str(item.get(field) or '').strip().lower()
+        for field in ('variant_key', 'variant_id', 'variant_sku')
+        if str(item.get(field) or '').strip()
+    ), '')
     if not variant_identity and url:
         # Keep explicit query selectors and selector-like fragments, while
         # ignoring ordinary page anchors and unrelated tracking parameters.
@@ -1389,6 +1462,178 @@ def result_key(item):
 
     return (store, identity_key, round(size, 3) if size is not None else '')
 
+def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
+    """Publish CJ identities only when the same Notino product page was hydrated.
+
+    CJ supplies identity, GTIN and affiliate clickout. Background product-page
+    hydration supplies the displayed price and stock. Feed prices alone are not
+    treated as verified retail prices. Matching uses the immutable /p-ID/
+    destination plus size/concentration, never fuzzy fragrance-name matching.
+    """
+    import re
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    def product_id(item):
+        raw = str(item.get("url") or item.get("product_url") or "").strip()
+        try:
+            parsed = urlsplit(raw)
+            if parsed.hostname in {
+                "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
+                "www.kqzyfj.com", "www.tkqlhce.com",
+            }:
+                from app.services.notino_affiliate import is_valid_notino_affiliate_url
+                if not is_valid_notino_affiliate_url(raw):
+                    return None
+                targets = parse_qs(parsed.query).get("url", [])
+                if len(targets) != 1:
+                    return None
+                raw = unquote(targets[0])
+                parsed = urlsplit(raw)
+            if parsed.scheme != "https" or parsed.hostname not in {"notino.fr", "www.notino.fr"}:
+                return None
+            match = re.search(r"/p-(\d+)/?$", parsed.path, re.I)
+            return match.group(1) if match else None
+        except ValueError:
+            return None
+
+    def normalized(value):
+        return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+
+    def concentration(item):
+        value = normalized(item.get("variant") or item.get("concentration"))
+        if not value:
+            value = normalized(item.get("name") or item.get("title"))
+        if "extrait" in value:
+            return "extrait"
+        if "eau de toilette" in value or re.search(r"\bedt\b", value):
+            return "edt"
+        if "eau de parfum" in value or re.search(r"\bedp\b", value):
+            return "edp"
+        if "eau de cologne" in value or re.search(r"\bedc\b", value):
+            return "edc"
+        return value
+
+    def variant_identity(item):
+        catalog_id = str(item.get("catalog_id") or "").strip()
+        size = _safe_float(item.get("size_ml"))
+        strength = concentration(item)
+        if not catalog_id or size is None or not strength:
+            return None
+        return catalog_id, round(size, 3), strength
+
+    def compatible(feed, hydrated):
+        fetched_at = _safe_float(hydrated.get("fetched_at"))
+        age = time.time() - fetched_at if fetched_at is not None else None
+        if age is None or age < 0 or age > 24 * 60 * 60:
+            return False
+        if str(hydrated.get("availability") or "").casefold() not in {
+            "in_stock", "out_of_stock",
+        }:
+            return False
+        if str(hydrated.get("currency") or "").upper() != "EUR":
+            return False
+        feed_size = _safe_float(feed.get("size_ml"))
+        hydrated_size = _safe_float(hydrated.get("size_ml"))
+        if (
+            feed_size is None or hydrated_size is None
+            or abs(feed_size - hydrated_size) > 0.01
+        ):
+            return False
+        feed_concentration = concentration(feed)
+        hydrated_concentration = concentration(hydrated)
+        if not feed_concentration or not hydrated_concentration:
+            return False
+        if feed_concentration != hydrated_concentration:
+            return False
+        feed_brand = normalized(feed.get("brand") or feed.get("canonical_brand"))
+        hydrated_brand = normalized(hydrated.get("brand"))
+        return bool(feed_brand and hydrated_brand and feed_brand == hydrated_brand)
+
+    remaining = list(legacy_offers)
+    published = []
+    published_variants = set()
+    published_pages = set()
+    feed_pages = {product_id(item) for item in phase2_offers} - {None}
+    feed_variants = {
+        key for item in phase2_offers
+        if (key := variant_identity(item)) is not None
+    }
+    for feed in phase2_offers:
+        identity = product_id(feed)
+        variant_key = variant_identity(feed)
+        if not identity or identity in published_pages or (
+            variant_key is not None and variant_key in published_variants
+        ) or _is_non_fragrance_offer(feed):
+            continue
+        candidates = [
+            (index, item) for index, item in enumerate(remaining)
+            if product_id(item) == identity
+            and compatible(feed, item)
+            and not _is_non_fragrance_offer(item)
+        ]
+        if not candidates:
+            # A raw CJ price is not proof of the current checkout price.
+            # Keep the listing unpublished until background page hydration succeeds.
+            continue
+        index, hydrated = max(
+            candidates,
+            key=lambda pair: _safe_float(pair[1].get("fetched_at")) or 0,
+        )
+        verified_price = _safe_float(
+            hydrated.get("price_num") if hydrated.get("price_num") is not None
+            else hydrated.get("price")
+        )
+        if verified_price is None or verified_price <= 0:
+            continue
+        merged = {**hydrated, **feed}
+        for field in (
+            "price", "price_num", "currency", "availability", "available",
+            "in_stock", "stock", "stock_status", "availability_status",
+            "price_stale", "regular_price", "regular_price_num",
+            "coupon_code", "coupon_required", "fetched_at",
+        ):
+            if field in hydrated:
+                merged[field] = hydrated[field]
+        merged["price_source"] = "notino_product_page_hydration"
+        merged["price_stale"] = False
+        published.append(merged)
+        published_pages.add(identity)
+        if variant_key is not None:
+            published_variants.add(variant_key)
+            remaining = [
+                item for item in remaining
+                if variant_identity(item) != variant_key
+            ]
+        else:
+            remaining.pop(index)
+
+    from scrapers.notino.scraper import lookslikeproducturl
+    valid_legacy = []
+    for item in remaining:
+        raw_url = str(item.get("url") or item.get("product_url") or "").strip()
+        try:
+            parsed_url = urlsplit(raw_url)
+            if parsed_url.hostname in {
+                "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
+                "www.kqzyfj.com", "www.tkqlhce.com",
+            }:
+                targets = parse_qs(parsed_url.query).get("url", [])
+                if len(targets) != 1:
+                    continue
+                raw_url = unquote(targets[0])
+        except ValueError:
+            continue
+        if (
+            not _is_non_fragrance_offer(item)
+            and lookslikeproducturl(raw_url)
+            and product_id(item) not in feed_pages
+            and variant_identity(item) not in published_variants
+            and variant_identity(item) not in feed_variants
+        ):
+            valid_legacy.append(item)
+    return published + valid_legacy
+
+
 def dedupe_results(results, diagnostics=None):
     """Deduplicate repeated retailer offers across canonical catalog records.
 
@@ -1400,14 +1645,65 @@ def dedupe_results(results, diagnostics=None):
     seen = {}
     output = []
 
+    def localized_shopify_key(item):
+        from urllib.parse import parse_qsl, urlsplit
+        store = _normalise_store(item.get('store') or item.get('shop'), '')
+        if store not in {'parfumcity', 'perfumemarket', 'orioudh'}:
+            return None
+        try:
+            parsed = urlsplit(str(item.get('product_url') or item.get('url') or '').strip())
+            host = (parsed.hostname or '').lower().removeprefix('www.')
+            path = re.sub(r'^/(?:en|fr|de|it|es|nl)(?=/products/)', '', parsed.path.lower())
+            if not host or not path.startswith('/products/'):
+                return None
+            query = tuple(sorted(
+                (key.lower(), value) for key, value in parse_qsl(parsed.query)
+                if key.lower() in {'variant', 'variant_id', 'sku'}
+            ))
+        except ValueError:
+            return None
+        size = _safe_float(item.get('size_ml'))
+        variant = str(item.get('variant_key') or item.get('variant_id') or '').strip().lower()
+        return (store, host, path.rstrip('/'), query, round(size, 3) if size is not None else None, variant)
+
+    def commercial_evidence(item):
+        price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
+        if price is not None and price <= 0:
+            price = None
+        state = str(item.get('availability') or item.get('stock_status') or '').strip().lower().replace(' ', '_')
+        return price, str(item.get('currency') or '').strip().upper(), state
+
+    known_localized = {
+        key for item in results if isinstance(item, dict)
+        if (key := localized_shopify_key(item)) is not None
+        and (commercial_evidence(item)[0] is not None or commercial_evidence(item)[2] in {'in_stock', 'out_of_stock'})
+    }
+
     def fingerprint(item):
         store = _normalise_store(item.get('store') or item.get('shop'), '')
-        if store not in {'easycosmetic', 'sabina'}:
-            return None
-        name = ' '.join(str(item.get('name') or item.get('canonical_name') or item.get('title') or '').lower().split())
+        localized = localized_shopify_key(item)
+        if localized is not None:
+            return ('localized-shopify', *localized, *commercial_evidence(item))
+        name = ' '.join(str(item.get('canonical_name') or item.get('name') or item.get('title') or '').lower().split())
         name = re.sub(r'[^a-z0-9]+', ' ', name).strip()
         size = _safe_float(item.get('size_ml'))
         price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
+        if price is not None and price <= 0:
+            price = None
+        if store == 'notino':
+            # Notino legacy rows may lack a GTIN and carry a generic URL.
+            # Use canonical sellable identity only as a fallback; two distinct
+            # valid GTINs are explicitly kept separate in the dedupe loop.
+            catalog_id = str(item.get('catalog_id') or '').strip().casefold()
+            concentration = re.sub(
+                r'[^a-z0-9]+', ' ',
+                str(item.get('variant') or item.get('concentration') or '').casefold()
+            ).strip()
+            if catalog_id and name and size is not None:
+                return ('notino-canonical-variant', catalog_id, name, round(size, 3), concentration)
+            return None
+        if store not in {'easycosmetic', 'sabina'}:
+            return None
         variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
         if price is None:
             return None
@@ -1423,16 +1719,73 @@ def dedupe_results(results, diagnostics=None):
         return ('offer-fingerprint', store, name, round(size, 3), round(price, 2), variant)
 
     for index, item in enumerate(results):
+        localized = localized_shopify_key(item)
+        price, _, state = commercial_evidence(item)
+        store = _normalise_store(item.get('store') or item.get('shop'), '')
+        # Never publish Notino legacy/search/category URLs as purchasable offers.
+        # They can open a generic page containing multiple Hawas editions and
+        # make a stale price look attached to the wrong fragrance. Accept only
+        # a direct Notino product detail URL (/p-<id>/) or a validated CJ clickout.
+        if store == 'notino':
+            from urllib.parse import urlsplit
+            from app.services.notino_affiliate import is_valid_notino_affiliate_url
+            offer_url = str(item.get('url') or item.get('product_url') or '').strip()
+            try:
+                parsed_offer_url = urlsplit(offer_url)
+                host = (parsed_offer_url.hostname or '').lower()
+                direct_detail = (
+                    parsed_offer_url.scheme == 'https'
+                    and host in {'notino.fr', 'www.notino.fr'}
+                    and parsed_offer_url.username is None
+                    and parsed_offer_url.password is None
+                    and parsed_offer_url.port in (None, 443)
+                    and bool(re.search(r'/p-\d+/?$', parsed_offer_url.path, re.I))
+                )
+            except ValueError:
+                direct_detail = False
+            if not direct_detail and not is_valid_notino_affiliate_url(offer_url):
+                continue
+        # Do not publish a generic/stale duplicate as "Prezzo non disponibile".
+        if store == 'notino' and price is None:
+            continue
+        if localized in known_localized and price is None and state in {'', 'unknown'}:
+            continue
         key = result_key(item)
         fp = fingerprint(item)
-        keeper_entry = seen.get(key) or (seen.get(fp) if fp is not None else None)
+        keeper_entry = seen.get(key)
+        if keeper_entry is None and fp is not None:
+            candidate = seen.get(fp)
+            if candidate is not None:
+                candidate_gtin = re.sub(r'\D', '', str(
+                    candidate['item'].get('gtin') or candidate['item'].get('gtin13') or candidate['item'].get('ean') or ''
+                ))
+                item_gtin = re.sub(r'\D', '', str(
+                    item.get('gtin') or item.get('gtin13') or item.get('ean') or ''
+                ))
+                if not (
+                    store == 'notino'
+                    and len(candidate_gtin) in {8, 12, 13, 14}
+                    and len(item_gtin) in {8, 12, 13, 14}
+                    and candidate_gtin != item_gtin
+                ):
+                    keeper_entry = candidate
         if keeper_entry is None:
-            entry = {"index": index, "item": item}
+            entry = {"index": index, "output_index": len(output), "item": item}
             seen[key] = entry
             if fp is not None:
                 seen.setdefault(fp, entry)
             output.append(item)
             continue
+
+        if (
+            key[0] == 'notino'
+            and item.get('source') == 'cj_notino_fr_feed'
+            and keeper_entry["item"].get('source') != 'cj_notino_fr_feed'
+        ):
+            previous = keeper_entry["item"]
+            output[keeper_entry["output_index"]] = item
+            keeper_entry["item"] = item
+            item = previous
 
         if diagnostics is not None:
             keeper = keeper_entry["item"]
@@ -1578,7 +1931,7 @@ def _public_offer(item):
         or item.get("manufacturer")
     )
 
-    return {
+    public_offer = {
         # Canonical identity is deliberately repeated on every public offer.
         # The frontend can therefore flatten offers without losing the product
         # identity that the central matcher already resolved.
@@ -1592,6 +1945,15 @@ def _public_offer(item):
         "shop": item.get("shop"),
         "price": item.get("price"),
         "price_num": item.get("price_num"),
+        # Preserve Notino's explicit coupon breakdown through the public API.
+        # The effective price remains the displayed price; regular_price and
+        # coupon_code explain the condition instead of silently dropping it.
+        "regular_price": item.get("regular_price"),
+        "regular_price_num": item.get("regular_price_num"),
+        "coupon_code": item.get("coupon_code"),
+        "coupon_required": bool(item.get("coupon_required")),
+        "price_stale": item.get("price_stale"),
+        "currency": item.get("currency"),
         "format": item.get("format"),
         "size_ml": item.get("size_ml"),
         "variant_id": item.get("variant_id"),
@@ -1616,6 +1978,9 @@ def _public_offer(item):
             or item.get("brand")
             or item.get("manufacturer"),
     }
+    if item.get("source") == "cj_notino_fr_feed":
+        public_offer["source"] = "cj_notino_fr_feed"
+    return public_offer
 
 def _aggregate_identity_results(offers):
     """
@@ -1635,7 +2000,11 @@ def _aggregate_identity_results(offers):
             or "unresolved"
         ).lower()
 
-        if status == "matched" and offer.get("catalog_id"):
+        retailer_only = (
+            status == "notino_retailer_only"
+            and offer.get("source") == "cj_notino_fr_feed"
+        )
+        if (status == "matched" or retailer_only) and offer.get("catalog_id"):
             # Final generic publication guard: non-fragrance commercial rows
             # (samples, testers, gift sets, bundles, cosmetics, etc.) must
             # never enter public offer groups even if an upstream path marked
@@ -1665,6 +2034,7 @@ def _aggregate_identity_results(offers):
                         "canonical_name"
                     ),
                     "image": offer.get("canonical_image") or "",
+                    "retailer_only": retailer_only,
                     "offers": [],
                 }
 
@@ -2155,11 +2525,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return []
 
     terms = _catalog_search_terms(query)
-    # Bound the TOTAL candidates sent through ProductMatcher. The former
-    # 64-per-store budget multiplied by expanded terms (before the catalog
-    # engine enforced its per-store aggregate cap), making broad family
-    # searches resolve hundreds to thousands of rows serially.
-    candidate_limit = 32
+    # Keep a bounded per-store candidate window, but do not let 32 rows
+    # per store discard valid matches before ProductMatcher can rank them.
+    # catalog_engine caps each retailer at 64 FTS candidates per query term;
+    # 128 here allows its full bounded window while keeping work predictable.
+    candidate_limit = 128
 
     try:
         # Keep the foreground catalog pass bounded so results are published quickly.
@@ -2311,6 +2681,54 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         item['shop'] = item['store']
         grouped_raw[store_key].append(item)
 
+    # The authorized CJ feed is persisted in store_product_variants, not
+    # store_products. The generic catalog FTS query above only searches the
+    # latter, so without this explicit read path thousands of valid feed offers
+    # can be present in SQLite yet invisible to normal searches.
+    notino_feed_candidate_count = 0
+    standalone_cj_enabled = str(
+        os.environ.get('NOTINO_CJ_STANDALONE_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if (
+        'notino' in grouped_raw and not standalone_cj_enabled
+        and not (cancel_event is not None and cancel_event.is_set())
+    ):
+        try:
+            feed_module = importlib.import_module('scrapers.notino.affiliate_feed')
+            feed_report = feed_module.search_feed(query)
+            if isinstance(feed_report, dict) and feed_report.get('status') == 'success':
+                feed_rows = feed_report.get('results') or []
+                for feed_row in feed_rows[:candidate_limit]:
+                    if not isinstance(feed_row, dict):
+                        continue
+                    candidate = dict(feed_row)
+                    candidate['store_key'] = 'notino'
+                    candidate['store'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['shop'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['source'] = 'cj_notino_fr_feed'
+                    candidate['feed_source'] = 'cj_viv_authorized_xml'
+                    grouped_raw['notino'].append(candidate)
+                notino_feed_candidate_count = min(len(feed_rows), candidate_limit)
+                if notino_feed_candidate_count:
+                    print(
+                        f'NOTINO CJ SEARCH query={query!r} '
+                        f'candidates={notino_feed_candidate_count} '
+                        f'catalog_candidates={feed_report.get("details", {}).get("catalog_candidates", 0)}',
+                        flush=True,
+                    )
+            elif isinstance(feed_report, dict) and feed_report.get('status') == 'unavailable':
+                print(
+                    f'NOTINO CJ SEARCH UNAVAILABLE error={feed_report.get("error")}',
+                    flush=True,
+                )
+        except Exception as exc:
+            # Feed-backed search is additive: a feed read error must not break
+            # searches against the other retailers or the persistent catalog.
+            print(
+                f'NOTINO CJ SEARCH ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+
     # Do not open the write-capable catalog connection on the successful
     # foreground path.  The search above has already proved that the
     # persistent catalog contains active rows; opening db() here only to ask
@@ -2413,7 +2831,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino',)
@@ -2514,7 +2932,120 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id, allow_live_fallback=allow_live_fallback)
+            phase2_offers = []
+            phase2_error = None
+            try:
+                from app.services.notino_phase2_search import (
+                    search_notino_phase2, search_notino_retailer_listings,
+                )
+                if "notino" in requested:
+                    phase2_offers = search_notino_phase2(query, limit=100)
+                    if str(os.environ.get("NOTINO_CJ_STANDALONE_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+                        matched_ids = {
+                            offer["external_id"] for offer in phase2_offers
+                            if offer.get("external_id")
+                        }
+                        retailer_listings = search_notino_retailer_listings(query, matched_ids)
+                        # The canonical Phase 2 search already returns exact-GTIN
+                        # mapped offers. Do not run every remaining retailer-only
+                        # row through the legacy matcher: it is both costly for
+                        # broad brand queries and risks blurring the identity
+                        # boundary of this explicitly retailer-only result set.
+                        phase2_offers.extend(retailer_listings)
+            except Exception as phase2_exc:
+                phase2_error = type(phase2_exc).__name__
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{phase2_error}: {phase2_exc}",
+                    flush=True,
+                )
+            # Notino's legacy catalog rows must not be published before the
+            # CJ/legacy merge. Search jobs collect result callbacks immediately;
+            # publishing legacy rows first would leave them in the job snapshot
+            # even after the authoritative Notino report is replaced below.
+            def _forward_non_notino_report(report):
+                if callable(on_report) and _normalise_store(
+                    report.get("store") if isinstance(report, dict) else "", ""
+                ) != "notino":
+                    on_report(report)
+
+            def _forward_non_notino_result(item):
+                if callable(on_result) and _normalise_store(
+                    item.get("store") or item.get("shop") if isinstance(item, dict) else "", ""
+                ) != "notino":
+                    on_result(item)
+
+            reports = _collect_catalog_reports_isolated(
+                query, requested, on_report=_forward_non_notino_report,
+                on_result=_forward_non_notino_result,
+                cancel_event=cancel_event, job_id=job_id,
+                allow_live_fallback=(
+                    allow_live_fallback
+                    and not phase2_offers
+                    and str(os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')).strip().lower()
+                    in {'1', 'true', 'yes', 'on'}
+                ),
+            )
+            # Merge the separately persisted CJ Phase 2 offers into the same
+            # authoritative Notino report consumed by /search and /search-start.
+            # The bridge is read-only and never calls a retailer endpoint.
+            try:
+                if phase2_offers:
+                    notino_report = next(
+                        (item for item in reports if item.get("store") == "notino"),
+                        None,
+                    )
+                    if notino_report is None:
+                        notino_report = _empty_report("notino", status="success")
+                        reports.append(notino_report)
+                    existing = [
+                        item for item in (notino_report.get("results") or [])
+                        if isinstance(item, dict)
+                    ]
+                    # Prefer the authorized CJ clickout and remove matching legacy
+                    # rows even when those older records have no GTIN and use synthetic IDs.
+                    notino_report["results"] = _merge_notino_phase2_offers(
+                        phase2_offers, existing
+                    )
+                    notino_report["count"] = len(notino_report["results"])
+                    notino_report["status"] = "success"
+                    notino_report["verified"] = True
+                    notino_report["error"] = None
+                    notino_report["details"] = {
+                        **(notino_report.get("details") or {}),
+                        "phase2_source": "persistent_notino_cj_catalog",
+                        "phase2_offer_count": len(phase2_offers),
+                        "live_scraping": False,
+                    }
+            except Exception as phase2_exc:
+                # Preserve the rest of the catalog search if the isolated
+                # Notino database is unavailable; expose the issue explicitly.
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{type(phase2_exc).__name__}: {phase2_exc}",
+                    flush=True,
+                )
+                notino_report = next(
+                    (item for item in reports if item.get("store") == "notino"),
+                    None,
+                )
+                if notino_report is not None:
+                    notino_report.setdefault("details", {})["phase2_error"] = (
+                        type(phase2_exc).__name__
+                    )
+            notino_report = next(
+                (item for item in reports if item.get("store") == "notino"),
+                None,
+            )
+            if notino_report is not None:
+                if phase2_error:
+                    notino_report.setdefault("details", {})["phase2_error"] = phase2_error
+                if callable(on_report):
+                    on_report(notino_report)
+                if callable(on_result):
+                    for offer in notino_report.get("results") or []:
+                        on_result(offer)
+            return reports
         except Exception as exc:
             # Normal search is catalog-only. Never fall back to the legacy live
             # scraper here: that path is what caused one slow search to occupy
@@ -2628,12 +3159,13 @@ def _cancel_active_jobs(wait_timeout=2.5):
 
 
 
-def _new_job(query):
+def _new_job(query, requested_stores=None):
     job_id = uuid.uuid4().hex
     with JOBS_LOCK:
         JOBS[job_id] = {
             "job_id": job_id,
             "query": query,
+            "requested_stores": list(requested_stores or STORES),
             "started_at": time.time(),
             "completed": False,
             "status": "searching",
@@ -2675,22 +3207,22 @@ def _snapshot(job_id):
             }
 
         query = job.get("query", "")
-        # Last-resort lifecycle watchdog: a worker must never leave the UI
-        # polling forever. Preserve the latest published snapshot, request
-        # cancellation, and release the job slot if the search exceeds its
-        # bounded execution window plus a small finalization allowance.
+        # Preserve the latest snapshot and expose a terminal timeout without
+        # pretending the worker finished. Its slot stays occupied until the
+        # worker reaches its finalizer.
         started_at = float(job.get("started_at") or time.time())
-        if not job.get("completed") and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0):
-            job["completed"] = True
-            job["status"] = "completed_with_store_issues"
+        if (
+            not job.get("completed")
+            and not job.get("watchdog_timed_out")
+            and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0)
+        ):
+            job["watchdog_timed_out"] = True
+            job["status"] = "timed_out"
             job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
             cancel_event = job.get("cancel_event")
             if cancel_event is not None:
                 cancel_event.set()
-            done_event = job.get("done_event")
-            if done_event is not None:
-                done_event.set()
-            print(f"SEARCH WATCHDOG FINALIZED job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
+            print(f"SEARCH WATCHDOG CANCELLING job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
         completed = bool(job.get("completed"))
         status = job.get("status") or ("completed" if completed else "searching")
         elapsed = float(job.get("elapsed") or max(0.0, time.time() - started_at))
@@ -2915,6 +3447,7 @@ def _run_job(job_id, query):
 
             current_job["thread"] = threading.current_thread()
             cancel_event = current_job.get("cancel_event")
+            requested_stores = list(current_job.get("requested_stores") or STORES)
             job = current_job
 
         def on_report(r):
@@ -2926,7 +3459,7 @@ def _run_job(job_id, query):
         collect_started = time.monotonic()
         reports = collect_store_reports_isolated(
             query,
-            STORES,
+            requested_stores,
             on_report=on_report,
             on_result=on_result,
             cancel_event=cancel_event,
@@ -3010,7 +3543,9 @@ def _run_job(job_id, query):
                         )
                     ]
 
-                    if cancelled:
+                    if current_job.get("watchdog_timed_out"):
+                        current_job["status"] = "timed_out"
+                    elif cancelled:
                         # A cancellation can race with already-published store
                         # results. Never describe a non-empty result set as
                         # "cancelled (no results)".
@@ -3231,7 +3766,7 @@ def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
     def enabled(name, default='0'):
         return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
 
-    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
+    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
     started = _diag_time.monotonic()
     layers = {
         'configuration': {
@@ -4298,6 +4833,29 @@ def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
             (store_key, target),
         ).fetchone()
         persisted = dict(row) if row else None
+
+        # A targeted refresh must make a successfully verified product part
+        # of the searchable catalog. refresh_url() persists page data, but
+        # /search enumerates active store_urls; without this row a fresh
+        # out-of-stock variant (or a product absent from the last sitemap)
+        # remains invisible even though its retailer page was parsed.
+        if item and persisted and persisted.get('fetch_status') == 'OK':
+            with conn:
+                conn.execute(
+                    """INSERT INTO store_urls(
+                           store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           discovered_at=excluded.discovered_at,
+                           active=1""",
+                    (
+                        store_key, target, catalog_engine.url_slug(target),
+                        None, time.time(),
+                    ),
+                )
+            with catalog_engine._LOCAL_SEARCH_INDEX_LOCK:
+                catalog_engine._LOCAL_SEARCH_INDEX_CACHE.pop(store_key, None)
     finally:
         conn.close()
 
@@ -4314,16 +4872,38 @@ def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
 
 
 @app.get('/catalog/hydration-errors')
+# Staging diagnostics also exercise the local catalog search path before retailer refreshes.
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
-    """Read-only diagnostic view of recent hydration errors."""
+    """Read-only diagnostic view of recent hydration errors.
+
+    Use a read-only SQLite connection: diagnostics must not initialize schema
+    or compete with the hydration workers for SQLite's single writer.
+    """
+    import sqlite3
     store_key = str(store or '').strip().lower()
     if store_key not in STORES:
         return {'error': f'unknown_store:{store_key}', 'stores': STORES}
-    limit_value = max(1, min(int(limit or 20), 100))
+    try:
+        limit_value = max(1, min(int(limit or 20), 100))
+    except (TypeError, ValueError):
+        limit_value = 20
     if not callable(catalog_db):
         return {'store': store_key, 'errors': [], 'error': 'catalog_db_unavailable'}
-    conn = catalog_db()
+
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    conn = None
     try:
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        conn.execute('PRAGMA query_only=ON')
         rows = conn.execute(
             """SELECT store,url,state,attempts,last_error,last_http_status,
                               last_started_at,last_finished_at,available_at
@@ -4337,9 +4917,18 @@ def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int =
             'store': store_key,
             'count': len(rows),
             'errors': [dict(row) for row in rows],
+            'read_only': True,
+        }
+    except sqlite3.Error as exc:
+        return {
+            'store': store_key,
+            'errors': [],
+            'read_only': True,
+            'diagnostic_error': f'{type(exc).__name__}: {exc}',
         }
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 @app.get('/catalog/hydration-processing')
@@ -4679,7 +5268,7 @@ def diagnose_hawas_ice_offers_read_only():
 
 
 @app.get('/search-start')
-def search_start(q: str):
+def search_start(q: str, store: str = ''):
     query = str(q or '').strip()
     if not query:
         return {
@@ -4695,6 +5284,26 @@ def search_start(q: str):
             'errors': {},
             'stores': {},
         }
+
+    requested_stores = list(STORES)
+    if str(store or '').strip():
+        selected_store = _normalise_store(store, '')
+        if selected_store not in STORES:
+            return {
+                'job_id': '',
+                'query': query,
+                'completed': True,
+                'status': 'error',
+                'count': 0,
+                'offer_count': 0,
+                'results': [],
+                'unresolved_offers': [],
+                'identity_scope': [],
+                'comparisons': [],
+                'errors': {'store': 'unknown_store'},
+                'stores': {},
+            }
+        requested_stores = [selected_store]
 
     # IMPORTANT: /search-start must remain a lightweight orchestration
     # endpoint. Do not call catalog_store_status() / _catalog_is_ready() here:
@@ -4764,7 +5373,4394 @@ def search_start(q: str):
             'stores': {},
         }
 
-    job_id = _new_job(query)
+    job_id = _new_job(query, requested_stores)
+    threading.Thread(
+        target=_run_job,
+        args=(job_id, query),
+        daemon=True,
+        name=f'scenthunter-search-{job_id[:8]}'
+    ).start()
+
+    # Most catalog searches finish within this short window. Waiting here
+    # avoids a start response plus many status-poll round trips, while slower
+    # searches still return a searching snapshot and continue asynchronously.
+    try:
+        start_wait = min(
+            0.75,
+            max(0.0, float(os.environ.get('SEARCH_START_WAIT_SECONDS', '0.75'))),
+        )
+    except (TypeError, ValueError):
+        start_wait = 0.75
+    with JOBS_LOCK:
+        started_job = JOBS.get(job_id)
+        done_event = started_job.get("done_event") if started_job else None
+    if done_event is not None and start_wait > 0:
+        done_event.wait(timeout=start_wait)
+
+    return _snapshot(job_id)
+
+
+@app.get('/search-status/{job_id}')
+def search_status_path(job_id:str): return _snapshot(job_id)
+@app.get('/search-status')
+def search_status_query(job_id:str): return _snapshot(job_id)
+
+@app.get("/search")
+def search_perfume(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "offer_count": 0,
+            "results": [],
+            "unresolved_offers": [],
+            "identity_scope": [],
+            "errors": {},
+            "stores": {},
+            "dedupe_diagnostics": [],
+        }
+
+    reports = collect_store_reports_isolated(
+        query,
+        STORES,
+        allow_live_fallback=False,
+    )
+
+    all_offers = []
+
+    for report in reports:
+        for item in report.get(
+            "results",
+            [],
+        ):
+            if not isinstance(item, dict):
+                continue
+            if _is_non_fragrance_offer(item) or _is_concentration_mismatch_offer(item):
+                continue
+            all_offers.append(item)
+
+    _diag_before_dedupe = len(all_offers)
+    dedupe_diagnostics = []
+    all_offers = dedupe_results(
+        all_offers,
+        dedupe_diagnostics,
+    )
+    if any(_normalise_store(x.get("store") or x.get("shop"), "") in {"easycosmetic", "parfumzentrum"} for x in all_offers) or any(_normalise_store(x.get("dropped", {}).get("store"), "") in {"easycosmetic", "parfumzentrum"} for x in dedupe_diagnostics):
+        print(f"SEARCH PIPELINE DIAG query={query!r} offers_before_dedupe={_diag_before_dedupe} offers_after_dedupe={len(all_offers)} dedupe_drops={len(dedupe_diagnostics)}", flush=True)
+        for _drop in dedupe_diagnostics:
+            _store = _normalise_store((_drop.get("dropped") or {}).get("store"), "")
+            if _store in {"easycosmetic", "parfumzentrum"}:
+                print(f"SEARCH DEDUPE DROP store={_store} reason={_drop.get('reason')} key={_drop.get('dedupe_key')} dropped={_drop.get('dropped')} kept={_drop.get('kept')}", flush=True)
+
+    grouped, unresolved = (
+        _aggregate_identity_results(
+            all_offers
+        )
+    )
+    for _store in ("easycosmetic", "parfumzentrum"):
+        _store_offers = [x for x in all_offers if _normalise_store(x.get("store") or x.get("shop"), "") == _store]
+        if _store_offers:
+            print(f"SEARCH FINAL DIAG query={query!r} store={_store} offers={len(_store_offers)} sizes={[x.get('size_ml') for x in _store_offers]} prices={[x.get('price_num', x.get('price')) for x in _store_offers]} availability={[x.get('availability') or x.get('availability_status') for x in _store_offers]}", flush=True)
+
+    return {
+        "query": query,
+        "count": len(grouped),
+        "offer_count": len(all_offers),
+        "results": grouped,
+        "unresolved_offers": unresolved,
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "identity_scope": _identity_scope(query),
+        "errors": {
+            report["store"]: report["error"]
+            for report in reports
+            if report.get("error")
+        },
+        "stores": {
+            report["store"]: {
+                "status": report["status"],
+                "verified": bool(report.get("verified")),
+                "count": report["count"],
+                "elapsed": report["elapsed"],
+                "details": dict(report.get("details") or {}),
+            }
+            for report in reports
+        },
+    }
+
+@app.get("/diagnose-search-final")
+def diagnose_search_final(store: str, q: str):
+    """Read-only replay of the final normal-search pipeline for one store.
+
+    This diagnostic intentionally uses the same catalog-first collection,
+    non-fragrance filtering, dedupe and identity aggregation as /search,
+    but exposes every stage so we can locate any loss between matched
+    catalog candidates and the final public groups.
+    """
+    query = str(q or "").strip()
+    store_key = _normalise_store(store, "")
+
+    if not query:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "missing_query",
+        }
+
+    if not store_key or store_key not in STORES:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "unknown_store",
+            "store": store,
+            "known_stores": list(STORES),
+        }
+
+    reports = _collect_catalog_reports_isolated(query, [store_key])
+
+    matched_offers = []
+    rejected_or_skipped = []
+
+    for report in reports:
+        for item in report.get("results", []):
+            if not isinstance(item, dict):
+                continue
+            if _is_non_fragrance_offer(item):
+                rejected_or_skipped.append({
+                    "reason": "non_fragrance_offer",
+                    "name": item.get("name") or item.get("title"),
+                    "canonical_name": item.get("canonical_name"),
+                    "catalog_id": item.get("catalog_id"),
+                    "url": item.get("url") or item.get("product_url"),
+                })
+                continue
+            matched_offers.append(item)
+
+    dedupe_diagnostics = []
+    deduped_offers = dedupe_results(
+        matched_offers,
+        dedupe_diagnostics,
+    )
+
+    grouped, unresolved = _aggregate_identity_results(deduped_offers)
+
+    def compact_offer(item):
+        return {
+            "store": item.get("store") or item.get("shop"),
+            "name": item.get("name") or item.get("title"),
+            "canonical_name": item.get("canonical_name"),
+            "catalog_id": item.get("catalog_id"),
+            "match_status": item.get("_match_status"),
+            "match_method": item.get("match_method") or item.get("_match_method"),
+            "match_score": item.get("match_score") or item.get("_match_score"),
+            "size_ml": item.get("size_ml"),
+            "price": item.get("price"),
+            "url": item.get("url") or item.get("product_url"),
+        }
+
+    return {
+        "ok": True,
+        "diagnostic": "search-final-v1",
+        "read_only": True,
+        "production_search_called": False,
+        "store": store_key,
+        "query": query,
+        "pipeline": [
+            "catalog_search_local",
+            "clean_result",
+            "_resolve_offer_identity",
+            "non_fragrance_filter",
+            "dedupe_results",
+            "_aggregate_identity_results",
+        ],
+        "report": [
+            {
+                "store": report.get("store"),
+                "status": report.get("status"),
+                "verified": bool(report.get("verified")),
+                "count": report.get("count"),
+                "elapsed": report.get("elapsed"),
+                "details": dict(report.get("details") or {}),
+                "error": report.get("error"),
+            }
+            for report in reports
+        ],
+        "stage_counts": {
+            "matched_offers_before_dedupe": len(matched_offers),
+            "deduped_offers": len(deduped_offers),
+            "final_groups": len(grouped),
+            "unresolved": len(unresolved),
+            "non_fragrance_skipped": len(rejected_or_skipped),
+            "dedupe_drops": len(dedupe_diagnostics),
+        },
+        "matched_offers": [compact_offer(item) for item in matched_offers],
+        "deduped_offers": [compact_offer(item) for item in deduped_offers],
+        "final_groups": [
+            {
+                "catalog_id": group.get("catalog_id"),
+                "canonical_name": group.get("canonical_name") or group.get("name"),
+                "offer_count": len(group.get("offers") or []),
+            }
+            for group in grouped
+        ],
+        "unresolved_offers": [compact_offer(item) for item in unresolved],
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "non_fragrance_skipped": rejected_or_skipped,
+    }
+
+@app.get('/frontend')
+def frontend():
+    if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
+    return {'error':'frontend/index.html not found'}
+
+
+@app.on_event('startup')
+def _initialize_phase0_baseline_jobs():
+    """Prepare the durable queue before accepting API requests."""
+    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema, ensure_smoke_schema
+    conn = connect()
+    try:
+        ensure_schema(conn)
+        ensure_smoke_schema(conn)
+    finally:
+        conn.close()
+    print("PHASE0 BASELINE JOB TABLE READY", flush=True)
+
+
+# Persistent asynchronous Phase 0 baseline jobs. The HTTP handlers only
+# enqueue/read/download; the dedicated phase0_baseline_worker process generates
+# the report outside the request lifecycle.
+import hmac as _phase0_hmac
+import traceback as _phase0_traceback
+from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
+from fastapi.responses import FileResponse as _Phase0FileResponse
+
+
+def _phase0_authorize(authorization: str) -> None:
+    expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
+    supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
+    if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
+        raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
+
+
+@app.post('/admin/phase0/baseline/start', status_code=202)
+def phase0_baseline_start(authorization: str = _Phase0Header(default='')):
+    """Create a durable queued job and return without generating any CSV data."""
+    _phase0_authorize(authorization)
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import create_job
+        job = create_job()
+        print(
+            f"PHASE0 BASELINE JOB QUEUED job={job['job_id']} status=queued",
+            flush=True,
+        )
+        return job
+    except Exception as exc:
+        print(
+            f"PHASE0 BASELINE JOB ENQUEUE ERROR: {type(exc).__name__}: {exc}\\n"
+            f"{_phase0_traceback.format_exc()}",
+            flush=True,
+        )
+        raise _Phase0HTTPException(
+            status_code=500,
+            detail=f"Could not enqueue Phase 0 baseline job: {type(exc).__name__}: {exc}",
+        ) from exc
+
+
+@app.get('/admin/phase0/baseline/status')
+def phase0_baseline_status(
+    job_id: str = '',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Return durable job state; no worker or report generation runs here."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import get_job
+        job = get_job(job_id)
+    except Exception as exc:
+        print(
+            f"PHASE0 BASELINE JOB STATUS ERROR job={job_id}: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        raise _Phase0HTTPException(status_code=500, detail='Could not read job status') from exc
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Job not found')
+    completed = job['status'] == 'completed'
+    output_exists = bool(job.get('output_path') and Path(job['output_path']).is_file())
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'progress': float(job.get('progress') or 0),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'total_stores': int(job.get('total_stores') or 9),
+        'processed_stores': int(job.get('processed_stores') or 0),
+        'download_url': (
+            f"/admin/phase0/baseline/download?job_id={job['id']}"
+            if completed and output_exists else None
+        ),
+        'error': job.get('error_message') or (
+            'Completed job output file is missing' if completed and not output_exists else None
+        ),
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
+        'duration_seconds': job.get('duration_seconds'),
+        'heartbeat_at': job.get('heartbeat_at'),
+    }
+
+
+def _phase0_csv_completeness(path: Path) -> tuple[bool, str | None]:
+    from scenthunter_next_engine.phase0_baseline_jobs import COLUMNS, STORES
+
+    if not path.is_file():
+        return False, 'CSV output file is missing'
+    if path.stat().st_size <= 0:
+        return False, 'CSV output file is empty'
+    counts = {store: 0 for store in STORES}
+    try:
+        with path.open('r', newline='', encoding='utf-8-sig') as handle:
+            reader = csv.DictReader(handle)
+            if reader.fieldnames != list(COLUMNS):
+                return False, 'CSV header does not match the Phase 0 schema'
+            for row in reader:
+                store = str(row.get('store') or '')
+                if store not in counts:
+                    return False, f'CSV contains unexpected store: {store}'
+                counts[store] += 1
+    except Exception as exc:
+        return False, f'CSV could not be parsed: {type(exc).__name__}: {exc}'
+    missing = [store for store, count in counts.items() if count == 0]
+    if missing:
+        return False, 'CSV has no offer rows for: ' + ', '.join(missing)
+    for store in ('notino',):
+        if counts[store] <= 0:
+            return False, f'CSV has no real offer rows for {store}'
+    return True, None
+
+
+@app.get('/admin/phase0/baseline/latest')
+def phase0_baseline_latest(authorization: str = _Phase0Header(default='')):
+    """Return the newest durable Phase 0 job without creating or changing jobs."""
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import get_latest_job
+    job = get_latest_job()
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='No Phase 0 baseline job exists')
+    output_path = Path(job['output_path'])
+    output_exists = output_path.is_file()
+    output_size = output_path.stat().st_size if output_exists else 0
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'progress': float(job.get('progress') or 0),
+        'created_at': job.get('created_at'),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'heartbeat_at': job.get('heartbeat_at'),
+        'worker_id': job.get('worker_id'),
+        'output_path': str(output_path),
+        'output_file_exists': output_exists,
+        'output_file_size': output_size,
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
+    }
+
+
+@app.get('/admin/phase0/baseline/jobs/{job_id}')
+def phase0_baseline_job_detail(
+    job_id: str,
+    authorization: str = _Phase0Header(default=''),
+):
+    """Read-only full durable job record and its recorded lifecycle events."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import get_job, get_job_events
+        job = get_job(job_id)
+        if not job:
+            raise _Phase0HTTPException(status_code=404, detail='Job not found')
+        events = get_job_events(job_id)
+    except _Phase0HTTPException:
+        raise
+    except Exception as exc:
+        print(
+            f"PHASE0 BASELINE JOB DETAIL ERROR job={job_id}: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        raise _Phase0HTTPException(status_code=500, detail='Could not read job details') from exc
+
+    output_path = Path(job['output_path'])
+    output_exists = output_path.is_file()
+    output_size = output_path.stat().st_size if output_exists else 0
+    current_store = None
+    for event in events:
+        if event.get('event') == 'store_started':
+            current_store = event.get('store')
+        elif event.get('event') in {'store_completed', 'store_failed', 'store_timeout'}:
+            if event.get('store') == current_store:
+                current_store = None
+
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'created_at': job.get('created_at'),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'heartbeat_at': job.get('heartbeat_at'),
+        'worker_id': job.get('worker_id'),
+        'progress': float(job.get('progress') or 0),
+        'total_stores': int(job.get('total_stores') or 9),
+        'processed_stores': int(job.get('processed_stores') or 0),
+        'current_store': current_store,
+        'output_path': str(output_path),
+        'output_file_exists': output_exists,
+        'output_file_size': output_size,
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
+        'events': events,
+    }
+
+
+@app.get('/admin/phase0/baseline/latest/download')
+def phase0_baseline_latest_download(authorization: str = _Phase0Header(default='')):
+    """Serve the newest job CSV only after durable completion and CSV validation."""
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import get_latest_job
+    job = get_latest_job()
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='No Phase 0 baseline job exists')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Latest Phase 0 job is not completed')
+    output_path = Path(job['output_path']).resolve()
+    allowed_root = Path(os.environ.get(
+        'PHASE0_BASELINE_DIR', '/data/phase0/baseline'
+    )).expanduser().resolve()
+    if output_path.parent != allowed_root or not output_path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Completed CSV file not found')
+    complete, reason = _phase0_csv_completeness(output_path)
+    if not complete:
+        raise _Phase0HTTPException(status_code=409, detail=f'Completed CSV is incomplete: {reason}')
+    return _Phase0FileResponse(
+        path=str(output_path),
+        media_type='text/csv; charset=utf-8',
+        filename=f"phase-0-retailer-baseline-{job['id']}.csv",
+        headers={'Cache-Control': 'no-store'},
+    )
+
+
+@app.get('/admin/phase0/baseline/download')
+def phase0_baseline_download(
+    job_id: str = '',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Serve only a completed, atomically published CSV from the Fly volume."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_job
+    job = get_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Job not found')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Baseline job is not completed')
+    output_path = Path(job['output_path']).resolve()
+    allowed_root = Path(os.environ.get(
+        'PHASE0_BASELINE_DIR', '/data/phase0/baseline'
+    )).expanduser().resolve()
+    if output_path.parent != allowed_root or not output_path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Completed CSV file not found')
+    return _Phase0FileResponse(
+        path=str(output_path),
+        media_type='text/csv; charset=utf-8',
+        filename=f"phase-0-retailer-baseline-{job_id}.csv",
+        headers={'Cache-Control': 'no-store'},
+    )
+
+
+
+# Lightweight Phase 0 infrastructure smoke test. This path never loads the
+# product catalog contents, reads retailer offers, or invokes canonical matching.
+@app.get('/admin/phase0/health')
+def phase0_health(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import (
+        jobs_database_path, get_latest_job, get_latest_smoke_job,
+    )
+    catalog_path = Path(__file__).resolve().parent / 'product_catalog.json'
+    queue_path = jobs_database_path()
+    pid_path = Path('/data/phase0/worker.pid')
+    worker_running = False
+    try:
+        pid = int(pid_path.read_text(encoding='ascii').strip())
+        os.kill(pid, 0)
+        worker_running = True
+    except (OSError, ValueError, ProcessLookupError):
+        worker_running = False
+
+    volume_writable = False
+    probe = Path('/data/phase0') / f'.smoke-write-{uuid.uuid4().hex}'
+    try:
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        with probe.open('x', encoding='ascii') as handle:
+            handle.write('ok')
+            handle.flush()
+            os.fsync(handle.fileno())
+        volume_writable = probe.read_text(encoding='ascii') == 'ok'
+    except OSError:
+        volume_writable = False
+    finally:
+        try:
+            probe.unlink()
+        except OSError:
+            pass
+
+    latest = get_latest_job()
+    latest_smoke = get_latest_smoke_job()
+    if latest_smoke and (not latest or str(latest_smoke.get('created_at') or '') > str(latest.get('created_at') or '')):
+        latest = latest_smoke
+    latest_job = None
+    if latest:
+        latest_job = {
+            'job_id': latest.get('id'),
+            'status': latest.get('status'),
+            'heartbeat_at': latest.get('heartbeat_at'),
+            'error_message': latest.get('error_message'),
+        }
+    return {
+        'worker_running': worker_running,
+        'catalog_path': str(catalog_path),
+        'catalog_exists': catalog_path.is_file(),
+        'catalog_size_bytes': catalog_path.stat().st_size if catalog_path.is_file() else 0,
+        'queue_path': str(queue_path),
+        'queue_exists': queue_path.is_file(),
+        'volume_writable': volume_writable,
+        'latest_job': latest_job,
+    }
+
+
+@app.post('/admin/phase0/smoke/start', status_code=202)
+def phase0_smoke_start(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import create_smoke_job
+        job = create_smoke_job()
+        print(f"PHASE0 SMOKE JOB QUEUED job={job['job_id']} status=queued", flush=True)
+        return job
+    except Exception as exc:
+        print(f"PHASE0 SMOKE ENQUEUE ERROR: {type(exc).__name__}: {exc}", flush=True)
+        raise _Phase0HTTPException(status_code=500, detail='Could not enqueue Phase 0 smoke job') from exc
+
+
+@app.get('/admin/phase0/smoke/status')
+def phase0_smoke_status(job_id: str = '', authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_smoke_job
+    job = get_smoke_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Smoke job not found')
+    path = Path(job['output_path'])
+    return {
+        'job_id': job['id'], 'status': job['status'],
+        'heartbeat_at': job.get('heartbeat_at'),
+        'error_message': job.get('error_message'),
+        'output_file_exists': path.is_file(),
+        'download_url': f"/admin/phase0/smoke/download?job_id={job['id']}"
+            if job['status'] == 'completed' and path.is_file() else None,
+    }
+
+
+@app.get('/admin/phase0/smoke/download')
+def phase0_smoke_download(job_id: str = '', authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_smoke_job, SMOKE_STORES
+    job = get_smoke_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Smoke job not found')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Smoke job is not completed')
+    path = Path(job['output_path']).resolve()
+    allowed_root = Path('/data/phase0/smoke').resolve()
+    if path.parent != allowed_root or path.name != f'{job_id}.csv' or not path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Smoke CSV file not found')
+    try:
+        with path.open('r', newline='', encoding='utf-8') as handle:
+            rows = list(csv.reader(handle))
+    except Exception as exc:
+        raise _Phase0HTTPException(status_code=409, detail='Smoke CSV is unreadable') from exc
+    expected = [['store', 'status']] + [[store, 'ok'] for store in SMOKE_STORES]
+    if rows != expected:
+        raise _Phase0HTTPException(status_code=409, detail='Smoke CSV content is invalid')
+    return _Phase0FileResponse(
+        path=str(path), media_type='text/csv; charset=utf-8',
+        filename=f'phase-0-smoke-{job_id}.csv',
+        headers={'Cache-Control': 'no-store'},
+    )
+
+# Phase 0 baseline endpoints are deployed with the production backend.
+
+
+
+# Restricted Phase 0 operational endpoints. These handlers use the same
+# constant-time Bearer-token authorization as the baseline administration API.
+@app.post('/admin/phase0/admin/resume-deloox-queue')
+def phase0_admin_resume_deloox_queue(authorization: str = _Phase0Header(default='')):
+    """Reactivate a small bounded batch of failed Deloox queue entries.
+
+    This does not start a scraper or discovery job. Existing background workers
+    consume the reactivated entries at their normal concurrency limits.
+    """
+    _phase0_authorize(authorization)
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        raise _Phase0HTTPException(status_code=503, detail='Catalog database unavailable')
+
+    conn = catalog_db()
+    try:
+        now = time.time()
+        with conn:
+            discovery_rows = conn.execute(
+                """SELECT url FROM catalog_discovery_queue
+                   WHERE store='deloox' AND state='DEAD'
+                   ORDER BY last_finished_at ASC LIMIT 25"""
+            ).fetchall()
+            for row in discovery_rows:
+                conn.execute(
+                    """UPDATE catalog_discovery_queue
+                       SET state='ERROR', attempts=7, available_at=?,
+                           leased_until=NULL, lease_token=NULL
+                       WHERE store='deloox' AND url=? AND state='DEAD'""",
+                    (now, row['url']),
+                )
+
+            hydration_rows = conn.execute(
+                """SELECT url FROM hydration_queue
+                   WHERE store='deloox' AND state='DEAD'
+                   ORDER BY last_finished_at ASC LIMIT 25"""
+            ).fetchall()
+            for row in hydration_rows:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='PENDING', attempts=0, available_at=?,
+                           leased_until=NULL, lease_token=NULL, last_error=NULL
+                       WHERE store='deloox' AND url=? AND state='DEAD'""",
+                    (now, row['url']),
+                )
+
+            # Expired discovery leases are safe to return to the queue.
+            expired = conn.execute(
+                """UPDATE catalog_discovery_queue
+                   SET state='PENDING', available_at=?, leased_until=NULL,
+                       lease_token=NULL
+                   WHERE store='deloox' AND state='PROCESSING'
+                     AND leased_until IS NOT NULL AND leased_until < ?""",
+                (now, now),
+            ).rowcount
+
+            discovery_state = conn.execute(
+                """SELECT state, COUNT(*) AS count FROM catalog_discovery_queue
+                   WHERE store='deloox' GROUP BY state"""
+            ).fetchall()
+            hydration_state = conn.execute(
+                """SELECT state, COUNT(*) AS count FROM hydration_queue
+                   WHERE store='deloox' GROUP BY state"""
+            ).fetchall()
+
+        return {
+            'ok': True,
+            'store': 'deloox',
+            'scraping_started': False,
+            'reactivated': {
+                'discovery_dead': len(discovery_rows),
+                'hydration_dead': len(hydration_rows),
+                'expired_discovery_leases': max(0, int(expired or 0)),
+            },
+            'batch_limit_per_queue': 25,
+            'discovery_queue': {row['state']: int(row['count']) for row in discovery_state},
+            'hydration_queue': {row['state']: int(row['count']) for row in hydration_state},
+        }
+    except Exception as exc:
+        raise _Phase0HTTPException(
+            status_code=503,
+            detail=f'Deloox queue operation unavailable: {type(exc).__name__}',
+        ) from exc
+    finally:
+        conn.close()
+
+
+@app.get('/admin/phase0/admin/check-store')
+def phase0_admin_check_store(
+    store: str = 'easycosmetic',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Read-only, bounded diagnostic for one retailer; never starts a worker."""
+    _phase0_authorize(authorization)
+    store_key = str(store or '').strip().lower()
+    if store_key != 'easycosmetic':
+        raise _Phase0HTTPException(status_code=400, detail='Only easycosmetic is enabled for this check')
+    if not CATALOG_ENGINE_AVAILABLE:
+        raise _Phase0HTTPException(status_code=503, detail='Catalog engine unavailable')
+
+    import sqlite3 as _phase0_sqlite3
+    db_path = Path(os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )).expanduser().resolve()
+    conn = None
+    try:
+        conn = _phase0_sqlite3.connect(
+            'file:' + str(db_path) + '?mode=ro', uri=True, timeout=2.0
+        )
+        conn.row_factory = _phase0_sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        sync = conn.execute(
+            """SELECT status,started_at,finished_at,error FROM sync_state
+               WHERE store=?""", (store_key,)
+        ).fetchone()
+        queue = conn.execute(
+            """SELECT state,COUNT(*) AS count,MAX(last_error) AS latest_error,
+                      MAX(last_finished_at) AS last_finished_at
+               FROM hydration_queue WHERE store=? GROUP BY state""", (store_key,)
+        ).fetchall()
+        offers = conn.execute(
+            """SELECT COUNT(*) AS total,
+                      SUM(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 ELSE 0 END) AS priced
+               FROM store_products WHERE store=? AND fetch_status='OK'""", (store_key,)
+        ).fetchone()
+        errors = [row['latest_error'] for row in queue if row['latest_error']]
+        sync_error = sync['error'] if sync else None
+        error_text = ' '.join([str(sync_error or '')] + [str(item) for item in errors]).lower()
+        timeout_detected = 'timeout' in error_text or 'timed out' in error_text
+        return {
+            'ok': True,
+            'store': store_key,
+            'read_only': True,
+            'worker_started': False,
+            'status': sync['status'] if sync else 'NOT_SYNCED',
+            'last_error': sync_error or (errors[-1] if errors else None),
+            'timeout_detected': timeout_detected,
+            'offers': {
+                'total_fetched': int(offers['total'] or 0),
+                'with_price': int(offers['priced'] or 0),
+            },
+            'hydration_queue': {row['state']: int(row['count']) for row in queue},
+            'last_finished_at': sync['finished_at'] if sync else None,
+        }
+    except _phase0_sqlite3.OperationalError as exc:
+        raise _Phase0HTTPException(
+            status_code=503,
+            detail=f'Easycosmetic diagnostic database timeout/unavailable: {type(exc).__name__}',
+        ) from exc
+    finally:
+        if conn is not None:
+            conn.close()
+
+# Temporary Phase 2 SQL verification endpoint. Remove after the diagnostic run.
+@app.get('/admin/phase2/sql-verification')
+def phase2_sql_verification(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    query_specs = [
+        ('A', "SELECT id, status, created_at FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1'"),
+        ('B', "SELECT id, ingestion_raw_id, sku, status FROM offers WHERE id = 'f723da10-5f85-4c8e-93bf-c0072163e88e'"),
+        ('C', "SELECT status FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1'"),
+        ('D', "SELECT id FROM ingestion_raw WHERE id = 'b9a5a0e9-2130-4dfa-b016-e717071235a1' AND raw_payload LIKE '%614514178065%'"),
+    ]
+    results = {}
+    engine = None
+    try:
+        from app.db import database_url
+        configured = make_url(database_url())
+        if configured.get_backend_name() != 'sqlite' or not configured.database:
+            raise RuntimeError('unsupported database')
+        readonly_url = configured.set(
+            database='file:' + configured.database,
+            query={**dict(configured.query), 'mode': 'ro', 'uri': 'true'},
+        )
+        engine = create_engine(
+            readonly_url,
+            connect_args={'uri': True, 'timeout': 5},
+            pool_pre_ping=True,
+        )
+        with engine.connect() as connection:
+            connection.exec_driver_sql('PRAGMA query_only = ON')
+            for label, sql in query_specs:
+                try:
+                    rows = connection.execute(text(sql)).mappings().all()
+                    results[label] = [dict(row) for row in rows]
+                except Exception:
+                    results[label] = 'QUERY_' + label + '_FAILED'
+    except Exception:
+        for label, _sql in query_specs:
+            results.setdefault(label, 'QUERY_' + label + '_FAILED')
+    finally:
+        if engine is not None:
+            engine.dispose()
+    return results
+
+def _public_offer_url(item):
+    """Return a Sabina URL that opens the Spanish storefront and the offer's
+    actual size variant.
+
+    Sabina product pages encode the selected size in the URL fragment. The
+    catalog may contain Italian canonical URLs or stale fragments in another
+    locale. Sabina's Spanish page does not honour those fragments, so it would
+    fall back to its default variant. Always normalize the URL to /es/ and
+    regenerate the Spanish fragment from the offer's size.
+    """
+    raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
+    url = str(raw_url or "").strip()
+    if not url:
+        return raw_url
+
+    store = str(item.get("store") or item.get("shop") or "").strip().lower()
+    host = ""
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower()
+    except Exception:
+        return url
+
+    # Deloox links in the catalog can be stored from a different locale
+    # (including .es URLs returned by redirects). ScentHunter serves the
+    # Luxembourg/Benelux storefront through Deloox Belgium; keep the original
+    # product path and query, but normalize the host to the supported .be
+    # storefront so the public offer never opens the Spanish shop.
+    if store in {"deloox", "deloox.be", "deloox.nl", "deloox.es", "deloox.com"} or host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
+        from urllib.parse import urlsplit, urlunsplit
+        if host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
+            parsed = parsed._replace(netloc="www.deloox.be")
+            return urlunsplit((parsed.scheme or "https", parsed.netloc, parsed.path, parsed.query, parsed.fragment))
+        return url
+
+    if store not in {"sabina", "sabina.com"} and not host.endswith("sabina.com"):
+        return url
+
+    # Prefer the explicit displayed format when it contains a recognized
+    # volume. Some catalog rows have stale/mismatched size_ml values.
+    format_value = item.get("format")
+    format_match = re.search(
+        r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?\b",
+        str(format_value or ""),
+        re.I,
+    )
+    size = format_value if format_match else item.get("size_ml")
+    if size is None or str(size).strip() == "":
+        size = format_value
+    match = re.search(r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?", str(size or ""), re.I)
+    if not match:
+        try:
+            numeric_size = float(size)
+            if numeric_size not in {30, 50, 75, 100, 150, 200}:
+                return url
+            size_ml = int(numeric_size)
+        except (TypeError, ValueError):
+            return url
+    else:
+        size_ml = int(match.group(1))
+
+    # Always open the Spanish storefront. Replace only the locale segment;
+    # Sabina resolves the canonical Spanish product path from the product ID.
+    if "/es/" not in parsed.path.lower():
+        parsed = parsed._replace(
+            path=re.sub(
+                r"^/(?:it|fr|en|de|nl|pt|tw|da|pl)/",
+                "/es/",
+                parsed.path,
+                count=1,
+            )
+        )
+
+    # Do not invent a fragment from size alone. Preserve Sabina's actual
+    # combination ID only when the volume encoded in that selector agrees with
+    # the offer's resolved volume. A stale/mismatched fragment silently opens
+    # another size (often the default 30 ml), so strip it rather than mislabel it.
+    fragment_match = re.search(
+        r"(?:^|/)\d+-tama_o-(\d+(?:_\d+)?)_ml$",
+        parsed.fragment, re.I,
+    )
+    if not fragment_match:
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+    try:
+        fragment_size = float(fragment_match.group(1).replace("_", "."))
+    except (TypeError, ValueError):
+        fragment_size = None
+    if fragment_size is None or abs(fragment_size - size_ml) >= 0.01:
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.query, parsed.fragment)
+    )
+
+def _public_offer(item):
+    """
+    Return only commercial retailer data.
+    """
+    canonical_name = item.get("canonical_name") or item.get("name") or item.get("title")
+    # Canonical identity must win over retailer/source brand metadata.
+    # The matcher resolves canonical_brand separately from the retailer's
+    # raw brand; using item["brand"] first caused inconsistent display.
+    canonical_brand = (
+        item.get("canonical_brand")
+        or item.get("brand")
+        or item.get("manufacturer")
+    )
+
+    public_offer = {
+        # Canonical identity is deliberately repeated on every public offer.
+        # The frontend can therefore flatten offers without losing the product
+        # identity that the central matcher already resolved.
+        "catalog_id": item.get("catalog_id"),
+        "brand": canonical_brand,
+        "name": canonical_name,
+        "canonical_name": item.get("canonical_name") or canonical_name,
+        "family": item.get("family"),
+        "variant": item.get("variant"),
+        "store": item.get("store"),
+        "shop": item.get("shop"),
+        "price": item.get("price"),
+        "price_num": item.get("price_num"),
+        # Preserve Notino's explicit coupon breakdown through the public API.
+        # The effective price remains the displayed price; regular_price and
+        # coupon_code explain the condition instead of silently dropping it.
+        "regular_price": item.get("regular_price"),
+        "regular_price_num": item.get("regular_price_num"),
+        "coupon_code": item.get("coupon_code"),
+        "coupon_required": bool(item.get("coupon_required")),
+        "price_stale": item.get("price_stale"),
+        "currency": item.get("currency"),
+        "format": item.get("format"),
+        "size_ml": item.get("size_ml"),
+        "variant_id": item.get("variant_id"),
+        "url": _public_offer_url(item),
+        "retailer_image": item.get("image") or item.get("image_url"),
+        # Preserve the scraper's explicit availability signal in the public
+        # offer contract. Previously only `available` survived aggregation,
+        # so structured values such as `OutOfStock` could be lost before the
+        # frontend rendered the offer. No retailer-specific rule is applied.
+        "available": item.get("available"),
+        "availability": item.get("availability"),
+        "stock": item.get("stock"),
+        "stock_status": item.get("stock_status"),
+        "availability_status": item.get("availability_status"),
+        "in_stock": item.get("in_stock"),
+        "inStock": item.get("inStock"),
+        "status": item.get("status"),
+        "raw_name": item.get("_raw_name")
+            or item.get("name")
+            or item.get("title"),
+        "raw_brand": item.get("_raw_brand")
+            or item.get("brand")
+            or item.get("manufacturer"),
+    }
+    if item.get("source") == "cj_notino_fr_feed":
+        public_offer["source"] = "cj_notino_fr_feed"
+    return public_offer
+
+def _aggregate_identity_results(offers):
+    """
+    Group matched offers by catalog_id.
+
+    Unresolved offers are preserved separately.
+    """
+    groups = {}
+    unresolved = []
+
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+
+        status = str(
+            offer.get("_match_status")
+            or "unresolved"
+        ).lower()
+
+        retailer_only = (
+            status == "notino_retailer_only"
+            and offer.get("source") == "cj_notino_fr_feed"
+        )
+        if (status == "matched" or retailer_only) and offer.get("catalog_id"):
+            # Final generic publication guard: non-fragrance commercial rows
+            # (samples, testers, gift sets, bundles, cosmetics, etc.) must
+            # never enter public offer groups even if an upstream path marked
+            # them as matched.
+            if _is_non_fragrance_offer(offer) or _is_concentration_mismatch_offer(offer):
+                continue
+
+            catalog_id = str(
+                offer.get("catalog_id")
+            ).strip()
+
+            if catalog_id not in groups:
+                groups[catalog_id] = {
+                    "catalog_id": catalog_id,
+                    "brand": (
+                        offer.get("canonical_brand")
+                        or offer.get("brand")
+                    ),
+                    "canonical_brand": (
+                        offer.get("canonical_brand")
+                        or offer.get("brand")
+                    ),
+                    "name": offer.get("canonical_name") or offer.get("name"),
+                    "family": offer.get("family"),
+                    "variant": offer.get("variant"),
+                    "canonical_name": offer.get(
+                        "canonical_name"
+                    ),
+                    "image": offer.get("canonical_image") or "",
+                    "retailer_only": retailer_only,
+                    "offers": [],
+                }
+
+            groups[catalog_id]["offers"].append(
+                _public_offer(offer)
+            )
+
+        elif status == "unresolved":
+            unresolved.append(
+                _public_offer(offer)
+            )
+
+    result = list(groups.values())
+
+    for group in result:
+        group["offers"] = sorted(
+            group["offers"],
+            key=lambda item: (
+                item.get("price_num")
+                if item.get("price_num") is not None
+                else 999999.0
+            ),
+        )
+
+    result.sort(
+        key=lambda group: (
+            group.get("canonical_name")
+            or ""
+        ).lower()
+    )
+
+    return result, unresolved
+
+def _empty_report(store, status='error', elapsed=0.0, error=None):
+    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error,'verified':False}
+
+def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
+
+def normalise_report(raw):
+    """Normalize the native scraper contract without inventing a match."""
+    if isinstance(raw, dict):
+        results = raw.get('results')
+        if results is None: results = raw.get('products')
+        if not isinstance(results, list): results = []
+        status = str(raw.get('status') or '').strip().lower()
+        if status not in {'success','partial','error','timeout','blocked','unavailable'}: status = 'success'
+        details = raw.get('details') or {}
+        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
+        if isinstance(details, dict) and 'verified' in details: verified = bool(details.get('verified'))
+        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
+    if isinstance(raw, tuple): raw=list(raw)
+    if isinstance(raw, list):
+        rows=[r for r in raw if isinstance(r,dict)]
+        return {
+            'status':'success' if rows else 'unavailable',
+            'verified':bool(rows),
+            'results':rows,
+            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
+            'details':{},
+        }
+    if raw is None: return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
+    try: values=list(raw)
+    except TypeError: values=[]
+    rows=[r for r in values if isinstance(r,dict)]
+    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+
+WORKER_CODE = r'''
+import importlib, json, sys
+store=sys.argv[1]; query=sys.argv[2]
+def emit(event, **payload):
+    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
+
+def normalise_report(raw):
+    if isinstance(raw, dict):
+        results = raw.get('results')
+        if results is None:
+            results = raw.get('products')
+        if not isinstance(results, list):
+            results = []
+        status = str(raw.get('status') or '').strip().lower()
+        if status not in {'success','partial','error','timeout','blocked','unavailable'}:
+            status = 'success'
+        details = raw.get('details') or {}
+        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
+        if isinstance(details, dict) and 'verified' in details:
+            verified = bool(details.get('verified'))
+        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
+    if isinstance(raw, (list, tuple)):
+        rows=[r for r in raw if isinstance(r,dict)]
+        return {
+            'status':'success' if rows else 'unavailable',
+            'verified':bool(rows),
+            'results':rows,
+            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
+            'details':{},
+        }
+    if raw is None:
+        return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
+    try:
+        values=list(raw)
+    except TypeError:
+        values=[]
+    rows=[r for r in values if isinstance(r,dict)]
+    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+
+try:
+    module=importlib.import_module(f'scrapers.{store}.scraper')
+    stream=getattr(module,'search_stream',None)
+    if callable(stream):
+        rows=[]
+        def on_result(row):
+            if isinstance(row,dict):
+                rows.append(row); emit('result',row=row)
+        returned=stream(query,on_result)
+        # The definitive scraper contract requires search_stream() to return
+        # its report even when callback delivery is used. None is therefore a
+        # contract violation, not a verified empty search.
+        if returned is None:
+            raise RuntimeError('scraper_search_stream_returned_none')
+        report=normalise_report(returned)
+        if report['results'] and not rows:
+            for row in report['results']: emit('result',row=row)
+        emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
+    else:
+        search=getattr(module,'search',None)
+        if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
+        report=normalise_report(search(query))
+        for row in report['results']: emit('result',row=row)
+        emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(report['results']),streaming=False)
+except BaseException as exc:
+    emit('error',error=f'{type(exc).__name__}: {exc}')
+    raise SystemExit(1)
+'''
+
+def _kill_process_tree(process):
+    try:
+        if process.poll() is not None: return
+        if os.name != 'nt': os.killpg(process.pid, signal.SIGKILL)
+        else: process.kill()
+    except Exception:
+        try: process.kill()
+        except Exception: pass
+
+def _run_store_subprocess_once(store, query, on_result=None, timeout_override=None, cancel_event=None):
+    started=time.monotonic()
+    timeout=float(timeout_override) if timeout_override is not None else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+    env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
+    process=None; rows=[]; worker_status=None; worker_verified=None; worker_error=None; worker_details={}
+    try:
+        _runtime_diag_event('worker_spawn_attempt', store=store, query=str(query), timeout=timeout)
+        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=False,bufsize=0,start_new_session=(os.name!='nt'))
+        deadline=time.monotonic()+timeout; stdout_buffer=b''
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                _runtime_diag_event('worker_cancelled', store=store, pid=getattr(process,'pid',None))
+                _kill_process_tree(process)
+                try: process.communicate(timeout=2)
+                except Exception: pass
+                return _empty_report(store,status='cancelled',elapsed=round(time.monotonic()-started,3),error='search_cancelled') | {'verified':False}
+            remaining=deadline-time.monotonic()
+            if remaining<=0: raise subprocess.TimeoutExpired(process.args,timeout)
+            chunk=b''
+            if process.stdout is not None:
+                if os.name!='nt':
+                    import select
+                    ready,_,_=select.select([process.stdout],[],[],min(0.25,remaining))
+                    if ready:
+                        try: chunk=os.read(process.stdout.fileno(),65536)
+                        except (BlockingIOError,OSError): chunk=b''
+                else:
+                    try: chunk=process.stdout.read1(65536)
+                    except (AttributeError,BlockingIOError): chunk=b''
+            if chunk:
+                stdout_buffer+=chunk
+                while b'\n' in stdout_buffer:
+                    raw_line,stdout_buffer=stdout_buffer.split(b'\n',1)
+                    try: event=json.loads(raw_line.decode('utf-8','replace').strip())
+                    except (json.JSONDecodeError,UnicodeDecodeError): continue
+                    if not isinstance(event,dict): continue
+                    kind=event.get('event')
+                    if kind=='result' and isinstance(event.get('row'),dict):
+                        prepared=clean_result(event['row'],store)
+                        if prepared is None: continue
+                        # ScentHunter searches individual perfumes only.
+                        # Generic non-fragrance commercial items (sets, boxes,
+                        # bundles, cosmetics, accessories, etc.) are discarded
+                        # before ProductMatcher and therefore can never appear
+                        # in either results or unresolved_offers.
+                        if _is_non_fragrance_offer(prepared):
+                            continue
+                        resolved=_resolve_offer_identity(prepared,query)
+                        if resolved is None: continue
+                        if resolved.get('_match_status') == 'rejected':
+                            continue
+                        if _is_non_fragrance_offer(resolved):
+                            continue
+                        rows.append(resolved)
+                        if callable(on_result):
+                            try:
+                                on_result(resolved)
+                            except Exception:
+                                pass
+                    elif kind=='done':
+                        worker_status=str(event.get('status') or 'success').strip().lower()
+                        worker_verified=bool(event.get('verified')) if 'verified' in event else None
+                        worker_error=event.get('error')
+                        if isinstance(event.get('details'),dict): worker_details=event['details']
+                    elif kind=='error':
+                        worker_status='error'; worker_verified=False; worker_error=str(event.get('error') or 'worker_error')
+            if process.poll() is not None:
+                if process.stdout is not None and os.name!='nt':
+                    try:
+                        while True:
+                            tail=os.read(process.stdout.fileno(),65536)
+                            if not tail: break
+                            stdout_buffer+=tail
+                    except (BlockingIOError,OSError): pass
+                break
+        if stdout_buffer.strip():
+            try: event=json.loads(stdout_buffer.decode('utf-8','replace').strip())
+            except (json.JSONDecodeError,UnicodeDecodeError): event=None
+            if isinstance(event,dict):
+                if event.get('event')=='done':
+                    worker_status=str(event.get('status') or 'success').strip().lower()
+                    worker_verified=bool(event.get('verified')) if 'verified' in event else None
+                    worker_error=event.get('error')
+                    if isinstance(event.get('details'),dict): worker_details=event['details']
+                elif event.get('event')=='error':
+                    worker_status='error'; worker_verified=False; worker_error=str(event.get('error') or 'worker_error')
+        rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
+        if rc!=0 and worker_status not in {'success','partial'}:
+            return {'store':store,'status':worker_status or 'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}','details':worker_details,'verified':False}
+        status=worker_status or ('success' if rows else 'error')
+        verified=bool(worker_verified) if worker_verified is not None else bool(rows)
+        # A verified empty result is a real NOT_FOUND. Keep the distinction
+        # explicit so technical failures can never become absence.
+        if status == 'success' and verified and not rows:
+            public_status='no_match'
+        elif status == 'success' and rows:
+            public_status='ok'
+        else:
+            public_status=status
+        return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':verified}
+    except subprocess.TimeoutExpired:
+        _runtime_diag_event('worker_timeout', store=store, pid=getattr(process,'pid',None), timeout=timeout)
+        if process is not None:
+            _kill_process_tree(process)
+            try: process.communicate(timeout=2)
+            except Exception: pass
+        return _empty_report(store,status='timeout',elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s') | {'verified':False}
+    except Exception as exc:
+        _runtime_diag_event('worker_exception', store=store, pid=getattr(process,'pid',None), error=f'{type(exc).__name__}: {exc}')
+        if process is not None:
+            _kill_process_tree(process)
+            try: process.communicate(timeout=1)
+            except Exception: pass
+        return _empty_report(store,status='error',elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}') | {'verified':False}
+
+
+def _run_store_subprocess(store, query, on_result=None, cancel_event=None):
+    """Retry only an unverified search result, never a technical failure.
+
+    A technical failure (timeout/error/blocked/unavailable/cancelled) is already
+    an authoritative store failure for this attempt. Retrying it here can make
+    one store occupy its lane for another 45 seconds and, with the 2-slot light
+    lane, starve the other stores until the 125s job deadline cancels them.
+    """
+    first=_run_store_subprocess_once(store,query,on_result=on_result,cancel_event=cancel_event)
+    fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
+
+    # IMPORTANT: technical failures are NOT retried. This restores the old
+    # lifecycle behaviour and prevents a slow/blocked store from monopolising
+    # a lane and cascading cancellation into other stores.
+    if fs in {'timeout','error','blocked','unavailable','cancelled'}:
+        first['attempts']=1
+        return first
+
+    if fv and (fs in {'ok','no_match'} or (fs=='partial' and fc>0)):
+        first['attempts']=1
+        return first
+
+    # Only ambiguous/unverified search outcomes are eligible for one retry.
+    print(f"STORE RETRY store={store} query={query!r} reason={fs} verified={fv} count={fc}",flush=True)
+    base_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+    retry_timeout=max(12.0,min(base_timeout*0.75,45.0))
+    second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout,cancel_event=cancel_event)
+    second['attempts']=2; second['first_attempt_status']=fs; second['first_attempt_verified']=fv
+    ss=second.get('status'); sv=bool(second.get('verified')); sc=int(second.get('count') or 0)
+
+    if ss=='no_match' and sv:
+        second['status']='no_match'; second['verified']=True; second['error']=None; return second
+    if ss=='ok' and sv: return second
+    if ss=='partial' and sv and sc>0: return second
+
+    second['verified']=False
+    if ss not in {'error','timeout','blocked','unavailable','cancelled'}:
+        second['status']='unavailable'
+    if not second.get('error'):
+        second['error']=f"store_unverified_after_retry:{second.get('status')}"
+    return second
+
+def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None):
+    _runtime_diag_event('store_thread_start', store=store, query=str(query))
+    print(f'STORE START store={store} query={query!r}',flush=True)
+    semaphore=LIGHT_SEMAPHORE; lane='light'
+    if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
+    elif store in NETWORK_HEAVY_STORES: semaphore=NETWORK_SEMAPHORE; lane='network'
+    wait=time.monotonic()
+    if semaphore is not None:
+        acquired=False
+        wait_deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
+        while not acquired:
+            if cancel_event is not None and cancel_event.is_set():
+                on_report(_empty_report(store,status='cancelled',elapsed=round(time.monotonic()-wait,3),error='search_cancelled') | {'verified':False})
+                return
+            acquired=semaphore.acquire(timeout=min(0.25,max(0.0,wait_deadline-time.monotonic())))
+            if time.monotonic() >= wait_deadline and not acquired:
+                break
+        if not acquired:
+            _runtime_diag_event('store_lane_timeout', store=store, lane=lane)
+            report=_empty_report(store,error=f'{lane}_lane_unavailable')
+            print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
+        waited=round(time.monotonic()-wait,3)
+        _runtime_diag_event('store_lane_acquired', store=store, lane=lane, waited=waited, available=getattr(semaphore,'_value',None))
+        if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
+    try: report=_run_store_subprocess(store,query,on_result=on_result,cancel_event=cancel_event)
+    finally:
+        if semaphore is not None: semaphore.release()
+    if report.get('status')=='error':
+        if str(report.get('error','')).startswith('store_timeout_'): print(f"STORE TIMEOUT store={store} timeout={report['error']}",flush=True)
+        else: print(f"STORE ERROR store={store} error={report.get('error')}",flush=True)
+    print(f"STORE END store={store} status={report.get('status')} elapsed={report.get('elapsed')} count={report.get('count')}",flush=True)
+    _runtime_diag_event('store_thread_end', store=store, status=report.get('status'), elapsed=report.get('elapsed'), count=report.get('count'))
+    on_report(report)
+
+def _catalog_indexed_flags(stores):
+    """Check whether each store has at least one active catalog URL.
+
+    This is deliberately much cheaper than catalog_store_status(). It is used
+    on the normal search path only to distinguish an indexed store with zero
+    matching candidates from a store whose catalog is actually empty. It never
+    joins store_urls with store_products and never calculates hydration state.
+    """
+    wanted = [str(store).strip() for store in (stores or []) if str(store).strip()]
+    if not wanted or not callable(catalog_db):
+        return {store: False for store in wanted}
+    conn = None
+    try:
+        conn = catalog_db()
+        flags = {}
+        for store in wanted:
+            row = conn.execute(
+                'SELECT 1 FROM store_urls WHERE store=? AND active=1 LIMIT 1',
+                (store,),
+            ).fetchone()
+            flags[store] = bool(row)
+        return flags
+    except Exception as exc:
+        print(f'CATALOG INDEXED STATUS ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return {store: False for store in wanted}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _catalog_search_terms(query):
+    """Return bounded persistent-catalog search terms.
+
+    Keep the original query first, then include a wider set of family-aware
+    canonical names and aliases. Broad queries such as "Hawas" must be able to
+    retrieve distinct variants whose retailer titles omit the family word
+    (for example, "Kobra For Him"). ProductMatcher remains solely responsible
+    for deciding final product identity.
+    """
+    text = str(query or "").strip()
+    if not text:
+        return []
+
+    terms = [text]
+    if PRODUCT_MATCHER is None:
+        return terms
+
+    try:
+        method = getattr(PRODUCT_MATCHER, "catalog_search_terms", None)
+        if not callable(method):
+            return terms
+        expanded = method(text)
+        if not isinstance(expanded, (list, tuple)):
+            return terms
+
+        def tokens(value):
+            return {
+                token for token in re.findall(r"[a-z0-9]+", str(value or "").lower())
+                if len(token) >= 3
+            }
+
+        query_tokens = tokens(text)
+        if not query_tokens:
+            return terms
+
+        candidates = []
+        seen = {text.casefold()}
+        for item in expanded:
+            candidate = str(item or "").strip()
+            key = candidate.casefold()
+            if not candidate or key in seen:
+                continue
+            candidate_tokens = tokens(candidate)
+            seen.add(key)
+            overlap = candidate_tokens & query_tokens
+            # A single-token family query (for example "Hawas") may have
+            # legitimate catalog aliases whose retailer titles contain none
+            # of the family token. Keep those aliases in the matcher's order;
+            # ProductMatcher remains responsible for rejecting unrelated
+            # products. Multi-token queries still require lexical overlap so
+            # expansion does not flood the search with unrelated candidates.
+            if not overlap and len(query_tokens) > 1:
+                continue
+            candidates.append((candidate, overlap))
+
+        token_frequency = {
+            token: sum(1 for _, overlap in candidates if token in overlap)
+            for token in query_tokens
+        }
+        candidates.sort(
+            key=lambda item: (
+                sum(1.0 / token_frequency[token] for token in item[1]),
+                len(item[1]),
+                -len(item[0]),
+            ),
+            reverse=True,
+        )
+
+        # Single-token family queries (for example "Hawas") need the full
+        # registry vocabulary because valid variant titles may omit the family
+        # token. Multi-token queries already constrain candidates lexically;
+        # running dozens of near-duplicate aliases adds repeated SQLite FTS
+        # work without materially improving recall. Keep the original query
+        # plus a ranked, bounded set for these queries.
+        # Broad one-token family searches must cover the registered variant vocabulary.
+        # Eight terms truncated families with more aliases (e.g. Hawas), hiding valid
+        # variants even when the catalog already contains them. catalog_engine bounds
+        # the per-store candidate pool, so allow the full bounded registry expansion.
+        # Multi-token family searches also need room for separately
+        # registered variants (e.g. Liquid Brun Limited Edition). Four terms
+        # truncated these related aliases before catalog lookup could see them.
+        max_terms = 32 if len(query_tokens) <= 1 else 4
+        token_order = sorted(
+            query_tokens,
+            key=lambda token: (token_frequency.get(token, 0), token),
+        )
+        selected = set()
+        for token in token_order:
+            for candidate, overlap in candidates:
+                if token in overlap and candidate.casefold() not in selected:
+                    terms.append(candidate)
+                    selected.add(candidate.casefold())
+                    break
+            if len(terms) >= max_terms:
+                return terms[:max_terms]
+
+        for candidate, _ in candidates:
+            if len(terms) >= max_terms:
+                break
+            if candidate.casefold() not in selected:
+                terms.append(candidate)
+                selected.add(candidate.casefold())
+        return terms[:max_terms]
+    except Exception as exc:
+        print(
+            f"CATALOG_SEARCH_TERM_EXPANSION_ERROR: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return terms
+
+
+def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+    """Primary catalog-first search path.
+
+    Discovery is performed by catalog_engine, not by retailer search endpoints.
+    ProductMatcher remains the only component allowed to decide identity.
+    """
+    started = time.monotonic()
+    reports_by_store = {}
+    catalog_search_elapsed = 0.0
+    targeted_refresh_elapsed = 0.0
+    if cancel_event is not None and cancel_event.is_set():
+        return []
+
+    terms = _catalog_search_terms(query)
+    # Keep a bounded per-store candidate window, but do not let 32 rows
+    # per store discard valid matches before ProductMatcher can rank them.
+    # catalog_engine caps each retailer at 64 FTS candidates per query term;
+    # 128 here allows its full bounded window while keeping work predictable.
+    candidate_limit = 128
+
+    try:
+        # Keep the foreground catalog pass bounded so results are published quickly.
+        # The exact query is searched across retailers first; background hydration
+        # continues to enrich missing offer details after this foreground pass.
+        search_budget = min(
+            0.80,
+            max(
+                0.50,
+                float(os.environ.get(
+                    'CATALOG_SEARCH_BUDGET_SECONDS',
+                    str(CATALOG_SEARCH_BUDGET_SECONDS),
+                )),
+            ),
+        )
+        search_deadline = started + search_budget
+        if cancel_event is not None and cancel_event.is_set():
+            return []
+
+        _catalog_search_started = time.monotonic()
+        raw_rows = (
+            catalog_search_local(
+                query,
+                per_store=candidate_limit,
+                search_terms=terms,
+                cancel_event=cancel_event,
+                deadline=search_deadline,
+            )
+            if callable(catalog_search_local) else []
+        )
+        catalog_search_elapsed = time.monotonic() - _catalog_search_started
+        print(
+            f'CATALOG PHASE TIMING phase=search_local query={query!r} '
+            f'elapsed={catalog_search_elapsed:.3f}s '
+            f'candidates={len(raw_rows)}', flush=True
+        )
+    except TypeError:
+        raw_rows = (
+            catalog_search_local(
+                query,
+                per_store=candidate_limit,
+                search_terms=terms,
+            )
+            if callable(catalog_search_local) else []
+        )
+    except Exception as exc:
+        print(f'CATALOG SEARCH ERROR: {type(exc).__name__}: {exc}', flush=True)
+        raw_rows = []
+
+    if cancel_event is not None and cancel_event.is_set():
+        return []
+
+    # The catalog decides WHICH URLs are relevant. For the query-selected
+    # candidates that are not hydrated yet, perform a short targeted fetch.
+    # This is deliberately not retailer discovery and never calls a retailer
+    # search endpoint. Background hydration continues independently.
+    refreshed = []
+    if callable(catalog_refresh_candidates):
+        try:
+            # Foreground refresh must never turn a catalog search into an
+            # 8-second network wait. Background hydration owns durable fetching;
+            # only take a tiny opportunistic refresh window here.
+            refresh_budget = min(3.0, max(0.25, float(os.environ.get(
+                'CATALOG_REFRESH_BUDGET_SECONDS', '2.5'
+            ))))
+            refresh_started = time.monotonic()
+            refresh_deadline = refresh_started + refresh_budget
+            requested = [
+                row for row in raw_rows
+                if isinstance(row, dict) and row.get('_needs_refresh')
+            ]
+            if requested:
+                # Mark these exact catalog-selected URLs ahead of the general
+                # hydration backlog. The helper waits at most 150ms for SQLite;
+                # an unavailable hint never delays or fails the foreground search.
+                if callable(catalog_prioritize_hydration_candidates):
+                    prioritized = catalog_prioritize_hydration_candidates(requested)
+                    if prioritized:
+                        print(
+                            f'CATALOG HYDRATION PRIORITY HINT query={query!r} '
+                            f'updated={prioritized}',
+                            flush=True,
+                        )
+                foreground_refresh_enabled = str(
+                    os.environ.get('CATALOG_FOREGROUND_REFRESH_ENABLED', '')
+                ).strip().lower() in {'1', 'true', 'yes', 'on'}
+                if foreground_refresh_enabled:
+                    refreshed = catalog_refresh_candidates(
+                        requested,
+                        cancel_event=cancel_event,
+                        deadline=refresh_deadline,
+                    ) or []
+                    targeted_refresh_elapsed = time.monotonic() - refresh_started
+                else:
+                    # Keep query-selected URLs prioritized for the background
+                    # hydrator, but never block the atomic foreground result
+                    # on opportunistic retailer HTTP refreshes.
+                    refreshed = []
+                    targeted_refresh_elapsed = 0.0
+                print(
+                    f'CATALOG PHASE TIMING phase=targeted_refresh '
+                    f'elapsed={targeted_refresh_elapsed:.3f}s '
+                    f'enabled={foreground_refresh_enabled} '
+                    f'budget={refresh_budget:.2f}s requested={len(requested)} '
+                    f'returned={len(refreshed)}',
+                    flush=True,
+                )
+        except Exception as exc:
+            print(
+                f'CATALOG TARGETED REFRESH UNAVAILABLE: '
+                f'{type(exc).__name__}: {exc}',
+                flush=True,
+            )
+
+    refreshed_by_key = {}
+    for item in refreshed:
+        if not isinstance(item, dict):
+            continue
+        store_key = _normalise_store(item.get('store_key') or item.get('store'), '')
+        url = str(item.get('url') or item.get('product_url') or '').strip()
+        if store_key and url:
+            item = dict(item)
+            item['store_key'] = store_key
+            item['store'] = STORE_LABELS.get(store_key, item.get('store') or store_key)
+            item['shop'] = item['store']
+            refreshed_by_key[(store_key, url)] = item
+
+    grouped_raw = {store: [] for store in stores}
+    pending_by_store = {store: 0 for store in stores}
+    for row in raw_rows:
+        if not isinstance(row, dict):
+            continue
+        store_key = _normalise_store(row.get('store_key') or row.get('store') or row.get('shop'), '')
+        url = str(row.get('url') or row.get('product_url') or '').strip()
+        replacement = refreshed_by_key.get((store_key, url))
+        item = replacement if replacement is not None else dict(row)
+        if store_key not in grouped_raw:
+            continue
+        if replacement is None and item.get('_needs_refresh'):
+            # Keep the last catalog price visible, but mark it explicitly as stale.
+            # Erasing it made otherwise useful offers look unavailable while the
+            # background hydrator was already queued to refresh the same URL.
+            pending_by_store[store_key] = pending_by_store.get(store_key, 0) + 1
+            item = dict(item)
+            item['price_stale'] = True
+            item['availability'] = item.get('availability') or 'unknown'
+        item['store_key'] = store_key
+        item['store'] = STORE_LABELS.get(store_key, item.get('store') or store_key)
+        item['shop'] = item['store']
+        grouped_raw[store_key].append(item)
+
+    # The authorized CJ feed is persisted in store_product_variants, not
+    # store_products. The generic catalog FTS query above only searches the
+    # latter, so without this explicit read path thousands of valid feed offers
+    # can be present in SQLite yet invisible to normal searches.
+    notino_feed_candidate_count = 0
+    standalone_cj_enabled = str(
+        os.environ.get('NOTINO_CJ_STANDALONE_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    if (
+        'notino' in grouped_raw and not standalone_cj_enabled
+        and not (cancel_event is not None and cancel_event.is_set())
+    ):
+        try:
+            feed_module = importlib.import_module('scrapers.notino.affiliate_feed')
+            feed_report = feed_module.search_feed(query)
+            if isinstance(feed_report, dict) and feed_report.get('status') == 'success':
+                feed_rows = feed_report.get('results') or []
+                for feed_row in feed_rows[:candidate_limit]:
+                    if not isinstance(feed_row, dict):
+                        continue
+                    candidate = dict(feed_row)
+                    candidate['store_key'] = 'notino'
+                    candidate['store'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['shop'] = STORE_LABELS.get('notino', 'Notino')
+                    candidate['source'] = 'cj_notino_fr_feed'
+                    candidate['feed_source'] = 'cj_viv_authorized_xml'
+                    grouped_raw['notino'].append(candidate)
+                notino_feed_candidate_count = min(len(feed_rows), candidate_limit)
+                if notino_feed_candidate_count:
+                    print(
+                        f'NOTINO CJ SEARCH query={query!r} '
+                        f'candidates={notino_feed_candidate_count} '
+                        f'catalog_candidates={feed_report.get("details", {}).get("catalog_candidates", 0)}',
+                        flush=True,
+                    )
+            elif isinstance(feed_report, dict) and feed_report.get('status') == 'unavailable':
+                print(
+                    f'NOTINO CJ SEARCH UNAVAILABLE error={feed_report.get("error")}',
+                    flush=True,
+                )
+        except Exception as exc:
+            # Feed-backed search is additive: a feed read error must not break
+            # searches against the other retailers or the persistent catalog.
+            print(
+                f'NOTINO CJ SEARCH ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+
+    # Do not open the write-capable catalog connection on the successful
+    # foreground path.  The search above has already proved that the
+    # persistent catalog contains active rows; opening db() here only to ask
+    # the same database a second read-only question can contend with a
+    # hydration writer and add seconds to every search.  The indexed-store
+    # diagnostic is still retained for the genuinely empty-catalog case.
+    if raw_rows:
+        indexed_flags = {store: bool(grouped_raw.get(store)) for store in stores}
+        indexed_total = 1
+    else:
+        indexed_flags = _catalog_indexed_flags(stores)
+        indexed_total = sum(1 for store in stores if indexed_flags.get(store))
+
+    # An empty persistent catalog must not disable direct store scrapers.
+    # The catalog is the fast path. Notino's explicitly bounded public adapter
+    # remains available while discovery is blocked or bootstrapping.
+    identity_started = time.monotonic()
+    identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
+
+    def resolve_store_identity(store):
+        store_identity_started = time.monotonic()
+        store_rows = grouped_raw.get(store, [])
+        matched_rows = []
+        unresolved_count = 0
+        for raw in store_rows:
+            if cancel_event is not None and cancel_event.is_set():
+                break
+            prepared = clean_result(raw, store)
+            if prepared is None or _is_non_fragrance_offer(prepared):
+                continue
+            resolved = _resolve_offer_identity(prepared, query)
+            if not isinstance(resolved, dict):
+                continue
+            if resolved.get('_match_status') == 'rejected':
+                continue
+            if _is_non_fragrance_offer(resolved):
+                continue
+            matched_rows.append(resolved)
+            if resolved.get('_match_status') != 'matched' or not resolved.get('catalog_id'):
+                unresolved_count += 1
+
+        indexed = 1 if indexed_flags.get(store) else 0
+        if store_rows:
+            indexed = max(indexed, 1)
+        fetched = len(store_rows)
+        if matched_rows:
+            status, verified, error = 'success', True, None
+        elif pending_by_store.get(store, 0) > 0:
+            status, verified, error = 'catalog_pending', False, 'product_page_refresh_pending'
+        elif indexed > 0 or raw_rows:
+            status, verified, error = 'no_match', True, None
+        else:
+            status = 'catalog_not_indexed'
+            verified = False
+            error = 'catalog_not_indexed'
+
+        return {
+            'store': store,
+            'status': status,
+            'verified': verified,
+            'elapsed': round(time.monotonic() - started, 3),
+            'count': len(matched_rows),
+            'results': matched_rows,
+            'error': error,
+            'details': {
+                'source': 'persistent_catalog',
+                'candidate_count': len(store_rows) + pending_by_store.get(store, 0),
+                'pending_refresh_count': pending_by_store.get(store, 0),
+                'unresolved_count': unresolved_count,
+                'indexed_urls': indexed,
+                'fetched_products': fetched,
+                'candidate_limit': candidate_limit,
+                'search_terms_count': len(terms),
+                'search_local_elapsed': round(catalog_search_elapsed, 3),
+                'targeted_refresh_elapsed': round(targeted_refresh_elapsed, 3),
+                'identity_resolution_elapsed': round(time.monotonic() - store_identity_started, 3),
+            },
+        }
+
+    # Product identity work is CPU-bound and independent across retailers.
+    # Resolve store batches concurrently so one expensive retailer cannot make
+    # the whole search wait behind seven otherwise-ready batches. Keep the
+    # final report order stable and publish only after all batches finish.
+    from concurrent.futures import ThreadPoolExecutor
+    workers = max(1, min(8, len(stores)))
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='scenthunter-identity') as pool:
+        futures = {store: pool.submit(resolve_store_identity, store) for store in stores}
+        for store in stores:
+            report = futures[store].result()
+            reports_by_store[store] = report
+            if callable(on_report):
+                on_report(report)
+    # Slow retailer fallbacks are only enabled in the asynchronous search job.
+    # The legacy synchronous /search endpoint is used by health/smoke clients and
+    # must stay fast; the user-facing /search-start job can stream other stores
+    # while Notino finishes its bounded attempt.
+    # Prefer authorized Notino feed offers, then use the restored September
+    # external-discovery/browser scraper when no fresh offer matches the query.
+    # Restore the September Notino external-search + rendered-card path.
+    # Direct HTTP 403 only disables that transport; it must not disable the
+    # independent public search/browser adapter. Can be opted out explicitly.
+    notino_live_fallback_enabled = str(
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    live_bridge_stores = [
+        store for store in ('notino',)
+        if allow_live_fallback
+        and store in reports_by_store
+        and not int(reports_by_store[store].get('count') or 0)
+        and notino_live_fallback_enabled
+        and not (cancel_event is not None and cancel_event.is_set())
+    ]
+    # These adapters perform multiple bounded requests and may use rendered
+    # public pages as a fallback. 3-4 seconds killed them before they could
+    # return, especially Notino's reader/enrichment path.
+    bridge_timeouts = {
+        store: (8.0 if store == 'notino' else 8.0)
+        for store in live_bridge_stores
+    }
+    if live_bridge_stores:
+        print(
+            f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
+            f'timeouts={bridge_timeouts}',
+            flush=True,
+        )
+        with ThreadPoolExecutor(
+            max_workers=len(live_bridge_stores),
+            thread_name_prefix='scenthunter-legacy-bridge',
+        ) as bridge_pool:
+            bridge_futures = {
+                store: bridge_pool.submit(
+                    _run_store_subprocess_once, store, query, on_result,
+                    bridge_timeouts[store], cancel_event
+                )
+                for store in live_bridge_stores
+            }
+            for store in live_bridge_stores:
+                try:
+                    live_report = bridge_futures[store].result(timeout=bridge_timeouts[store] + 0.5)
+                except Exception as exc:
+                    print(
+                        f'CATALOG LIVE BRIDGE ERROR store={store} '
+                        f'error={type(exc).__name__}',
+                        flush=True,
+                    )
+                    continue
+                if not isinstance(live_report, dict):
+                    live_report = {
+                        'status': 'error', 'verified': False, 'count': 0,
+                        'results': [], 'error': 'live_adapter_invalid_report',
+                        'details': {},
+                    }
+                live_details = {
+                    **(live_report.get('details') or {}),
+                    'source': 'bounded_live_adapter_fallback',
+                    'catalog_fallback': True,
+                    'attempted': True,
+                }
+                if (
+                    live_report.get('verified')
+                    and int(live_report.get('count') or 0) > 0
+                    and isinstance(live_report.get('results'), list)
+                ):
+                    live_report['details'] = live_details
+                    reports_by_store[store] = live_report
+                else:
+                    # Preserve the catalog's honest no-match status while
+                    # exposing why the fallback did not produce verified offers.
+                    existing = dict(reports_by_store.get(store) or {})
+                    existing['details'] = {
+                        **(existing.get('details') or {}),
+                        'live_fallback': {
+                            'attempted': True,
+                            'status': live_report.get('status'),
+                            'verified': bool(live_report.get('verified')),
+                            'error': live_report.get('error'),
+                            'details': live_details,
+                        },
+                    }
+                    reports_by_store[store] = existing
+                if callable(on_report):
+                    on_report(reports_by_store[store])
+
+    identity_matched_count = sum(
+        int((report.get('count') or 0)) for report in reports_by_store.values()
+    )
+
+    print(
+        f'CATALOG PHASE TIMING phase=identity_resolution query={query!r} '
+        f'elapsed={time.monotonic()-identity_started:.3f}s '
+        f'candidates={identity_candidate_count} matched={identity_matched_count}', flush=True
+    )
+    print(
+        f'CATALOG SEARCH END query={query!r} candidates={len(raw_rows)} '
+        f'elapsed={round(time.monotonic() - started, 3)}', flush=True
+    )
+    return [reports_by_store[s] for s in stores if s in reports_by_store]
+
+
+def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
+    requested = list(stores)
+    if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
+        try:
+            phase2_offers = []
+            phase2_error = None
+            try:
+                from app.services.notino_phase2_search import (
+                    search_notino_phase2, search_notino_retailer_listings,
+                )
+                if "notino" in requested:
+                    phase2_offers = search_notino_phase2(query, limit=100)
+                    if str(os.environ.get("NOTINO_CJ_STANDALONE_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+                        matched_ids = {
+                            offer["external_id"] for offer in phase2_offers
+                            if offer.get("external_id")
+                        }
+                        retailer_listings = search_notino_retailer_listings(query, matched_ids)
+                        # The canonical Phase 2 search already returns exact-GTIN
+                        # mapped offers. Do not run every remaining retailer-only
+                        # row through the legacy matcher: it is both costly for
+                        # broad brand queries and risks blurring the identity
+                        # boundary of this explicitly retailer-only result set.
+                        phase2_offers.extend(retailer_listings)
+            except Exception as phase2_exc:
+                phase2_error = type(phase2_exc).__name__
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{phase2_error}: {phase2_exc}",
+                    flush=True,
+                )
+            # Notino's legacy catalog rows must not be published before the
+            # CJ/legacy merge. Search jobs collect result callbacks immediately;
+            # publishing legacy rows first would leave them in the job snapshot
+            # even after the authoritative Notino report is replaced below.
+            def _forward_non_notino_report(report):
+                if callable(on_report) and _normalise_store(
+                    report.get("store") if isinstance(report, dict) else "", ""
+                ) != "notino":
+                    on_report(report)
+
+            def _forward_non_notino_result(item):
+                if callable(on_result) and _normalise_store(
+                    item.get("store") or item.get("shop") if isinstance(item, dict) else "", ""
+                ) != "notino":
+                    on_result(item)
+
+            reports = _collect_catalog_reports_isolated(
+                query, requested, on_report=_forward_non_notino_report,
+                on_result=_forward_non_notino_result,
+                cancel_event=cancel_event, job_id=job_id,
+                allow_live_fallback=(
+                    allow_live_fallback
+                    and not phase2_offers
+                    and str(os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')).strip().lower()
+                    in {'1', 'true', 'yes', 'on'}
+                ),
+            )
+            # Merge the separately persisted CJ Phase 2 offers into the same
+            # authoritative Notino report consumed by /search and /search-start.
+            # The bridge is read-only and never calls a retailer endpoint.
+            try:
+                if phase2_offers:
+                    notino_report = next(
+                        (item for item in reports if item.get("store") == "notino"),
+                        None,
+                    )
+                    if notino_report is None:
+                        notino_report = _empty_report("notino", status="success")
+                        reports.append(notino_report)
+                    existing = [
+                        item for item in (notino_report.get("results") or [])
+                        if isinstance(item, dict)
+                    ]
+                    # Prefer the authorized CJ clickout and remove matching legacy
+                    # rows even when those older records have no GTIN and use synthetic IDs.
+                    notino_report["results"] = _merge_notino_phase2_offers(
+                        phase2_offers, existing
+                    )
+                    notino_report["count"] = len(notino_report["results"])
+                    notino_report["status"] = "success"
+                    notino_report["verified"] = True
+                    notino_report["error"] = None
+                    notino_report["details"] = {
+                        **(notino_report.get("details") or {}),
+                        "phase2_source": "persistent_notino_cj_catalog",
+                        "phase2_offer_count": len(phase2_offers),
+                        "live_scraping": False,
+                    }
+            except Exception as phase2_exc:
+                # Preserve the rest of the catalog search if the isolated
+                # Notino database is unavailable; expose the issue explicitly.
+                print(
+                    f"NOTINO PHASE2 SEARCH BRIDGE ERROR: "
+                    f"{type(phase2_exc).__name__}: {phase2_exc}",
+                    flush=True,
+                )
+                notino_report = next(
+                    (item for item in reports if item.get("store") == "notino"),
+                    None,
+                )
+                if notino_report is not None:
+                    notino_report.setdefault("details", {})["phase2_error"] = (
+                        type(phase2_exc).__name__
+                    )
+            notino_report = next(
+                (item for item in reports if item.get("store") == "notino"),
+                None,
+            )
+            if notino_report is not None:
+                if phase2_error:
+                    notino_report.setdefault("details", {})["phase2_error"] = phase2_error
+                if callable(on_report):
+                    on_report(notino_report)
+                if callable(on_result):
+                    for offer in notino_report.get("results") or []:
+                        on_result(offer)
+            return reports
+        except Exception as exc:
+            # Normal search is catalog-only. Never fall back to the legacy live
+            # scraper here: that path is what caused one slow search to occupy
+            # the global job for minutes and block subsequent searches.
+            print(f'CATALOG PRIMARY PATH ERROR: {type(exc).__name__}: {exc}', flush=True)
+            error = f'catalog_search_error:{type(exc).__name__}:{exc}'
+            reports = []
+            for store in requested:
+                report = _empty_report(store, status='error', elapsed=0.0, error=error) | {
+                    'verified': False,
+                    'details': {'source': 'persistent_catalog', 'authoritative': True},
+                }
+                reports.append(report)
+                if callable(on_report):
+                    on_report(report)
+            return reports
+    reports = {}
+    lock = threading.Lock()
+    threads = []
+
+    def publish(report):
+        with lock:
+            reports[report['store']] = report
+        if callable(on_report):
+            on_report(report)
+
+    for store in requested:
+        t = threading.Thread(
+            target=_run_controlled_store,
+            args=(store, query, publish, on_result, cancel_event),
+            daemon=True,
+            name=f'scenthunter-store-{store}'
+        )
+        t.start()
+        threads.append(t)
+
+    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+    for t in threads:
+        t.join(timeout=max(0.0, deadline - time.monotonic()))
+
+    unfinished = [
+        t.name.rsplit('scenthunter-store-', 1)[-1]
+        for t in threads
+        if t.is_alive()
+    ]
+
+    if unfinished:
+        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}', flush=True)
+        if cancel_event is not None:
+            cancel_event.set()
+        cancel_deadline = time.monotonic() + 3.0
+        for t in threads:
+            if t.is_alive():
+                t.join(timeout=max(0.0, cancel_deadline - time.monotonic()))
+
+    with lock:
+        for store in unfinished:
+            reports.setdefault(
+                store,
+                _empty_report(store, elapsed=JOB_TIMEOUT_SECONDS, error='job_timeout')
+            )
+
+    return [reports[s] for s in requested if s in reports]
+
+
+JOBS={}; JOBS_LOCK=threading.Lock()
+
+def _cancel_active_jobs(wait_timeout=2.5):
+    """Request cancellation and wait briefly for active search jobs to finish.
+
+    /search-start must remain responsive.  A previous search is cancelled first,
+    but if its thread has not reached its done_event within the short handshake
+    window, the caller must return ``busy`` rather than blocking the HTTP request.
+    """
+    _runtime_diag_event('cancel_active_jobs_enter')
+    with JOBS_LOCK:
+        active = [
+            job for job in JOBS.values()
+            if not job.get("completed") and not job.get("done_event", threading.Event()).is_set()
+        ]
+
+    if not active:
+        _runtime_diag_event('cancel_active_jobs_no_active')
+        return True
+
+    for job in active:
+        event = job.get("cancel_event")
+        if event is not None:
+            event.set()
+
+    print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}", flush=True)
+
+    deadline = time.monotonic() + max(0.1, float(wait_timeout))
+    all_done = True
+    for job in active:
+        done_event = job.get("done_event")
+        if done_event is None:
+            all_done = False
+            continue
+        remaining = max(0.0, deadline - time.monotonic())
+        if remaining <= 0 or not done_event.wait(remaining):
+            all_done = False
+            print(
+                f"SEARCH CANCEL HANDSHAKE PENDING job={job.get('job_id')} "
+                f"waited={round(wait_timeout, 2)}",
+                flush=True,
+            )
+
+    _runtime_diag_event('cancel_active_jobs_done', all_done=all_done, active_jobs=len(active))
+    return all_done
+
+
+
+def _new_job(query, requested_stores=None):
+    job_id = uuid.uuid4().hex
+    with JOBS_LOCK:
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "requested_stores": list(requested_stores or STORES),
+            "started_at": time.time(),
+            "completed": False,
+            "status": "searching",
+            "atomic_results": True,
+            "cancel_event": threading.Event(),
+            "done_event": threading.Event(),
+            "aggregate_lock": threading.Lock(),
+            "offers": [],
+            "results": [],
+            "unresolved_offers": [],
+            "comparisons": [],
+            "errors": {},
+            "stores": {},
+            "store_threads": [],
+            "thread": None,
+        }
+    return job_id
+
+
+def _snapshot(job_id):
+    # IMPORTANT: /search-status must remain a fast read-only endpoint.
+    # Identity scope is computed once by _run_job and cached in the job.
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+
+        if not job:
+            return {
+                "job_id": job_id,
+                "query": "",
+                "completed": True,
+                "status": "completed",
+                "count": 0,
+                "offer_count": 0,
+                "results": [],
+                "unresolved_offers": [],
+                "identity_scope": [],
+                "errors": {"job": "job_not_found"},
+                "stores": {},
+            }
+
+        query = job.get("query", "")
+        # Preserve the latest snapshot and expose a terminal timeout without
+        # pretending the worker finished. Its slot stays occupied until the
+        # worker reaches its finalizer.
+        started_at = float(job.get("started_at") or time.time())
+        if (
+            not job.get("completed")
+            and not job.get("watchdog_timed_out")
+            and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0)
+        ):
+            job["watchdog_timed_out"] = True
+            job["status"] = "timed_out"
+            job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
+            cancel_event = job.get("cancel_event")
+            if cancel_event is not None:
+                cancel_event.set()
+            print(f"SEARCH WATCHDOG CANCELLING job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
+        completed = bool(job.get("completed"))
+        status = job.get("status") or ("completed" if completed else "searching")
+        elapsed = float(job.get("elapsed") or max(0.0, time.time() - started_at))
+        results = list(job.get("results", []))
+        # Last-mile response guard: cached/progressive grouped snapshots must
+        # never expose rows whose displayed title conflicts with the URL SKU.
+        # This complements aggregation-time filtering and protects all polling
+        # clients even if an upstream path published a stale/mutated row.
+        filtered_results = []
+        for group in results:
+            if not isinstance(group, dict):
+                continue
+            safe_group = dict(group)
+            safe_offers = [
+                offer for offer in (group.get("offers") or [])
+                if isinstance(offer, dict)
+                and not _is_non_fragrance_offer(offer)
+                and not _is_concentration_mismatch_offer(offer)
+                and not _is_dior_line_url_mismatch(offer)
+            ]
+            if safe_offers:
+                safe_group["offers"] = safe_offers
+                filtered_results.append(safe_group)
+        results = filtered_results
+        # For a broad registered-family query, publish every canonical family
+        # identity even when no retailer has supplied a verified offer yet.
+        # These are identity-only cards (empty offers), never fabricated prices.
+        family = None
+        requested_variant = None
+        if PRODUCT_MATCHER is not None:
+            try:
+                family = PRODUCT_MATCHER._family_for_query(query)
+                if family is not None:
+                    requested_variant = PRODUCT_MATCHER._requested_variant(query, family)
+            except Exception as exc:
+                print(f"FAMILY IDENTITY PUBLICATION ERROR: {type(exc).__name__}: {exc}", flush=True)
+        # Atomic searches must not synthesize family cards on every status
+        # poll. They are added once, when the complete result set is published.
+        # This keeps the hot polling path cheap for broad family queries.
+        if (
+            family is not None
+            and requested_variant is None
+            and (completed or not job.get("atomic_results"))
+        ):
+            existing_ids = {str(group.get("catalog_id") or "") for group in results}
+            for variant in family.get("variants") or []:
+                canonical = str(variant.get("canonical_name") or "").strip()
+                if not canonical:
+                    continue
+                try:
+                    identity = PRODUCT_MATCHER._build_family_result({}, family, variant)
+                except Exception:
+                    continue
+                catalog_id = str(identity.get("catalog_id") or "")
+                if not catalog_id or catalog_id in existing_ids:
+                    continue
+                results.append({
+                    "catalog_id": catalog_id,
+                    "brand": identity.get("canonical_brand") or family.get("brand") or "",
+                    "canonical_brand": identity.get("canonical_brand") or family.get("brand") or "",
+                    "name": canonical,
+                    "canonical_name": canonical,
+                    "family": identity.get("family_name") or (family.get("query_aliases") or [canonical])[0],
+                    "variant": canonical,
+                    "image": identity.get("canonical_image") or identity.get("image") or "",
+                    "offers": [],
+                    "identity_only": True,
+                })
+                existing_ids.add(catalog_id)
+        offers = list(job.get("offers", []))
+        unresolved_offers = list(job.get("unresolved_offers", []))
+        errors = dict(job.get("errors", {}))
+        stores = dict(job.get("stores", {}))
+        dedupe_diagnostics = list(job.get("dedupe_diagnostics", []))
+        identity_scope = list(job.get("identity_scope", []))
+        collect_elapsed = job.get("collect_elapsed")
+        dedupe_elapsed = job.get("dedupe_elapsed")
+        aggregate_elapsed = job.get("aggregate_elapsed")
+
+    # IMPORTANT: identity_scope is precomputed once by the job thread.
+    # The HTTP status endpoint must remain fast and must NEVER invoke the
+    # ProductMatcher/catalog scan on every 700 ms polling request.
+
+    return {
+        "job_id": job_id,
+        "query": query,
+        "completed": completed,
+        "status": status,
+        "elapsed": round(elapsed, 3),
+        "count": len(results),
+        "offer_count": len(offers),
+        "results": results,
+        "unresolved_offers": unresolved_offers,
+        "identity_scope": identity_scope,
+        "errors": errors,
+        "stores": stores,
+        "elapsed": job.get("elapsed"),
+        "collect_elapsed": collect_elapsed,
+        "dedupe_elapsed": dedupe_elapsed,
+        "aggregate_elapsed": aggregate_elapsed,
+        "dedupe_diagnostics": dedupe_diagnostics,
+    }
+
+def _publish_result(job_id, row):
+    """Append one offer to the job without doing expensive aggregation.
+
+    Normal catalog-first searches already resolve identity before publishing.
+    Re-running dedupe + ProductMatcher aggregation for every single offer made
+    broad searches progressively slower and could keep the job alive for minutes.
+    Final aggregation is performed once by _run_job after all stores finish.
+    """
+    if not isinstance(row, dict):
+        return
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        if job.get("done_event") and job["done_event"].is_set():
+            return
+        if job.get("atomic_results"):
+            return
+        job.setdefault("offers", []).append(row)
+
+
+def _publish_store(job_id, report):
+    """Publish one store batch and refresh the cached public snapshot.
+
+    Aggregation runs once per completed store batch (not once per offer), so
+    clients polling /search-status can see products before the slowest store
+    finishes. Work is performed outside JOBS_LOCK; a revision guard prevents
+    an older concurrent aggregation from overwriting a newer snapshot.
+    """
+    if not isinstance(report, dict):
+        return
+
+    store = report.get("store")
+    if not store:
+        return
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        if job.get("done_event") and job["done_event"].is_set():
+            return
+
+        job["stores"][store] = {
+            "status": report.get("status"),
+            "verified": bool(report.get("verified")),
+            "elapsed": report.get("elapsed", 0.0),
+            "count": report.get("count", 0),
+            "details": dict(report.get("details") or {}),
+        }
+        if report.get("error"):
+            job["errors"][store] = report["error"]
+        else:
+            job.setdefault("errors", {}).pop(store, None)
+
+        # Atomic mode keeps all result rows inside the collector's returned
+        # reports. Do not append per-store offers under JOBS_LOCK: that both
+        # leaks a progressive offer_count and makes status polling contend with
+        # hundreds of row appends before the final publication.
+        if job.get("atomic_results"):
+            return
+
+        for item in report.get("results", []):
+            if isinstance(item, dict):
+                job.setdefault("offers", []).append(item)
+
+        job["aggregate_revision"] = int(job.get("aggregate_revision", 0)) + 1
+        revision = job["aggregate_revision"]
+        offers_snapshot = list(job.get("offers", []))
+
+    # Never hold the global lock while dedupe or ProductMatcher aggregation runs.
+    diagnostics = []
+    try:
+        deduped = dedupe_results(offers_snapshot, diagnostics)
+        grouped, unresolved = _aggregate_identity_results(deduped)
+    except Exception as exc:
+        print(
+            f"SEARCH PROGRESSIVE AGGREGATION ERROR job={job_id} "
+            f"revision={revision} {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        if int(job.get("aggregate_revision", 0)) != revision:
+            # A newer store batch has arrived; its aggregation owns publication.
+            return
+        job["offers"] = deduped
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+        job["dedupe_diagnostics"] = diagnostics
+        job["progressive_snapshot_revision"] = revision
+
+
+def _run_job_impl(job_id, query):
+    """Compatibility wrapper; the single authoritative lifecycle is _run_job."""
+    return _run_job(job_id, query)
+
+def _run_job(job_id, query):
+    started = time.monotonic()
+    print(f'SEARCH START job={job_id} query={query!r}', flush=True)
+
+    job = None
+    cancel_event = None
+    store_threads = []
+    elapsed = 0.0
+    total = 0
+
+    try:
+        with JOBS_LOCK:
+            current_job = JOBS.get(job_id)
+            if current_job is None:
+                print(f'SEARCH END job={job_id} elapsed={round(time.monotonic() - started, 3)} total=0 (job_not_found)', flush=True)
+                return
+
+            current_job["thread"] = threading.current_thread()
+            cancel_event = current_job.get("cancel_event")
+            requested_stores = list(current_job.get("requested_stores") or STORES)
+            job = current_job
+
+        def on_report(r):
+            _publish_store(job_id, r)
+
+        def on_result(row):
+            _publish_result(job_id, row)
+
+        collect_started = time.monotonic()
+        reports = collect_store_reports_isolated(
+            query,
+            requested_stores,
+            on_report=on_report,
+            on_result=on_result,
+            cancel_event=cancel_event,
+            job_id=job_id,
+        )
+        collect_elapsed = round(time.monotonic() - collect_started, 3)
+        with JOBS_LOCK:
+            current_job = JOBS.get(job_id)
+            if current_job is not None:
+                current_job["collect_elapsed"] = collect_elapsed
+        print(
+            f"SEARCH COLLECTED job={job_id} query={query!r} "
+            f"stores={len(reports or [])} elapsed={round(time.monotonic() - started, 3)} "
+            f"collect_elapsed={collect_elapsed}",
+            flush=True,
+        )
+
+        # Registriamo i thread store nel job (per diagnosi / eventuali cleanup futuri)
+        with JOBS_LOCK:
+            if job is not None:
+                job["store_threads"] = [
+                    t for t in threading.enumerate()
+                    if t.name.startswith("scenthunter-store-")
+                ]
+
+        # Copy only mutable inputs while holding JOBS_LOCK. Dedupe and identity
+        # aggregation are performed outside the lock. The progressive snapshot
+        # is already available to /search-status; this final pass reconciles it
+        # against the complete set of store reports.
+        with JOBS_LOCK:
+            if job is None:
+                elapsed = round(time.monotonic() - started, 3)
+                total = 0
+            else:
+                diagnostics = job.setdefault("dedupe_diagnostics", [])
+                cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
+                offers = [
+                    item
+                    for report in (reports or [])
+                    for item in (report.get("results") or [])
+                    if isinstance(item, dict)
+                ]
+
+        if job is not None:
+            if cancel_event is not None and cancel_event.is_set():
+                print(
+                    f"SEARCH FINALIZE AFTER CANCEL job={job_id}",
+                    flush=True,
+                )
+
+            # Reconcile once at completion as a final consistency pass. During
+            # collection, _publish_store already refreshes the cached snapshot
+            # once per store batch, never once per product.
+            dedupe_started = time.monotonic()
+            deduped = dedupe_results(offers, diagnostics)
+            dedupe_elapsed = round(time.monotonic() - dedupe_started, 3)
+            aggregate_started = time.monotonic()
+            grouped, unresolved = _aggregate_identity_results(deduped)
+            aggregate_elapsed = round(time.monotonic() - aggregate_started, 3)
+
+            elapsed = round(time.monotonic() - started, 3)
+
+            with JOBS_LOCK:
+                current_job = JOBS.get(job_id)
+                if current_job is not None:
+                    current_job["offers"] = deduped
+                    current_job["results"] = grouped
+                    current_job["unresolved_offers"] = unresolved
+                    current_job["completed"] = True
+
+                    # A completed job can still contain stores that were not
+                    # authoritatively verified. This is NOT the same as a
+                    # verified zero-result search, so expose a distinct final
+                    # status instead of silently presenting "0 products".
+                    store_issues = [
+                        report for report in reports
+                        if (
+                            not bool(report.get("verified"))
+                            or str(report.get("status") or "").lower()
+                            in {"error", "timeout", "blocked", "unavailable"}
+                        )
+                    ]
+
+                    if current_job.get("watchdog_timed_out"):
+                        current_job["status"] = "timed_out"
+                    elif cancelled:
+                        # A cancellation can race with already-published store
+                        # results. Never describe a non-empty result set as
+                        # "cancelled (no results)".
+                        current_job["status"] = (
+                            "cancelled_with_results"
+                            if grouped
+                            else "cancelled"
+                        )
+                    elif store_issues:
+                        current_job["status"] = "completed_with_store_issues"
+                    else:
+                        current_job["status"] = "completed"
+
+                    current_job["store_issue_count"] = len(store_issues)
+                    current_job["elapsed"] = elapsed
+                    current_job["dedupe_elapsed"] = dedupe_elapsed
+                    current_job["aggregate_elapsed"] = aggregate_elapsed
+                    total = len(grouped)
+                else:
+                    total = 0
+
+    except Exception as exc:
+        print(f'SEARCH ERROR job={job_id} {type(exc).__name__}: {exc}', flush=True)
+        with JOBS_LOCK:
+            if job is not None:
+                job["completed"] = True
+                job["status"] = "error"
+                job.setdefault("errors", {})["job"] = f"{type(exc).__name__}: {exc}"
+                job["elapsed"] = round(time.monotonic() - started, 3)
+                elapsed = job["elapsed"]
+                total = len(job.get("results", []))
+    finally:
+        # Finalizzazione definitiva: done_event
+        with JOBS_LOCK:
+            if job is not None:
+                done_event = job.get("done_event")
+                if done_event is not None:
+                    done_event.set()
+
+        print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}', flush=True)
+
+
+@app.get('/diagnostic/matcher')
+def diagnostic_matcher(store: str, q: str):
+    """Targeted diagnostic: raw scraper -> clean_result -> ProductMatcher.
+
+    Diagnostic only. It does not publish offers into a search job and does not
+    alter the normal aggregation pipeline.
+    """
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+
+    if machine_store not in STORES:
+        return {
+            'ok': False,
+            'diagnostic': 'scraper -> clean_result -> ProductMatcher',
+            'store': machine_store,
+            'query': query,
+            'error': f'unknown_store:{machine_store}',
+        }
+    if not query:
+        return {
+            'ok': False,
+            'diagnostic': 'scraper -> clean_result -> ProductMatcher',
+            'store': machine_store,
+            'query': query,
+            'error': 'missing_query',
+        }
+
+    raw_rows = []
+    stream_return_type = None
+    stream_error = None
+
+    try:
+        module = importlib.import_module(f'scrapers.{machine_store}.scraper')
+        stream = getattr(module, 'search_stream', None)
+        if callable(stream):
+            def on_result(row):
+                if isinstance(row, dict):
+                    raw_rows.append(dict(row))
+            returned = stream(query, on_result)
+            stream_return_type = type(returned).__name__
+            if returned is not None and not raw_rows:
+                if isinstance(returned, dict):
+                    candidate_rows = returned.get('results')
+                    if candidate_rows is None:
+                        candidate_rows = returned.get('products')
+                    if isinstance(candidate_rows, list):
+                        raw_rows.extend(r for r in candidate_rows if isinstance(r, dict))
+                elif isinstance(returned, (list, tuple)):
+                    raw_rows.extend(r for r in returned if isinstance(r, dict))
+                else:
+                    try:
+                        raw_rows.extend(r for r in list(returned) if isinstance(r, dict))
+                    except TypeError:
+                        pass
+        else:
+            search = getattr(module, 'search', None)
+            if not callable(search):
+                raise RuntimeError(f'scraper {machine_store} non espone search/search_stream')
+            returned = search(query)
+            stream_return_type = type(returned).__name__
+            if isinstance(returned, dict):
+                candidate_rows = returned.get('results')
+                if candidate_rows is None:
+                    candidate_rows = returned.get('products')
+                if isinstance(candidate_rows, list):
+                    raw_rows.extend(r for r in candidate_rows if isinstance(r, dict))
+            elif isinstance(returned, (list, tuple)):
+                raw_rows.extend(r for r in returned if isinstance(r, dict))
+            else:
+                try:
+                    raw_rows.extend(r for r in list(returned) if isinstance(r, dict))
+                except TypeError:
+                    pass
+    except Exception as exc:
+        stream_error = f'{type(exc).__name__}: {exc}'
+
+    matched = []
+    rejected = []
+    unresolved = []
+    clean_errors = []
+
+    def compact(item):
+        return {
+            'name': item.get('name') or item.get('title'),
+            'brand': item.get('brand'),
+            '_raw_brand': item.get('_raw_brand'),
+            'price': item.get('price'),
+            'price_num': item.get('price_num'),
+            'size_ml': item.get('size_ml'),
+            'url': item.get('url') or item.get('product_url'),
+            'availability': item.get('availability'),
+            'match_status': item.get('_match_status'),
+            'match_method': item.get('match_method'),
+            'match_score': item.get('match_score'),
+            'confidence': item.get('confidence'),
+            'catalog_id': item.get('catalog_id'),
+            'canonical_name': item.get('canonical_name'),
+            'canonical_brand': item.get('canonical_brand'),
+            'canonical_image': item.get('canonical_image'),
+            'image': item.get('image'),
+            'image_url': item.get('image_url'),
+            'retailer_image': item.get('image') or item.get('image_url'),
+            'family': item.get('family'),
+            'variant': item.get('variant'),
+            'matched_alias': item.get('matched_alias'),
+            'match_error': item.get('_match_error'),
+        }
+
+    for index, raw in enumerate(raw_rows):
+        try:
+            prepared = clean_result(raw, machine_store)
+        except Exception as exc:
+            clean_errors.append({
+                'index': index,
+                'error': f'{type(exc).__name__}: {exc}',
+                'raw': raw,
+            })
+            continue
+        if prepared is None:
+            clean_errors.append({'index': index, 'error': 'clean_result_returned_none'})
+            continue
+
+        resolved = _resolve_offer_identity(prepared, query)
+        if not isinstance(resolved, dict):
+            rejected.append({'index': index, **compact(prepared)})
+            continue
+
+        payload = {'index': index, **compact(resolved)}
+        if resolved.get('_match_status') == 'matched' and resolved.get('catalog_id'):
+            matched.append(payload)
+        elif resolved.get('_match_status') == 'rejected':
+            rejected.append(payload)
+        else:
+            unresolved.append(payload)
+
+    return {
+        'ok': stream_error is None,
+        'diagnostic': 'scraper -> clean_result -> ProductMatcher',
+        'store': machine_store,
+        'query': query,
+        'stream_return_type': stream_return_type,
+        'stream_error': stream_error,
+        'identity_scope_count': len(_identity_scope(query)),
+        'raw_count': len(raw_rows),
+        'matched_count': len(matched),
+        'rejected_count': len(rejected),
+        'unresolved_count': len(unresolved),
+        'clean_error_count': len(clean_errors),
+        'matched': matched,
+        'rejected': rejected,
+        'unresolved': unresolved,
+        'clean_errors': clean_errors,
+    }
+
+
+@app.get('/diagnostic/store-pipeline')
+def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
+    """Fast read-only catalog diagnostic; opt into slower live probe with probe=true."""
+    import time as _diag_time
+
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+    allowed = {'notino'}
+    if machine_store not in allowed:
+        return {
+            'ok': False,
+            'diagnostic': 'configuration -> persistent_catalog -> local_search -> optional_direct_probe',
+            'error': 'unsupported_store',
+            'allowed_stores': sorted(allowed),
+            'store': machine_store,
+            'query': query,
+        }
+    if not query:
+        return {'ok': False, 'store': machine_store, 'error': 'missing_query'}
+
+    def enabled(name, default='0'):
+        return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
+    started = _diag_time.monotonic()
+    layers = {
+        'configuration': {
+            'catalog_engine_available': bool(CATALOG_ENGINE_AVAILABLE),
+            'store': machine_store,
+            'public_fallback_enabled': public_enabled,
+        },
+    }
+
+    try:
+        status_map = catalog_store_status() if CATALOG_ENGINE_AVAILABLE and callable(catalog_store_status) else {}
+        layers['persistent_catalog_status'] = (status_map or {}).get(machine_store, {
+            'error': 'catalog_status_unavailable'
+        })
+    except Exception as exc:
+        layers['persistent_catalog_status'] = {'error': f'{type(exc).__name__}: {exc}'}
+
+    local_started = _diag_time.monotonic()
+    try:
+        local_rows = catalog_search_local(query, per_store=12) if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local) else []
+        local_rows = [r for r in (local_rows or []) if isinstance(r, dict) and str(r.get('store') or '').lower() == machine_store]
+        layers['local_catalog_search'] = {
+            'count': len(local_rows),
+            'elapsed_sec': round(_diag_time.monotonic() - local_started, 3),
+            'sample': [{
+                'name': r.get('name') or r.get('title'),
+                'brand': r.get('brand'),
+                'price': r.get('price') or r.get('price_num'),
+                'size_ml': r.get('size_ml'),
+                'url': r.get('url') or r.get('product_url'),
+                'availability': r.get('availability'),
+            } for r in local_rows[:5]],
+        }
+    except Exception as exc:
+        layers['local_catalog_search'] = {
+            'count': 0,
+            'elapsed_sec': round(_diag_time.monotonic() - local_started, 3),
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+    if probe:
+        direct_started = _diag_time.monotonic()
+        try:
+            direct = diagnostic_matcher(machine_store, query)
+            layers['direct_scraper_and_identity'] = {
+                'ok': direct.get('ok'),
+                'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+                'stream_error': direct.get('stream_error'),
+                'raw_count': direct.get('raw_count', 0),
+                'matched_count': direct.get('matched_count', 0),
+                'rejected_count': direct.get('rejected_count', 0),
+                'unresolved_count': direct.get('unresolved_count', 0),
+                'clean_error_count': direct.get('clean_error_count', 0),
+                'matched': direct.get('matched', [])[:5],
+                'rejected': direct.get('rejected', [])[:5],
+                'unresolved': direct.get('unresolved', [])[:5],
+                'clean_errors': direct.get('clean_errors', [])[:3],
+            }
+        except Exception as exc:
+            layers['direct_scraper_and_identity'] = {
+                'ok': False,
+                'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+                'error': f'{type(exc).__name__}: {exc}',
+            }
+    else:
+        layers['direct_scraper_and_identity'] = {
+            'skipped': True,
+            'reason': 'slow network probe disabled by default; add &probe=true to run it',
+        }
+
+    catalog = layers.get('persistent_catalog_status') or {}
+    local_count = (layers.get('local_catalog_search') or {}).get('count', 0)
+    direct_layer = layers.get('direct_scraper_and_identity') or {}
+    if probe and direct_layer.get('raw_count', 0) and not direct_layer.get('matched_count', 0):
+        likely_loss = 'direct_scraper_returns_rows_but_cleaning_or_identity_matching_drops_them'
+    elif probe and direct_layer.get('matched_count', 0):
+        likely_loss = 'direct_scraper_and_identity_pass; inspect async live-bridge gate/publication'
+    elif local_count:
+        likely_loss = 'catalog_has_candidates_but_direct_adapter_returns_no_matched_offers' if probe else 'catalog_search_has_hits; direct adapter not probed'
+    elif not catalog.get('indexed_urls'):
+        likely_loss = 'store_catalog_not_indexed'
+    else:
+        likely_loss = 'no_local_hits_and_no_direct_matches; inspect discovery/hydration and retailer transport' if probe else 'catalog_indexed_but_query_has_no_local_hits; direct adapter not probed'
+    return {
+        'ok': True,
+        'diagnostic': 'configuration -> persistent_catalog -> local_search -> optional_direct_probe',
+        'store': machine_store,
+        'query': query,
+        'elapsed_sec': round(_diag_time.monotonic() - started, 3),
+        'likely_loss_point': likely_loss,
+        'layers': layers,
+        'read_only': True,
+    }
+
+@app.get('/diagnostic/match-offer')
+def diagnostic_match_offer(
+    store: str,
+    q: str,
+    name: str,
+    brand: str = '',
+    url: str = '',
+    size_ml: str = '',
+):
+    """Instant, network-free identity diagnostic.
+
+    This endpoint deliberately bypasses scraper discovery. It feeds one
+    controlled offer through clean_result -> ProductMatcher so identity bugs
+    can be isolated from sitemap/search/network problems.
+    """
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+    raw_offer = {
+        'store': machine_store,
+        'name': str(name or '').strip(),
+        'brand': str(brand or '').strip(),
+        'url': str(url or '').strip(),
+    }
+    if str(size_ml or '').strip():
+        raw_offer['size_ml'] = str(size_ml).strip()
+
+    if machine_store not in STORES:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': f'unknown_store:{machine_store}',
+            'offer': raw_offer,
+        }
+    if not query:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': 'missing_query',
+            'offer': raw_offer,
+        }
+    if not raw_offer['name']:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': 'missing_name',
+            'offer': raw_offer,
+        }
+
+    try:
+        prepared = clean_result(raw_offer, machine_store)
+        if prepared is None:
+            return {
+                'ok': False,
+                'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+                'error': 'clean_result_returned_none',
+                'offer': raw_offer,
+            }
+
+        resolved = _resolve_offer_identity(prepared, query)
+        return {
+            'ok': True,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'store': machine_store,
+            'query': query,
+            'input': {
+                'name': prepared.get('name'),
+                'brand': prepared.get('brand'),
+                'url': prepared.get('url'),
+                'size_ml': prepared.get('size_ml'),
+            },
+            'result': {
+                'name': resolved.get('name') or resolved.get('title'),
+                'brand': resolved.get('brand'),
+                '_raw_brand': resolved.get('_raw_brand'),
+                'url': resolved.get('url') or resolved.get('product_url'),
+                'size_ml': resolved.get('size_ml'),
+                'match_status': resolved.get('_match_status'),
+                'reject_reason': resolved.get('_reject_reason'),
+                'match_method': resolved.get('match_method'),
+                'match_score': resolved.get('match_score'),
+                'confidence': resolved.get('confidence'),
+                'catalog_id': resolved.get('catalog_id'),
+                'canonical_name': resolved.get('canonical_name'),
+                'canonical_brand': resolved.get('canonical_brand'),
+                'canonical_image': resolved.get('canonical_image'),
+                'image': resolved.get('image'),
+                'image_url': resolved.get('image_url'),
+                'retailer_image': resolved.get('image') or resolved.get('image_url'),
+                'family': resolved.get('family'),
+                'variant': resolved.get('variant'),
+            } if isinstance(resolved, dict) else None,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': f'{type(exc).__name__}: {exc}',
+            'offer': raw_offer,
+        }
+
+
+@app.get('/diagnostic/scraper-offer-compare')
+def diagnostic_scraper_offer_compare(store: str, q: str, url: str):
+    """Read-only differential diagnostic for one real scraper product URL.
+
+    Runs the exact deployed scraper path, then compares the complete cleaned
+    offer with a minimal offer and with versions where one top-level field is
+    removed. It never publishes offers and never changes normal search logic.
+    """
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+    product_url = str(url or '').strip()
+    diagnostic_name = 'exact scraper product URL -> product_json -> make_item -> clean_result -> differential ProductMatcher'
+
+    if machine_store not in STORES:
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': f'unknown_store:{machine_store}'}
+    if not query:
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'missing_query'}
+    if not product_url:
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'missing_url'}
+
+    session = None
+
+    def match_snapshot(offer):
+        if not isinstance(offer, dict) or PRODUCT_MATCHER is None:
+            return {'match_status': 'unavailable', 'catalog_id': None, 'canonical_name': None,
+                    'canonical_brand': None, 'match_method': None, 'match_score': None}
+        try:
+            match = PRODUCT_MATCHER.match(offer, query)
+            if not isinstance(match, dict):
+                return {'match_status': 'unresolved', 'catalog_id': None, 'canonical_name': None,
+                        'canonical_brand': None, 'match_method': None, 'match_score': None}
+            return {'match_status': 'matched', 'catalog_id': match.get('catalog_id'),
+                    'canonical_name': match.get('canonical_name'),
+                    'canonical_brand': match.get('canonical_brand'),
+                    'match_method': match.get('match_method'), 'match_score': match.get('match_score')}
+        except Exception as exc:
+            return {'match_status': 'error', 'error': f'{type(exc).__name__}: {exc}'}
+
+    def compact(offer):
+        return {
+            'keys': sorted(str(k) for k in offer.keys()),
+            'name': offer.get('name'), 'brand': offer.get('brand'),
+            '_raw_brand': offer.get('_raw_brand'), 'url': offer.get('url'),
+            'size_ml': offer.get('size_ml'), 'store': offer.get('store'),
+            'source': offer.get('source'), 'identity': offer.get('identity'),
+            'attributes': offer.get('attributes'), 'offer': offer.get('offer'),
+            'provenance': offer.get('provenance'),
+        }
+
+    try:
+        module = load_scraper(machine_store)
+        base_url = str(getattr(module, 'BASE_URL', '') or '').rstrip('/')
+        if base_url and not product_url.lower().startswith(base_url.lower() + '/products/'):
+            return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'url_not_allowed_for_store',
+                    'store': machine_store, 'base_url': base_url, 'url': product_url}
+
+        product_json_method = getattr(module, 'product_json', None)
+        make_item_method = getattr(module, 'make_item', None)
+        if not callable(product_json_method) or not callable(make_item_method):
+            return {'ok': False, 'diagnostic': diagnostic_name,
+                    'error': 'scraper_missing_product_json_or_make_item'}
+
+        import requests
+        session = requests.Session()
+        data = product_json_method(session, product_url)
+        if not isinstance(data, dict):
+            return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'empty_product_json',
+                    'store': machine_store, 'query': query, 'url': product_url}
+
+        variants = data.get('variants') or []
+        raw_items = []
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            item = make_item_method(data, variant, product_url, query)
+            if isinstance(item, dict):
+                raw_items.append(item)
+
+        inspected = []
+        for index, raw_item in enumerate(raw_items):
+            prepared = clean_result(raw_item, machine_store)
+            if not isinstance(prepared, dict):
+                inspected.append({'index': index, 'error': 'clean_result_returned_none',
+                                  'raw_keys': sorted(str(k) for k in raw_item.keys())})
+                continue
+
+            direct_full = match_snapshot(prepared)
+            resolved = _resolve_offer_identity(prepared, query)
+
+            minimal = {
+                'store': prepared.get('store') or machine_store,
+                'name': prepared.get('name'), 'brand': prepared.get('brand') or '',
+                'url': prepared.get('url') or '',
+            }
+            if prepared.get('size_ml') not in (None, ''):
+                minimal['size_ml'] = prepared.get('size_ml')
+            minimal_match = match_snapshot(clean_result(minimal, machine_store))
+
+            differential = []
+            core_keys = {'store', 'name', 'brand', '_raw_name', '_raw_brand', 'url', 'size_ml'}
+            for key in sorted(prepared.keys(), key=str):
+                if key in core_keys:
+                    continue
+                reduced = dict(prepared)
+                reduced.pop(key, None)
+                differential.append({'removed_key': key, **match_snapshot(reduced)})
+
+            inspected.append({
+                'index': index,
+                'raw': {
+                    'name': raw_item.get('name'), 'brand': raw_item.get('brand'),
+                    'url': raw_item.get('url'), 'size_ml': raw_item.get('size_ml'),
+                    'source': raw_item.get('source'), 'identity': raw_item.get('identity'),
+                    'attributes': raw_item.get('attributes'), 'offer': raw_item.get('offer'),
+                    'provenance': raw_item.get('provenance'),
+                },
+                'clean': compact(prepared),
+                'tests': {
+                    'direct_full_clean_offer': direct_full,
+                    'authoritative_resolve_offer_identity': {
+                        'match_status': resolved.get('_match_status') if isinstance(resolved, dict) else None,
+                        'catalog_id': resolved.get('catalog_id') if isinstance(resolved, dict) else None,
+                        'canonical_name': resolved.get('canonical_name') if isinstance(resolved, dict) else None,
+                        'canonical_brand': resolved.get('canonical_brand') if isinstance(resolved, dict) else None,
+                        'match_method': resolved.get('match_method') if isinstance(resolved, dict) else None,
+                        'match_score': resolved.get('match_score') if isinstance(resolved, dict) else None,
+                        'match_error': resolved.get('_match_error') if isinstance(resolved, dict) else None,
+                    },
+                    'minimal_controlled_shape': minimal_match,
+                },
+                'top_level_differential': differential,
+            })
+
+        return {'ok': True, 'diagnostic': diagnostic_name, 'store': machine_store,
+                'query': query, 'url': product_url, 'product_title': data.get('title'),
+                'product_vendor': data.get('vendor'), 'variant_count': len(variants),
+                'item_count': len(raw_items), 'items': inspected}
+    except Exception as exc:
+        return {'ok': False, 'diagnostic': diagnostic_name,
+                'error': f'{type(exc).__name__}: {exc}', 'store': machine_store,
+                'query': query, 'url': product_url}
+    finally:
+        if session is not None:
+            try:
+                session.close()
+            except Exception:
+                pass
+
+@app.get('/',include_in_schema=False)
+def root():
+    if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
+    return {'app':'ScentHunter','status':'running','architecture':APP_VERSION,'error':'frontend/index.html not found'}
+
+def _runtime_subprocesses():
+    """Read-only runtime snapshot of scraper worker subprocesses on Linux."""
+    items=[]
+    proc_root=Path('/proc')
+    if proc_root.exists():
+        for entry in proc_root.iterdir():
+            if not entry.name.isdigit():
+                continue
+            pid=int(entry.name)
+            if pid == os.getpid():
+                continue
+            try:
+                cmdline=(entry / 'cmdline').read_bytes().replace(b'\\x00',b' ').decode('utf-8','replace').strip()
+                if not cmdline:
+                    continue
+                if "python" not in cmdline.lower():
+                    continue
+                stat=(entry / 'stat').read_text(errors='replace').split()
+                state=stat[2] if len(stat)>2 else None
+                items.append({"pid":pid,"state":state,"cmdline":cmdline[:500]})
+            except (FileNotFoundError,PermissionError,OSError):
+                continue
+    return items
+
+def _semaphore_snapshot(semaphore):
+    return {
+        "available": getattr(semaphore, "_value", None),
+        "capacity": None,
+    }
+
+@app.get('/diagnostic/runtime')
+def diagnostic_runtime():
+    """READ-ONLY diagnostic of search jobs, threads, semaphores and workers.
+
+    This endpoint does not start/cancel searches and does not modify runtime state.
+    It exists specifically to compare the process immediately after search #1
+    with the process while search #2 is stuck.
+    """
+    now=time.time()
+    with JOBS_LOCK:
+        jobs=[]
+        for job_id,job in JOBS.items():
+            jobs.append({
+                "job_id":job_id,
+                "query":job.get("query"),
+                "completed":bool(job.get("completed")),
+                "started_at":job.get("started_at"),
+                "age_sec":round(now-float(job.get("started_at",now)),3),
+                "offer_count":len(job.get("offers",[])),
+                "result_count":len(job.get("results",[])),
+                "store_count":len(job.get("stores",{})),
+                "errors":dict(job.get("errors",{})),
+            })
+
+    threads=[]
+    for t in threading.enumerate():
+        threads.append({
+            "name":t.name,
+            "alive":t.is_alive(),
+            "daemon":t.daemon,
+        })
+
+    store_threads=[t for t in threads if t["name"].startswith("scenthunter-store-")]
+    search_threads=[t for t in threads if t["name"].startswith("scenthunter-search-")]
+
+    return {
+        "diagnostic": "runtime-state-read-only",
+        "pid":os.getpid(),
+        "timestamp":now,
+        "jobs":jobs,
+        "job_count":len(jobs),
+        "active_jobs":sum(1 for j in jobs if not j["completed"]),
+        "threads":threads,
+        "thread_count":len(threads),
+        "active_store_threads":store_threads,
+        "active_search_threads":search_threads,
+        "semaphores":{
+            "light":{"available":getattr(LIGHT_SEMAPHORE,"_value",None),"capacity":LIGHT_WORKERS},
+            "network":{"available":getattr(NETWORK_SEMAPHORE,"_value",None),"capacity":NETWORK_WORKERS},
+            "browser":{"available":getattr(BROWSER_SEMAPHORE,"_value",None),"capacity":BROWSER_WORKERS},
+        },
+        "worker_processes":_runtime_subprocesses(),
+    }
+
+
+# ============================================================================
+# DEEP RUNTIME DIAGNOSTIC (READ-ONLY / NO SEARCH BEHAVIOUR CHANGES)
+# ============================================================================
+from collections import deque
+
+_RUNTIME_DIAG = deque(maxlen=1000)
+_RUNTIME_DIAG_LOCK = threading.Lock()
+_RUNTIME_DIAG_STARTED = time.time()
+
+def _runtime_diag_event(event, **data):
+    item = {
+        "ts": round(time.time(), 3),
+        "age_sec": round(time.time() - _RUNTIME_DIAG_STARTED, 3),
+        "event": str(event),
+        **data,
+    }
+    try:
+        with _RUNTIME_DIAG_LOCK:
+            _RUNTIME_DIAG.append(item)
+    except Exception:
+        pass
+
+def _runtime_diag_memory():
+    out = {}
+    try:
+        with open("/proc/self/status", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith(("VmRSS:", "VmSize:", "Threads:")):
+                    k, v = line.split(":", 1)
+                    out[k] = v.strip()
+    except Exception:
+        pass
+    return out
+
+def _runtime_thread_snapshot(t):
+    """Return Python and native Linux thread identity for read-only diagnostics."""
+    native_id = getattr(t, "native_id", None)
+    item = {
+        "name": t.name,
+        "ident": t.ident,
+        "native_id": native_id,
+        "alive": t.is_alive(),
+        "daemon": t.daemon,
+    }
+    if native_id is not None:
+        try:
+            with open(
+                f"/proc/self/task/{int(native_id)}/comm",
+                "r",
+                encoding="utf-8",
+            ) as handle:
+                item["os_comm"] = handle.read().strip()
+        except (OSError, TypeError, ValueError) as exc:
+            item["os_comm_error"] = f"{type(exc).__name__}: {exc}"
+    return item
+
+
+def _runtime_diag_stacks():
+    frames = sys._current_frames()
+    result = []
+    for t in threading.enumerate():
+        if not (
+            t.name.startswith("scenthunter-store-")
+            or t.name.startswith("scenthunter-search-")
+            or t.name.startswith("scenthunter-catalog-")
+            or t.name.startswith("sh-catalog-")
+            or t.name.startswith("AnyIO")
+            or t.name.startswith("ThreadPoolExecutor")
+        ):
+            continue
+        item = _runtime_thread_snapshot(t)
+        frame = frames.get(t.ident)
+        if frame is not None:
+            try:
+                import traceback as _tb
+                item["stack"] = _tb.format_stack(frame)[-18:]
+            except Exception as exc:
+                item["stack_error"] = f"{type(exc).__name__}: {exc}"
+        result.append(item)
+    return result
+
+@app.get("/diagnostic/runtime-deep")
+def diagnostic_runtime_deep():
+    """
+    Deep read-only runtime probe.
+    Crucially, it NEVER blocks waiting for JOBS_LOCK: it first reports whether
+    the lock is currently locked, then tries it only for 50 ms.
+    """
+    now = time.time()
+    lock_locked = False
+    jobs_snapshot = None
+    lock_acquired = False
+
+    try:
+        lock_locked = bool(JOBS_LOCK.locked())
+    except Exception:
+        lock_locked = None
+
+    try:
+        lock_acquired = JOBS_LOCK.acquire(timeout=0.05)
+    except Exception:
+        lock_acquired = False
+
+    if lock_acquired:
+        try:
+            jobs_snapshot = []
+            for job_id, job in JOBS.items():
+                jobs_snapshot.append({
+                    "job_id": job_id,
+                    "query": job.get("query"),
+                    "completed": bool(job.get("completed")),
+                    "status": job.get("status"),
+                    "age_sec": round(now - float(job.get("started_at", now)), 3),
+                    "offer_count": len(job.get("offers", [])),
+                    "result_count": len(job.get("results", [])),
+                    "store_count": len(job.get("stores", {})),
+                    "stores": dict(job.get("stores", {})),
+                    "errors": dict(job.get("errors", {})),
+                })
+        finally:
+            JOBS_LOCK.release()
+
+    with _RUNTIME_DIAG_LOCK:
+        events = list(_RUNTIME_DIAG)
+
+    return {
+        "diagnostic": "runtime-deep-read-only-v1",
+        "timestamp": now,
+        "pid": os.getpid(),
+        "ppid": os.getppid(),
+        "app_version": APP_VERSION,
+        "jobs_lock": {
+            "locked_when_checked": lock_locked,
+            "acquired_within_50ms": lock_acquired,
+        },
+        "jobs": jobs_snapshot,
+        "job_count": len(jobs_snapshot) if jobs_snapshot is not None else None,
+        "active_jobs": (
+            sum(1 for j in jobs_snapshot if not j["completed"])
+            if jobs_snapshot is not None else None
+        ),
+        "threads": {
+            "total": threading.active_count(),
+            "all": [
+                _runtime_thread_snapshot(t)
+                for t in threading.enumerate()
+            ],
+            "stacks": _runtime_diag_stacks(),
+        },
+        "semaphores": {
+            "light": {
+                "available": getattr(LIGHT_SEMAPHORE, "_value", None),
+                "capacity": LIGHT_WORKERS,
+            },
+            "network": {
+                "available": getattr(NETWORK_SEMAPHORE, "_value", None),
+                "capacity": NETWORK_WORKERS,
+            },
+            "browser": {
+                "available": getattr(BROWSER_SEMAPHORE, "_value", None),
+                "capacity": BROWSER_WORKERS,
+            },
+        },
+        "worker_processes": _runtime_subprocesses(),
+        "memory": _runtime_diag_memory(),
+        "events": events[-500:],
+    }
+
+
+@app.get('/diagnostic/deloox-pipeline')
+def diagnostic_deloox_pipeline(
+    url: str = 'https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html',
+    q: str = 'Liquid Brun Limited Edition 150 ml',
+):
+    """Read-only trace of one Deloox URL through scrape, normalization and next-engine matching."""
+    from urllib.parse import urlparse
+    from decimal import Decimal
+    allowed_hosts = {'www.deloox.be', 'deloox.be', 'www.deloox.nl', 'deloox.nl', 'www.deloox.com', 'deloox.com', 'www.deloox.lu', 'deloox.lu'}
+    parsed = urlparse(str(url or '').strip())
+    base = {'ok': False, 'diagnostic': 'deloox-pipeline-trace-v1', 'read_only': True, 'url': url, 'query': q}
+    if parsed.scheme != 'https' or parsed.hostname not in allowed_hosts or not parsed.path:
+        return {**base, 'stage': 'input_validation', 'error': 'url_not_allowed'}
+    try:
+        import requests
+        from scrapers.deloox import scraper as deloox_scraper
+        response = requests.get(url, headers=getattr(deloox_scraper, 'HEADERS', {}),
+                                timeout=getattr(deloox_scraper, 'TIMEOUT', (3.5, 8.0)))
+        fetch = {'http_status': response.status_code, 'final_url': response.url,
+                 'content_type': response.headers.get('content-type', ''),
+                 'html_bytes': len(response.content)}
+        if response.status_code >= 400:
+            return {**base, 'stage': 'fetch', 'fetch': fetch, 'error': 'http_error'}
+        html = response.text
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, 'lxml')
+        jsonld = deloox_scraper._jsonld(soup)
+        parsed_product = deloox_scraper._product(
+            response.url, html, q, soup=soup, jsonld_data=jsonld,
+            h1_override=(soup.find('h1').get_text(' ', strip=True) if soup.find('h1') else None))
+        parse_stage = {
+            'jsonld_found': bool(jsonld),
+            'jsonld_name': jsonld.get('name') if isinstance(jsonld, dict) else None,
+            'jsonld_brand': jsonld.get('brand') if isinstance(jsonld, dict) else None,
+            'jsonld_size': (jsonld.get('size') or jsonld.get('sizeValue') or jsonld.get('volume')) if isinstance(jsonld, dict) else None,
+            'jsonld_offers': jsonld.get('offers') if isinstance(jsonld, dict) else None,
+            'parser_returned_product': isinstance(parsed_product, dict),
+            'parsed_product': parsed_product,
+        }
+        if not isinstance(parsed_product, dict):
+            return {**base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage}}
+        normalized_input = {
+            'name': parsed_product.get('name'),
+            # Preserve verified parser identity for the next-engine matcher.
+            # Without this field, the GTIN registry is bypassed and this
+            # diagnostic falsely reports an unresolved canonical match.
+            'identity': parsed_product.get('identity'),
+            # Expose the GTIN as a top-level explicit identifier too; the matcher
+            # accepts it from persisted rows and parser-normalized payloads alike.
+            'gtin': ((parsed_product.get('identity') or {}).get('gtin')),
+            'brand': parsed_product.get('brand') or parsed_product.get('_raw_brand') or 'French Avenue',
+            'size_ml': ((parsed_product.get('attributes') or {}).get('size_ml') or {}).get('value') if isinstance((parsed_product.get('attributes') or {}).get('size_ml'), dict) else parsed_product.get('size_ml'),
+            'url': parsed_product.get('url') or response.url,
+            'price': (parsed_product.get('offer') or {}).get('price'),
+            'availability': (parsed_product.get('offer') or {}).get('availability') or parsed_product.get('available'),
+        }
+        from scenthunter_next_engine.offer_normalizer import normalize_offer
+        from scenthunter_next_engine.catalog_repository import CatalogRepository
+        from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+        from pathlib import Path
+        offer = normalize_offer(normalized_input, retailer='deloox')
+        matcher = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json'))
+        match = matcher.match(offer)
+        # Expose read-only GTIN routing evidence so the live trace can distinguish
+        # missing parser identity from a registry/catalog target mismatch.
+        from scenthunter_next_engine.canonical_matcher import _offer_gtin
+        extracted_gtin = _offer_gtin(offer.raw_payload)
+        registered_gtin = matcher._gtin_registry
+        gtin_trace = {
+            'extracted_gtin': extracted_gtin,
+            'registry_contains_gtin': bool(extracted_gtin and extracted_gtin in registered_gtin),
+            'registered_target': ({
+                'product_id': registered_gtin[extracted_gtin].get('product_id'),
+                'variant_id': registered_gtin[extracted_gtin].get('variant_id'),
+                'size_ml': registered_gtin[extracted_gtin].get('size_ml'),
+            } if extracted_gtin and extracted_gtin in registered_gtin else None),
+        }
+        matching_stage = {
+            'gtin_trace': gtin_trace,
+            'normalized_offer': {
+                'retailer': offer.retailer, 'raw_name': offer.raw_name, 'brand_raw': offer.brand_raw,
+                'size_ml': offer.size_ml, 'price': str(offer.price) if offer.price is not None else None,
+                'availability': offer.availability, 'product_url': offer.product_url,
+            },
+            'match': {
+                'status': match.status.value, 'reason': match.reason,
+                'canonical_product_id': match.canonical_product_id,
+                'canonical_variant_id': match.canonical_variant_id,
+                'candidate_product_ids': list(match.candidate_product_ids),
+            },
+        }
+        # Compare the live parser/matcher output with the durable catalog without
+        # opening a write-capable connection. This distinguishes a parse/match
+        # failure from a persistence, hydration-queue, or local-search-index gap.
+        persisted = {
+            'read_only': True,
+            'database_written': False,
+            'exact_url': response.url,
+            'tables': {},
+            'errors': [],
+        }
+        try:
+            import sqlite3
+            catalog_module = importlib.import_module('catalog_engine')
+            db_path = Path(catalog_module.DB_PATH).resolve()
+            db_uri = db_path.as_uri() + '?mode=ro'
+            db_conn = sqlite3.connect(db_uri, uri=True, timeout=1.0)
+            db_conn.row_factory = sqlite3.Row
+            db_conn.execute('PRAGMA busy_timeout=1000')
+            db_conn.execute('PRAGMA query_only=ON')
+            try:
+                table_names = {
+                    row['name'] for row in db_conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+
+                def read_table_rows(table, *, exact_url=True, phrase_search=False, limit=8):
+                    if table not in table_names:
+                        return {'exists': False, 'rows': []}
+                    columns = {
+                        row['name'] for row in db_conn.execute(
+                            f'PRAGMA table_info("{table}")'
+                        ).fetchall()
+                    }
+                    clauses = []
+                    params = []
+                    if 'store' in columns:
+                        clauses.append("lower(store)='deloox'")
+                    if exact_url and 'url' in columns:
+                        clauses.append('url=?')
+                        params.append(response.url)
+                    elif phrase_search:
+                        text_columns = [c for c in ('name', 'slug', 'search_text', 'url') if c in columns]
+                        if text_columns:
+                            clauses.append('(' + ' OR '.join(f'lower(COALESCE("{c}",\'\')) LIKE ?' for c in text_columns) + ')')
+                            params.extend(['%liquid%brun%'] * len(text_columns))
+                    if not clauses:
+                        return {'exists': True, 'columns': sorted(columns), 'rows': []}
+                    sql = f'SELECT * FROM "{table}" WHERE ' + ' AND '.join(clauses) + f' LIMIT {int(limit)}'
+                    rows = [dict(row) for row in db_conn.execute(sql, params).fetchall()]
+                    return {'exists': True, 'columns': sorted(columns), 'rows': rows}
+
+                for table in ('store_urls', 'store_products', 'store_product_variants', 'hydration_queue'):
+                    exact = read_table_rows(table, exact_url=True, limit=5)
+                    # Add a bounded name/slug lookup when the exact URL row is
+                    # absent, so a redirected or differently localized URL is visible.
+                    if exact.get('exists') and not exact.get('rows'):
+                        exact['nearby_rows'] = read_table_rows(
+                            table, exact_url=False, phrase_search=True, limit=8
+                        ).get('rows', [])
+                    persisted['tables'][table] = exact
+
+                if 'catalog_search_fts' in table_names:
+                    persisted['tables']['catalog_search_fts'] = read_table_rows(
+                        'catalog_search_fts', exact_url=False, phrase_search=True, limit=12
+                    )
+                else:
+                    persisted['tables']['catalog_search_fts'] = {
+                        'exists': False, 'rows': [],
+                        'note': 'local FTS table is absent; this alone does not prove search failure',
+                    }
+                persisted['database_path'] = str(db_path)
+            finally:
+                db_conn.close()
+        except Exception as db_exc:
+            persisted['errors'].append({
+                'stage': 'persisted_catalog',
+                'error': f'{type(db_exc).__name__}: {str(db_exc)[:300]}',
+            })
+
+        # The next-engine matcher above is isolated/opt-in. Also run the
+        # currently deployed legacy identity resolver on the same parsed offer,
+        # without publishing it or modifying the catalog.
+        production_identity = {'status': 'unavailable'}
+        try:
+            cleaned_for_production = clean_result(parsed_product, 'deloox')
+            resolved_for_production = _resolve_offer_identity(cleaned_for_production, q)
+            if isinstance(resolved_for_production, dict):
+                production_identity = {
+                    'status': resolved_for_production.get('_match_status'),
+                    'catalog_id': resolved_for_production.get('catalog_id'),
+                    'canonical_name': resolved_for_production.get('canonical_name'),
+                    'canonical_brand': resolved_for_production.get('canonical_brand'),
+                    'match_method': resolved_for_production.get('match_method'),
+                    'match_score': resolved_for_production.get('match_score'),
+                    'match_error': resolved_for_production.get('_match_error'),
+                }
+        except Exception as identity_exc:
+            production_identity = {
+                'status': 'error',
+                'error': f'{type(identity_exc).__name__}: {str(identity_exc)[:300]}',
+            }
+
+        failed_at = None
+        if not isinstance(parsed_product, dict):
+            failed_at = 'scraper_parse'
+        elif match.status.value != 'matched':
+            failed_at = 'next_engine_canonical_match'
+        elif production_identity.get('status') not in ('matched', 'resolved', 'exact', None):
+            failed_at = 'legacy_production_identity'
+        return {
+            **base,
+            'ok': True,
+            'failed_at': failed_at,
+            'fetch': fetch,
+            'stages': {
+                'fetch': fetch,
+                'parse': parse_stage,
+                'normalize': matching_stage['normalized_offer'],
+                'next_engine_canonical_match': matching_stage['match'],
+                'legacy_production_identity': production_identity,
+                'persisted_catalog_and_queue': persisted,
+            },
+            'final': {
+                'availability': offer.availability,
+                'price': str(offer.price) if offer.price is not None else None,
+                'next_engine_matched': match.status.value == 'matched',
+                'production_identity': production_identity,
+                'read_only': True,
+                'database_written': False,
+            },
+        }
+    except Exception as exc:
+        return {**base, 'stage': 'diagnostic_exception', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'}
+
+
+@app.get('/health')
+def health():
+    return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
+
+@app.get('/diagnose-deloox-generic-search-coverage')
+def diagnose_deloox_generic_search_coverage():
+    """Read-only coverage check for representative generic Deloox searches.
+
+    Keep the diagnostic cheap while catalog discovery/hydration is active:
+    product examples are bounded, and each queue table is scanned once for all
+    target phrases instead of issuing one full-table LIKE scan per phrase.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': 'catalog_db_unavailable',
+        }
+
+    checks = (
+        ('hawas_atlantis', 'hawas atlantis'),
+        ('hawas_la_mer', 'hawas la mer'),
+        ('born_in_roma_gold', 'born in roma the gold'),
+    )
+    name_patterns = {key: '%' + phrase.lower() + '%' for key, phrase in checks}
+    # URL slugs use separators (usually hyphens), not spaces. Wildcards between
+    # tokens match both canonical slugs and localized URL variants.
+    url_patterns = {
+        key: '%' + '%'.join(phrase.lower().split()) + '%'
+        for key, phrase in checks
+    }
+    keys = tuple(name_patterns)
+    url_pattern_values = tuple(url_patterns.values())
+    where_any = ' OR '.join('lower(url) LIKE ?' for _ in keys)
+    conditional_counts = ', '.join(
+        f'SUM(CASE WHEN lower(url) LIKE ? THEN 1 ELSE 0 END) AS {key}'
+        for key in keys
+    )
+
+    # Do not call catalog_db(): it runs schema initialization and can wait up
+    # to 45 seconds behind a writer. Diagnostics must never queue behind the
+    # discovery/hydration writer or acquire a write-capable connection.
+    import sqlite3
+    import catalog_engine
+
+    db_path = Path(catalog_engine.DB_PATH).resolve()
+    conn = sqlite3.connect(
+        f"file:{db_path.as_posix()}?mode=ro",
+        uri=True,
+        timeout=1.5,
+    )
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=1500')
+    conn.execute('PRAGMA query_only=ON')
+    try:
+        # Bound returned examples, but preserve five recent/healthy examples per
+        # phrase. Product names and URLs are checked in the same query.
+        product_rows = {}
+        for key, phrase in checks:
+            rows = conn.execute(
+                """SELECT url,name,brand,price,currency,fetch_status
+                   FROM store_products
+                   WHERE store='deloox'
+                     AND (lower(COALESCE(name,'')) LIKE ?
+                          OR lower(COALESCE(url,'')) LIKE ?)
+                   ORDER BY
+                     CASE WHEN fetch_status='OK' THEN 0 ELSE 1 END,
+                     fetched_at DESC
+                   LIMIT 5""",
+                (name_patterns[key], url_patterns[key]),
+            ).fetchall()
+            product_rows[key] = [dict(row) for row in rows]
+
+        # Aggregate all three phrases in one pass over each large queue table.
+        url_counts_row = conn.execute(
+            f"""SELECT {conditional_counts}
+                FROM store_urls
+                WHERE store='deloox' AND active=1 AND ({where_any})""",
+            url_pattern_values + url_pattern_values,
+        ).fetchone()
+        url_counts = {
+            key: int(url_counts_row[key] or 0) if url_counts_row else 0
+            for key in keys
+        }
+
+        def queue_counts(table):
+            rows = conn.execute(
+                f"""SELECT state, {conditional_counts}
+                    FROM {table}
+                    WHERE store='deloox' AND ({where_any})
+                    GROUP BY state""",
+                url_pattern_values + url_pattern_values,
+            ).fetchall()
+            grouped = {key: {} for key in keys}
+            for row in rows:
+                state = str(row['state'])
+                for key in keys:
+                    count = int(row[key] or 0)
+                    if count:
+                        grouped[key][state] = count
+            return grouped
+
+        frontier_counts = queue_counts('catalog_discovery_queue')
+        hydration_counts = queue_counts('hydration_queue')
+        results = []
+        for key, phrase in checks:
+            results.append({
+                'key': key,
+                'query': phrase,
+                'active_url_count': url_counts[key],
+                'product_rows': product_rows[key],
+                'discovery_queue_states': frontier_counts[key],
+                'hydration_queue_states': hydration_counts[key],
+            })
+        return {
+            'ok': True,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'checks': results,
+        }
+    except sqlite3.OperationalError as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+    finally:
+        conn.close()
+
+
+@app.get('/catalog-status')
+def catalog_status_endpoint():
+    """Read-only catalog/discovery/hydration status for diagnostics."""
+    try:
+        statuses = catalog_store_status() if callable(catalog_store_status) else {}
+    except Exception as exc:
+        statuses = {'_error': f'{type(exc).__name__}:{exc}'}
+    with _CATALOG_BOOTSTRAP_LOCK:
+        return {
+            'bootstrap_started': _CATALOG_BOOTSTRAP_STARTED,
+            'bootstrap_running': _CATALOG_BOOTSTRAP_RUNNING,
+            'bootstrap_done': _CATALOG_BOOTSTRAP_DONE,
+            'bootstrap_error': _CATALOG_BOOTSTRAP_ERROR,
+            'hydration_started': _CATALOG_HYDRATION_STARTED,
+            'stores': statuses,
+        }
+
+
+@app.api_route('/catalog/refresh-deloox-url', methods=['GET', 'POST'])
+def catalog_refresh_deloox_url_endpoint(url: str = ''):
+    """Operator tool: force refresh_url('deloox', url) for one product URL.
+
+    Generic: only validates that the URL is an allowed Deloox product URL,
+    then uses the normal refresh path (store_products + search index update).
+    """
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+    import catalog_engine
+    target = catalog_engine._html_product_url('deloox', str(url or '').strip(), 'https://www.deloox.be/')
+    if not target or not str(url or '').strip().lower().startswith(('http://', 'https://')):
+        return {'ok': False, 'error': 'invalid_deloox_product_url', 'url': url}
+    item = catalog_engine.refresh_url('deloox', target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            'SELECT price,currency,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?',
+            ('deloox', target),
+        ).fetchone()
+    finally:
+        conn.close()
+    return {
+        'ok': bool(item),
+        'store': 'deloox',
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': dict(row) if row else None,
+    }
+
+
+@app.api_route('/catalog/refresh-store-url', methods=['GET', 'POST'])
+def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
+    """Refresh exactly one approved product URL for an approved retailer.
+
+    This operational endpoint does not run discovery or a store-wide resync.
+    The URL is admitted by catalog_engine's existing retailer host/path rules,
+    then passed through the same refresh_url persistence path as hydration.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+
+    import urllib.parse
+    import catalog_engine
+
+    store_key = str(store or '').strip().lower()
+    raw_url = str(url or '').strip()
+    if store_key not in STORES:
+        return {'ok': False, 'error': 'unknown_store', 'store': store_key, 'allowed_stores': STORES}
+    if not raw_url.lower().startswith(('https://', 'http://')):
+        return {'ok': False, 'error': 'invalid_product_url', 'store': store_key, 'url': raw_url}
+
+    # _html_product_url applies the store's existing official-host and
+    # product-path admission rules. It does not initiate discovery.
+    try:
+        target = catalog_engine._html_product_url(
+            store_key, raw_url, catalog_engine.STORES[store_key]
+        )
+    except Exception as exc:
+        return {
+            'ok': False, 'error': 'url_validation_failed', 'store': store_key,
+            'detail': f'{type(exc).__name__}: {exc}',
+        }
+    if not target:
+        return {'ok': False, 'error': 'url_not_allowed_for_store', 'store': store_key, 'url': raw_url}
+
+    parsed_target = urllib.parse.urlparse(target)
+    if parsed_target.scheme != 'https':
+        return {'ok': False, 'error': 'https_required', 'store': store_key, 'url': target}
+
+    item = catalog_engine.refresh_url(store_key, target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            """SELECT store,url,name,brand,image,sku,gtin,mpn,size_ml,
+                      concentration,gender,price,currency,availability,
+                      fetched_at,fetch_status
+               FROM store_products WHERE store=? AND url=?""",
+            (store_key, target),
+        ).fetchone()
+        persisted = dict(row) if row else None
+
+        # A targeted refresh must make a successfully verified product part
+        # of the searchable catalog. refresh_url() persists page data, but
+        # /search enumerates active store_urls; without this row a fresh
+        # out-of-stock variant (or a product absent from the last sitemap)
+        # remains invisible even though its retailer page was parsed.
+        if item and persisted and persisted.get('fetch_status') == 'OK':
+            with conn:
+                conn.execute(
+                    """INSERT INTO store_urls(
+                           store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           discovered_at=excluded.discovered_at,
+                           active=1""",
+                    (
+                        store_key, target, catalog_engine.url_slug(target),
+                        None, time.time(),
+                    ),
+                )
+            with catalog_engine._LOCAL_SEARCH_INDEX_LOCK:
+                catalog_engine._LOCAL_SEARCH_INDEX_CACHE.pop(store_key, None)
+    finally:
+        conn.close()
+
+    return {
+        'ok': bool(item) and bool(persisted) and persisted.get('fetch_status') == 'OK',
+        'diagnostic': 'catalog-targeted-store-url-refresh-v1',
+        'discovery_called': False,
+        'store_resync_called': False,
+        'store': store_key,
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': persisted,
+    }
+
+
+@app.get('/catalog/hydration-errors')
+# Staging diagnostics also exercise the local catalog search path before retailer refreshes.
+def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
+    """Read-only diagnostic view of recent hydration errors.
+
+    Use a read-only SQLite connection: diagnostics must not initialize schema
+    or compete with the hydration workers for SQLite's single writer.
+    """
+    import sqlite3
+    store_key = str(store or '').strip().lower()
+    if store_key not in STORES:
+        return {'error': f'unknown_store:{store_key}', 'stores': STORES}
+    try:
+        limit_value = max(1, min(int(limit or 20), 100))
+    except (TypeError, ValueError):
+        limit_value = 20
+    if not callable(catalog_db):
+        return {'store': store_key, 'errors': [], 'error': 'catalog_db_unavailable'}
+
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    conn = None
+    try:
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        conn.execute('PRAGMA query_only=ON')
+        rows = conn.execute(
+            """SELECT store,url,state,attempts,last_error,last_http_status,
+                              last_started_at,last_finished_at,available_at
+                       FROM hydration_queue
+                       WHERE store=? AND state IN ('ERROR','DEAD')
+                       ORDER BY last_finished_at DESC, attempts DESC
+                       LIMIT ?""",
+            (store_key, limit_value),
+        ).fetchall()
+        return {
+            'store': store_key,
+            'count': len(rows),
+            'errors': [dict(row) for row in rows],
+            'read_only': True,
+        }
+    except sqlite3.Error as exc:
+        return {
+            'store': store_key,
+            'errors': [],
+            'read_only': True,
+            'diagnostic_error': f'{type(exc).__name__}: {exc}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.get('/catalog/hydration-processing')
+def catalog_hydration_processing_endpoint():
+    """Read-only inspection of active hydration leases; exposes no credentials."""
+    import sqlite3
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    now = time.time()
+    conn = None
+    try:
+        # URI read-only mode prevents diagnostics from creating schema or mutating queue state.
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        rows = conn.execute(
+            """SELECT store, url, state, attempts, last_started_at,
+                      leased_until, last_error
+               FROM hydration_queue
+               WHERE state='PROCESSING'
+               ORDER BY store, last_started_at"""
+        ).fetchall()
+        tasks = []
+        for row in rows:
+            item = dict(row)
+            item['age_sec'] = (
+                round(now - float(item['last_started_at']), 1)
+                if item.get('last_started_at') is not None else None
+            )
+            item['lease_remaining_sec'] = (
+                round(float(item['leased_until']) - now, 1)
+                if item.get('leased_until') is not None else None
+            )
+            # Keep the product URL available for pinpointing the stuck queue row.
+            tasks.append(item)
+        return {'timestamp': now, 'count': len(tasks), 'processing': tasks}
+    except Exception as exc:
+        return {'timestamp': now, 'error': f'{type(exc).__name__}: {exc}'}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.get('/catalog/family-coverage-status')
+def catalog_family_coverage_status_endpoint():
+    """Read-only progress snapshot from the isolated family-coverage process."""
+    status_path = Path(__file__).resolve().parent / 'family_coverage_status.json'
+    now = time.time()
+    try:
+        with status_path.open('r', encoding='utf-8') as handle:
+            status = json.load(handle)
+        updated = status.get('last_update')
+        try:
+            age_sec = round(max(0.0, now - float(updated)), 1) if updated is not None else None
+        except (TypeError, ValueError):
+            age_sec = None
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'age_sec': age_sec,
+            'stale': age_sec is None or age_sec > max(900.0, 2.0 * float(status.get('interval_seconds') or 21600.0)),
+            'status': status,
+        }
+    except FileNotFoundError:
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'status': None,
+            'state': 'status_file_not_created_yet',
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+
+@app.get('/catalog/hydration-status')
+def catalog_hydration_status_endpoint():
+    """Detailed persistent hydration queue status, read-only."""
+    try:
+        statuses = catalog_hydration_status() if callable(catalog_hydration_status) else {}
+        return {
+            'workers': 2,
+            'max_workers_per_store': 2,
+            'statuses': statuses,
+        }
+    except Exception as exc:
+        return {
+            'workers': 2,
+            'max_workers_per_store': 2,
+            'statuses': {},
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+
+
+@app.get('/diagnose-catalog-price-freshness-read-only')
+def diagnose_catalog_price_freshness_read_only():
+    """Aggregate per-store price/fetch freshness using a read-only SQLite connection."""
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': 'catalog_engine_unavailable',
+        }
+
+    conn = None
+    try:
+        import sqlite3
+
+        catalog_module = importlib.import_module('catalog_engine')
+        database_uri = catalog_module.DB_PATH.resolve().as_uri() + '?mode=ro'
+        conn = sqlite3.connect(database_uri, uri=True, timeout=5)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        snapshot = catalog_module.catalog_price_freshness_snapshot(conn)
+        snapshot['ok'] = True
+        snapshot['diagnostic'] = 'catalog-price-freshness-read-only-v1'
+        return snapshot
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': f'{type(exc).__name__}: {str(exc)[:400]}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.get('/diagnose-catalog-live-parse')
+def diagnose_catalog_live_parse_endpoint(
+    store: str = 'deloox',
+    url: str = '',
+):
+    """Read-only live fetch + generic catalog parser diagnostic; never writes to SQLite."""
+    import urllib.request
+    from urllib.parse import urlparse
+
+    store_key = str(store or '').strip().lower()
+    target_url = str(url or '').strip()
+    allowed_host = 'www.deloox.com'
+    parsed_url = urlparse(target_url)
+
+    if store_key != 'deloox':
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'unsupported_store', 'store': store_key}
+    if (
+        parsed_url.scheme != 'https'
+        or parsed_url.hostname != allowed_host
+        or not parsed_url.path.startswith('/product/')
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'url_not_allowed',
+                'allowed_host': allowed_host}
+
+    try:
+        catalog_module = importlib.import_module('catalog_engine')
+        parser = getattr(catalog_module, 'parse_product', None)
+        if not callable(parser):
+            return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                    'read_only': True, 'store': store_key,
+                    'url': target_url, 'error': 'catalog_parse_product_unavailable'}
+
+        request = urllib.request.Request(
+            target_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; ScentHunterDiagnostic/1.0)',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            method='GET',
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            http_status = response.status
+            final_url = response.geturl()
+            html = response.read(5 * 1024 * 1024 + 1)
+            if len(html) > 5 * 1024 * 1024:
+                return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                        'read_only': True, 'store': store_key,
+                        'url': target_url, 'http_status': http_status,
+                        'error': 'page_exceeds_5mb'}
+            encoding = response.headers.get_content_charset() or 'utf-8'
+            html_text = html.decode(encoding, errors='replace')
+
+        live_parsed = parser(store_key, final_url, html_text)
+        if not isinstance(live_parsed, dict):
+            parsed_result = None
+        else:
+            parsed_result = {
+                key: live_parsed.get(key)
+                for key in (
+                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin', 'mpn',
+                    'price_num', 'price', 'currency', 'availability'
+                )
+            }
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-live-parse-v1',
+            'read_only': True,
+            'writes_database': False,
+            'store': store_key,
+            'requested_url': target_url,
+            'final_url': final_url,
+            'http_status': http_status,
+            'parser': 'catalog_engine.parse_product',
+            'parsed_product': parsed_result,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-live-parse-v1',
+            'read_only': True,
+            'writes_database': False,
+            'store': store_key,
+            'requested_url': target_url,
+            'error': f'{type(exc).__name__}: {str(exc)[:500]}',
+        }
+
+
+
+@app.get('/diagnose-hawas-ice-offers-read-only')
+def diagnose_hawas_ice_offers_read_only():
+    """Read-only differential diagnostic for the three known Hawas Ice retailer URLs.
+
+    It compares persisted catalog rows and queue state with the retailer parser
+    output. It never calls refresh_url and never writes to SQLite.
+    """
+    import sqlite3
+    import time
+
+    started = time.monotonic()
+    targets = [
+        {
+            'store': 'deloox',
+            'url': 'https://www.deloox.com/product/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html',
+        },
+        {
+            'store': 'bplatz',
+            'url': 'https://en.bplatz.de/products/rasasi-hawas-ice-eau-de-parfum-100ml',
+        },
+        {
+            'store': 'parfumzentrum',
+            'url': 'https://www.parfum-zentrum.de/rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265/',
+        },
+    ]
+    out = {
+        'ok': False,
+        'diagnostic': 'hawas-ice-offers-read-only-v1',
+        'read_only': True,
+        'writes_database': False,
+        'refresh_url_called': False,
+        'targets': [],
+        'errors': [],
+    }
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        out['errors'].append({'stage': 'database', 'error': 'catalog_engine_unavailable'})
+        return out
+
+    try:
+        import catalog_engine as ce
+        conn = catalog_db()
+        conn.row_factory = sqlite3.Row
+        try:
+            for target in targets:
+                store = target['store']
+                url = target['url']
+                item = {'store': store, 'url': url, 'persisted': {}, 'live': {}}
+                key = url.rstrip('/')
+                for label, sql, params in [
+                    ('base_product_rows',
+                     "SELECT store,url,name,brand,sku,gtin,mpn,size_ml,price,currency,availability,fetched_at,fetch_status FROM store_products WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                    ('variant_rows',
+                     "SELECT store,url,variant_key,name,brand,sku,size_ml,price,currency,availability,fetched_at,variant_url FROM store_product_variants WHERE store=? AND ((url=? OR RTRIM(url,'/')=?) OR variant_url=?) ORDER BY size_ml,variant_key LIMIT 30",
+                     (store, url, key, url)),
+                    ('hydration_queue_rows',
+                     "SELECT store,url,state,attempts,available_at,leased_until,last_started_at,last_finished_at,last_error,last_http_status FROM hydration_queue WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                ]:
+                    try:
+                        item['persisted'][label] = [dict(row) for row in conn.execute(sql, params).fetchall()]
+                    except Exception as exc:
+                        item['persisted'][label] = []
+                        item.setdefault('errors', []).append({
+                            'stage': 'db_' + label,
+                            'error': f'{type(exc).__name__}: {str(exc)[:250]}',
+                        })
+                try:
+                    status, final_url, data = ce.http_get(url, timeout=getattr(ce, 'REFRESH_TIMEOUT', 12))
+                    item['live']['http_status'] = status
+                    item['live']['final_url'] = final_url
+                    item['live']['bytes'] = len(data or b'')
+                    if status < 400 and data:
+                        parsed = ce._secondary_store_parser(store, final_url, url, html_data=data)
+                        if not isinstance(parsed, dict):
+                            parsed = ce.parse_product(store, final_url, data.decode('utf-8', errors='replace'))
+                        if isinstance(parsed, dict):
+                            item['live']['parsed_product'] = {
+                                field: parsed.get(field) for field in (
+                                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin',
+                                    'mpn', 'size_ml', 'price_num', 'price', 'currency',
+                                    'availability', 'variants'
+                                )
+                            }
+                        else:
+                            item['live']['parsed_product'] = None
+                            item['live']['parser_result_type'] = type(parsed).__name__
+                except Exception as exc:
+                    item['live']['error'] = f'{type(exc).__name__}: {str(exc)[:400]}'
+                out['targets'].append(item)
+        finally:
+            conn.close()
+    except Exception as exc:
+        out['errors'].append({'stage': 'diagnostic', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'})
+
+    out['elapsed_sec'] = round(time.monotonic() - started, 3)
+    out['ok'] = not out['errors'] and all(not item.get('errors') for item in out['targets'])
+    return out
+
+
+@app.get('/search-start')
+def search_start(q: str, store: str = ''):
+    query = str(q or '').strip()
+    if not query:
+        return {
+            'job_id': '',
+            'query': '',
+            'completed': True,
+            'status': 'completed',
+            'count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {},
+            'stores': {},
+        }
+
+    requested_stores = list(STORES)
+    if str(store or '').strip():
+        selected_store = _normalise_store(store, '')
+        if selected_store not in STORES:
+            return {
+                'job_id': '',
+                'query': query,
+                'completed': True,
+                'status': 'error',
+                'count': 0,
+                'offer_count': 0,
+                'results': [],
+                'unresolved_offers': [],
+                'identity_scope': [],
+                'comparisons': [],
+                'errors': {'store': 'unknown_store'},
+                'stores': {},
+            }
+        requested_stores = [selected_store]
+
+    # IMPORTANT: /search-start must remain a lightweight orchestration
+    # endpoint. Do not call catalog_store_status() / _catalog_is_ready() here:
+    # that performs multiple SQLite reads, including a hydration-related
+    # LEFT JOIN, and can contend with the background catalog hydrator exactly
+    # when a user starts a second search.
+    #
+    # Catalog bootstrap readiness is established once during application
+    # startup and cached in _CATALOG_BOOTSTRAP_DONE / _CATALOG_BOOTSTRAP_ERROR.
+    # A normal persistent catalog is therefore allowed to start a job without
+    # re-scanning SQLite on every search.
+    with _CATALOG_BOOTSTRAP_LOCK:
+        bootstrap_running = _CATALOG_BOOTSTRAP_RUNNING
+        bootstrap_done = _CATALOG_BOOTSTRAP_DONE
+        bootstrap_error = _CATALOG_BOOTSTRAP_ERROR
+
+    if bootstrap_running and not bootstrap_done:
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 250,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': 'catalog_bootstrapping'},
+            'stores': {},
+        }
+
+    if bootstrap_error and not bootstrap_running:
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': True,
+            'status': 'error',
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': bootstrap_error},
+            'stores': {},
+        }
+
+    # Cancellation handshake must never block the HTTP request for a full
+    # store/job timeout.  If the previous job is still shutting down, the
+    # frontend can retry /search-start after a short delay.
+    if not _cancel_active_jobs(wait_timeout=0.15):
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 200,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'job': 'previous_search_still_stopping'},
+            'stores': {},
+        }
+
+    job_id = _new_job(query, requested_stores)
     threading.Thread(
         target=_run_job,
         args=(job_id, query),

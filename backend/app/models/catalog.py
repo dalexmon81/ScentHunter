@@ -2,7 +2,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
@@ -93,6 +93,22 @@ class IngestionRaw(Base):
     rejection_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class NotinoFeedListing(Base):
+    __tablename__ = "notino_feed_listings"
+    external_id: Mapped[str] = mapped_column(String(240), primary_key=True)
+    brand: Mapped[str] = mapped_column(String(240), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    gtin: Mapped[str | None] = mapped_column(String(32))
+    size_ml: Mapped[float | None] = mapped_column(Float)
+    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    availability: Mapped[str] = mapped_column(String(40), nullable=False)
+    affiliate_url: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str | None] = mapped_column(Text)
+    source_last_updated: Mapped[str] = mapped_column(String(64), nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Offer(Base):

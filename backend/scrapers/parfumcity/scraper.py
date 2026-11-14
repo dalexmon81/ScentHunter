@@ -22,8 +22,8 @@ STOPWORDS = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
 def clean(v): return re.sub(r"\s+", " ", str(v or "")).strip()
 def norm(v):
     text = re.sub(r"[^a-z0-9]+", " ", clean(v).lower())
-    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
-    return re.sub(r"\\s+", " ", text).strip()
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def tokens(q):
@@ -360,6 +360,157 @@ def _search_report(query):
         }
     finally:
         session.close()
+
+
+
+def _jsonld_product_records(value):
+    """Yield Product objects from common schema.org JSON-LD containers."""
+    if isinstance(value, list):
+        for child in value:
+            yield from _jsonld_product_records(child)
+    elif isinstance(value, dict):
+        kind = value.get("@type")
+        kinds = kind if isinstance(kind, list) else [kind]
+        if any(str(x).casefold() == "product" for x in kinds):
+            yield value
+        for key in ("@graph", "mainEntity", "itemListElement"):
+            if key in value:
+                yield from _jsonld_product_records(value[key])
+
+
+def _product_from_html(html, canonical_url):
+    """Build a single conservative variant from public product-page markup."""
+    if not html:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    records = []
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            records.extend(_jsonld_product_records(json.loads(script.string or script.get_text())))
+        except (TypeError, ValueError):
+            continue
+
+    record = next((x for x in records if clean(x.get("name"))), {})
+    title_node = soup.find("h1")
+    title = clean(record.get("name")) or clean(title_node.get_text(" ", strip=True) if title_node else "")
+    if not title:
+        for selector in (
+            'meta[property="og:title"]',
+            'meta[name="twitter:title"]',
+            'meta[name="title"]',
+        ):
+            node = soup.select_one(selector)
+            if node and clean(node.get("content")):
+                title = clean(node.get("content"))
+                break
+    if not title:
+        return None
+
+    offers = record.get("offers") or {}
+    if isinstance(offers, list):
+        offers = next((x for x in offers if isinstance(x, dict)), {})
+    if not isinstance(offers, dict):
+        offers = {}
+
+    price = offers.get("price") or offers.get("lowPrice")
+    currency = clean(offers.get("priceCurrency")) or "EUR"
+    availability_text = clean(offers.get("availability")).casefold()
+    if not availability_text:
+        for selector in (
+            'meta[property="product:availability"]',
+            'meta[itemprop="availability"]',
+            'link[itemprop="availability"]',
+        ):
+            node = soup.select_one(selector)
+            if node:
+                availability_text = clean(node.get("content") or node.get("href"))
+                if availability_text:
+                    break
+    if availability_text:
+        available = not any(x in availability_text.casefold() for x in ("outofstock", "out_of_stock", "out of stock", "soldout", "sold out", "discontinued"))
+    else:
+        page_text = clean(soup.get_text(" ", strip=True)).casefold()
+        sold_out_markers = ("épuisé", "uitverkocht", "sold out", "ausverkauft", "agotado")
+        available = False if any(x in page_text for x in sold_out_markers) else None
+
+    if price is None:
+        for selector in (
+            'meta[property="product:price:amount"]',
+            'meta[property="og:price:amount"]',
+            'meta[itemprop="price"]',
+        ):
+            node = soup.select_one(selector)
+            if node and node.get("content"):
+                price = node.get("content")
+                break
+
+    # Some Shopify themes omit the amount from JSON-LD but render the current
+    # price directly after the product heading. Read only the first currency
+    # amount following H1; do not pick compare-at or shipping prices elsewhere.
+    if price is None and title_node:
+        for text_node in title_node.find_all_next(string=True):
+            text_value = clean(text_node)
+            match = re.search(r"(?:€\s*)?(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*(?:€|EUR)", text_value, re.I)
+            if match:
+                price = match.group(1)
+                break
+
+    brand = record.get("brand") or {}
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+    sku = record.get("sku") or record.get("mpn")
+    gtin = record.get("gtin13") or record.get("gtin12") or record.get("gtin14")
+    product = {
+        "title": title,
+        "vendor": clean(brand),
+        "id": record.get("productID"),
+        "featured_image": record.get("image"),
+    }
+    variant = {
+        "title": clean(record.get("size") or record.get("description")),
+        "price": price,
+        "available": available,
+        "sku": sku,
+        "id": None,
+        "barcode": gtin,
+    }
+    item = make_item(product, variant, canonical_url, title)
+    if not item:
+        return None
+    item["identity"]["gtin"] = str(gtin) if gtin else None
+    item["offer"]["currency"] = currency
+    item["provenance"]["product_source"] = "shopify_product_page_jsonld"
+    item["provenance"]["variant_source"] = "shopify_product_page_jsonld"
+    item["raw_data"] = {"jsonld": record}
+    return item
+
+
+def extract_product_page(session, url, slug, html=None):
+    """Extract Shopify variants from public structured page data.
+
+    Prefer JSON-LD embedded in the already-fetched product page. This avoids
+    a second network request and still exposes the listed price and explicit
+    stock state when Shopify's optional .js endpoint is unavailable.
+    """
+    canonical_url = _canonical_product_url(url)
+    page_item = _product_from_html(html, canonical_url)
+    if page_item:
+        return [page_item]
+
+    # Fall back to Shopify's public product JSON endpoint when the page does
+    # not contain usable Product JSON-LD.
+    data = product_json(session, canonical_url)
+    if not isinstance(data, dict):
+        return None
+    query = clean(data.get("title")) + " " + clean(data.get("vendor"))
+    rows = []
+    for variant in data.get("variants") or []:
+        if not isinstance(variant, dict):
+            continue
+        item = make_item(data, variant, canonical_url, query)
+        if item:
+            rows.append(item)
+    return rows or None
 
 
 def search(query):

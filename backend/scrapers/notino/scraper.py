@@ -280,7 +280,20 @@ def lookslikeproducturl(url: str) -> bool:
         "www.notino.es", "notino.es", "www.notino.pt", "notino.pt", "www.notino.ie", "notino.ie",
         "www.notino.co.uk", "notino.co.uk",
     }
-    return host in allowed_hosts and bool(PRODUCT_RE.search(parsed.path or ""))
+    path = (parsed.path or "").rstrip("/")
+    # Notino has begun exposing product detail pages with descriptive slugs
+    # and no /p-<id>/ suffix. Accept only unmistakable product slugs (for
+    # example "...-eau-de-parfum-pour-homme"), never brand/category roots
+    # such as /rayhaan/aquatica/.
+    slug = unquote(path.rsplit("/", 1)[-1]).casefold()
+    descriptive_product = bool(re.search(
+        r"(?:^|[-_])(?:eau[-_]?de[-_]?parfum|eau[-_]?de[-_]?toilette|"
+        r"eau[-_]?de[-_]?cologne|extrait[-_]?de[-_]?parfum|"
+        r"parfum[-_]?pour[-_]?(?:homme|femme)|"
+        r"(?:pour[-_]?(?:homme|femme)))(?:$|[-_])",
+        slug,
+    ))
+    return host in allowed_hosts and bool(PRODUCT_RE.search(path) or descriptive_product)
 
 
 _looks_like_product_url = lookslikeproducturl
@@ -1485,6 +1498,23 @@ def _price(value: Any) -> Optional[float]:
     return amount if amount > 0 else None
 
 
+def _extract_coupon_price(soup: BeautifulSoup) -> Tuple[Optional[float], Optional[str]]:
+    """Extract a coupon price only when the page explicitly ties it to a code."""
+    page_text = _clean(soup.get_text(" ", strip=True))
+    match = re.search(
+        r"(?P<price>\d{1,4}(?:[.,]\d{1,2})?)\s*€\s*"
+        r"(?:avec\s+le\s+code|with\s+code)\s+"
+        r"(?P<code>[A-Z0-9][A-Z0-9_-]{2,24})\b",
+        page_text,
+        re.I,
+    )
+    if not match:
+        return None, None
+    price = _price(match.group("price"))
+    code = match.group("code").upper()
+    return (price, code) if price is not None else (None, None)
+
+
 def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
     """Admit only Notino.fr product-shaped URLs; reject navigation and foreign hosts."""
     absolute = urljoin(str(base).rstrip("/") + "/", str(raw_url or "").strip())
@@ -1509,7 +1539,36 @@ def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
         return None
     if len([part for part in path.split("/") if part]) < 2:
         return None
-    return urlunparse(("https", "www.notino.fr", path, "", "", ""))
+    result = urlunparse(("https", "www.notino.fr", path, "", "", ""))
+    return result if lookslikeproducturl(result) else None
+
+
+def _primary_visible_size(heading, selected: Dict[str, Any], regular_price: float) -> Optional[float]:
+    if not heading or not any(selected.get(key) for key in ("gtin13", "gtin12", "gtin14", "gtin")):
+        return None
+    parts = []
+    for node in heading.next_elements:
+        if getattr(node, "name", None) in {"h1", "h2"}:
+            break
+        if not isinstance(node, str) or not node.strip():
+            continue
+        if any(parent.name in {"script", "style", "noscript"} for parent in node.parents):
+            continue
+        parts.append(str(node))
+    text = _clean(" ".join(parts))[:20000]
+    sizes = set()
+    pattern = re.compile(
+        r"\b(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\s+"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€",
+        re.I,
+    )
+    for match in pattern.finditer(text):
+        if _has_non_perfume_marker(text[:match.start()]):
+            break
+        if _price(match.group(3)) != regular_price:
+            continue
+        sizes.add(_size_to_ml(float(match.group(1).replace(",", ".")), match.group(2).lower()))
+    return next(iter(sizes)) if len(sizes) == 1 else None
 
 
 def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
@@ -1517,23 +1576,45 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     safe_url = _allowed_url(url, BASE_URL)
     if not safe_url:
         return None
+    requested_sizes = _requested_sizes(query)
+    requested_concentration = _extract_concentration(query)
     soup = BeautifulSoup(html or "", "html.parser")
     heading = soup.find("h1")
     heading_name = _clean(heading.get_text(" ", strip=True) if heading else "")
     records = _structured_product_records(html or "")
     selected = None
     selected_evidence = None
+    page_id = _product_id(safe_url)
     for record in records:
         evidence = _structured_record_to_evidence(record)
-        name, brand, _record_url, price, size = evidence
+        name, brand, record_url, price, size = evidence
         if not name:
             continue
+        # A page may embed structured data for recommended products as well
+        # as the product being viewed. Never borrow a recommendation's offer.
+        if record_url:
+            admitted_record_url = _allowed_url(record_url)
+            if not admitted_record_url:
+                continue
+            record_id = _product_id(admitted_record_url)
+            same_page = (
+                bool(page_id and record_id == page_id)
+                if page_id else admitted_record_url.rstrip("/") == safe_url.rstrip("/")
+            )
+            if not same_page:
+                continue
+        elif len(records) != 1:
+            continue
         if not _query_matches_name(f"{brand} {name}".strip(), query):
+            continue
+        if heading_name and not _query_matches_name(
+            f"{brand} {heading_name}".strip(), f"{brand} {name}".strip()
+        ):
             continue
         selected = record
         selected_evidence = evidence
         break
-    if selected is None and heading_name:
+    if selected is None and not records and heading_name:
         # A visible destination H1 can establish identity, but a price must
         # still be present on this same page before an offer is emitted.
         selected = {}
@@ -1542,9 +1623,16 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         return None
 
     name, brand, _record_url, structured_price, structured_size = selected_evidence
+    if len(records) > 1 and not structured_price:
+        return None
     if heading_name and not _query_matches_name(f"{brand} {heading_name}".strip(), query):
         return None
     display_name = heading_name or name
+    page_identity = _norm(f"{display_name} {name} {safe_url}")
+    if any(re.search(
+        rf"(?<!\w){re.escape(_norm(marker))}(?!\w)", page_identity
+    ) for marker in NON_PERFUME_MARKERS):
+        return None
     meta_values = {}
     for node in soup.find_all("meta"):
         key = str(
@@ -1559,9 +1647,15 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
             "product:price:amount", "og:price:amount", "price", "itemprop:price",
         ) if meta_values.get(key)
     ), "")
-    price = _price(raw_price)
-    if price is None:
+    regular_price = _price(raw_price)
+    if regular_price is None:
         return None
+    coupon_price, coupon_code = (
+        _extract_coupon_price(soup) if len(records) <= 1 else (None, None)
+    )
+    # Coupon prices are the effective comparison price, but keep the
+    # undiscounted price and code so the UI can disclose the condition.
+    price = coupon_price if coupon_price is not None else regular_price
     raw_currency = next((
         meta_values[key] for key in (
             "product:price:currency", "og:price:currency", "pricecurrency",
@@ -1574,7 +1668,19 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         node.get_text(" ", strip=True)
         for node in soup.find_all(["option", "button", "label"], limit=120)
     )
-    size_ml = structured_size or _extract_size(display_name) or _extract_size(controls_text)
+    size_ml = (
+        structured_size or _extract_size(display_name)
+        or _primary_visible_size(heading, selected, regular_price)
+        or _extract_size(controls_text)
+    )
+    if requested_sizes and (
+        size_ml is None
+        or all(
+            abs(size_ml - _size_to_ml(number, unit)) > 0.01
+            for number, unit in requested_sizes
+        )
+    ):
+        return None
     if not _price_is_plausible(price, size_ml):
         return None
 
@@ -1602,6 +1708,8 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         or selected.get("gtin14") or selected.get("gtin") or ""
     ).strip() if isinstance(selected, dict) else ""
     concentration = _extract_concentration(display_name)
+    if requested_concentration and concentration != requested_concentration:
+        return None
     return {
         "shop": "Notino",
         "store": "notino",
@@ -1609,6 +1717,10 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         "brand": brand,
         "price": f"{price:.2f} €",
         "price_num": price,
+        "regular_price": f"{regular_price:.2f} €" if coupon_price is not None else None,
+        "regular_price_num": regular_price if coupon_price is not None else None,
+        "coupon_code": coupon_code,
+        "coupon_required": coupon_code is not None,
         "currency": "EUR",
         "availability": availability,
         "available": True if stock is False else False if stock is True else None,
@@ -1619,6 +1731,26 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         "gtin": gtin,
         "url": safe_url,
     }
+
+
+
+def extract_product_page(
+    session: requests.Session,
+    url: str,
+    slug: str = "",
+    html: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Product-page adapter used by catalog hydration; reuses its fetched HTML."""
+    if html is None:
+        response = _request(session, url)
+        html = response.text or ""
+        url = response.url or url
+    path_identity = re.sub(
+        r"/p-\d+/?$", "", unquote(urlparse(url).path), flags=re.I
+    ).strip("/").replace("-", " ")
+    query = _clean(path_identity or slug)
+    return _parse_product(url, html or "", query)
+
 
 
 def search(query: str) -> Dict[str, Any]:

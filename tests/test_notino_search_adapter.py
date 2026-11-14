@@ -50,6 +50,31 @@ def test_product_parser_extracts_price_size_concentration_and_market_url():
     assert row["url"].startswith("https://www.notino.fr/")
 
 
+def test_product_page_adapter_ignores_numeric_id_when_matching_product_identity():
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    product = {
+        "@type": "Product",
+        "name": "Hawas Ice Eau de Parfum 100 ml",
+        "brand": {"name": "Rasasi"},
+        "url": url,
+        "offers": {
+            "price": "36.00",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock",
+        },
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Hawas Ice Eau de Parfum 100 ml</h1>'
+    )
+    row = scraper.extract_product_page(None, url, html=html)
+    assert row is not None
+    assert row["price_num"] == 36.00
+    assert row["brand"] == "Rasasi"
+    assert row["size_ml"] == 100
+    assert row["concentration"] == "Eau de Parfum"
+
+
 def test_product_parser_rejects_wrong_query_and_missing_price():
     wrong = {
         "@type": "Product",
@@ -67,6 +92,151 @@ def test_product_parser_rejects_wrong_query_and_missing_price():
     assert scraper._parse_product(
         "https://www.notino.fr/dior/sauvage/", no_price_html, "Dior Sauvage"
     ) is None
+
+
+def test_hawas_listing_url_is_not_a_product_page():
+    html = """
+    <h1>Rasasi Hawas Ice</h1>
+    <meta property="product:price:amount" content="32.50">
+    <button>100 ml Ajouter au panier</button>
+    """
+    assert scraper._parse_product(
+        "https://www.notino.fr/rasasi/hawas-ice/", html, "Rasasi Hawas Ice"
+    ) is None
+
+
+def test_hawas_product_price_is_not_taken_from_recommended_gift_set():
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    gift = {
+        "@type": "Product",
+        "name": "Hawas Ice coffret cadeau",
+        "brand": {"name": "Rasasi"},
+        "url": "https://www.notino.fr/rasasi/hawas-ice-coffret-cadeau/p-123456/",
+        "offers": {"price": "32.50", "priceCurrency": "EUR"},
+    }
+    bottle = {
+        "@type": "Product",
+        "name": "Hawas Ice Eau de Parfum 100 ml",
+        "brand": {"name": "Rasasi"},
+        "url": url,
+        "offers": {"price": "36.00", "priceCurrency": "EUR",
+                   "availability": "https://schema.org/InStock"},
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps([gift, bottle])}</script>'
+        '<h1>Hawas Ice Eau de Parfum 100 ml</h1>'
+    )
+    row = scraper._parse_product(url, html, "Rasasi Hawas Ice")
+    assert row is not None
+    assert row["price_num"] == 36.00
+    assert row["size_ml"] == 100
+    assert row["concentration"] == "Eau de Parfum"
+    assert row["url"] == url
+
+
+def test_hawas_product_rejects_a_single_unrelated_structured_offer():
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    gift = {
+        "@type": "Product",
+        "name": "Hawas Ice Eau de Parfum 100 ml",
+        "brand": {"name": "Rasasi"},
+        "url": "https://www.notino.fr/rasasi/hawas-ice-coffret-cadeau/p-123456/",
+        "offers": {"price": "32.50", "priceCurrency": "EUR"},
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(gift)}</script>'
+        '<h1>Hawas Ice Eau de Parfum 100 ml</h1>'
+        '<meta property="product:price:amount" content="32.50">'
+    )
+    assert scraper._parse_product(url, html, "Rasasi Hawas Ice") is None
+
+
+def test_product_parser_rejects_gift_record_even_if_heading_looks_like_bottle():
+    url = "https://www.notino.fr/brand/perfume-eau-de-parfum/p-123/"
+    product = {
+        "@type": "Product",
+        "name": "Perfume Eau de Parfum coffret cadeau 100 ml",
+        "brand": {"name": "Brand"},
+        "url": url,
+        "offers": {"price": "32.50", "priceCurrency": "EUR"},
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Perfume Eau de Parfum 100 ml</h1>'
+    )
+    assert scraper._parse_product(url, html, "Brand Perfume") is None
+
+
+def test_product_parser_reads_visible_size_paired_with_the_primary_price():
+    url = "https://www.notino.fr/brand/perfume-eau-de-parfum/p-123/"
+    product = {
+        "@type": "Product", "name": "Perfume Eau de Parfum",
+        "brand": {"name": "Brand"}, "url": url, "gtin13": "4006381333931",
+        "offers": {"price": "36.00", "priceCurrency": "EUR"},
+    }
+    prefix = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Perfume Eau de Parfum</h1>'
+    )
+    row = scraper._parse_product(
+        url, prefix + '<div><span>100&nbsp;ml</span><span>36,00 €</span></div>'
+        '<h2>Suggestions</h2><div>50 ml 36,00 €</div>', "Brand Perfume",
+    )
+    assert row is not None
+    assert row["size_ml"] == 100
+    assert scraper._parse_product(
+        url, prefix + '<div>coffret cadeau 100 ml 36,00 €</div>', "Brand Perfume",
+    )["size_ml"] is None
+    assert scraper._parse_product(
+        url, prefix + '<div>50 ml 36,00 € 100 ml 36,00 €</div>', "Brand Perfume",
+    )["size_ml"] is None
+
+
+def test_hawas_product_must_match_requested_size_and_concentration():
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    product = {
+        "@type": "Product",
+        "name": "Hawas Ice Eau de Parfum 50 ml",
+        "brand": {"name": "Rasasi"},
+        "url": url,
+        "offers": {"price": "27.50", "priceCurrency": "EUR"},
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Hawas Ice Eau de Parfum 50 ml</h1>'
+    )
+    assert scraper._parse_product(
+        url, html, "Rasasi Hawas Ice Eau de Parfum 100 ml"
+    ) is None
+
+
+def test_notino_hydration_rejects_redirect_to_another_product(monkeypatch):
+    from pathlib import Path
+
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "backend"))
+    import catalog_engine
+
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    gift_url = "https://www.notino.fr/rasasi/hawas-ice-coffret-cadeau/p-123456/"
+
+    class Connection:
+        def execute(self, *args):
+            return self
+
+        def fetchone(self):
+            return None
+
+        def commit(self):
+            pass
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(catalog_engine, "http_get", lambda *args, **kwargs: (200, gift_url, b""))
+    monkeypatch.setattr(catalog_engine, "db", Connection)
+    monkeypatch.setattr(catalog_engine, "_remove_local_search_index_url", lambda *args: None)
+    assert catalog_engine.refresh_url("notino", url) is None
+    assert "notino_product_redirect_mismatch" in catalog_engine._LAST_REFRESH_ERRORS[("notino", url)]
 
 
 def test_price_parser_handles_european_decimal_and_thousands_separators():

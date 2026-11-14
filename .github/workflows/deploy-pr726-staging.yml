@@ -1,0 +1,236 @@
+name: Deploy PR 726 isolated web staging
+# Deploy the current isolated search, schema migration, and multi-brand staging verification.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type deploy-pr726 to deploy only the isolated PR 726 staging app
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-pr726-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm == 'deploy-pr726' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pr726-staging
+    steps:
+      - name: Checkout the exact dispatch commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Validate exact commit, isolated target, and normalize Fly token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -Fq 'app = "scenthunter-pr726-staging"' fly.pr726.staging.toml
+          ! grep -Fq 'app = "scenthunter"' fly.pr726.staging.toml
+          ! grep -Fq 'source = ' fly.pr726.staging.toml
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          printf 'FLY_API_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
+          echo "Validated isolated staging target; no production app or volume is used."
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Install bounded Fly SSH command wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          real_flyctl="$(command -v flyctl)"
+          mkdir -p "$RUNNER_TEMP/flyctl-wrapper"
+          cp .github/scripts/flyctl-ssh-timeout "$RUNNER_TEMP/flyctl-wrapper/flyctl"
+          chmod +x "$RUNNER_TEMP/flyctl-wrapper/flyctl"
+          echo "FLYCTL_REAL_BIN=$real_flyctl" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/flyctl-wrapper" >> "$GITHUB_PATH"
+
+      - name: Verify the existing single SQLite staging machine and volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_count="$(jq '[.[] | select(.state != "destroyed")] | length' <<< "$machines_json")"
+          test "$machine_count" -eq 1
+          machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines_json")"
+          volumes_json="$(flyctl volumes list --app "$FLY_APP" --json)"
+          verified="$(jq '[.[] | select(.name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
+          test "$verified" -ge 1
+          machine_status="$(flyctl machine status "$machine_id" --app "$FLY_APP")"
+          mapfile -t attached_volumes < <(grep -Eo 'vol_[[:alnum:]]+' <<< "$machine_status" | sort -u)
+          test "${#attached_volumes[@]}" -eq 1
+          attached_target="$(jq --arg id "${attached_volumes[0]}" '[.[] | select(.id == $id and .name == "scenthunter_pr726_data" and .region == "ams")] | length' <<< "$volumes_json")"
+          test "$attached_target" -eq 1
+          echo "Verified one existing machine and volume without creating, removing, or scaling either."
+
+      - name: Deploy isolated staging app
+        run: flyctl deploy --remote-only --config fly.pr726.staging.toml --app "$FLY_APP" --build-arg "SCENTHUNTER_BUILD_COMMIT=$GITHUB_SHA" --yes
+
+      - name: Verify the deployed image commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          machines="$(flyctl machine list --app "$FLY_APP" --json)"
+          test "$(jq '[.[] | select(.state != "destroyed")] | length' <<< "$machines")" -eq 1
+          machine_id="$(jq -r '[.[] | select(.state != "destroyed")][0].id' <<< "$machines")"
+          deployed="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "cat /app/.build-commit")"
+          test "$deployed" = "$GITHUB_SHA"
+          echo "STAGING_IMAGE_COMMIT=$deployed"
+
+      - name: Verify isolated staging health
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, urllib.request
+          base = "https://scenthunter-pr726-staging.fly.dev"
+          import time
+          from urllib.error import HTTPError, URLError
+
+          def get(path, timeout=30, attempts=3):
+              last_error = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      req = urllib.request.Request(base + path, headers={"Accept": "application/json"})
+                      with urllib.request.urlopen(req, timeout=timeout) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{path}: HTTP {response.status}")
+                          return response.read()
+                  except (TimeoutError, OSError, URLError, HTTPError) as exc:
+                      last_error = exc
+                      if attempt < attempts:
+                          time.sleep(min(5 * attempt, 10))
+              raise RuntimeError(f"{path} failed after {attempts} attempts: {last_error}")
+          from urllib.parse import parse_qs, unquote, urlsplit
+
+          # Run the same category-integrity audit across a representative
+          # cross-brand sample, not a single fragrance or product family.
+          queries = (
+              "Hawas Ice", "Dior Sauvage", "Chanel Coco Mademoiselle",
+              "Yves Saint Laurent Libre", "Armani My Way", "Paco Rabanne 1 Million",
+              "Prada Paradoxe", "Lattafa Asad", "Versace Eros", "Rayhaan Aquatica", "perfume",
+          )
+          audited_products = 0
+          audited_offers = 0
+          notino_offers = 0
+          gift_markers = (
+              "coffret", "coffret-cadeau", "gift-set", "gift_set", "giftbox",
+              "gift-box", "set-regalo", "pack-regalo", "discovery-set",
+              "fragrance-set", "perfume-set", "parfum-set", "bundle",
+              "duo", "trio", "mystery-box", "box-set",
+          )
+          for query in queries:
+              from urllib.parse import quote
+              payload = json.loads(get("/search?q=" + quote(query), timeout=90, attempts=2).decode("utf-8"))
+              assert isinstance(payload.get("results"), list), {"query": query, "payload": payload}
+              audited_products += len(payload["results"])
+              for product in payload["results"]:
+                  for offer in (product.get("offers") or []):
+                      audited_offers += 1
+                      store = str(offer.get("store") or offer.get("shop") or "").casefold()
+                      if "notino" not in store:
+                          continue
+                      notino_offers += 1
+                      title = " ".join(str(offer.get(key) or "") for key in
+                                       ("name", "title", "raw_name", "_raw_name"))
+                      raw_url = str(offer.get("url") or offer.get("product_url") or
+                                    offer.get("link") or "")
+                      destinations = []
+                      pending = [raw_url]
+                      # Decode nested affiliate wrappers too, with a hard
+                      # depth bound so malformed URLs cannot loop forever.
+                      for _ in range(4):
+                          next_pending = []
+                          for candidate in pending:
+                              try:
+                                  parsed = urlsplit(candidate)
+                                  for key in ("url", "u", "target", "dest", "destination"):
+                                      next_pending.extend(parse_qs(parsed.query).get(key, []))
+                                  decoded = unquote(candidate)
+                                  if decoded != candidate:
+                                      next_pending.append(decoded)
+                              except ValueError:
+                                  pass
+                          destinations.extend(pending)
+                          pending = [value for value in next_pending if value not in destinations]
+                          if not pending:
+                              break
+                      combined = (title + " " + " ".join(destinations)).casefold()
+                      assert not any(marker in combined for marker in gift_markers), {
+                          "non_fragrance_bundle_leaked": True,
+                          "query": query,
+                          "product": product.get("name") or product.get("canonical_name"),
+                          "offer": offer,
+                      }
+
+          assert audited_products > 0, "catalog sample returned no products"
+          print("STAGING_HEALTH=PASS")
+          print("STAGING_CATALOG_SEARCH=PASS")
+          print("STAGING_CROSS_CATALOG_BUNDLE_FILTER=PASS")
+          print("STAGING_AUDITED_QUERIES=" + str(len(queries)))
+          print("STAGING_AUDITED_PRODUCTS=" + str(audited_products))
+          print("STAGING_AUDITED_OFFERS=" + str(audited_offers))
+          print("STAGING_AUDITED_NOTINO_OFFERS=" + str(notino_offers))
+          print("STAGING_URL=" + base)
+          PY
+
+      - name: Collect read-only catalog hydration diagnostics
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          BASE="https://scenthunter-pr726-staging.fly.dev"
+          fetch() {
+            local path="$1"
+            echo "::group::GET ${path}"
+            curl --connect-timeout 10 --max-time 12 -sS -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}${path}" || true
+            echo "::endgroup::"
+          }
+          fetch "/catalog-status"
+          echo "::group::LIQUID_BRUN_TARGETED_REFRESH"
+          refresh() {
+            local store="$1"
+            local url="$2"
+            echo "TARGETED_REFRESH store=${store} url=${url}"
+            curl --connect-timeout 10 --max-time 20 -sS -G \
+              --data-urlencode "store=${store}" \
+              --data-urlencode "url=${url}" \
+              "${BASE}/catalog/refresh-store-url" || echo "TARGETED_REFRESH_TRANSPORT_ERROR store=${store} url=${url}"
+            echo
+          }
+          refresh "bplatz" "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
+          refresh "notino" "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+          refresh "notino" "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/"
+          refresh "bplatz" "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          refresh "parfumcity" "https://www.parfumcity.nl/fr/products/liquid-brun-limited-edition-french-avenue-100-ml"
+          echo "::endgroup::"
+          echo "::group::LIQUID_BRUN_CATALOG_SEARCH"
+          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Liquid Brun" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Liquid Brun"
+          echo
+          curl --connect-timeout 10 --max-time 20 -sS -G --data-urlencode "q=Rayhaan Aquatica" -w '\nHTTP_STATUS=%{http_code}\n' "${BASE}/search" || echo "CATALOG_SEARCH_TRANSPORT_ERROR query=Rayhaan Aquatica"
+          echo
+          echo "::endgroup::"
+          fetch "/catalog/hydration-processing"
+          for store in bplatz parfumcity parfumzentrum perfumemarket sabina orioudh easycosmetic deloox notino; do
+            fetch "/catalog/hydration-errors?store=${store}&limit=30"
+          done
+

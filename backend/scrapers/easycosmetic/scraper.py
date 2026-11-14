@@ -1130,6 +1130,14 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     if displayed_price is not None:
         price = displayed_price
 
+    # A navigation/category page can have an H1 (and even prices in product
+    # recommendation cards) without being a product detail. Only accept a
+    # page when it has product-level structured data or a price explicitly
+    # scoped to the selected product. Product JSON-LD remains sufficient for
+    # genuine out-of-stock pages whose price is temporarily absent.
+    if product_json is None and displayed_price is None:
+        return None
+
     page_available, page_availability = _availability_from_page(page_text)
 
     available = page_available
