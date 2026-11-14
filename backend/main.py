@@ -2589,55 +2589,22 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
-def _cancel_active_jobs(wait_timeout=2.5):
-    """Request cancellation and wait briefly for active search jobs to finish.
+def _new_job(query):
+    """Reserve the single foreground search slot without cancelling another user.
 
-    /search-start must remain responsive.  A previous search is cancelled first,
-    but if its thread has not reached its done_event within the short handshake
-    window, the caller must return ``busy`` rather than blocking the HTTP request.
+    A second request receives busy and can retry after the active search finishes.
+    This keeps one user's query from cancelling another user's in-flight results.
+    The active-slot check and reservation are atomic under JOBS_LOCK.
     """
-    _runtime_diag_event('cancel_active_jobs_enter')
+    job_id = uuid.uuid4().hex
     with JOBS_LOCK:
         active = [
             job for job in JOBS.values()
             if not job.get("completed") and not job.get("done_event", threading.Event()).is_set()
         ]
-
-    if not active:
-        _runtime_diag_event('cancel_active_jobs_no_active')
-        return True
-
-    for job in active:
-        event = job.get("cancel_event")
-        if event is not None:
-            event.set()
-
-    print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}", flush=True)
-
-    deadline = time.monotonic() + max(0.1, float(wait_timeout))
-    all_done = True
-    for job in active:
-        done_event = job.get("done_event")
-        if done_event is None:
-            all_done = False
-            continue
-        remaining = max(0.0, deadline - time.monotonic())
-        if remaining <= 0 or not done_event.wait(remaining):
-            all_done = False
-            print(
-                f"SEARCH CANCEL HANDSHAKE PENDING job={job.get('job_id')} "
-                f"waited={round(wait_timeout, 2)}",
-                flush=True,
-            )
-
-    _runtime_diag_event('cancel_active_jobs_done', all_done=all_done, active_jobs=len(active))
-    return all_done
-
-
-
-def _new_job(query):
-    job_id = uuid.uuid4().hex
-    with JOBS_LOCK:
+        if active:
+            _runtime_diag_event('search_start_busy', active_jobs=len(active))
+            return None
         JOBS[job_id] = {
             "job_id": job_id,
             "query": query,
@@ -4751,10 +4718,11 @@ def search_start(q: str):
             'stores': {},
         }
 
-    # Cancellation handshake must never block the HTTP request for a full
-    # store/job timeout.  If the previous job is still shutting down, the
-    # frontend can retry /search-start after a short delay.
-    if not _cancel_active_jobs(wait_timeout=0.15):
+    # Only one foreground search occupies the bounded store-worker pool.
+    # Never cancel an active user's search to admit a newer request: return
+    # busy and let the caller retry once the active job has completed.
+    job_id = _new_job(query)
+    if not job_id:
         return {
             'job_id': '',
             'query': query,
@@ -4767,11 +4735,10 @@ def search_start(q: str):
             'unresolved_offers': [],
             'identity_scope': [],
             'comparisons': [],
-            'errors': {'job': 'previous_search_still_stopping'},
+            'errors': {'job': 'foreground_search_slot_busy'},
             'stores': {},
         }
 
-    job_id = _new_job(query)
     threading.Thread(
         target=_run_job,
         args=(job_id, query),
