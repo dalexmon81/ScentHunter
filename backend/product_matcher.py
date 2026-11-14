@@ -1019,7 +1019,6 @@ class ProductMatcher:
             )
         return re.sub(r"\s+", " ", cleaned).strip()
 
-    @lru_cache(maxsize=4096)
     def _sibling_family_candidates(
         self, family: Dict[str, Any], query: str
     ) -> tuple[Dict[str, Any], ...]:
@@ -1062,6 +1061,7 @@ class ProductMatcher:
         self._family_sibling_cache[cache_key] = result
         return result
 
+    @lru_cache(maxsize=4096)
     def _family_for_query(self, query: str) -> Optional[Dict[str, Any]]:
         query_key = catalog_variant_key(query)
         if not query_key:
