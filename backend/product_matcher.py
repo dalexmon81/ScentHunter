@@ -760,21 +760,6 @@ class ProductMatcher:
                     for value in valid_aliases
                     if ProductMatcher._url_catalog_identity_text(value)
                 )
-                # URL identity tokens are immutable registry data. Precompute
-                # them once instead of normalizing every family alias for every
-                # retailer offer during a broad family search.
-                url_identity_token_sets = tuple(
-                    frozenset(value.split()) for value in normalized_aliases if value
-                )
-                # The normalized alias list intentionally includes the
-                # canonical name at index zero; the matcher historically
-                # checks canonical names and aliases alike against URL slugs.
-                url_alias_token_sequences = tuple(
-                    tuple(value.split()) for value in normalized_aliases if value
-                )
-                url_alias_token_sets = tuple(
-                    frozenset(tokens) for tokens in url_alias_token_sequences
-                )
                 alias_token_sequences = tuple(
                     tuple(catalog_variant_key(value).split())
                     for value in valid_aliases
@@ -800,9 +785,6 @@ class ProductMatcher:
                         "_normalized_alias_set": frozenset(normalized_aliases),
                         "_alias_token_sequences": alias_token_sequences,
                         "_alias_token_sets": alias_token_sets,
-                        "_url_identity_token_sets": url_identity_token_sets,
-                        "_url_alias_token_sequences": url_alias_token_sequences,
-                        "_url_alias_token_sets": url_alias_token_sets,
                         "_url_alias_data": tuple(url_alias_data),
                         "_audience": _audience_for_normalized_key(catalog_variant_key(identity_text)),
                         "_canonical_specificity_key": ProductMatcher._variant_specificity_key(canonical, brand),
@@ -1220,14 +1202,17 @@ class ProductMatcher:
 
             conflicting_url_variant = False
             brand_key = catalog_norm(family.get("brand", ""))
-            name_variant_token_sets = name_variant.get("_url_identity_token_sets") or tuple(
-                frozenset(self._url_catalog_identity_text(value).split())
-                for value in (
-                    name_variant.get("canonical_name", ""),
-                    *name_variant.get("aliases", ()),
-                )
+            name_variant_forms = [
+                name_variant.get("canonical_name", ""),
+                *name_variant.get("aliases", ()),
+            ]
+            # Build this once per offer, not once per candidate alias in the
+            # nested URL-conflict loop. _url_identity_text is already cached.
+            name_variant_token_sets = [
+                set(self._url_catalog_identity_text(value).split())
+                for value in name_variant_forms
                 if self._url_catalog_identity_text(value)
-            )
+            ]
             for raw_url in url_texts:
                 url_parts = [part for part in raw_url.split("/") if part]
                 for raw_url_part in ([url_parts[-1]] if url_parts else []) + [raw_url]:
@@ -1241,7 +1226,8 @@ class ProductMatcher:
                     for candidate_variant in eligible_variants:
                         if candidate_variant.get("canonical_name") == name_variant.get("canonical_name"):
                             continue
-                        for alias_tokens in candidate_variant.get("_url_alias_token_sequences", ()):
+                        for alias in candidate_variant.get("aliases", ()):
+                            alias_tokens = self._url_catalog_identity_text(alias).split()
                             if len(alias_tokens) < 2:
                                 continue
                             # A broad alias shared by a more specific registered
@@ -1450,7 +1436,8 @@ class ProductMatcher:
                 for variant in eligible_variants:
                     best_variant_score = 0.0
 
-                    for alias_ordered_tokens in variant.get("_url_alias_token_sequences", ()):
+                    for alias in variant.get("aliases", ()):
+                        alias_ordered_tokens = self._url_catalog_identity_text(alias).split()
                         if len(alias_ordered_tokens) < 2:
                             continue
                         width = len(alias_ordered_tokens)
@@ -1543,7 +1530,8 @@ class ProductMatcher:
                             if token not in {"ml", "cl", "spray", "copy", "refill"}
                             and not token.isdigit()
                         } or raw_tokens
-                        for alias_tokens in name_variant.get("_url_alias_token_sets", ()):
+                        for alias in name_variant.get("aliases", ()):
+                            alias_tokens = set(self._url_catalog_identity_text(alias).split())
                             if not alias_tokens:
                                 continue
                             for candidate_tokens in (raw_tokens, identity_tokens):
