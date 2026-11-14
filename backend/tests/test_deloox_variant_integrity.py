@@ -180,5 +180,54 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertIsNone(scraper._product(url, html, "Liquid Brun Limited Edition 100 ml"))
 
 
+    def test_supplied_interstitial_html_uses_browser_rendered_product_document(self):
+        from unittest.mock import patch
+
+        url = "https://www.deloox.com/product/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html"
+        interstitial = "<html><body>Checking your browser...</body></html>"
+        rendered = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+          "brand": {"@type": "Brand", "name": "Rasasi"},
+          "gtin13": "614514331040",
+          "size": {"@type": "QuantitativeValue", "value": 100, "unitText": "ml"},
+          "offers": {"@type": "Offer", "price": "29.99", "priceCurrency": "EUR",
+                     "availability": "https://schema.org/InStock"}
+        }
+        </script></head><body><h1>Rasasi Hawas Ice Eau de Parfum 100 ml</h1>
+        <button>Add to cart</button></body></html>
+        """
+        with patch.object(scraper, "_browser_product_document", return_value=(rendered, url)) as fallback:
+            result = scraper.extract_product_page(None, url, query="Rasasi Hawas Ice 100 ml", html=interstitial)
+        fallback.assert_called_once_with(url)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["name"], "Rasasi Hawas Ice Eau de Parfum 100 ml")
+        self.assertEqual(result["price_num"], 29.99)
+        self.assertEqual(result["gtin"], "614514331040")
+
+    def test_supplied_complete_html_does_not_use_browser_fallback(self):
+        from unittest.mock import patch
+
+        url = "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml.html"
+        html = """
+        <html><head><script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"Product",
+         "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
+         "brand":{"@type":"Brand","name":"French Avenue"},
+         "size":{"@type":"QuantitativeValue","value":100,"unitText":"ml"},
+         "offers":{"@type":"Offer","price":"32.99","priceCurrency":"EUR"}}
+        </script></head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
+        """
+        with patch.object(scraper, "_browser_product_document") as fallback:
+            result = scraper.extract_product_page(None, url, query="Liquid Brun 100 ml", html=html)
+        fallback.assert_not_called()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["price_num"], 32.99)
+
+
+
 if __name__ == "__main__":
     unittest.main()
