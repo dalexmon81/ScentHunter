@@ -4592,7 +4592,10 @@ def diagnose_hawas_ice_offers_read_only():
 
     try:
         import catalog_engine as ce
-        conn = catalog_db()
+        # This endpoint is strictly read-only. Do not call catalog_db()/ce.db():
+        # that path performs schema initialization and can wait 45 seconds for a
+        # writer lock. Reuse the catalog's short-timeout read-only connection.
+        conn = ce._search_db()
         conn.row_factory = sqlite3.Row
         try:
             for target in targets:
