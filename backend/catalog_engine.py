@@ -517,20 +517,20 @@ def _ensure_search_fts(conn):
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts_map(store,url)
-                   SELECT store,url FROM store_urls WHERE active=1"""
+                   SELECT store,url FROM store_urls AS su WHERE active=1"""
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-                   SELECT m.id,store_urls.store,store_urls.url,
-                          trim(COALESCE(store_urls.slug,'') || ' ' ||
+                   SELECT m.id,su.store,su.url,
+                          trim(COALESCE(su.slug,'') || ' ' ||
                                COALESCE(p.name,'') || ' ' ||
                                COALESCE(p.brand,''))
                      FROM catalog_search_fts_map m
-                     JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
+                     JOIN store_urls ON su.store=m.store AND su.url=m.url
                      LEFT JOIN store_products p
-                       ON p.store=store_urls.store AND p.url=store_urls.url
+                       ON p.store=su.store AND p.url=su.url
                       AND p.fetch_status='OK'
-                    WHERE store_urls.active=1"""
+                    WHERE su.active=1"""
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts_meta(key,value)
@@ -627,15 +627,15 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=NEW.store AND url=NEW.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT store_urls.store,store_urls.url FROM store_urls
-             WHERE store_urls.store=NEW.store AND store_urls.url=NEW.url AND store_urls.active=1;
+            SELECT su.store,su.url FROM store_urls AS su
+             WHERE su.store=NEW.store AND su.url=NEW.url AND su.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,store_urls.store,store_urls.url,
-                   trim(COALESCE(store_urls.slug,'') || ' ' ||
+            SELECT m.id,su.store,su.url,
+                   trim(COALESCE(su.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
               FROM catalog_search_fts_map m
-              JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
-             WHERE m.store=NEW.store AND m.url=NEW.url AND store_urls.active=1;
+              JOIN store_urls ON su.store=m.store AND su.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND su.active=1;
         END
         """,
         """
@@ -648,15 +648,15 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=OLD.store AND url=OLD.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT store_urls.store,store_urls.url FROM store_urls
-             WHERE store_urls.store=NEW.store AND store_urls.url=NEW.url AND store_urls.active=1;
+            SELECT su.store,su.url FROM store_urls
+             WHERE su.store=NEW.store AND su.url=NEW.url AND su.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,store_urls.store,store_urls.url,
-                   trim(COALESCE(store_urls.slug,'') || ' ' ||
+            SELECT m.id,su.store,su.url,
+                   trim(COALESCE(su.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
               FROM catalog_search_fts_map m
-              JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
-             WHERE m.store=NEW.store AND m.url=NEW.url AND store_urls.active=1;
+              JOIN store_urls ON su.store=m.store AND su.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND su.active=1;
         END
         """,
         """
@@ -669,10 +669,10 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=OLD.store AND url=OLD.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT store_urls.store,store_urls.url FROM store_urls
-             WHERE store_urls.store=OLD.store AND store_urls.url=OLD.url AND store_urls.active=1;
+            SELECT su.store,su.url FROM store_urls
+             WHERE su.store=OLD.store AND su.url=OLD.url AND su.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,store_urls.store,store_urls.url,trim(COALESCE(store_urls.slug,''))
+            SELECT m.id,su.store,su.url,trim(COALESCE(su.slug,''))
               FROM catalog_search_fts_map m
              WHERE m.store=OLD.store AND m.url=OLD.url;
         END
