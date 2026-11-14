@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SCRIPT='/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py'
+          SCRIPT='/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py'
           RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
           printf '%s\n' "$RESULT"
           printf '%s\n' "$RESULT" | grep -Eq '"status": "DRY_RUN"'
@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SCRIPT='/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py'
+          SCRIPT='/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py'
           RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --limit-per-store 10")"
           printf '%s\n' "$RESULT"
           printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
@@ -106,4 +106,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout 30s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py"
+          timeout 30s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py"
