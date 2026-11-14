@@ -79,15 +79,10 @@ jobs:
           set -euo pipefail
           python -m pip install -r backend/requirements.txt pytest
           PYTHONPATH=.:backend python -c 'from scripts import build_notino_match_candidates as parser; import lxml; assert parser.ET.__name__ == "lxml.etree"; print("RUNNER_LXML=" + lxml.__version__ + " PARSER=" + parser.ET.__name__)'
-          PYTHONPATH=.:backend python -m pytest -q tests/test_notino_phase2_adapter.py
-          for test_file in backend/tests/test_notino*.py; do
-            echo "RUN=$test_file"
-            PYTHONPATH=.:backend python "$test_file"
-          done
-          PYTHONPATH=.:backend python -m unittest \
-            backend.tests.test_notino_affiliate_feed \
-            backend.tests.test_notino_phase2_validation_reasons
-          PYTHONPATH=.:backend python backend/tests/test_result_dedupe.py
+          PYTHONPATH=.:backend python -m pytest -q \
+            tests/test_notino_phase2_adapter.py tests/test_notino_search_adapter.py \
+            backend/tests/test_notino*.py backend/tests/test_result_dedupe.py \
+            backend/tests/test_catalog_writer_lock.py
 
       - name: Validate credentials, commit, and isolated target
         shell: bash
@@ -523,12 +518,22 @@ jobs:
           flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.imported.sha256\"); t=Path(str(p)+\".tmp\"); t.write_text(\"$snapshot_sha\\n\", encoding=\"ascii\"); t.replace(p)'"
 
       - name: Hydrate the exact Aquatica and Hawas Ice product pages
+        id: hydrated
         timeout-minutes: 8
         shell: bash
         run: |
           set -euo pipefail
           machine_id="${{ steps.machine.outputs.machine_id }}"
-          flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/refresh_notino_staging_pages.py --confirm-pr726-staging"
+          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/refresh_notino_staging_pages.py --confirm-pr726-staging")"
+          printf '%s\n' "$OUTPUT"
+          python - "$OUTPUT" <<'PY'
+          import json, os, sys
+          rows = [json.loads(line) for line in sys.argv[1].splitlines() if line.startswith('{"query":')]
+          prices = {row["query"]: row["price"] for row in rows}
+          assert set(prices) == {"Rasasi Hawas Ice", "Rayhaan Aquatica"}, rows
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("page_prices=" + json.dumps(prices, separators=(",", ":")) + "\n")
+          PY
 
       - name: Verify Phase 2 and public catalog-first Notino search
         timeout-minutes: 8
@@ -552,7 +557,7 @@ jobs:
           python backend/scripts/verify_notino_public_search.py \
             --base-url https://scenthunter-pr726-staging.fly.dev \
             --overall-timeout-seconds 480 \
-            --known-products
+            --known-products --page-prices-json '${{ steps.hydrated.outputs.page_prices }}'
 
       - name: Verify public Notino search across multiple feed brands
         timeout-minutes: 10
@@ -627,4 +632,4 @@ jobs:
           python backend/scripts/verify_notino_public_search.py \
             --base-url https://scenthunter-pr726-staging.fly.dev \
             --overall-timeout-seconds 240 \
-            --known-products
+            --known-products --page-prices-json '${{ steps.hydrated.outputs.page_prices }}'

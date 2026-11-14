@@ -179,6 +179,7 @@ def search_notino_retailer_listings(query: str, excluded_ids: set[str], limit: i
                         listing.external_id.encode("utf-8")
                     ).hexdigest()[:24],
                     "external_id": listing.external_id,
+                    "gtin": listing.gtin,
                     "brand": listing.brand, "canonical_brand": listing.brand,
                     "name": listing.title, "canonical_name": listing.title,
                     "store": "notino", "shop": "notino",

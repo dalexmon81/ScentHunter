@@ -151,6 +151,22 @@ def test_hawas_product_rejects_a_single_unrelated_structured_offer():
     assert scraper._parse_product(url, html, "Rasasi Hawas Ice") is None
 
 
+def test_product_parser_rejects_gift_record_even_if_heading_looks_like_bottle():
+    url = "https://www.notino.fr/brand/perfume-eau-de-parfum/p-123/"
+    product = {
+        "@type": "Product",
+        "name": "Perfume Eau de Parfum coffret cadeau 100 ml",
+        "brand": {"name": "Brand"},
+        "url": url,
+        "offers": {"price": "32.50", "priceCurrency": "EUR"},
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Perfume Eau de Parfum 100 ml</h1>'
+    )
+    assert scraper._parse_product(url, html, "Brand Perfume") is None
+
+
 def test_hawas_product_must_match_requested_size_and_concentration():
     url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
     product = {

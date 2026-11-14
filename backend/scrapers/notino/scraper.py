@@ -1600,7 +1600,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     if heading_name and not _query_matches_name(f"{brand} {heading_name}".strip(), query):
         return None
     display_name = heading_name or name
-    page_identity = _norm(f"{display_name} {safe_url}")
+    page_identity = _norm(f"{display_name} {name} {safe_url}")
     if any(re.search(
         rf"(?<!\w){re.escape(_norm(marker))}(?!\w)", page_identity
     ) for marker in NON_PERFUME_MARKERS):

@@ -846,11 +846,15 @@ def _ensure_schema(conn):
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = connect_catalog_db(DB_PATH, timeout=45)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=45000')
-    _ensure_schema(conn)
-    conn.execute('PRAGMA synchronous=NORMAL')
-    return conn
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=45000')
+        _ensure_schema(conn)
+        conn.execute('PRAGMA synchronous=NORMAL')
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def catalog_price_freshness_snapshot(conn, now=None):
@@ -4609,7 +4613,9 @@ def refresh_url(store, url):
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
                         item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                        item.get('price_num'), item.get('currency'), item.get('availability'),
+                        item.get('price_num'), item.get('currency'),
+                        (str(item.get('availability') or '').replace(' ', '_')
+                         if store == 'notino' else item.get('availability')),
                         item.get('fetched_at'), 'OK',
                     ),
                 )

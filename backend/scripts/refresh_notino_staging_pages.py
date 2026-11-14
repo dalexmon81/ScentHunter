@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -13,7 +14,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from app.services.notino_affiliate import is_valid_notino_affiliate_url
-from app.services.notino_phase2_search import search_notino_phase2
+from app.services.notino_phase2_search import search_notino_phase2, search_notino_retailer_listings
 from product_matcher import ProductMatcher
 from scrapers.notino.scraper import _extract_concentration
 
@@ -33,7 +34,10 @@ def _destination(affiliate_url: str) -> str:
 
 def _refresh_product(query: str, gtin: str, brand: str, size_ml: int, concentration: str) -> dict:
     matches = [
-        row for row in search_notino_phase2(query, limit=100)
+        row for row in (
+            search_notino_phase2(query, limit=100)
+            + search_notino_retailer_listings(query, set(), limit=100)
+        )
         if str(row.get("gtin") or "").strip() == gtin
     ]
     destinations = {_destination(str(row.get("url") or "")) for row in matches}
@@ -102,7 +106,7 @@ def main() -> int:
     if not catalog_path.is_relative_to("/data") or not phase2_path.is_relative_to("/data/notino-phase2"):
         raise RuntimeError("refusing to write outside isolated staging volumes")
     for product in _PRODUCTS:
-        print(_refresh_product(*product), flush=True)
+        print(json.dumps(_refresh_product(*product)), flush=True)
     return 0
 
 

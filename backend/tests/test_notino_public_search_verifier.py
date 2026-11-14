@@ -1,7 +1,8 @@
 import unittest
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from scripts.verify_notino_public_search import _phase2_brand_offers, poll_public_search
+from scripts.verify_notino_public_search import _phase2_brand_offers, poll_public_search, verify_known_products
 
 
 JOB_ID = "0123456789abcdef0123456789abcdef"
@@ -173,6 +174,48 @@ class PublicNotinoSearchPollingTests(unittest.TestCase):
             _phase2_brand_offers(payload, "armaf"),
             [payload["results"][0]["offers"][1]],
         )
+
+    def test_known_product_check_compares_page_price_and_counts_all_hawas_offers(self):
+        from urllib.parse import quote
+
+        def offer(brand, name, path, price):
+            return {
+                "store": "notino", "brand": brand, "name": name, "size_ml": 100,
+                "variant": "EDP", "price": price, "price_num": price,
+                "currency": "EUR", "availability": "in_stock",
+                "available": True, "in_stock": True, "price_stale": False,
+                "source": "cj_notino_fr_feed",
+                "url": "https://www.kqzyfj.com/click-1-2?url=" + quote(
+                    "https://www.notino.fr/" + path, safe=""
+                ),
+            }
+
+        aquatica = offer("Rayhaan", "Aquatica", "rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/", 40)
+        hawas = offer("Rasasi", "Hawas Ice Eau de Parfum", "rasasi/hawas-ice/p-16242201/", 36)
+        liquid = offer("French Avenue", "Liquid Brun", "french-avenue/liquid-brun/p-3/", 30)
+
+        def payload(offers):
+            return {
+                "stores": {"notino": {"details": {
+                    "phase2_source": "persistent_notino_cj_catalog", "live_scraping": False,
+                }}},
+                "results": [{"offers": offers}],
+            }
+
+        prices = {"Rasasi Hawas Ice": 36.0, "Rayhaan Aquatica": 40.0}
+        with patch("scripts.verify_notino_public_search.poll_public_search", side_effect=[
+            payload([aquatica]), payload([hawas]), payload([liquid]),
+        ]):
+            verify_known_products("https://staging.example", 100, prices)
+        duplicate = {**hawas, "url": "https://www.notino.fr/rasasi/hawas-ice/"}
+        with patch("scripts.verify_notino_public_search.poll_public_search", side_effect=[
+            payload([aquatica]), payload([hawas, duplicate]),
+        ]), self.assertRaisesRegex(AssertionError, "exactly one"):
+            verify_known_products("https://staging.example", 100, prices)
+        with patch("scripts.verify_notino_public_search.poll_public_search", side_effect=[
+            payload([aquatica]), payload([hawas]),
+        ]), self.assertRaises(AssertionError):
+            verify_known_products("https://staging.example", 100, {**prices, "Rasasi Hawas Ice": 37.4})
 
 
 if __name__ == "__main__":

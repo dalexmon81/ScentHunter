@@ -251,7 +251,7 @@ def _json_value_from_output(raw: str) -> list:
     return value
 
 
-def verify_known_products(base_url: str, deadline: float) -> None:
+def verify_known_products(base_url: str, deadline: float, page_prices: dict[str, float]) -> None:
     aquatica_query = "Rayhaan Aquatica"
     aquatica_payload = poll_public_search(aquatica_query, base_url, deadline)
     _notino_report(aquatica_payload, aquatica_query)
@@ -275,6 +275,8 @@ def verify_known_products(base_url: str, deadline: float) -> None:
             "message": "no Phase 2 offer with the expected Notino destination",
             "results": aquatica_payload.get("results"),
         })
+    if float(aquatica_hits[0].get("price_num") or aquatica_hits[0].get("price")) != page_prices["Rayhaan Aquatica"]:
+        raise AssertionError({"query": aquatica_query, "page_prices": page_prices, "offers": aquatica_hits})
     print("PUBLIC_RAYHAAN_AQUATICA_RETAILER_ONLY_SEARCH=PASS")
     print("PUBLIC_RAYHAAN_AQUATICA_PRICE=" + str(
         aquatica_hits[0].get("price") or aquatica_hits[0].get("price_num")
@@ -285,7 +287,14 @@ def verify_known_products(base_url: str, deadline: float) -> None:
     hawas_payload = poll_public_search(hawas_query, base_url, deadline)
     _notino_report(hawas_payload, hawas_query)
     hawas_hits = []
+    hawas_variant_offers = []
     for group, offer in _notino_offers(hawas_payload):
+        name = str(offer.get("name") or group.get("name") or "").casefold()
+        if (
+            "hawas ice" in name
+            and abs(float(offer.get("size_ml") or group.get("size_ml") or 0) - 100) < 0.01
+        ):
+            hawas_variant_offers.append(offer)
         destination = urllib.parse.parse_qs(
             urllib.parse.urlsplit(str(offer.get("url") or "")).query
         ).get("url", [""])[0]
@@ -310,12 +319,14 @@ def verify_known_products(base_url: str, deadline: float) -> None:
                     "offer": offer,
                 })
             hawas_hits.append(offer)
-    if len(hawas_hits) != 1:
+    if len(hawas_hits) != 1 or len(hawas_variant_offers) != 1:
         raise AssertionError({
             "query": hawas_query,
             "message": "expected exactly one verified Hawas Ice 100 ml offer",
             "results": hawas_payload.get("results"),
         })
+    if float(hawas_hits[0].get("price_num") or hawas_hits[0].get("price")) != page_prices["Rasasi Hawas Ice"]:
+        raise AssertionError({"query": hawas_query, "page_prices": page_prices, "offers": hawas_hits})
     print("PUBLIC_RASASI_HAWAS_ICE_100ML_SEARCH=PASS")
     print("PUBLIC_RASASI_HAWAS_ICE_PRICE=" + str(
         hawas_hits[0].get("price") or hawas_hits[0].get("price_num")
@@ -422,15 +433,18 @@ def main() -> int:
     parser.add_argument("--brands-json")
     parser.add_argument("--retailer-only-json")
     parser.add_argument("--known-products", action="store_true")
+    parser.add_argument("--page-prices-json")
     args = parser.parse_args()
     if bool(args.brands_json) != bool(args.retailer_only_json):
         parser.error("--brands-json and --retailer-only-json must be supplied together")
     if not args.known_products and not args.brands_json:
         parser.error("select --known-products and/or supply multi-brand samples")
+    if args.known_products and not args.page_prices_json:
+        parser.error("--known-products requires --page-prices-json from product-page hydration")
 
     deadline = time.monotonic() + args.overall_timeout_seconds
     if args.known_products:
-        verify_known_products(args.base_url, deadline)
+        verify_known_products(args.base_url, deadline, json.loads(args.page_prices_json))
     if args.brands_json:
         verify_multiple_brands(
             args.base_url,

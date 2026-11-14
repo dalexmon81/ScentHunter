@@ -295,6 +295,7 @@ class NotinoRetailerListingTests(unittest.TestCase):
             with patch.dict("os.environ", {"NOTINO_PHASE2_DATABASE": str(path)}):
                 offers = search_notino_retailer_listings("Night", set())
             self.assertTrue(_aggregate_identity_results(offers)[0][0]["offers"][0]["price_stale"])
+            self.assertEqual(offers[0]["gtin"], "4006381333931")
             engine.dispose()
 
 
