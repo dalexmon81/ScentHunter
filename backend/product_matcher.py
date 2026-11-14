@@ -2029,6 +2029,13 @@ class ProductMatcher:
                 )
                 sibling_families = self._sibling_family_candidates(family, query)
                 for sibling_family in sibling_families:
+                    specific_aliases = sibling_family.get("normalized_query_aliases", ())
+                    if not any(
+                        len(alias.split()) > len(query_tokens)
+                        and alias in offer_identity_key
+                        for alias in specific_aliases
+                    ):
+                        continue
                     sibling_result = self._match_family(offer, query, sibling_family)
                     if sibling_result is not None:
                         result = sibling_result
