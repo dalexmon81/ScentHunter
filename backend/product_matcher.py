@@ -1202,6 +1202,17 @@ class ProductMatcher:
 
             conflicting_url_variant = False
             brand_key = catalog_norm(family.get("brand", ""))
+            name_variant_forms = [
+                name_variant.get("canonical_name", ""),
+                *name_variant.get("aliases", ()),
+            ]
+            # Build this once per offer, not once per candidate alias in the
+            # nested URL-conflict loop. _url_identity_text is already cached.
+            name_variant_token_sets = [
+                set(self._url_catalog_identity_text(value).split())
+                for value in name_variant_forms
+                if self._url_catalog_identity_text(value)
+            ]
             for raw_url in url_texts:
                 url_parts = [part for part in raw_url.split("/") if part]
                 for raw_url_part in ([url_parts[-1]] if url_parts else []) + [raw_url]:
@@ -1227,15 +1238,6 @@ class ProductMatcher:
                             # the generic 100 ml variant. Only a URL alias that
                             # adds identity tokens beyond the exact name variant
                             # can override an exact title match.
-                            name_variant_forms = [
-                                name_variant.get("canonical_name", ""),
-                                *name_variant.get("aliases", ()),
-                            ]
-                            name_variant_token_sets = [
-                                set(self._url_catalog_identity_text(value).split())
-                                for value in name_variant_forms
-                                if self._url_catalog_identity_text(value)
-                            ]
                             if any(
                                 set(alias_tokens).issubset(form_tokens)
                                 for form_tokens in name_variant_token_sets
