@@ -4563,6 +4563,11 @@ def diagnose_hawas_ice_offers_read_only():
     import time
 
     started = time.monotonic()
+    # Keep this diagnostic bounded even when a retailer stalls. The three
+    # external reads are observational only and must never occupy an API
+    # worker for the full refresh timeout on each store.
+    diagnostic_deadline = started + 15.0
+    live_request_timeout = 4.0
     targets = [
         {
             'store': 'deloox',
@@ -4623,7 +4628,15 @@ def diagnose_hawas_ice_offers_read_only():
                             'error': f'{type(exc).__name__}: {str(exc)[:250]}',
                         })
                 try:
-                    status, final_url, data = ce.http_get(url, timeout=getattr(ce, 'REFRESH_TIMEOUT', 12))
+                    remaining = diagnostic_deadline - time.monotonic()
+                    if remaining <= 0:
+                        item['live']['skipped'] = 'diagnostic_time_budget_exhausted'
+                        out['targets'].append(item)
+                        continue
+                    status, final_url, data = ce.http_get(
+                        url,
+                        timeout=min(live_request_timeout, remaining),
+                    )
                     item['live']['http_status'] = status
                     item['live']['final_url'] = final_url
                     item['live']['bytes'] = len(data or b'')
