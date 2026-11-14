@@ -7,6 +7,8 @@ without assuming a fixed namespace prefix or a specific feed URL.
 from __future__ import annotations
 
 import gzip
+import io
+import zipfile
 import hashlib
 import logging
 import os
@@ -28,6 +30,12 @@ TIMEOUT = (5.0, 30.0)
 MAX_FEED_BYTES = 256 * 1024 * 1024
 MAX_DECOMPRESSED_BYTES = 512 * 1024 * 1024
 USER_AGENT = "ScentHunter/authorized-affiliate-feed (+price-comparison)"
+# CJ HTTP/S subscription configured for the accepted NOTINO.fr product export.
+DEFAULT_CJ_FEED_URL = (
+    "https://datatransfer.cj.com/datatransfer/files/8115142/"
+    "outgoing/productcatalog/324587/"
+    "NOTINO_fr-NotinoFR_google_all-shopping.xml.zip"
+)
 
 
 class FeedImportError(RuntimeError):
@@ -246,9 +254,31 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
     raw = bytes(data)
     if len(raw) > MAX_FEED_BYTES:
         raise FeedImportError("notino_feed_too_large")
-    if raw[:2] == b"\x1f\x8b":
+    if zipfile.is_zipfile(io.BytesIO(raw)):
         try:
-            decompressor = gzip.GzipFile(fileobj=__import__("io").BytesIO(raw))
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                members = [
+                    info for info in archive.infolist()
+                    if not info.is_dir() and info.filename.casefold().endswith(".xml")
+                ]
+                if len(members) != 1:
+                    raise FeedImportError("notino_feed_zip_expected_one_xml")
+                member = members[0]
+                if member.file_size > MAX_DECOMPRESSED_BYTES:
+                    raise FeedImportError("notino_feed_decompressed_too_large")
+                if archive.testzip() is not None:
+                    raise FeedImportError("notino_feed_invalid_zip_crc")
+                with archive.open(member) as stream:
+                    raw = stream.read(MAX_DECOMPRESSED_BYTES + 1)
+        except FeedImportError:
+            raise
+        except (OSError, EOFError, zipfile.BadZipFile, RuntimeError):
+            raise FeedImportError("notino_feed_invalid_zip") from None
+        if len(raw) > MAX_DECOMPRESSED_BYTES:
+            raise FeedImportError("notino_feed_decompressed_too_large")
+    elif raw[:2] == b"\x1f\x8b":
+        try:
+            decompressor = gzip.GzipFile(fileobj=io.BytesIO(raw))
             raw = decompressor.read(MAX_DECOMPRESSED_BYTES + 1)
             decompressor.close()
         except (OSError, EOFError):
@@ -293,9 +323,20 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
 
 
 def _fetch_feed() -> bytes:
-    feed_url = os.environ.get("NOTINO_CJ_FEED_URL", "").strip()
-    username = os.environ.get("NOTINO_CJ_FEED_USERNAME", "").strip()
-    password = os.environ.get("NOTINO_CJ_FEED_PASSWORD", "")
+    feed_url = (
+        os.environ.get("NOTINO_CJ_FEED_URL", "").strip()
+        or DEFAULT_CJ_FEED_URL
+    )
+    # The review workflow already uses CJ_HTTP_*; accept the same names in
+    # production so the deploy workflow can provision one credential pair.
+    username = (
+        os.environ.get("NOTINO_CJ_FEED_USERNAME", "").strip()
+        or os.environ.get("CJ_HTTP_USERNAME", "").strip()
+    )
+    password = (
+        os.environ.get("NOTINO_CJ_FEED_PASSWORD", "")
+        or os.environ.get("CJ_HTTP_PASSWORD", "")
+    )
     if not feed_url or not username or not password:
         raise FeedImportError("notino_feed_credentials_missing")
     parsed = urllib.parse.urlparse(feed_url)
