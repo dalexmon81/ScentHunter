@@ -521,12 +521,12 @@ def _ensure_search_fts(conn):
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-                   SELECT m.id,u.store,u.url,
-                          trim(COALESCE(u.slug,'') || ' ' ||
+                   SELECT m.id,store_urls.store,store_urls.url,
+                          trim(COALESCE(store_urls.slug,'') || ' ' ||
                                COALESCE(p.name,'') || ' ' ||
                                COALESCE(p.brand,''))
                      FROM catalog_search_fts_map m
-                     JOIN store_urls u ON u.store=m.store AND u.url=m.url
+                     JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
                      LEFT JOIN store_products p
                        ON p.store=u.store AND p.url=u.url
                       AND p.fetch_status='OK'
@@ -627,15 +627,15 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=NEW.store AND url=NEW.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT u.store,u.url FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url AND u.active=1;
+            SELECT store_urls.store,store_urls.url FROM store_urls
+             WHERE store_urls.store=NEW.store AND store_urls.url=NEW.url AND store_urls.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
+            SELECT m.id,store_urls.store,store_urls.url,
+                   trim(COALESCE(store_urls.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
               FROM catalog_search_fts_map m
-              JOIN store_urls u ON u.store=m.store AND u.url=m.url
-             WHERE m.store=NEW.store AND m.url=NEW.url AND u.active=1;
+              JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND store_urls.active=1;
         END
         """,
         """
@@ -648,15 +648,15 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=OLD.store AND url=OLD.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT u.store,u.url FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url AND u.active=1;
+            SELECT store_urls.store,store_urls.url FROM store_urls
+             WHERE store_urls.store=NEW.store AND store_urls.url=NEW.url AND store_urls.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
+            SELECT m.id,store_urls.store,store_urls.url,
+                   trim(COALESCE(store_urls.slug,'') || ' ' ||
                         COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
               FROM catalog_search_fts_map m
-              JOIN store_urls u ON u.store=m.store AND u.url=m.url
-             WHERE m.store=NEW.store AND m.url=NEW.url AND u.active=1;
+              JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
+             WHERE m.store=NEW.store AND m.url=NEW.url AND store_urls.active=1;
         END
         """,
         """
@@ -669,10 +669,10 @@ def _ensure_search_fts_triggers(conn):
             DELETE FROM catalog_search_fts_map
              WHERE store=OLD.store AND url=OLD.url;
             INSERT INTO catalog_search_fts_map(store,url)
-            SELECT u.store,u.url FROM store_urls u
-             WHERE u.store=OLD.store AND u.url=OLD.url AND u.active=1;
+            SELECT store_urls.store,store_urls.url FROM store_urls
+             WHERE u.store=OLD.store AND u.url=OLD.url AND store_urls.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
-            SELECT m.id,u.store,u.url,trim(COALESCE(u.slug,''))
+            SELECT m.id,store_urls.store,store_urls.url,trim(COALESCE(store_urls.slug,''))
               FROM catalog_search_fts_map m
              WHERE m.store=OLD.store AND m.url=OLD.url;
         END
@@ -5454,7 +5454,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     ON p.store=u.store AND p.url=u.url
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
-                 WHERE u.store=? AND u.active=1
+                 WHERE u.store=? AND store_urls.active=1
                    AND (
                        u.store != 'easycosmetic'
                        OR lower(u.url) LIKE 'https://www.easycosmetic.de/%'
@@ -5615,7 +5615,7 @@ def prioritize_hydration_candidates(rows, priority=0):
                                        SELECT 1 FROM store_urls u
                                         WHERE u.store=hydration_queue.store
                                           AND u.url=hydration_queue.url
-                                          AND u.active=1
+                                          AND store_urls.active=1
                                    )
                                    AND (
                                        EXISTS (
@@ -5652,7 +5652,7 @@ def prioritize_hydration_candidates(rows, priority=0):
                              SELECT 1 FROM store_urls u
                               WHERE u.store=hydration_queue.store
                                 AND u.url=hydration_queue.url
-                                AND u.active=1
+                                AND store_urls.active=1
                          )"""
     try:
         conn.execute('BEGIN IMMEDIATE')
@@ -5700,7 +5700,7 @@ def hydration_pending_counts():
                    FROM store_urls u
                    LEFT JOIN store_products p
                      ON p.store=u.store AND p.url=u.url
-                   WHERE u.store=? AND u.active=1
+                   WHERE u.store=? AND store_urls.active=1
                      AND (p.url IS NULL OR p.fetch_status != 'OK')""",
                 (store,),
             ).fetchone()
@@ -5870,7 +5870,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                    JOIN store_urls u
                      ON u.store=q.store AND u.url=q.url
                    WHERE q.store=?
-                     AND u.active=1
+                     AND store_urls.active=1
                      AND q.state IN ('PENDING','ERROR')
                      AND q.available_at <= ?
                      AND (
@@ -7135,7 +7135,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
                 """SELECT q.url
                      FROM hydration_queue q
                      JOIN store_urls u ON u.store=q.store AND u.url=q.url
-                    WHERE q.store=? AND q.state='DONE' AND u.active=1
+                    WHERE q.store=? AND q.state='DONE' AND store_urls.active=1
                       AND (
                         EXISTS (
                           SELECT 1 FROM store_products p
@@ -7181,7 +7181,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
                       AND EXISTS (
                         SELECT 1 FROM store_urls u
                          WHERE u.store=hydration_queue.store
-                           AND u.url=hydration_queue.url AND u.active=1
+                           AND u.url=hydration_queue.url AND store_urls.active=1
                       )""",
                 (current_time, store, row['url']),
             ).rowcount
