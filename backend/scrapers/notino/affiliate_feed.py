@@ -57,6 +57,8 @@ class NotinoOffer:
     url: str
     image: str | None
     concentration: str | None
+    # Keep CJ attribution while catalog identity remains the canonical URL.
+    affiliate_url: str | None = None
 
 
 def _local(tag: str) -> str:
@@ -153,15 +155,29 @@ def _concentration(*values: str) -> str | None:
     return None
 
 
-def _product_url(raw: str) -> str | None:
+CJ_TRACKING_HOSTS = frozenset({
+    "anrdoezrs.net", "www.anrdoezrs.net",
+    "dpbolvw.net", "www.dpbolvw.net",
+    "jdoqocy.com", "www.jdoqocy.com",
+    "kqzyfj.com", "www.kqzyfj.com",
+    "tkqlhce.com", "www.tkqlhce.com",
+})
+CJ_CLICK_PATH = re.compile(r"^/click-\\d+-\\d+/?$", re.I)
+
+
+def _canonical_notino_product_url(raw: str) -> str | None:
     parsed = urllib.parse.urlparse(str(raw or "").strip())
     host = (parsed.hostname or "").lower().rstrip(".")
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
     if (
         parsed.scheme != "https"
         or host not in {"notino.fr", "www.notino.fr"}
         or parsed.username is not None
         or parsed.password is not None
-        or parsed.port not in (None, 443)
+        or port not in (None, 443)
     ):
         return None
     path = re.sub(r"/{2,}", "/", parsed.path or "")
@@ -170,9 +186,55 @@ def _product_url(raw: str) -> str | None:
         "/checkout", "/customer-service", "/wishlist",
     )):
         return None
-    # Canonical product links remain on the French host. Feed redirects and
-    # tracking query parameters do not become duplicate source offers.
     return urllib.parse.urlunparse(("https", MARKET_HOST, path, "", "", ""))
+
+
+def _cj_affiliate_link(raw: str) -> tuple[str, str] | None:
+    """Validate an allowlisted CJ click URL and return its Notino target."""
+    click_url = str(raw or "").strip()
+    parsed = urllib.parse.urlparse(click_url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or host not in CJ_TRACKING_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or not CJ_CLICK_PATH.fullmatch(parsed.path or "")
+    ):
+        return None
+    params = urllib.parse.parse_qs(parsed.query, keep_blank_values=False)
+    destinations = [
+        value
+        for key, values in params.items()
+        if key.lower() == "url"
+        for value in values
+    ]
+    if len(destinations) != 1:
+        return None
+    target = _canonical_notino_product_url(destinations[0])
+    if not target:
+        return None
+    return click_url, target
+
+
+def _resolve_product_link(raw: str) -> tuple[str | None, str | None]:
+    direct = _canonical_notino_product_url(raw)
+    if direct:
+        return direct, None
+    affiliate = _cj_affiliate_link(raw)
+    if affiliate:
+        click_url, target = affiliate
+        return target, click_url
+    return None, None
+
+
+def _product_url(raw: str) -> str | None:
+    return _resolve_product_link(raw)[0]
 
 
 def _image_url(raw: str) -> str | None:
@@ -224,7 +286,7 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
                 image = child.text.strip()
                 break
 
-    link = _product_url(raw_link)
+    link, affiliate_url = _resolve_product_link(raw_link)
     if not title or not brand or price is None or currency != "EUR" or not link or size_ml is None:
         return None
     if not external_id:
@@ -245,6 +307,7 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
         url=link,
         image=_image_url(image),
         concentration=_concentration(title, raw_size),
+        affiliate_url=affiliate_url,
     )
 
 
@@ -505,7 +568,8 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                             STORE_KEY, url, _stable_variant_key(offer), offer.title,
                             offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
                             offer.size_ml, offer.concentration, None,
-                            offer.price, offer.currency, offer.availability, now, url,
+                            offer.price, offer.currency, offer.availability, now,
+                            offer.affiliate_url or url,
                         ),
                     )
                 conn.execute(
