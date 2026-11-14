@@ -664,7 +664,14 @@ def _start_catalog_bootstrap():
         name='scenthunter-catalog-bootstrap',
     ).start()
 
-# Read-only scraper diagnostics. This module does not participate in normal search.
+# Read-only scraper diagnostics. Their modules were moved out of backend/.
+# Add the diagnostics directory before importing them; otherwise the first legacy
+# import raises ModuleNotFoundError and the single broad try/except silently
+# disables every diagnostic router (including the Notino discovery trace).
+_DIAGNOSTICS_DIR = Path(__file__).resolve().parent.parent / 'tools' / 'diagnostics'
+if _DIAGNOSTICS_DIR.is_dir():
+    sys.path.insert(0, str(_DIAGNOSTICS_DIR))
+
 try:
     from diagnose_two_scrapers import router as diagnose_two_scrapers_router
     app.include_router(diagnose_two_scrapers_router)
@@ -708,9 +715,9 @@ try:
         router as diagnose_sabina_variant_runtime_read_only_router,
     )
     app.include_router(diagnose_sabina_variant_runtime_read_only_router)
-    from backend.diagnose_sabina_persistence_path_read_only import router as sabina_persistence_path_read_only_router
+    from diagnose_sabina_persistence_path_read_only import router as sabina_persistence_path_read_only_router
     app.include_router(sabina_persistence_path_read_only_router)
-    from backend.diagnose_sabina_variant_callpath_read_only import router as sabina_variant_callpath_read_only_router
+    from diagnose_sabina_variant_callpath_read_only import router as sabina_variant_callpath_read_only_router
     app.include_router(sabina_variant_callpath_read_only_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
