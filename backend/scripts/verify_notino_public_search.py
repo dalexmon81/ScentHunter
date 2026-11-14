@@ -281,6 +281,47 @@ def verify_known_products(base_url: str, deadline: float) -> None:
     ))
     print("PUBLIC_RAYHAAN_AQUATICA_URL=" + str(aquatica_hits[0].get("url")))
 
+    hawas_query = "Rasasi Hawas Ice Eau de Parfum 100 ml"
+    hawas_payload = poll_public_search(hawas_query, base_url, deadline)
+    _notino_report(hawas_payload, hawas_query)
+    hawas_hits = []
+    for group, offer in _notino_offers(hawas_payload):
+        destination = urllib.parse.parse_qs(
+            urllib.parse.urlsplit(str(offer.get("url") or "")).query
+        ).get("url", [""])[0]
+        target = urllib.parse.urlsplit(destination)
+        if (
+            offer.get("source") == "cj_notino_fr_feed"
+            and str(offer.get("brand") or "").casefold() == "rasasi"
+            and abs(float(offer.get("size_ml") or 0) - 100) < 0.01
+            and str(offer.get("variant") or "").casefold() in {
+                "edp", "eau de parfum",
+            }
+            and target.hostname in _NOTINO_HOSTS
+            and "/p-16242201/" in target.path
+            and "hawas-ice" in target.path.casefold()
+            and "coffret" not in target.path.casefold()
+        ):
+            _validate_offer(offer, hawas_query)
+            if offer.get("price_stale") is not False:
+                raise AssertionError({
+                    "query": hawas_query,
+                    "message": "Hawas Ice price is not marked fresh",
+                    "offer": offer,
+                })
+            hawas_hits.append(offer)
+    if len(hawas_hits) != 1:
+        raise AssertionError({
+            "query": hawas_query,
+            "message": "expected exactly one verified Hawas Ice 100 ml offer",
+            "results": hawas_payload.get("results"),
+        })
+    print("PUBLIC_RASASI_HAWAS_ICE_100ML_SEARCH=PASS")
+    print("PUBLIC_RASASI_HAWAS_ICE_PRICE=" + str(
+        hawas_hits[0].get("price") or hawas_hits[0].get("price_num")
+    ))
+    print("PUBLIC_RASASI_HAWAS_ICE_URL=" + str(hawas_hits[0].get("url")))
+
     liquid_query = "Liquid Brun"
     liquid_payload = poll_public_search(liquid_query, base_url, deadline)
     _notino_report(liquid_payload, liquid_query)

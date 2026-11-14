@@ -15,6 +15,7 @@ on:
       - "backend/scripts/build_notino_match_candidates.py"
       - "backend/scripts/search_notino_phase2_catalog.py"
       - "backend/scripts/verify_notino_public_search.py"
+      - "backend/scripts/refresh_notino_staging_pages.py"
       - "backend/scripts/select_notino_retailer_only_sample.py"
       - "backend/app/models/**"
       - "backend/app/db.py"
@@ -25,6 +26,8 @@ on:
       - "backend/product_matcher.py"
       - "backend/gtin.py"
       - "backend/main.py"
+      - "backend/catalog_engine.py"
+      - "backend/scrapers/notino/scraper.py"
       - "backend/tests/test_notino*.py"
       - "Dockerfile"
       - ".dockerignore"
@@ -518,6 +521,14 @@ jobs:
               output.write(f"snapshot_sha={sys.argv[3]}\n")
           PY
           flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python -c 'from pathlib import Path; p=Path(\"/data/notino-phase2/notino-cj-feed.imported.sha256\"); t=Path(str(p)+\".tmp\"); t.write_text(\"$snapshot_sha\\n\", encoding=\"ascii\"); t.replace(p)'"
+
+      - name: Hydrate the exact Aquatica and Hawas Ice product pages
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="${{ steps.machine.outputs.machine_id }}"
+          flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/refresh_notino_staging_pages.py --confirm-pr726-staging"
 
       - name: Verify Phase 2 and public catalog-first Notino search
         timeout-minutes: 8

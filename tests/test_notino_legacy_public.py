@@ -225,6 +225,7 @@ def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_con
         "size_ml": 100,
         "concentration": "Eau de Parfum",
         "availability": "in_stock",
+        "currency": "EUR",
         "fetched_at": time.time(),
         "url": "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/",
         "price_num": 40.90,

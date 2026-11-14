@@ -294,7 +294,8 @@ class ResultDeduplicationTests(unittest.TestCase):
             "name": "Liquid Brun", "size_ml": 100,
             "concentration": "Eau de Parfum",
             "price_num": 36.70, "store": "Notino",
-            "availability": "in_stock", "fetched_at": main.time.time(),
+            "availability": "in_stock", "currency": "EUR",
+            "fetched_at": main.time.time(),
             "variant_id": "SH-0030:100",
             "url": "https://www.notino.fr/french-avenue/liquid-brun/",
         }
@@ -353,7 +354,8 @@ class ResultDeduplicationTests(unittest.TestCase):
             "store": "notino", "brand": "French Avenue", "name": "Liquid Brun",
             "concentration": "Eau de Parfum", "url": cj["url"], "size_ml": 100,
             "price_num": 29.90, "price": "29.90 €",
-            "availability": "in_stock", "fetched_at": main.time.time(),
+            "availability": "in_stock", "currency": "EUR",
+            "fetched_at": main.time.time(),
         }
         merged = _merge_notino_phase2_offers(
             [cj], [hydrated_same, different_size, different_concentration]
@@ -376,7 +378,8 @@ class ResultDeduplicationTests(unittest.TestCase):
             "catalog_id": "SH-0030", "brand": "French Avenue",
             "name": "Liquid Brun", "variant": "Eau de Parfum",
             "size_ml": 100, "store": "notino", "price_num": 36.70,
-            "availability": "in_stock", "fetched_at": main.time.time(),
+            "availability": "in_stock", "currency": "EUR",
+            "fetched_at": main.time.time(),
             "url": "https://www.notino.fr/french-avenue/liquid-brun/p-100/",
         }
         legacy_report = {

@@ -50,6 +50,31 @@ def test_product_parser_extracts_price_size_concentration_and_market_url():
     assert row["url"].startswith("https://www.notino.fr/")
 
 
+def test_product_page_adapter_ignores_numeric_id_when_matching_product_identity():
+    url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+    product = {
+        "@type": "Product",
+        "name": "Hawas Ice Eau de Parfum 100 ml",
+        "brand": {"name": "Rasasi"},
+        "url": url,
+        "offers": {
+            "price": "36.00",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock",
+        },
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Hawas Ice Eau de Parfum 100 ml</h1>'
+    )
+    row = scraper.extract_product_page(None, url, html=html)
+    assert row is not None
+    assert row["price_num"] == 36.00
+    assert row["brand"] == "Rasasi"
+    assert row["size_ml"] == 100
+    assert row["concentration"] == "Eau de Parfum"
+
+
 def test_product_parser_rejects_wrong_query_and_missing_price():
     wrong = {
         "@type": "Product",

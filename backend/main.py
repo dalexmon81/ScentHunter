@@ -1481,6 +1481,9 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
                 "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
                 "www.kqzyfj.com", "www.tkqlhce.com",
             }:
+                from app.services.notino_affiliate import is_valid_notino_affiliate_url
+                if not is_valid_notino_affiliate_url(raw):
+                    return None
                 targets = parse_qs(parsed.query).get("url", [])
                 if len(targets) != 1:
                     return None
@@ -1527,6 +1530,8 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
             "in_stock", "out_of_stock",
         }:
             return False
+        if str(hydrated.get("currency") or "").upper() != "EUR":
+            return False
         feed_size = _safe_float(feed.get("size_ml"))
         hydrated_size = _safe_float(hydrated.get("size_ml"))
         if (
@@ -1558,7 +1563,7 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
         variant_key = variant_identity(feed)
         if not identity or identity in published_pages or (
             variant_key is not None and variant_key in published_variants
-        ):
+        ) or _is_non_fragrance_offer(feed):
             continue
         candidates = [
             (index, item) for index, item in enumerate(remaining)
@@ -1590,6 +1595,7 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
             if field in hydrated:
                 merged[field] = hydrated[field]
         merged["price_source"] = "notino_product_page_hydration"
+        merged["price_stale"] = False
         published.append(merged)
         published_pages.add(identity)
         if variant_key is not None:

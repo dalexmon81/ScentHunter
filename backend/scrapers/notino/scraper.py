@@ -1713,7 +1713,9 @@ def extract_product_page(
         response = _request(session, url)
         html = response.text or ""
         url = response.url or url
-    path_identity = unquote(urlparse(url).path).strip("/").replace("-", " ")
+    path_identity = re.sub(
+        r"/p-\d+/?$", "", unquote(urlparse(url).path), flags=re.I
+    ).strip("/").replace("-", " ")
     query = _clean(path_identity or slug)
     return _parse_product(url, html or "", query)
 
