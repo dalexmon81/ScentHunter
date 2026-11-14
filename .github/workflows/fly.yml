@@ -471,6 +471,11 @@ jobs:
           print("Deloox hydration queue upsert regression test: PASS (ERROR requeued; DONE and live leases preserved; persisted OK respected)")
           PY
 
+      - name: Install native libraries for backend test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev
+
       - name: Install backend test dependencies
         run: python -m pip install -r backend/requirements.txt
 
