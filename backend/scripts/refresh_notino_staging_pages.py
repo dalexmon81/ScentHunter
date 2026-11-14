@@ -65,6 +65,22 @@ def _refresh_product(query: str, gtin: str, brand: str, size_ml: int, concentrat
         actual_size = float(actual_size)
         price = float(item.get("price_num"))
     except (TypeError, ValueError):
+        status, final, data = catalog_engine.http_get(destination, timeout=15)
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(data or b"", "html.parser")
+        for node in soup(["script", "style", "noscript"]):
+            node.decompose()
+        text = soup.get_text(" ", strip=True)
+        snippets = [
+            text[max(0, match.start() - 70):match.end() + 70]
+            for match in list(re.finditer(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b", text, re.I))[:12]
+        ]
+        print(json.dumps({
+            "diagnostic": "notino_page_missing_price_or_size",
+            "gtin": gtin, "item": item, "http_status": status,
+            "final_url": final, "visible_size_context": snippets,
+        }, ensure_ascii=False), flush=True)
         raise RuntimeError(f"notino_product_page_missing_price_or_size:{gtin}") from None
     final_url = str(item.get("url") or "")
     expected_id = next(iter(product_ids))

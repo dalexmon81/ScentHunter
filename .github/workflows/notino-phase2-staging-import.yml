@@ -524,8 +524,10 @@ jobs:
         run: |
           set -euo pipefail
           machine_id="${{ steps.machine.outputs.machine_id }}"
-          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/refresh_notino_staging_pages.py --confirm-pr726-staging")"
+          status=0
+          OUTPUT="$(flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "/app/.venv/bin/python /app/backend/scripts/refresh_notino_staging_pages.py --confirm-pr726-staging")" || status=$?
           printf '%s\n' "$OUTPUT"
+          test "$status" -eq 0
           python - "$OUTPUT" <<'PY'
           import json, os, sys
           rows = [json.loads(line) for line in sys.argv[1].splitlines() if line.startswith('{"query":')]

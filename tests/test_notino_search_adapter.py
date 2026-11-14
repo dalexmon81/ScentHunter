@@ -186,6 +186,9 @@ def test_hawas_product_must_match_requested_size_and_concentration():
 
 
 def test_notino_hydration_rejects_redirect_to_another_product(monkeypatch):
+    from pathlib import Path
+
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "backend"))
     import catalog_engine
 
     url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
