@@ -380,6 +380,7 @@ class ProductMatcher:
         # Cache both hits and misses so a broad search does not rescan the full
         # family registry for every retailer candidate.
         self._family_query_cache: Dict[str, Optional[Dict[str, Any]]] = {}
+        self._family_sibling_cache: Dict[tuple[str, str], tuple[Dict[str, Any], ...]] = {}
 
         if isinstance(catalog, dict):
             raw_products = catalog.get("products") or []
@@ -1019,6 +1020,48 @@ class ProductMatcher:
         return re.sub(r"\s+", " ", cleaned).strip()
 
     @lru_cache(maxsize=4096)
+    def _sibling_family_candidates(
+        self, family: Dict[str, Any], query: str
+    ) -> tuple[Dict[str, Any], ...]:
+        """Cache the same-brand, more-specific families relevant to a query."""
+        query_key = catalog_variant_key(query)
+        family_key = str(family.get("family_id") or id(family))
+        cache_key = (family_key, query_key)
+        cached = self._family_sibling_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        query_tokens = query_key.split()
+        family_brand = catalog_norm(family.get("brand", ""))
+        candidates = []
+        for candidate_family in self.family_registry:
+            if candidate_family is family:
+                continue
+            if catalog_norm(candidate_family.get("brand", "")) != family_brand:
+                continue
+            aliases = candidate_family.get("normalized_query_aliases", ())
+            if any(
+                len(alias.split()) > len(query_tokens)
+                and any(
+                    alias_tokens[index:index + len(query_tokens)] == query_tokens
+                    for alias_tokens in [alias.split()]
+                    for index in range(len(alias.split()) - len(query_tokens) + 1)
+                )
+                for alias in aliases
+            ):
+                candidates.append(candidate_family)
+
+        candidates.sort(
+            key=lambda candidate_family: max(
+                (len(alias.split()) for alias in candidate_family.get("normalized_query_aliases", ())),
+                default=0,
+            ),
+            reverse=True,
+        )
+        result = tuple(candidates)
+        self._family_sibling_cache[cache_key] = result
+        return result
+
     def _family_for_query(self, query: str) -> Optional[Dict[str, Any]]:
         query_key = catalog_variant_key(query)
         if not query_key:
@@ -1984,38 +2027,7 @@ class ProductMatcher:
                 offer_identity_key = catalog_variant_key(
                     self._offer_text(offer) + " " + " ".join(self._offer_url_identity_texts(offer))
                 )
-                sibling_families = []
-                for candidate_family in self.family_registry:
-                    if candidate_family is family:
-                        continue
-                    if catalog_norm(candidate_family.get("brand", "")) != catalog_norm(family.get("brand", "")):
-                        continue
-                    specific_aliases = candidate_family.get("normalized_query_aliases", ())
-                    if any(
-                        len(alias.split()) > len(query_tokens)
-                        and any(
-                            alias_tokens[index:index + len(query_tokens)] == query_tokens
-                            for alias_tokens in [alias.split()]
-                            for index in range(len(alias_tokens) - len(query_tokens) + 1)
-                        )
-                        and any(
-                            alias in offer_identity_key
-                            for alias in specific_aliases
-                            if len(alias.split()) > len(query_tokens)
-                        )
-                        for alias in specific_aliases
-                    ):
-                        sibling_families.append(candidate_family)
-
-                # More specific aliases are tried first, so nested variants
-                # cannot be shadowed by a less-specific sibling family.
-                sibling_families.sort(
-                    key=lambda candidate_family: max(
-                        (len(alias.split()) for alias in candidate_family.get("normalized_query_aliases", ())),
-                        default=0,
-                    ),
-                    reverse=True,
-                )
+                sibling_families = self._sibling_family_candidates(family, query)
                 for sibling_family in sibling_families:
                     sibling_result = self._match_family(offer, query, sibling_family)
                     if sibling_result is not None:
