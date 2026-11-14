@@ -33,6 +33,28 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      # The production background discovery loop imports the CJ feed directly
+      # into /data/store_catalog.sqlite3. Stage credentials for this release;
+      # do not print or persist them in the repository.
+      - name: Configure authorized Notino CJ feed for production
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+          CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CJ_HTTP_USERNAME}" || -z "${CJ_HTTP_PASSWORD}" ]]; then
+            echo "::error::Missing CJ_HTTP_USERNAME or CJ_HTTP_PASSWORD Actions secret; production Notino feed import cannot be configured."
+            exit 1
+          fi
+          flyctl secrets set --stage \
+            "NOTINO_CJ_FEED_URL=https://datatransfer.cj.com/datatransfer/files/8115142/outgoing/productcatalog/324587/NOTINO_fr-NotinoFR_google_all-shopping.xml.zip" \
+            "NOTINO_CJ_FEED_USERNAME=${CJ_HTTP_USERNAME}" \
+            "NOTINO_CJ_FEED_PASSWORD=${CJ_HTTP_PASSWORD}" \
+            --app scenthunter
+          echo "Notino CJ feed URL and credentials staged for the production release."
+
       - name: Ensure catalog volume exists
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
