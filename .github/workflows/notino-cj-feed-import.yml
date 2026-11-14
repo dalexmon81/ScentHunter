@@ -1,6 +1,7 @@
 name: Notino CJ Feed Import
 
 on:
+  # A deployment may deliver newer importer code or refresh staged Fly secrets.
   workflow_run:
     workflows:
       - Fly Deploy
@@ -8,6 +9,9 @@ on:
       - completed
     branches:
       - main
+  # CJ publishes this feed daily. Run independently from deploys.
+  schedule:
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,32 +24,37 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Import CJ offers into the persistent production catalog
+      - name: Import latest CJ offers into the persistent production catalog
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 10
+        timeout-minutes: 12
         shell: bash
         run: |
           set -euo pipefail
           remote_python=$(cat <<'PY'
           import json
+          import sqlite3
           import sys
           import time
 
           sys.path.insert(0, "/app/backend")
           import catalog_engine
 
+          # Status inspection must not initialize/migrate the schema or acquire
+          # the process-wide writer lock while hydration workers write the DB.
           def state():
-              conn = catalog_engine.db()
+              uri = "file:" + str(catalog_engine.DB_PATH) + "?mode=ro"
+              conn = sqlite3.connect(uri, uri=True, timeout=45)
+              conn.row_factory = sqlite3.Row
               try:
                   row = conn.execute(
                       "SELECT status,started_at,finished_at,discovered_count,error "
@@ -61,7 +70,7 @@ jobs:
                   value
                   and value.get("status") == "FEED_IMPORTED"
                   and value.get("finished_at") is not None
-                  and time.time() - float(value["finished_at"]) < 23 * 60 * 60
+                  and 0 <= time.time() - float(value["finished_at"]) < 23 * 60 * 60
                   and int(value.get("discovered_count") or 0) > 0
               )
 
@@ -80,33 +89,27 @@ jobs:
                   "source": "cj_viv_authorized_xml",
               }
           else:
-              # If the normal background discovery already owns Notino, let it
-              # finish rather than starting a duplicate feed download.
-              if before and before.get("status") == "DISCOVERY_RUNNING":
-                  still_running = True
-                  for _ in range(24):
-                      time.sleep(15)
-                      current = state()
-                      if is_fresh_feed(current):
-                          before = current
-                          result = {
-                              "status": "FEED_RECENT",
-                              "count": int(current.get("discovered_count") or 0),
-                              "source": "cj_viv_authorized_xml",
-                          }
-                          still_running = False
-                          break
-                      if not current or current.get("status") != "DISCOVERY_RUNNING":
-                          before = current
-                          still_running = False
-                          break
-                  if still_running:
-                      raise SystemExit(
-                          "Notino background discovery is still running; refusing to start a duplicate feed import."
+              # Keep the attempt bounded. A busy hydration transaction should
+              # delay this run, not cause a false-success fallback to scraping.
+              last_error = None
+              for attempt in range(1, 4):
+                  try:
+                      result = catalog_engine.discover_store("notino")
+                      break
+                  except Exception as exc:
+                      last_error = exc
+                      print(
+                          "NOTINO_IMPORT_ATTEMPT_FAILED="
+                          + json.dumps({"attempt": attempt, "type": type(exc).__name__}),
+                          flush=True,
                       )
-
+                      if attempt < 3:
+                          time.sleep(attempt * 20)
               if result is None:
-                  result = catalog_engine.discover_store("notino")
+                  raise RuntimeError(
+                      "Notino importer could not complete safely after three attempts: "
+                      + type(last_error).__name__
+                  )
 
           after = state()
           print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
@@ -117,9 +120,10 @@ jobs:
           } if after else None, ensure_ascii=False, default=str), flush=True)
 
           if not is_fresh_feed(after):
-              raise SystemExit("Notino CJ feed import did not reach a fresh FEED_IMPORTED state.")
-          if int(after.get("discovered_count") or 0) < 1:
-              raise SystemExit("Notino CJ feed import returned zero offers.")
+              raise SystemExit(
+                  "Notino CJ feed import did not reach a fresh FEED_IMPORTED state; "
+                  "public discovery fallback is not accepted as a successful CJ import."
+              )
           print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
           PY
           )
