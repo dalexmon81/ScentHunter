@@ -221,6 +221,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
          "offers":{"@type":"Offer","price":"32.99","priceCurrency":"EUR"}}
         </script></head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
         """
+        html += " " * 8000
         with patch.object(scraper, "_browser_product_document") as fallback:
             result = scraper.extract_product_page(None, url, query="Liquid Brun 100 ml", html=html)
         fallback.assert_not_called()
