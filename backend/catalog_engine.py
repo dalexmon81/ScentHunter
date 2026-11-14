@@ -24,6 +24,7 @@ import heapq
 import importlib
 import inspect
 import json
+import math
 import re
 import sqlite3
 try:
@@ -4426,6 +4427,15 @@ def refresh_url(store, url):
             )
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
+
+        if store == 'notino':
+            try:
+                page_size = float(item.get('size_ml'))
+                page_price = float(item.get('price_num'))
+            except (TypeError, ValueError):
+                raise RuntimeError('notino_page_missing_price_or_size') from None
+            if not (math.isfinite(page_size) and page_size > 0 and math.isfinite(page_price) and page_price > 0):
+                raise RuntimeError('notino_page_invalid_price_or_size')
 
         conn = db()
         try:

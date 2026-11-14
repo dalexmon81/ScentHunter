@@ -1543,6 +1543,34 @@ def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
     return result if lookslikeproducturl(result) else None
 
 
+def _primary_visible_size(heading, selected: Dict[str, Any], regular_price: float) -> Optional[float]:
+    if not heading or not any(selected.get(key) for key in ("gtin13", "gtin12", "gtin14", "gtin")):
+        return None
+    parts = []
+    for node in heading.next_elements:
+        if getattr(node, "name", None) in {"h1", "h2"}:
+            break
+        if not isinstance(node, str) or not node.strip():
+            continue
+        if any(parent.name in {"script", "style", "noscript"} for parent in node.parents):
+            continue
+        parts.append(str(node))
+    text = _clean(" ".join(parts))[:20000]
+    sizes = set()
+    pattern = re.compile(
+        r"\b(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\s+"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€",
+        re.I,
+    )
+    for match in pattern.finditer(text):
+        if _has_non_perfume_marker(text[:match.start()]):
+            break
+        if _price(match.group(3)) != regular_price:
+            continue
+        sizes.add(_size_to_ml(float(match.group(1).replace(",", ".")), match.group(2).lower()))
+    return next(iter(sizes)) if len(sizes) == 1 else None
+
+
 def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     """Parse one Notino.fr product page using destination-page identity and offer evidence."""
     safe_url = _allowed_url(url, BASE_URL)
@@ -1640,7 +1668,11 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         node.get_text(" ", strip=True)
         for node in soup.find_all(["option", "button", "label"], limit=120)
     )
-    size_ml = structured_size or _extract_size(display_name) or _extract_size(controls_text)
+    size_ml = (
+        structured_size or _extract_size(display_name)
+        or _primary_visible_size(heading, selected, regular_price)
+        or _extract_size(controls_text)
+    )
     if requested_sizes and (
         size_ml is None
         or all(

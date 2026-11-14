@@ -53,14 +53,14 @@ def test_hydration_catalog_search_and_affiliate_merge(tmp_path, monkeypatch, bra
     destination = f"https://www.notino.fr/{brand.lower()}/{slug}-eau-de-parfum/p-{product_id}/"
     affiliate = "https://www.kqzyfj.com/click-1-2?url=" + quote(destination, safe="")
     product = {
-        "@type": "Product", "name": f"{name} Eau de Parfum 100 ml",
-        "brand": {"name": brand}, "url": destination,
+        "@type": "Product", "name": f"{name} Eau de Parfum",
+        "brand": {"name": brand}, "url": destination, "gtin13": "4006381333931",
         "offers": {"price": "36.00", "priceCurrency": "EUR",
                    "availability": "https://schema.org/InStock"},
     }
     html = (
         f'<script type="application/ld+json">{json.dumps(product)}</script>'
-        f"<h1>{name} Eau de Parfum 100 ml</h1>"
+        f"<h1>{name} Eau de Parfum</h1><div>100&nbsp;ml <b>36,00 €</b></div>"
     ).encode()
     monkeypatch.setattr(catalog_engine, "DB_PATH", tmp_path / "catalog.sqlite3")
     monkeypatch.setattr(catalog_engine, "_SCHEMA_READY", False)
@@ -80,3 +80,31 @@ def test_hydration_catalog_search_and_affiliate_merge(tmp_path, monkeypatch, bra
     assert len(merged) == 1
     assert merged[0]["price_num"] == 36.0
     assert merged[0]["url"] == affiliate
+
+
+def test_missing_page_size_cannot_refresh_an_existing_price(tmp_path, monkeypatch):
+    destination = "https://www.notino.fr/example/night-eau-de-parfum/p-123/"
+    monkeypatch.setattr(catalog_engine, "DB_PATH", tmp_path / "catalog.sqlite3")
+    monkeypatch.setattr(catalog_engine, "_SCHEMA_READY", False)
+    monkeypatch.setattr(catalog_engine, "_update_local_search_index_product", lambda *args, **kwargs: None)
+    conn = catalog_engine.db()
+    conn.execute(
+        "INSERT INTO store_products(store,url,name,size_ml,price,fetched_at,fetch_status) VALUES(?,?,?,?,?,?,?)",
+        ("notino", destination, "Night", 100, 37.4, 1000, "OK"),
+    )
+    conn.commit()
+    conn.close()
+    monkeypatch.setattr(catalog_engine, "http_get", lambda *args, **kwargs: (200, destination, b""))
+    monkeypatch.setattr(catalog_engine, "_secondary_store_parser", lambda *args, **kwargs: {
+        "name": "Night Eau de Parfum", "price_num": 32.5, "size_ml": None,
+    })
+    assert catalog_engine.refresh_url("notino", destination) is None
+    conn = catalog_engine.db()
+    try:
+        row = conn.execute(
+            "SELECT price,size_ml,fetched_at FROM store_products WHERE store=? AND url=?",
+            ("notino", destination),
+        ).fetchone()
+        assert tuple(row) == (37.4, 100, 1000)
+    finally:
+        conn.close()

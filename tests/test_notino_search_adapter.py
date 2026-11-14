@@ -167,6 +167,31 @@ def test_product_parser_rejects_gift_record_even_if_heading_looks_like_bottle():
     assert scraper._parse_product(url, html, "Brand Perfume") is None
 
 
+def test_product_parser_reads_visible_size_paired_with_the_primary_price():
+    url = "https://www.notino.fr/brand/perfume-eau-de-parfum/p-123/"
+    product = {
+        "@type": "Product", "name": "Perfume Eau de Parfum",
+        "brand": {"name": "Brand"}, "url": url, "gtin13": "4006381333931",
+        "offers": {"price": "36.00", "priceCurrency": "EUR"},
+    }
+    prefix = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Perfume Eau de Parfum</h1>'
+    )
+    row = scraper._parse_product(
+        url, prefix + '<div><span>100&nbsp;ml</span><span>36,00 €</span></div>'
+        '<h2>Suggestions</h2><div>50 ml 36,00 €</div>', "Brand Perfume",
+    )
+    assert row is not None
+    assert row["size_ml"] == 100
+    assert scraper._parse_product(
+        url, prefix + '<div>coffret cadeau 100 ml 36,00 €</div>', "Brand Perfume",
+    )["size_ml"] is None
+    assert scraper._parse_product(
+        url, prefix + '<div>50 ml 36,00 € 100 ml 36,00 €</div>', "Brand Perfume",
+    )["size_ml"] is None
+
+
 def test_hawas_product_must_match_requested_size_and_concentration():
     url = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
     product = {
