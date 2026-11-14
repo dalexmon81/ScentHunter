@@ -870,6 +870,7 @@ jobs:
           PY
 
       - name: Verify aggregate catalog price freshness diagnostic
+        if: ${{ always() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         timeout-minutes: 2
         shell: bash
         run: |
@@ -916,7 +917,7 @@ jobs:
           PY
 
       - name: Read-only persisted-vs-live price diagnostic
-        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
+        if: ${{ always() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         continue-on-error: true
         timeout-minutes: 3
         shell: bash
