@@ -766,8 +766,11 @@ class ProductMatcher:
                 url_identity_token_sets = tuple(
                     frozenset(value.split()) for value in normalized_aliases if value
                 )
+                # The normalized alias list intentionally includes the
+                # canonical name at index zero; the matcher historically
+                # checks canonical names and aliases alike against URL slugs.
                 url_alias_token_sequences = tuple(
-                    tuple(value.split()) for value in normalized_aliases[1:] if value
+                    tuple(value.split()) for value in normalized_aliases if value
                 )
                 url_alias_token_sets = tuple(
                     frozenset(tokens) for tokens in url_alias_token_sequences
