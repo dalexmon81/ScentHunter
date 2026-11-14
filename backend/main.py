@@ -2420,7 +2420,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino',)
@@ -3238,7 +3238,7 @@ def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
     def enabled(name, default='0'):
         return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
 
-    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
+    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
     started = _diag_time.monotonic()
     layers = {
         'configuration': {
