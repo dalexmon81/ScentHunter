@@ -580,6 +580,12 @@ jobs:
                           f"Hawas family regression: expected at least 29 variants, got {count}"
                       )
                   if backend_elapsed <= 0 or backend_elapsed >= 15.0:
+                      print("HAWAS_FAILURE_DIAGNOSTIC=" + json.dumps({
+                          "products": count,
+                          "backend_elapsed": backend_elapsed,
+                          "stores": last.get("stores") if isinstance(last.get("stores"), dict) else {},
+                          "errors": last.get("errors"),
+                      }, ensure_ascii=False, sort_keys=True), flush=True)
                       raise RuntimeError(
                           f"Hawas backend latency regression: expected under 15s including bounded retailer fallbacks, got {backend_elapsed:.3f}s"
                       )
