@@ -8,6 +8,7 @@ on:
       - .github/workflows/phase-0-live-baseline.yml
       - .github/workflows/phase2-sql-verification.yml
       - backend/scenthunter_next_engine/baseline_report.py
+      - .github/workflows/notino-cj-production-feed-monitor.yml
 
 jobs:
   deploy:
