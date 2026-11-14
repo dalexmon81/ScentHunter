@@ -142,8 +142,16 @@ jobs:
         run: |
           set -euo pipefail
           PYTHONPATH=backend python - <<'PY'
+          import collections
+          import gzip
+          import io
           import json
-          from scrapers.notino.affiliate_feed import FeedImportError, _fetch_feed, parse_feed
+          import urllib.parse
+          import xml.etree.ElementTree as ET
+          import zipfile
+          from scrapers.notino.affiliate_feed import (
+              FeedImportError, _fetch_feed, _first, _local, _size_ml, parse_feed,
+          )
 
           try:
               payload = _fetch_feed()
@@ -161,11 +169,59 @@ jobs:
               # feed body, username, or password are included.
               detail = str(exc)
               print("NOTINO_CJ_FEED_DIAGNOSTIC=PARSE_REJECTED " + detail, flush=True)
+
+              # Inspect URL metadata only. Never emit full URLs, titles,
+              # product IDs, or raw feed values.
+              raw = bytes(payload)
+              if zipfile.is_zipfile(io.BytesIO(raw)):
+                  with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                      members = [name for name in archive.namelist() if name.lower().endswith(".xml")]
+                      if len(members) != 1:
+                          raise SystemExit("NOTINO_CJ_FEED_STRUCTURE=ZIP_XML_MEMBER_COUNT_INVALID")
+                      raw = archive.read(members[0])
+              elif raw[:2] == b"\x1f\x8b":
+                  raw = gzip.decompress(raw)
+              root = ET.fromstring(raw)
+              candidates = [node for node in root.iter() if _local(node.tag) in {"item", "entry", "product"}]
+              hosts, schemes, ports, path_heads = (collections.Counter() for _ in range(4))
+              missing_links = 0
+              size_present = 0
+              for node in candidates:
+                  title = _first(node, "title", "name", "productname")
+                  raw_link = _first(node, "link", "url", "producturl")
+                  if not raw_link:
+                      for child in list(node):
+                          if _local(child.tag) == "link" and child.attrib.get("href"):
+                              raw_link = str(child.attrib["href"]).strip()
+                              break
+                  if not raw_link:
+                      missing_links += 1
+                  else:
+                      parsed = urllib.parse.urlparse(raw_link)
+                      hosts[(parsed.hostname or "").lower() or "<missing>"] += 1
+                      schemes[(parsed.scheme or "<missing>").lower()] += 1
+                      ports[str(parsed.port or "default")] += 1
+                      path_heads[(parsed.path.strip("/").split("/", 1)[0] or "<root>").lower()] += 1
+                  raw_size = _first(node, "size", "volume", "capacity", "product_size", "g:size")
+                  if _size_ml(raw_size, title) is not None:
+                      size_present += 1
+              structure = {
+                  "items": len(candidates),
+                  "missing_links": missing_links,
+                  "size_present": size_present,
+                  "hosts": dict(hosts.most_common(10)),
+                  "schemes": dict(schemes),
+                  "ports": dict(ports),
+                  "path_first_segments": dict(path_heads.most_common(12)),
+              }
+              print("NOTINO_CJ_FEED_URL_SHAPE=" + json.dumps(structure, ensure_ascii=False, sort_keys=True), flush=True)
+
               summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
               if summary_path:
                   with open(summary_path, "a", encoding="utf-8") as stream:
                       stream.write("## Notino CJ parser diagnostic (read-only)\n\n")
                       stream.write("Parser diagnostic: " + detail + "\n")
+                      stream.write("URL metadata: " + json.dumps(structure, ensure_ascii=False, sort_keys=True) + "\n")
               raise SystemExit(1)
 
           print(
