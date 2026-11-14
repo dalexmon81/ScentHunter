@@ -674,6 +674,7 @@ def _ensure_search_fts_triggers(conn):
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
             SELECT m.id,su.store,su.url,trim(COALESCE(su.slug,''))
               FROM catalog_search_fts_map m
+              JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
              WHERE m.store=OLD.store AND m.url=OLD.url;
         END
         """,
