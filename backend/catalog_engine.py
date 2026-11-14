@@ -3299,6 +3299,29 @@ def discover_store(store):
     started_at = time.time()
     notino_feed_error = None
     if store == 'notino':
+        # CJ publishes this full export daily. Do not download it on every
+        # round-robin discovery turn; retain the last successful import time
+        # in the existing persistent sync_state row.
+        conn = db()
+        try:
+            last_feed = conn.execute(
+                "SELECT status, finished_at, discovered_count FROM sync_state WHERE store=?",
+                (store,),
+            ).fetchone()
+        finally:
+            conn.close()
+        if (
+            last_feed
+            and last_feed['status'] == 'FEED_IMPORTED'
+            and last_feed['finished_at'] is not None
+            and started_at - float(last_feed['finished_at']) < 23 * 60 * 60
+        ):
+            return {
+                'status': 'FEED_RECENT',
+                'count': int(last_feed['discovered_count'] or 0),
+                'source': 'cj_viv_authorized_xml',
+                'next_refresh_after': float(last_feed['finished_at']) + 23 * 60 * 60,
+            }
         try:
             feed = importlib.import_module('scrapers.notino.affiliate_feed')
             report = feed.import_configured_feed()
