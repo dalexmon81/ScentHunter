@@ -69,6 +69,42 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(feed._product_url("http://www.notino.fr/brand/item/"))
         self.assertIsNone(feed._product_url("https://user:pass@www.notino.fr/brand/item/"))
 
+    def test_cj_click_url_resolves_notino_product_and_preserves_affiliate_link(self):
+        click_url = (
+            "https://www.anrdoezrs.net/click-101918103-13485502"
+            "?url=https%3A%2F%2Fwww.notino.fr%2Frasasi%2Fhawas-eau-de-parfum%2F"
+        )
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>
+          <item><g:id>HAWAS100</g:id><g:title>Rasasi Hawas Eau de Parfum 100 ml</g:title>
+          <g:brand>Rasasi</g:brand><g:price>42.90 EUR</g:price>
+          <g:availability>in stock</g:availability><g:link>{click_url}</g:link>
+          <g:size>100 ml</g:size></item>
+        </channel></rss>""".encode("utf-8")
+
+        offers = feed.parse_feed(xml)
+
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(
+            offers[0].url,
+            "https://www.notino.fr/rasasi/hawas-eau-de-parfum/",
+        )
+        self.assertEqual(offers[0].affiliate_url, click_url)
+        self.assertEqual(
+            feed._product_url(click_url),
+            "https://www.notino.fr/rasasi/hawas-eau-de-parfum/",
+        )
+
+    def test_cj_click_url_rejects_untrusted_hosts_and_targets(self):
+        self.assertIsNone(feed._product_url(
+            "https://evil.example/click-101918103-13485502"
+            "?url=https%3A%2F%2Fwww.notino.fr%2Frasasi%2Fhawas%2F"
+        ))
+        self.assertIsNone(feed._product_url(
+            "https://www.anrdoezrs.net/click-101918103-13485502"
+            "?url=https%3A%2F%2Fwww.notino.de%2Frasasi%2Fhawas%2F"
+        ))
+
     def test_missing_credentials_are_reported_without_secrets(self):
         values = {
             "NOTINO_CJ_FEED_URL": "",
