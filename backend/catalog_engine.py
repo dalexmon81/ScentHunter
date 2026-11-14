@@ -453,7 +453,7 @@ def _remove_local_search_index_url(store, url):
 
 
 _SEARCH_FTS_TABLE = 'catalog_search_fts'
-_SEARCH_FTS_SCHEMA_VERSION = '3'
+_SEARCH_FTS_SCHEMA_VERSION = '2'
 
 
 def _ensure_search_fts(conn):
@@ -528,9 +528,9 @@ def _ensure_search_fts(conn):
                      FROM catalog_search_fts_map m
                      JOIN store_urls ON store_urls.store=m.store AND store_urls.url=m.url
                      LEFT JOIN store_products p
-                       ON p.store=u.store AND p.url=u.url
+                       ON p.store=store_urls.store AND p.url=store_urls.url
                       AND p.fetch_status='OK'
-                    WHERE u.active=1"""
+                    WHERE store_urls.active=1"""
             )
             conn.execute(
                 """INSERT INTO catalog_search_fts_meta(key,value)
@@ -670,7 +670,7 @@ def _ensure_search_fts_triggers(conn):
              WHERE store=OLD.store AND url=OLD.url;
             INSERT INTO catalog_search_fts_map(store,url)
             SELECT store_urls.store,store_urls.url FROM store_urls
-             WHERE u.store=OLD.store AND u.url=OLD.url AND store_urls.active=1;
+             WHERE store_urls.store=OLD.store AND store_urls.url=OLD.url AND store_urls.active=1;
             INSERT INTO catalog_search_fts(rowid,store,url,search_text)
             SELECT m.id,store_urls.store,store_urls.url,trim(COALESCE(store_urls.slug,''))
               FROM catalog_search_fts_map m
@@ -5454,7 +5454,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     ON p.store=u.store AND p.url=u.url
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
-                 WHERE u.store=? AND store_urls.active=1
+                 WHERE u.store=? AND u.active=1
                    AND (
                        u.store != 'easycosmetic'
                        OR lower(u.url) LIKE 'https://www.easycosmetic.de/%'
@@ -5615,7 +5615,7 @@ def prioritize_hydration_candidates(rows, priority=0):
                                        SELECT 1 FROM store_urls u
                                         WHERE u.store=hydration_queue.store
                                           AND u.url=hydration_queue.url
-                                          AND store_urls.active=1
+                                          AND u.active=1
                                    )
                                    AND (
                                        EXISTS (
@@ -5652,7 +5652,7 @@ def prioritize_hydration_candidates(rows, priority=0):
                              SELECT 1 FROM store_urls u
                               WHERE u.store=hydration_queue.store
                                 AND u.url=hydration_queue.url
-                                AND store_urls.active=1
+                                AND u.active=1
                          )"""
     try:
         conn.execute('BEGIN IMMEDIATE')
@@ -5700,7 +5700,7 @@ def hydration_pending_counts():
                    FROM store_urls u
                    LEFT JOIN store_products p
                      ON p.store=u.store AND p.url=u.url
-                   WHERE u.store=? AND store_urls.active=1
+                   WHERE u.store=? AND u.active=1
                      AND (p.url IS NULL OR p.fetch_status != 'OK')""",
                 (store,),
             ).fetchone()
@@ -5870,7 +5870,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                    JOIN store_urls u
                      ON u.store=q.store AND u.url=q.url
                    WHERE q.store=?
-                     AND store_urls.active=1
+                     AND u.active=1
                      AND q.state IN ('PENDING','ERROR')
                      AND q.available_at <= ?
                      AND (
@@ -7135,7 +7135,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
                 """SELECT q.url
                      FROM hydration_queue q
                      JOIN store_urls u ON u.store=q.store AND u.url=q.url
-                    WHERE q.store=? AND q.state='DONE' AND store_urls.active=1
+                    WHERE q.store=? AND q.state='DONE' AND u.active=1
                       AND (
                         EXISTS (
                           SELECT 1 FROM store_products p
@@ -7181,7 +7181,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
                       AND EXISTS (
                         SELECT 1 FROM store_urls u
                          WHERE u.store=hydration_queue.store
-                           AND u.url=hydration_queue.url AND store_urls.active=1
+                           AND u.url=hydration_queue.url AND u.active=1
                       )""",
                 (current_time, store, row['url']),
             ).rowcount
