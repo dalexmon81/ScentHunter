@@ -1685,6 +1685,46 @@ def extract_product_html(url, html, query=None):
     return _product(target, html, page_name)
 
 
+def _browser_product_document(target):
+    """Return a rendered Deloox product document when HTTP returns an interstitial."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 Chrome/131 Safari/537.36"
+                ),
+                locale="nl-BE",
+            )
+            page.goto(target, wait_until="domcontentloaded", timeout=12000)
+            page.wait_for_timeout(1200)
+            browser_html = page.content() or ""
+            browser_url = clean(page.url or target)
+        finally:
+            browser.close()
+
+    browser_lower = browser_html[:200000].lower()
+    browser_has_product = (
+        "application/ld+json" in browser_lower
+        or re.search(r"<h1\\b", browser_lower) is not None
+        or 'itemprop="price"' in browser_lower
+        or 'property="product:price:amount"' in browser_lower
+    )
+    if len(browser_html.encode("utf-8", errors="replace")) >= 1800 and browser_has_product:
+        return browser_html, browser_url
+
+    print(
+        "DELOOX_BROWSER_FALLBACK_UNUSABLE "
+        f"url={target!r} bytes={len(browser_html.encode('utf-8', errors='replace'))} "
+        f"product_markup={browser_has_product}",
+        flush=True,
+    )
+    return None, None
+
+
 def extract_product_page(session, url, query=None, html=None):
     """Parse a known Deloox product page, avoiding a full DOM when possible."""
     target = clean(url)
@@ -1701,53 +1741,19 @@ def extract_product_page(session, url, query=None, html=None):
         final_url = clean(getattr(response, "url", "") or target)
         html = getattr(response, "text", "") or ""
 
-        # Deloox can answer HTTP 200 with a tiny interstitial rather than the
-        # actual product document. Retry acquisition in a browser before
-        # treating the product as unparseable. Only a real rendered page is
-        # passed to the existing identity/price parser; no values are guessed.
+        # Deloox may answer HTTP 200 with an interstitial instead of product HTML.
         initial = html[:200000].lower()
         product_markup = (
             "application/ld+json" in initial
-            or re.search(r"<h1\b", initial) is not None
+            or re.search(r"<h1\\b", initial) is not None
             or 'itemprop="price"' in initial
             or 'property="product:price:amount"' in initial
         )
         if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
             try:
-                from playwright.sync_api import sync_playwright
-                with sync_playwright() as pw:
-                    browser = pw.chromium.launch(headless=True)
-                    try:
-                        page = browser.new_page(
-                            user_agent=(
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                                "AppleWebKit/537.36 Chrome/131 Safari/537.36"
-                            ),
-                            locale="nl-BE",
-                        )
-                        page.goto(target, wait_until="domcontentloaded", timeout=12000)
-                        page.wait_for_timeout(1200)
-                        browser_html = page.content() or ""
-                        browser_url = clean(page.url or target)
-                    finally:
-                        browser.close()
-                browser_lower = browser_html[:200000].lower()
-                browser_has_product = (
-                    "application/ld+json" in browser_lower
-                    or re.search(r"<h1\b", browser_lower) is not None
-                    or 'itemprop="price"' in browser_lower
-                    or 'property="product:price:amount"' in browser_lower
-                )
-                # Compact rendered product pages are valid candidates; _product() still validates identity, size and offer.
-                if len(browser_html.encode("utf-8", errors="replace")) >= 1800 and browser_has_product:
+                browser_html, browser_url = _browser_product_document(target)
+                if browser_html:
                     html, final_url = browser_html, browser_url
-                else:
-                    print(
-                        "DELOOX_BROWSER_FALLBACK_UNUSABLE "
-                        f"url={target!r} bytes={len(browser_html.encode('utf-8', errors='replace'))} "
-                        f"product_markup={browser_has_product}",
-                        flush=True,
-                    )
             except Exception as exc:
                 print(
                     f"DELOOX_BROWSER_FALLBACK_FAILED url={target!r} "
@@ -1760,6 +1766,27 @@ def extract_product_page(session, url, query=None, html=None):
             html = html.decode("utf-8", errors="replace")
         elif not isinstance(html, str):
             html = str(html)
+
+        # Catalog hydration passes the already-fetched response body. It can
+        # still be an HTTP-200 interstitial, so it needs the same browser retry.
+        initial = html[:200000].lower()
+        product_markup = (
+            "application/ld+json" in initial
+            or re.search(r"<h1\\b", initial) is not None
+            or 'itemprop="price"' in initial
+            or 'property="product:price:amount"' in initial
+        )
+        if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
+            try:
+                browser_html, browser_url = _browser_product_document(target)
+                if browser_html:
+                    html, final_url = browser_html, browser_url
+            except Exception as exc:
+                print(
+                    f"DELOOX_BROWSER_FALLBACK_FAILED url={target!r} "
+                    f"error={type(exc).__name__}:{exc}",
+                    flush=True,
+                )
 
     if not html:
         return None
