@@ -83,6 +83,7 @@ jobs:
               # If the normal background discovery already owns Notino, let it
               # finish rather than starting a duplicate feed download.
               if before and before.get("status") == "DISCOVERY_RUNNING":
+                  still_running = True
                   for _ in range(24):
                       time.sleep(15)
                       current = state()
@@ -93,10 +94,16 @@ jobs:
                               "count": int(current.get("discovered_count") or 0),
                               "source": "cj_viv_authorized_xml",
                           }
+                          still_running = False
                           break
                       if not current or current.get("status") != "DISCOVERY_RUNNING":
                           before = current
+                          still_running = False
                           break
+                  if still_running:
+                      raise SystemExit(
+                          "Notino background discovery is still running; refusing to start a duplicate feed import."
+                      )
 
               if result is None:
                   result = catalog_engine.discover_store("notino")
