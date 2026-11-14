@@ -14,3 +14,13 @@ def test_hawas_ice_live_vs_persisted_diagnostic_uses_canonical_url():
         "rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
     ) in route
     assert "rasasi-hawas-hawas-ice-eau-de-parfum" not in route
+
+
+def test_hawas_ice_diagnostic_uses_read_only_short_timeout_connection():
+    source = Path("backend/main.py").read_text(encoding="utf-8")
+    route = source.split(
+        "def diagnose_hawas_ice_offers_read_only():", 1
+    )[1].split("@app.get('/search-start')", 1)[0]
+
+    assert "conn = ce._search_db()" in route
+    assert "conn = catalog_db()" not in route
