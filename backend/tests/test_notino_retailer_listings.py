@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -375,6 +376,7 @@ class NotinoHawasRegressionTests(unittest.TestCase):
         feed = {
             "store": "notino", "shop": "notino", "source": "cj_notino_fr_feed",
             "external_id": "HAWAS-DIVA", "gtin": "614514331088",
+            "brand": "Rasasi",
             "name": "Rasasi Hawas Diva Eau de Parfum 100 ml",
             "size_ml": 100, "variant": "EDP", "price": 26.77,
             "price_num": 26.77, "currency": "EUR",
@@ -383,11 +385,12 @@ class NotinoHawasRegressionTests(unittest.TestCase):
         }
         hydrated = {
             "store": "notino", "shop": "notino",
+            "brand": "Rasasi",
             "name": "Rasasi Hawas Diva Eau de Parfum 100 ml",
             "size_ml": 100, "concentration": "EDP", "price": "25.50 €",
             "price_num": 25.50, "currency": "EUR", "available": True,
             "availability": "in_stock", "in_stock": True,
-            "fetched_at": 1794590000,
+            "fetched_at": time.time(),
             "url": "https://www.notino.fr/rasasi/hawas-diva-eau-de-parfum-pour-femme/p-16337384/",
         }
         result = _merge_notino_phase2_offers([feed], [hydrated])
@@ -407,18 +410,88 @@ class NotinoHawasRegressionTests(unittest.TestCase):
         }
         self.assertEqual(_merge_notino_phase2_offers([feed], []), [])
 
+    def test_phase2_requires_fresh_hydrated_brand_size_strength_and_stock(self):
+        destination = "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-16242201/"
+        feed = {
+            "store": "notino", "brand": "Rasasi",
+            "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+            "variant": "Eau de Parfum", "size_ml": 100,
+            "url": affiliate(destination),
+        }
+        hydrated = {
+            "store": "notino", "brand": "Rasasi",
+            "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+            "concentration": "EDP", "size_ml": 100,
+            "price_num": 36.00, "price": "36.00 €",
+            "availability": "in_stock", "fetched_at": time.time(),
+            "url": destination,
+        }
+        result = _merge_notino_phase2_offers([feed], [hydrated])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["price_num"], 36.00)
+        self.assertEqual(result[0]["url"], feed["url"])
+
+        invalid_details = [
+            {"brand": "Gift Brand"},
+            {"size_ml": 50},
+            {"concentration": "EDT"},
+            {"availability": "unknown"},
+            {"fetched_at": time.time() - 48 * 60 * 60},
+        ]
+        for invalid in invalid_details:
+            wrong_page = {**hydrated, **invalid}
+            self.assertEqual(
+                _merge_notino_phase2_offers([feed], [wrong_page]),
+                [],
+                msg=f"unverified page attributes were accepted: {invalid}",
+            )
+
+    def test_phase2_emits_only_one_offer_for_a_canonical_variant(self):
+        feed = [
+            {
+                "store": "notino", "catalog_id": "SH-0002",
+                "brand": "Rasasi", "name": "Hawas Ice Eau de Parfum 100 ml",
+                "variant": "EDP", "size_ml": 100, "price_num": 32.50,
+                "url": affiliate("https://www.notino.fr/rasasi/hawas-ice/p-1/"),
+            },
+            {
+                "store": "notino", "catalog_id": "SH-0002",
+                "brand": "Rasasi", "name": "Hawas Ice Eau de Parfum 100 ml",
+                "variant": "EDP", "size_ml": 100, "price_num": 36.00,
+                "url": affiliate("https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-2/"),
+            },
+        ]
+        hydrated = [{
+            "store": "notino", "brand": "Rasasi",
+            "name": "Hawas Ice Eau de Parfum 100 ml",
+            "concentration": "EDP", "size_ml": 100,
+            "price_num": 36.00, "availability": "in_stock",
+            "fetched_at": time.time(),
+            "url": "https://www.notino.fr/rasasi/hawas-ice-eau-de-parfum/p-2/",
+        }]
+        result = _merge_notino_phase2_offers(feed, hydrated)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["price_num"], 36.00)
+        self.assertEqual(result[0]["url"], feed[1]["url"])
+
     def test_phase2_keeps_hawas_editions_on_distinct_product_ids(self):
         feed = [
-            {"store": "notino", "name": "Hawas Ice 100 ml", "size_ml": 100,
+            {"store": "notino", "brand": "Rasasi", "variant": "EDP",
+             "name": "Hawas Ice Eau de Parfum 100 ml", "size_ml": 100,
              "url": affiliate("https://www.notino.fr/rasasi/hawas-ice/p-16242201/")},
-            {"store": "notino", "name": "Hawas Elixir 100 ml", "size_ml": 100,
+            {"store": "notino", "brand": "Rasasi", "variant": "EDP",
+             "name": "Hawas Elixir Eau de Parfum 100 ml", "size_ml": 100,
              "url": affiliate("https://www.notino.fr/rasasi/hawas-elixir/p-16306315/")},
         ]
         hydrated = [
-            {"store": "notino", "name": "Hawas Ice 100 ml", "size_ml": 100,
-             "price_num": 24.90, "price": "24.90 €", "url": "https://www.notino.fr/rasasi/hawas-ice/p-16242201/"},
-            {"store": "notino", "name": "Hawas Elixir 100 ml", "size_ml": 100,
-             "price_num": 23.90, "price": "23.90 €", "url": "https://www.notino.fr/rasasi/hawas-elixir/p-16306315/"},
+            {"store": "notino", "brand": "Rasasi", "concentration": "EDP",
+             "name": "Hawas Ice Eau de Parfum 100 ml", "size_ml": 100,
+             "price_num": 24.90, "price": "24.90 €", "availability": "in_stock",
+             "fetched_at": time.time(), "url": "https://www.notino.fr/rasasi/hawas-ice/p-16242201/"},
+            {"store": "notino", "brand": "Rasasi", "concentration": "EDP",
+             "name": "Hawas Elixir Eau de Parfum 100 ml", "size_ml": 100,
+             "price_num": 23.90, "price": "23.90 €", "availability": "in_stock",
+             "fetched_at": time.time(), "url": "https://www.notino.fr/rasasi/hawas-elixir/p-16306315/"},
         ]
         result = _merge_notino_phase2_offers(feed, hydrated)
         self.assertEqual(len(result), 2)

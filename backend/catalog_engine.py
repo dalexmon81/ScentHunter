@@ -4287,6 +4287,19 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
+        if store == 'notino':
+            from scrapers.notino.scraper import _allowed_url, _product_id
+            requested_url = _allowed_url(url)
+            final_url = _allowed_url(final)
+            if not requested_url or not final_url:
+                raise RuntimeError('invalid_notino_product_destination')
+            requested_id = _product_id(requested_url)
+            final_id = _product_id(final_url)
+            if (requested_id or final_id) and requested_id != final_id:
+                raise RuntimeError('notino_product_redirect_mismatch')
+            if not requested_id and requested_url.rstrip('/') != final_url.rstrip('/'):
+                raise RuntimeError('notino_product_redirect_mismatch')
+
         if store == 'easycosmetic':
             # Never hydrate or publish a German catalog entry from a response
             # that redirected to a different regional storefront.
@@ -4321,7 +4334,7 @@ def refresh_url(store, url):
             except Exception as exc:
                 parser_error = f'{type(exc).__name__}:{exc}'
                 item = None
-            if not item or not item.get('name'):
+            if store != 'notino' and (not item or not item.get('name')):
                 fallback_item = parse_product(store, final, data)
                 if fallback_item and fallback_item.get('name'):
                     item = fallback_item

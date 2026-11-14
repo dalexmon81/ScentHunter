@@ -292,7 +292,9 @@ class ResultDeduplicationTests(unittest.TestCase):
         legacy = {
             "catalog_id": "SH-0030", "brand": "French Avenue",
             "name": "Liquid Brun", "size_ml": 100,
+            "concentration": "Eau de Parfum",
             "price_num": 36.70, "store": "Notino",
+            "availability": "in_stock", "fetched_at": main.time.time(),
             "variant_id": "SH-0030:100",
             "url": "https://www.notino.fr/french-avenue/liquid-brun/",
         }
@@ -309,11 +311,12 @@ class ResultDeduplicationTests(unittest.TestCase):
 
     def test_notino_cj_merge_keeps_different_valid_gtins(self):
         cj = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
             "size_ml": 100, "gtin": "6290360375694", "store": "notino",
         }
         other_gtin = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
+            "concentration": "Eau de Parfum",
             "size_ml": 100, "gtin": "6290360375601", "store": "Notino",
         }
 
@@ -329,24 +332,28 @@ class ResultDeduplicationTests(unittest.TestCase):
 
     def test_notino_cj_merge_preserves_distinct_sizes_and_concentrations(self):
         cj = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
             "variant": "Eau de Parfum", "size_ml": 100,
             "gtin": "6290360375694", "store": "notino",
         }
         different_size = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
             "size_ml": 150, "store": "Notino",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun/p-101/",
         }
         different_concentration = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
             "variant": "Extrait de Parfum", "size_ml": 100,
             "store": "Notino",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun-extrait/p-102/",
         }
 
         cj["url"] = "https://www.notino.fr/liquid-brun/p-100/"
         hydrated_same = {
-            "store": "notino", "url": cj["url"], "size_ml": 100,
+            "store": "notino", "brand": "French Avenue", "name": "Liquid Brun",
+            "concentration": "Eau de Parfum", "url": cj["url"], "size_ml": 100,
             "price_num": 29.90, "price": "29.90 €",
+            "availability": "in_stock", "fetched_at": main.time.time(),
         }
         merged = _merge_notino_phase2_offers(
             [cj], [hydrated_same, different_size, different_concentration]
@@ -359,15 +366,17 @@ class ResultDeduplicationTests(unittest.TestCase):
 
     def test_notino_callbacks_publish_only_after_cj_merge(self):
         cj = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue", "name": "Liquid Brun",
             "variant": "Eau de Parfum", "size_ml": 100,
             "gtin": "6290360375694", "store": "notino",
             "source": "cj_notino_fr_feed",
             "url": "https://www.kqzyfj.com/click-1-2?url=https%3A%2F%2Fwww.notino.fr%2Ffrench-avenue%2Fliquid-brun%2Fp-100%2F",
         }
         legacy = {
-            "catalog_id": "SH-0030", "name": "Liquid Brun",
+            "catalog_id": "SH-0030", "brand": "French Avenue",
+            "name": "Liquid Brun", "variant": "Eau de Parfum",
             "size_ml": 100, "store": "notino", "price_num": 36.70,
+            "availability": "in_stock", "fetched_at": main.time.time(),
             "url": "https://www.notino.fr/french-avenue/liquid-brun/p-100/",
         }
         legacy_report = {

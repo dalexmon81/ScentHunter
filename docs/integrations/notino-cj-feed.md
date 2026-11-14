@@ -18,6 +18,14 @@ its prices appear fresh.
 The switch defaults off outside staging. Normalized brand-plus-product queries
 work across the two fields without accepting SQL wildcard input.
 
+Publishing a CJ clickout requires a successful, less-than-24-hour hydration of
+that exact Notino product page. The page must confirm the same brand, bottle
+size, concentration, price and availability; category/search URLs, bundles,
+redirects to another product, and prices from unrelated structured-data records
+are rejected. An unverified or stale feed row does not supply a public price.
+Only one offer per canonical variant is returned, and a CJ clickout is kept
+only when it points to the verified product.
+
 The 2026-11-11 CJ review snapshot also supplied 14 unique Hawas 100 ml EDP
 GTINs with exact catalog brand/name agreement. Eleven previously missing
 variants and three existing variants are annotated in the catalog metadata.

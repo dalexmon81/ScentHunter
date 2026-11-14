@@ -224,8 +224,15 @@ def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_con
         "brand": "Rayhaan",
         "size_ml": 100,
         "concentration": "Eau de Parfum",
+        "availability": "in_stock",
+        "fetched_at": time.time(),
         "url": "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum-pour-homme/p-16407892/",
         "price_num": 40.90,
+    }
+    legacy_duplicate = {
+        **legacy_same_variant,
+        "url": "https://www.notino.fr/rayhaan/aquatica-eau-de-parfum/p-16407893/",
+        "price_num": 37.40,
     }
     legacy_other_concentration = {
         "catalog_id": "SH-0066",
@@ -238,11 +245,12 @@ def test_phase2_canonical_aquatica_offer_replaces_legacy_url_but_keeps_other_con
     }
 
     merged = _merge_notino_phase2_offers(
-        [feed_offer], [legacy_same_variant, legacy_other_concentration]
+        [feed_offer], [legacy_same_variant, legacy_duplicate, legacy_other_concentration]
     )
 
     assert len(merged) == 2
     assert merged[0]["price_num"] == 40.90
     assert merged[0]["url"] == feed_offer["url"]
     assert merged[0]["price_source"] == "notino_product_page_hydration"
+    assert legacy_duplicate not in merged
     assert merged[1] == legacy_other_concentration

@@ -1496,27 +1496,75 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
     def normalized(value):
         return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
 
+    def concentration(item):
+        value = normalized(item.get("variant") or item.get("concentration"))
+        if not value:
+            value = normalized(item.get("name") or item.get("title"))
+        if "extrait" in value:
+            return "extrait"
+        if "eau de toilette" in value or re.search(r"\bedt\b", value):
+            return "edt"
+        if "eau de parfum" in value or re.search(r"\bedp\b", value):
+            return "edp"
+        if "eau de cologne" in value or re.search(r"\bedc\b", value):
+            return "edc"
+        return value
+
+    def variant_identity(item):
+        catalog_id = str(item.get("catalog_id") or "").strip()
+        size = _safe_float(item.get("size_ml"))
+        strength = concentration(item)
+        if not catalog_id or size is None or not strength:
+            return None
+        return catalog_id, round(size, 3), strength
+
     def compatible(feed, hydrated):
+        fetched_at = _safe_float(hydrated.get("fetched_at"))
+        age = time.time() - fetched_at if fetched_at is not None else None
+        if age is None or age < 0 or age > 24 * 60 * 60:
+            return False
+        if str(hydrated.get("availability") or "").casefold() not in {
+            "in_stock", "out_of_stock",
+        }:
+            return False
         feed_size = _safe_float(feed.get("size_ml"))
         hydrated_size = _safe_float(hydrated.get("size_ml"))
-        if feed_size is not None and hydrated_size is not None and abs(feed_size - hydrated_size) > 0.01:
+        if (
+            feed_size is None or hydrated_size is None
+            or abs(feed_size - hydrated_size) > 0.01
+        ):
             return False
-        feed_concentration = normalized(feed.get("variant") or feed.get("concentration"))
-        hydrated_concentration = normalized(hydrated.get("variant") or hydrated.get("concentration"))
-        return not (
-            feed_concentration and hydrated_concentration
-            and feed_concentration != hydrated_concentration
-        )
+        feed_concentration = concentration(feed)
+        hydrated_concentration = concentration(hydrated)
+        if not feed_concentration or not hydrated_concentration:
+            return False
+        if feed_concentration != hydrated_concentration:
+            return False
+        feed_brand = normalized(feed.get("brand") or feed.get("canonical_brand"))
+        hydrated_brand = normalized(hydrated.get("brand"))
+        return bool(feed_brand and hydrated_brand and feed_brand == hydrated_brand)
 
     remaining = list(legacy_offers)
     published = []
+    published_variants = set()
+    published_pages = set()
+    feed_pages = {product_id(item) for item in phase2_offers} - {None}
+    feed_variants = {
+        key for item in phase2_offers
+        if (key := variant_identity(item)) is not None
+    }
     for feed in phase2_offers:
         identity = product_id(feed)
-        if not identity:
+        variant_key = variant_identity(feed)
+        if not identity or identity in published_pages or (
+            variant_key is not None and variant_key in published_variants
+        ):
             continue
         candidates = [
             (index, item) for index, item in enumerate(remaining)
-            if product_id(item) == identity and compatible(feed, item)
+            if product_id(item) == identity
+            and compatible(feed, item)
+            and not _is_non_fragrance_offer(item)
         ]
         if not candidates:
             # A raw CJ price is not proof of the current checkout price.
@@ -1524,10 +1572,7 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
             continue
         index, hydrated = max(
             candidates,
-            key=lambda pair: (
-                _safe_float(pair[1].get("fetched_at")) or 0,
-                _safe_float(pair[1].get("price_num")) or 0,
-            ),
+            key=lambda pair: _safe_float(pair[1].get("fetched_at")) or 0,
         )
         verified_price = _safe_float(
             hydrated.get("price_num") if hydrated.get("price_num") is not None
@@ -1546,12 +1591,41 @@ def _merge_notino_phase2_offers(phase2_offers, legacy_offers):
                 merged[field] = hydrated[field]
         merged["price_source"] = "notino_product_page_hydration"
         published.append(merged)
-        remaining.pop(index)
+        published_pages.add(identity)
+        if variant_key is not None:
+            published_variants.add(variant_key)
+            remaining = [
+                item for item in remaining
+                if variant_identity(item) != variant_key
+            ]
+        else:
+            remaining.pop(index)
 
-    return published + [
-        item for item in remaining
-        if not _is_non_fragrance_offer(item)
-    ]
+    from scrapers.notino.scraper import lookslikeproducturl
+    valid_legacy = []
+    for item in remaining:
+        raw_url = str(item.get("url") or item.get("product_url") or "").strip()
+        try:
+            parsed_url = urlsplit(raw_url)
+            if parsed_url.hostname in {
+                "www.anrdoezrs.net", "www.dpbolvw.net", "www.jdoqocy.com",
+                "www.kqzyfj.com", "www.tkqlhce.com",
+            }:
+                targets = parse_qs(parsed_url.query).get("url", [])
+                if len(targets) != 1:
+                    continue
+                raw_url = unquote(targets[0])
+        except ValueError:
+            continue
+        if (
+            not _is_non_fragrance_offer(item)
+            and lookslikeproducturl(raw_url)
+            and product_id(item) not in feed_pages
+            and variant_identity(item) not in published_variants
+            and variant_identity(item) not in feed_variants
+        ):
+            valid_legacy.append(item)
+    return published + valid_legacy
 
 
 def dedupe_results(results, diagnostics=None):
