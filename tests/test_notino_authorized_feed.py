@@ -86,6 +86,28 @@ def test_invalid_feeds_fail_closed(payload, error):
         feed.parse_feed(payload)
 
 
+def test_all_rejected_items_report_aggregate_field_diagnostics():
+    payload = b"""<rss xmlns:g="http://base.google.com/ns/1.0"><channel>
+      <item><g:title>Perfume 100 ml</g:title><g:brand>Brand</g:brand>
+        <g:price>25.00 USD</g:price><g:link>https://www.notino.de/item/</g:link>
+      </item>
+      <item><g:title>Another 100 ml</g:title><g:price>0 EUR</g:price>
+        <g:link>https://www.notino.fr/item/</g:link>
+      </item>
+    </channel></rss>"""
+    with pytest.raises(feed.FeedImportError) as raised:
+        feed.parse_feed(payload)
+    message = str(raised.value)
+    assert "items=2" in message
+    assert "missing_brand=1" in message
+    assert "invalid_or_missing_price=1" in message
+    assert "currency_not_eur=1" in message
+    assert "invalid_or_missing_fr_product_url=1" in message
+    assert "missing_size_ml=0" in message
+    assert "Perfume" not in message
+    assert "notino.de" not in message
+
+
 def test_item_url_rejects_non_fr_host_credentials_and_non_https():
     assert feed._product_url("https://www.notino.de/brand/item/") is None
     assert feed._product_url("http://www.notino.fr/brand/item/") is None
