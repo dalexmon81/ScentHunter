@@ -1,6 +1,11 @@
 name: Notino CJ production feed monitor
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/notino-cj-production-feed-monitor.yml
   pull_request:
     paths:
       - .github/workflows/notino-cj-production-feed-monitor.yml
