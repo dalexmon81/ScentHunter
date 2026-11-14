@@ -7,6 +7,32 @@ from scrapers.parfumzentrum import scraper as parfumzentrum
 
 
 class CatalogHydrationTests(unittest.TestCase):
+    def test_catalog_hydration_respects_startup_grace_before_network_work(self):
+        """A fresh API process must serve foreground searches before background crawls."""
+        import threading
+        from unittest.mock import patch
+        import catalog_engine
+
+        stop_event = threading.Event()
+        with patch.object(catalog_engine, "_ensure_hydration_queue"), \
+             patch.object(catalog_engine, "_coverage_ensure_schema"), \
+             patch.object(catalog_engine, "recover_stale_tasks", return_value=0), \
+             patch.object(catalog_engine, "_foreground_search_running", return_value=False), \
+             patch.object(catalog_engine, "_foreground_search_idle_grace_active", return_value=False), \
+             patch.object(catalog_engine, "coverage_batch") as coverage_batch, \
+             patch.object(catalog_engine, "hydrate_catalog_batch") as hydrate_batch, \
+             patch.object(stop_event, "wait", side_effect=lambda _seconds: stop_event.set()):
+            catalog_engine.catalog_hydration_loop(
+                stop_event,
+                batch_size=4,
+                workers=4,
+                pause_seconds=1.0,
+                startup_grace_seconds=20.0,
+            )
+
+        coverage_batch.assert_not_called()
+        hydrate_batch.assert_not_called()
+
     def test_parfumzentrum_internal_sku_suffix_is_stripped(self):
         query = "Berdoues Monoi Tiare Eau de Toilette 100 ml_z904294"
         normalized = re.sub(r"_?z\d+\s*$", "", query, flags=re.I).strip()
