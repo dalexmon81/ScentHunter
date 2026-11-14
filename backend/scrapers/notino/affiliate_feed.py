@@ -302,12 +302,52 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
     if not candidates:
         raise FeedImportError("notino_feed_no_product_entries")
     parsed = []
+    rejected = {
+        "missing_title": 0,
+        "missing_brand": 0,
+        "invalid_or_missing_price": 0,
+        "currency_not_eur": 0,
+        "invalid_or_missing_fr_product_url": 0,
+        "missing_size_ml": 0,
+    }
     for node in candidates:
         offer = _parse_item(node)
         if offer is not None:
             parsed.append(offer)
+            continue
+
+        # Keep diagnostics aggregate-only: never include feed values, URLs,
+        # credentials, or product-level data in production error messages.
+        title = _first(node, "title", "name", "productname")
+        brand = _first(node, "brand", "manufacturer", "vendor")
+        raw_price = _first(node, "price", "saleprice", "currentprice")
+        price, currency = _money(raw_price)
+        currency = currency or _first(node, "currency", "pricecurrency").upper()
+        raw_link = _first(node, "link", "url", "producturl")
+        if not raw_link:
+            for child in list(node):
+                if _local(child.tag) == "link" and child.attrib.get("href"):
+                    raw_link = str(child.attrib["href"]).strip()
+                    break
+        raw_size = _first(node, "size", "volume", "capacity", "product_size", "g:size")
+        if not title:
+            rejected["missing_title"] += 1
+        if not brand:
+            rejected["missing_brand"] += 1
+        if price is None:
+            rejected["invalid_or_missing_price"] += 1
+        if currency != "EUR":
+            rejected["currency_not_eur"] += 1
+        if not _product_url(raw_link):
+            rejected["invalid_or_missing_fr_product_url"] += 1
+        if _size_ml(raw_size, title) is None:
+            rejected["missing_size_ml"] += 1
+
     if not parsed:
-        raise FeedImportError("notino_feed_no_valid_priced_fr_offers")
+        detail = ";".join(f"{key}={value}" for key, value in rejected.items())
+        raise FeedImportError(
+            f"notino_feed_no_valid_priced_fr_offers:items={len(candidates)};{detail}"
+        )
     # Identical feed duplicates are discarded; real size variants stay distinct.
     unique = {}
     for offer in parsed:
