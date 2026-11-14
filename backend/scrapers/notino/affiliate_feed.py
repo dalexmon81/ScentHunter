@@ -162,7 +162,7 @@ CJ_TRACKING_HOSTS = frozenset({
     "kqzyfj.com", "www.kqzyfj.com",
     "tkqlhce.com", "www.tkqlhce.com",
 })
-CJ_CLICK_PATH = re.compile(r"^/click-\\d+-\\d+/?$", re.I)
+CJ_CLICK_PATH = re.compile(r"^/click-\d+-\d+/?$", re.I)
 
 
 def _canonical_notino_product_url(raw: str) -> str | None:
