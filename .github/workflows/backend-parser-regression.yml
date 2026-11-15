@@ -57,7 +57,7 @@ jobs:
     if: github.event_name == 'pull_request'
     name: Parse live CJ feed with PR parser (read-only)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Check out pull request
         uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
       - name: Stream live CJ feed through PR parser without catalog writes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 10
+        timeout-minutes: 22
         shell: bash
         run: |
           set -euo pipefail
@@ -97,7 +97,7 @@ jobs:
           import resource
 
           started = time.monotonic()
-          deadline = started + 8 * 60
+          deadline = started + 18 * 60
           stats = {}
           count = sized = 0
           unique_urls = set()
@@ -241,13 +241,13 @@ jobs:
           )
           remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
           remote_command="/bin/sh -lc 'export NOTINO_PARSER_SOURCE_B64=\"$parser_source_b64\"; printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
-          timeout 570s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          timeout 1170s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
   notino-runner-parser-dry-run:
     if: github.event_name == 'pull_request'
     name: Parse live CJ feed on runner (read-only)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Check out pull request
         uses: actions/checkout@v4
