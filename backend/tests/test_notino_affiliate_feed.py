@@ -105,7 +105,10 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             """)
             db.close()
             with patch.dict("sys.modules", {"catalog_engine": types.SimpleNamespace(DB_PATH=path)}):
-                result = feed.import_feed_bytes(SAMPLE)
+                with patch.dict(os.environ, {"NOTINO_PERSIST_PROFILE": "1"}):
+                    with self.assertLogs("scenthunter.notino_feed", level="INFO") as profile:
+                        result = feed.import_feed_bytes(SAMPLE)
+                self.assertIn("'commit':", " ".join(profile.output))
                 self.assertEqual(result["imported_offers"], 2)
                 self.assertEqual(result["rejected_items"], 2)
                 db = sqlite3.connect(path)
