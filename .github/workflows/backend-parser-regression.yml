@@ -47,3 +47,84 @@ jobs:
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
           backend/tests/test_seed_catalog_store_safety.py
+
+
+  notino-live-parser-dry-run:
+    name: Parse live CJ feed with PR parser (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Stream live CJ feed through PR parser without catalog writes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          parser_source_b64=$(base64 -w0 backend/scrapers/notino/affiliate_feed.py)
+          remote_python=$(cat <<'PY'
+          import base64
+          import importlib.util
+          import json
+          import os
+          import sqlite3
+          import sys
+          import tempfile
+          import time
+
+          source = base64.b64decode(os.environ["NOTINO_PARSER_SOURCE_B64"])
+          module_path = "/tmp/notino_affiliate_feed_pr.py"
+          with open(module_path, "wb") as handle:
+              handle.write(source)
+          spec = importlib.util.spec_from_file_location("notino_affiliate_feed_pr", module_path)
+          feed = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = feed
+          spec.loader.exec_module(feed)
+
+          started = time.monotonic()
+          deadline = started + 8 * 60
+          stats = {}
+          count = sized = 0
+          unique_urls = set()
+          with tempfile.TemporaryFile() as downloaded:
+              download_bytes = feed._download_feed(downloaded, deadline)
+              with tempfile.TemporaryDirectory(prefix="notino-pr-dryrun-") as directory:
+                  db = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
+                  db.execute("CREATE TABLE offers(url TEXT, variant_key TEXT, PRIMARY KEY(url,variant_key))")
+                  try:
+                      with feed._xml_stream(downloaded, deadline) as stream:
+                          for offer in feed._parsed_offers(stream, stats):
+                              count += 1
+                              sized += int(offer.size_ml is not None)
+                              unique_urls.add(offer.url)
+                              db.execute("INSERT OR IGNORE INTO offers VALUES(?,?)",
+                                         (offer.url, feed._stable_variant_key(offer)))
+                      db.commit()
+                      staged = db.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
+                  finally:
+                      db.close()
+
+          print("NOTINO_PR_PARSER_DRY_RUN=" + json.dumps({
+              "result": "PASS" if count > 0 and staged > 0 else "FAIL",
+              "download_bytes": download_bytes,
+              "elapsed_seconds": round(time.monotonic() - started, 2),
+              "parsed_valid_offers": count,
+              "staged_unique_variants": staged,
+              "unique_product_urls": len(unique_urls),
+              "offers_with_size": sized,
+              "offers_without_size": count - sized,
+              "parser_stats": stats,
+              "catalog_database_touched": False
+          }, ensure_ascii=False), flush=True)
+          if count <= 0 or staged <= 0:
+              raise SystemExit("Notino live feed produced no valid staged offers")
+          PY
+          )
+          remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
+          remote_command="/bin/sh -lc 'export NOTINO_PARSER_SOURCE_B64=\"$parser_source_b64\"; printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
+          timeout 570s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
