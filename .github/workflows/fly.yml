@@ -43,9 +43,9 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      # The production background discovery loop imports the CJ feed directly
-      # into /data/store_catalog.sqlite3. Stage credentials for this release;
-      # do not print or persist them in the repository.
+      # The dedicated Notino CJ Feed Import workflow is the sole production
+      # writer for the authenticated feed in /data/store_catalog.sqlite3.
+      # Stage credentials for this release; do not print or persist them.
       - name: Configure authorized Notino CJ feed for production
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

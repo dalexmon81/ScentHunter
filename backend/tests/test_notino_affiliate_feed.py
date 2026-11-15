@@ -31,6 +31,28 @@ SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class NotinoAffiliateFeedTests(unittest.TestCase):
+    def test_notino_discovery_does_not_race_the_dedicated_production_import(self):
+        import catalog_engine
+
+        class Cursor:
+            def fetchone(self):
+                return None
+
+        class Connection:
+            def execute(self, *_args):
+                return Cursor()
+
+            def close(self):
+                pass
+
+        with patch.object(catalog_engine, "db", return_value=Connection()), \
+             patch.object(catalog_engine.importlib, "import_module") as import_module:
+            result = catalog_engine.discover_store("notino")
+
+        self.assertEqual(result["status"], "FEED_IMPORT_MANAGED_EXTERNALLY")
+        self.assertEqual(result["reason"], "dedicated_notino_cj_feed_workflow")
+        import_module.assert_not_called()
+
     def test_parses_price_size_gtin_stock_and_french_product_url(self):
         offers = feed.parse_feed(SAMPLE)
         self.assertEqual(len(offers), 2)
