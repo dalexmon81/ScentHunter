@@ -81,22 +81,18 @@ jobs:
           parser_source_b64=$(base64 -w0 backend/scrapers/notino/affiliate_feed.py)
           remote_python=$(cat <<'PY'
           import base64
-          import importlib.util
           import json
           import os
           import sqlite3
           import sys
           import tempfile
           import time
+          import types
 
           source = base64.b64decode(os.environ["NOTINO_PARSER_SOURCE_B64"])
-          module_path = "/tmp/notino_affiliate_feed_pr.py"
-          with open(module_path, "wb") as handle:
-              handle.write(source)
-          spec = importlib.util.spec_from_file_location("notino_affiliate_feed_pr", module_path)
-          feed = importlib.util.module_from_spec(spec)
-          sys.modules[spec.name] = feed
-          spec.loader.exec_module(feed)
+          feed = types.ModuleType("notino_affiliate_feed_pr")
+          sys.modules[feed.__name__] = feed
+          exec(compile(source, "<notino_affiliate_feed_pr>", "exec"), feed.__dict__)
 
           import resource
 
@@ -105,20 +101,81 @@ jobs:
           stats = {}
           count = sized = 0
           unique_urls = set()
-          last_report = started
+          db = None
+          counters = {"products_read": 0, "valid": 0, "rejected": 0}
+          timings = {phase: {"wall": 0.0, "cpu": 0.0}
+                     for phase in ("download", "xml", "validation", "staging")}
+
+          def record(phase, wall, cpu):
+              timings[phase]["wall"] += time.monotonic() - wall
+              timings[phase]["cpu"] += time.process_time() - cpu
 
           def report(phase, **values):
               rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+              with open("/proc/self/status", encoding="utf-8") as status:
+                  current_rss_mb = int(next(line for line in status if line.startswith("VmRSS:")).split()[1]) / 1024
               print("NOTINO_PROFILE=" + json.dumps({
                   "phase": phase,
                   "elapsed_seconds": round(time.monotonic() - started, 2),
+                  "rss_mb": round(current_rss_mb, 1),
                   "peak_rss_mb": round(rss_mb, 1),
+                  "timings_seconds": {
+                      name: {kind: round(value, 3) for kind, value in values.items()}
+                      for name, values in timings.items()
+                  },
+                  **counters,
+                  "staged_unique_variants": db.total_changes if db is not None else 0,
                   **values
               }, ensure_ascii=False), flush=True)
 
+          original_items = feed._feed_items
+          original_parse_item = feed._parse_item
+          original_field_map = feed._field_map
+
+          def measured_items(stream):
+              iterator = iter(original_items(stream))
+              while True:
+                  wall, cpu = time.monotonic(), time.process_time()
+                  try:
+                      node = next(iterator)
+                  except StopIteration:
+                      return
+                  finally:
+                      record("xml", wall, cpu)
+                  counters["products_read"] += 1
+                  yield node
+                  if counters["products_read"] % 5000 == 0:
+                      report("progress", parsed_valid_offers=count,
+                             unique_product_urls=len(unique_urls), offers_with_size=sized)
+
+          def measured_field_map(*args, **kwargs):
+              wall, cpu = time.monotonic(), time.process_time()
+              try:
+                  return original_field_map(*args, **kwargs)
+              finally:
+                  record("validation", wall, cpu)
+
+          def measured_parse_item(*args, **kwargs):
+              wall, cpu = time.monotonic(), time.process_time()
+              try:
+                  offer = original_parse_item(*args, **kwargs)
+              finally:
+                  record("validation", wall, cpu)
+              counters["valid" if offer is not None else "rejected"] += 1
+              return offer
+
+          feed._feed_items = measured_items
+          feed._parse_item = measured_parse_item
+          feed._field_map = measured_field_map
           with tempfile.TemporaryFile() as downloaded:
               t = time.monotonic()
-              download_bytes = feed._download_feed(downloaded, deadline)
+              wall, cpu = time.monotonic(), time.process_time()
+              report("download_start")
+              try:
+                  download_bytes = feed._download_feed(downloaded, deadline)
+              finally:
+                  record("download", wall, cpu)
+                  report("download_end")
               report("download_complete", download_bytes=download_bytes,
                      phase_seconds=round(time.monotonic() - t, 2))
               with tempfile.TemporaryDirectory(prefix="notino-pr-dryrun-") as directory:
@@ -142,18 +199,19 @@ jobs:
                               sized += int(offer.size_ml is not None)
                               unique_urls.add(offer.url)
                               stage_started = time.monotonic()
-                              db.execute("INSERT OR IGNORE INTO offers VALUES(?,?)",
-                                         (offer.url, feed._stable_variant_key(offer)))
+                              wall, cpu = time.monotonic(), time.process_time()
+                              try:
+                                  db.execute("INSERT OR IGNORE INTO offers VALUES(?,?)",
+                                             (offer.url, feed._stable_variant_key(offer)))
+                              finally:
+                                  record("staging", wall, cpu)
                               stage_seconds += time.monotonic() - stage_started
-                              if count % 5000 == 0:
-                                  report("progress", parsed_valid_offers=count,
-                                         unique_product_urls=len(unique_urls),
-                                         offers_with_size=sized,
-                                         parse_seconds=round(parse_seconds, 2),
-                                         staging_seconds=round(stage_seconds, 2),
-                                         parser_stats=stats)
                       t = time.monotonic()
-                      db.commit()
+                      wall, cpu = time.monotonic(), time.process_time()
+                      try:
+                          db.commit()
+                      finally:
+                          record("staging", wall, cpu)
                       staged = db.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
                       report("staging_complete", staged_unique_variants=staged,
                              commit_seconds=round(time.monotonic() - t, 2),
@@ -161,6 +219,8 @@ jobs:
                              staging_seconds=round(stage_seconds, 2),
                              parser_stats=stats)
                   finally:
+                      for phase in ("xml", "validation", "staging"):
+                          report(phase + "_end")
                       db.close()
 
           print("NOTINO_PR_PARSER_DRY_RUN=" + json.dumps({
