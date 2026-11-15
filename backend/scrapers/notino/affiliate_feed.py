@@ -297,7 +297,8 @@ def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) ->
     if not external_id:
         external_id = gtin or sku or hashlib.sha256(
             f"{link}|{title}".encode("utf-8")
-        ).hexdigest()[:24]    return NotinoOffer(
+        ).hexdigest()[:24]
+    return NotinoOffer(
         external_id=external_id.strip(),
         title=re.sub(r"\s+", " ", title).strip(),
         brand=re.sub(r"\s+", " ", brand).strip(),
@@ -596,7 +597,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     profile_started_wall = time.monotonic()
     profile_started_cpu = time.process_time()
     phase_wall = {}
-    phase_cpu = {}    statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
+    phase_cpu = {}
+    statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
                         "store_product_variants": 0, "store_products": 0,
                         "hydration_queue": 0, "sync_state": 0, "other": 0}
 
@@ -789,9 +791,9 @@ def _import_stream(source, started_at, deadline=None):
                          }), _slug(offer.url)),
                     )
             stage.commit()
-            # The legacy-key migration probes this table by (url, legacy_variant_key)
-            # for every existing Notino variant. The primary key is (url, variant_key),
-            # so without this index SQLite repeatedly scans the staged offers table.
+            # The legacy-key migration probes by (url, legacy_variant_key).
+            # The table primary key is (url, variant_key), so add the missing
+            # lookup index before publication to avoid repeated staging scans.
             stage.execute(
                 "CREATE INDEX idx_notino_offers_legacy_url "
                 "ON offers(url, legacy_variant_key) "
