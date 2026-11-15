@@ -27,78 +27,101 @@ jobs:
           set -euo pipefail
           remote_python=$(cat <<'PY'
           import collections
+          import gzip
+          import io
           import json
           import sys
-          import tempfile
           import time
           import urllib.parse
           import xml.etree.ElementTree as ET
+          import zipfile
 
           sys.path.insert(0, "/app/backend")
           from scrapers.notino import affiliate_feed as feed
 
           started = time.monotonic()
-          with tempfile.TemporaryFile() as source:
-              downloaded = feed._download_feed(source, time.monotonic() + 420)
-              paths = collections.Counter()
-              link_hosts = collections.Counter()
-              link_shapes = collections.Counter()
-              item_count = 0
-              root_name = None
-              element_stack = []
-              candidate_names = {
-                  "link", "url", "producturl", "deep_link", "deeplink",
-                  "buy_url", "buyurl", "mobile_link", "canonical_link",
-                  "affiliate_link", "tracking_link", "product_link",
-              }
-              with feed._xml_stream(source, time.monotonic() + 420) as stream:
-                  for event, node in ET.iterparse(stream, events=("start", "end")):
-                      name = feed._local(node.tag)
-                      if event == "start":
-                          if root_name is None:
-                              root_name = name
-                          element_stack.append(node)
-                          continue
-                      if name in {"item", "entry", "product", "offer"}:
-                          item_count += 1
-                          for child in node.iter():
-                              if child is node:
-                                  continue
-                              tag = feed._local(child.tag)
-                              if child.text and child.text.strip():
-                                  path = "/".join(feed._local(part.tag) for part in element_stack) + "/" + tag
-                                  paths[path] += 1
-                              if tag in candidate_names:
-                                  raw = (child.text or child.attrib.get("href") or "").strip()
-                                  if raw:
-                                      parsed = urllib.parse.urlparse(raw)
-                                      host = (parsed.hostname or "NO_HOST").lower()
-                                      link_hosts[host] += 1
-                                      keys = tuple(sorted(urllib.parse.parse_qs(parsed.query).keys()))
-                                      shape = {
-                                          "scheme": parsed.scheme or "NO_SCHEME",
-                                          "host": host,
-                                          "first_path_segment": parsed.path.split("/")[1] if parsed.path.count("/") > 1 else "/",
-                                          "query_keys": list(keys),
-                                      }
-                                      link_shapes[json.dumps(shape, sort_keys=True)] += 1
-                          if name in {"item", "entry", "product", "offer"}:
-                              if len(element_stack) > 1:
-                                  element_stack[-2].remove(node)
-                              node.clear()
-                          if element_stack:
-                              element_stack.pop()
-              print("NOTINO_CJ_STREAM_DIAGNOSTIC=" + json.dumps({
-                  "items": item_count,
-                  "download_bytes": downloaded,
-                  "elapsed_seconds": round(time.monotonic() - started, 2),
-                  "field_paths": dict(paths.most_common(80)),
-                  "link_hosts": dict(link_hosts.most_common(30)),
-                  "link_shapes": [
-                      {**json.loads(shape), "count": count}
-                      for shape, count in link_shapes.most_common(30)
-                  ],
-              }, ensure_ascii=False), flush=True)
+          # Production's deployed module exposes _fetch_feed() returning bytes.
+          # The streaming helpers exist only on the unmerged refactor branch.
+          payload = feed._fetch_feed()
+          if not isinstance(payload, (bytes, bytearray)) or not payload:
+              raise RuntimeError("notino_diagnostic_empty_download")
+
+          source = io.BytesIO(payload)
+          if zipfile.is_zipfile(source):
+              with zipfile.ZipFile(source) as archive:
+                  members = [n for n in archive.namelist() if n.lower().endswith(".xml")]
+                  if len(members) != 1:
+                      raise RuntimeError("notino_diagnostic_expected_one_xml_in_zip")
+                  xml_stream = archive.open(members[0])
+                  close_stream = True
+          elif payload[:2] == b"\\x1f\\x8b":
+              xml_stream = gzip.GzipFile(fileobj=io.BytesIO(payload))
+              close_stream = True
+          else:
+              xml_stream = io.BytesIO(payload)
+              close_stream = True
+
+          paths = collections.Counter()
+          link_hosts = collections.Counter()
+          link_shapes = collections.Counter()
+          item_count = 0
+          root_name = None
+          stack = []
+          candidate_names = {
+              "link", "url", "producturl", "deep_link", "deeplink",
+              "buy_url", "buyurl", "mobile_link", "canonical_link",
+              "affiliate_link", "tracking_link", "product_link",
+          }
+          try:
+              for event, node in ET.iterparse(xml_stream, events=("start", "end")):
+                  name = feed._local(node.tag)
+                  if event == "start":
+                      if root_name is None:
+                          root_name = name
+                      stack.append(node)
+                      continue
+                  if name in {"item", "entry", "product", "offer"}:
+                      item_count += 1
+                      prefix = "/".join(feed._local(part.tag) for part in stack)
+                      for child in node.iter():
+                          if child is node:
+                              continue
+                          tag = feed._local(child.tag)
+                          if child.text and child.text.strip():
+                              paths[prefix + "/" + tag] += 1
+                          if tag in candidate_names:
+                              raw = (child.text or child.attrib.get("href") or "").strip()
+                              if raw:
+                                  parsed = urllib.parse.urlparse(raw)
+                                  host = (parsed.hostname or "NO_HOST").lower()
+                                  link_hosts[host] += 1
+                                  shape = {
+                                      "scheme": parsed.scheme or "NO_SCHEME",
+                                      "host": host,
+                                      "first_path_segment": parsed.path.split("/")[1] if parsed.path.count("/") > 1 else "/",
+                                      "query_keys": sorted(urllib.parse.parse_qs(parsed.query).keys()),
+                                  }
+                                  link_shapes[json.dumps(shape, sort_keys=True)] += 1
+                      if len(stack) > 1:
+                          stack[-2].remove(node)
+                      node.clear()
+                  if stack:
+                      stack.pop()
+          finally:
+              if close_stream:
+                  xml_stream.close()
+
+          print("NOTINO_CJ_STREAM_DIAGNOSTIC=" + json.dumps({
+              "items": item_count,
+              "download_bytes": len(payload),
+              "elapsed_seconds": round(time.monotonic() - started, 2),
+              "field_paths": dict(paths.most_common(80)),
+              "link_hosts": dict(link_hosts.most_common(30)),
+              "link_shapes": [
+                  {**json.loads(shape), "count": count}
+                  for shape, count in link_shapes.most_common(30)
+              ],
+          }, ensure_ascii=False), flush=True)
           PY
           )
           remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
