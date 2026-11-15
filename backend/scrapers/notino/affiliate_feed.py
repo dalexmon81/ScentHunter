@@ -674,10 +674,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             timed_execute(
                 "store_urls",
                 """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                   SELECT ?,url,MIN(slug),NULL,?,1 FROM (
-                       SELECT url, lower(trim(replace(replace(replace(url,'-',' '),'/',' '),'_',' '))) AS slug
-                       FROM offers
-                   ) GROUP BY url
+                   SELECT ?,url,MIN(slug),NULL,?,1 FROM offers
+                   WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
                 (STORE_KEY, now),
@@ -724,7 +722,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 "hydration_queue",
                 """INSERT INTO hydration_queue(
                        store,url,state,priority,attempts,available_at,first_seen_at)
-                   SELECT ? ,url,'DONE',0,0,?,? FROM offers GROUP BY url
+                   SELECT ?,url,'DONE',0,0,?,? FROM offers WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
                      leased_until=NULL,lease_token=NULL,last_error=NULL""",
@@ -774,21 +772,21 @@ def _import_stream(source, started_at, deadline=None):
                 url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
                 title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
                 price REAL, currency TEXT, availability TEXT, image TEXT,
-                concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT,
+                concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
                 PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
             with _xml_stream(source, deadline) as stream:
                 for offer in _parsed_offers(stream, stats):
                     if deadline is not None and time.monotonic() >= deadline:
                         raise FeedImportError("notino_feed_import_timeout")
                     stage.execute(
-                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
                          offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
                          offer.currency, offer.availability, offer.image, offer.concentration,
                          offer.affiliate_url, _legacy_variant_key({
                              "size_ml": offer.size_ml, "gtin": offer.gtin,
                              "sku": offer.sku, "external_id": offer.external_id,
-                         })),
+                         }), _slug(offer.url)),
                     )
             stage.commit()
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
