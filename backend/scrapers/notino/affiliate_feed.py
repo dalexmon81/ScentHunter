@@ -791,6 +791,14 @@ def _import_stream(source, started_at, deadline=None):
                          }), _slug(offer.url)),
                     )
             stage.commit()
+            # The legacy-key migration probes by (url, legacy_variant_key).
+            # The table primary key is (url, variant_key), so add the missing
+            # lookup index before publication to avoid repeated staging scans.
+            stage.execute(
+                "CREATE INDEX idx_notino_offers_legacy_url "
+                "ON offers(url, legacy_variant_key) "
+                "WHERE legacy_variant_key IS NOT NULL"
+            )
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise FeedImportError("notino_feed_staging_integrity_error")
             count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
