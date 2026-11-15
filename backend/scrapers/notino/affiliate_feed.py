@@ -704,11 +704,14 @@ def _import_stream(source, started_at, deadline=None):
         stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
         stage.row_factory = sqlite3.Row
         try:
+            stage.execute("PRAGMA journal_mode=OFF")
+            stage.execute("PRAGMA synchronous=OFF")
+            stage.execute("PRAGMA cache_size=-65536")
             stage.execute("""CREATE TABLE offers(
                 url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
                 title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
                 price REAL, currency TEXT, availability TEXT, image TEXT,
-                concentration TEXT, affiliate_url TEXT, PRIMARY KEY(url, variant_key))""")
+                concentration TEXT, affiliate_url TEXT, PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
             with _xml_stream(source, deadline) as stream:
                 for offer in _parsed_offers(stream, stats):
                     if deadline is not None and time.monotonic() >= deadline:
@@ -721,6 +724,8 @@ def _import_stream(source, started_at, deadline=None):
                          offer.affiliate_url),
                     )
             stage.commit()
+            if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                raise FeedImportError("notino_feed_staging_integrity_error")
             count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
             stats["duplicate_items"] = stats["valid_items"] - count
             _persist_staged_offers(stage, count, started_at, deadline)
