@@ -3367,9 +3367,12 @@ def discover_store(store):
     started_at = time.time()
     notino_feed_error = None
     if store == 'notino':
-        # CJ publishes this full export daily. Do not download it on every
-        # round-robin discovery turn; retain the last successful import time
-        # in the existing persistent sync_state row.
+        # The authenticated CJ feed has one production writer: the dedicated
+        # Notino CJ Feed Import workflow. Importing it again from the app's
+        # startup/bootstrap discovery pool races that workflow for the same
+        # SQLite writer lock and can leave both imports incomplete.
+        # Keep discovery read-only here; the workflow owns scheduled and
+        # post-deploy feed publication.
         conn = db()
         try:
             last_feed = conn.execute(
@@ -3390,23 +3393,12 @@ def discover_store(store):
                 'source': 'cj_viv_authorized_xml',
                 'next_refresh_after': float(last_feed['finished_at']) + 23 * 60 * 60,
             }
-        try:
-            feed = importlib.import_module('scrapers.notino.affiliate_feed')
-            report = feed.import_configured_feed()
-            count = int(report.get('imported_offers') or 0)
-            if count:
-                return {'status': 'FEED_IMPORTED', 'count': count,
-                        'source': 'cj_viv_authorized_xml'}
-            notino_feed_error = 'notino_feed_empty'
-        except Exception as exc:
-            notino_feed_error = str(exc)
-            if not notino_feed_error.startswith('notino_feed_'):
-                notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
-        print(
-            f'NOTINO_FEED_UNAVAILABLE reason={notino_feed_error}',
-            flush=True,
-        )
-        return {'status': 'FEED_ERROR', 'count': 0, 'error': notino_feed_error}
+        return {
+            'status': 'FEED_IMPORT_MANAGED_EXTERNALLY',
+            'count': 0,
+            'source': 'cj_viv_authorized_xml',
+            'reason': 'dedicated_notino_cj_feed_workflow',
+        }
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
