@@ -1,6 +1,11 @@
 name: Notino CJ Feed Import
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/notino-cj-feed-import.yml
   workflow_run:
     workflows:
       - Fly Deploy
@@ -22,7 +27,7 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
