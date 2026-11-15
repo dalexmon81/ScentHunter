@@ -793,7 +793,7 @@ def _import_stream(source, started_at, deadline=None):
             stage.commit()
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise FeedImportError("notino_feed_staging_integrity_error")
-            count = stage.execute("SELECT COUNT(*) FROM notino_stage.offers").fetchone()[0]
+            count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
             stats["duplicate_items"] = stats["valid_items"] - count
             _persist_staged_offers(stage, count, started_at, deadline)
         finally:
