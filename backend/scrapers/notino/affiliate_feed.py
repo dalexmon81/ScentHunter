@@ -187,10 +187,14 @@ def _canonical_notino_product_url(raw: str) -> str | None:
     ):
         return None
     path = re.sub(r"/{2,}", "/", parsed.path or "")
-    if not path or path == "/" or path.lower().startswith((
-        "/search", "/parfums", "/marques", "/login", "/account", "/cart",
-        "/checkout", "/customer-service", "/wishlist",
-    )):
+    first_segment = (path.strip("/").split("/", 1)[0] or "").casefold()
+    reserved_segments = {
+        "search", "parfums", "marques", "login", "account", "cart",
+        "checkout", "customer-service", "wishlist",
+    }
+    # Match complete reserved route segments only. Prefix matching wrongly
+    # rejects legitimate brand slugs such as "parfums-de-marly" and "carthusia".
+    if not path or path == "/" or first_segment in reserved_segments:
         return None
     return urllib.parse.urlunparse(("https", MARKET_HOST, path, "", "", ""))
 
