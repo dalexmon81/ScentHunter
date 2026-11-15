@@ -64,6 +64,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Verify Fly SSH command execution
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          timeout 90s flyctl ssh console --app scenthunter --select=false -C "printf 'NOTINO_FLY_SSH_PREFLIGHT=PASS\\n'; /app/.venv/bin/python --version"
       - name: Stream live CJ feed through PR parser without catalog writes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
