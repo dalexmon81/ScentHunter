@@ -614,6 +614,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
 
     connect_wall, connect_cpu = time.monotonic(), time.process_time()
     conn = connect(DB_PATH, timeout=45)
+    stage_path = stage.execute("PRAGMA database_list").fetchone()[2]
+    conn.execute("ATTACH DATABASE ? AS notino_stage", (stage_path,))
     connect_wall_elapsed = time.monotonic() - connect_wall
     connect_cpu_elapsed = time.process_time() - connect_cpu
     if deadline is not None:
@@ -646,25 +648,25 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 "legacy_variant_updates",
                 """UPDATE store_product_variants AS current
                    SET variant_key=(
-                       SELECT offers.variant_key FROM offers
-                       WHERE offers.url=current.url
-                         AND offers.legacy_variant_key=current.variant_key
+                       SELECT notino_stage.offers.variant_key FROM notino_stage.offers
+                       WHERE notino_stage.offers.url=current.url
+                         AND notino_stage.offers.legacy_variant_key=current.variant_key
                        LIMIT 1
                    )
                    WHERE current.store=?
                      AND EXISTS (
-                         SELECT 1 FROM offers
-                         WHERE offers.url=current.url
-                           AND offers.legacy_variant_key=current.variant_key
+                         SELECT 1 FROM notino_stage.offers
+                         WHERE notino_stage.offers.url=current.url
+                           AND notino_stage.offers.legacy_variant_key=current.variant_key
                      )
                      AND NOT EXISTS (
                          SELECT 1 FROM store_product_variants AS existing
                          WHERE existing.store=current.store
                            AND existing.url=current.url
                            AND existing.variant_key=(
-                               SELECT offers.variant_key FROM offers
-                               WHERE offers.url=current.url
-                                 AND offers.legacy_variant_key=current.variant_key
+                               SELECT notino_stage.offers.variant_key FROM notino_stage.offers
+                               WHERE notino_stage.offers.url=current.url
+                                 AND notino_stage.offers.legacy_variant_key=current.variant_key
                                LIMIT 1
                            )
                      )""",
@@ -674,7 +676,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             timed_execute(
                 "store_urls",
                 """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                   SELECT ?,url,MIN(slug),NULL,?,1 FROM offers
+                   SELECT ?,url,MIN(slug),NULL,?,1 FROM notino_stage.offers
                    WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
@@ -688,7 +690,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                        concentration,gender,price,currency,availability,fetched_at,variant_url)
                    SELECT ?,url,variant_key,title,brand,image,sku,gtin,mpn,size_ml,
                           concentration,NULL,price,currency,availability,?,COALESCE(affiliate_url,url)
-                   FROM offers WHERE 1
+                   FROM notino_stage.offers WHERE 1
                    ON CONFLICT(store,url,variant_key) DO UPDATE SET
                      name=excluded.name,brand=excluded.brand,image=excluded.image,
                      sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
@@ -708,7 +710,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                           substr(group_concat(DISTINCT brand),1,500),MAX(image),
                           NULL,NULL,NULL,NULL,NULL,NULL,NULL,MAX(currency),
                           'variant_catalog',?,'OK'
-                   FROM offers GROUP BY url
+                   FROM notino_stage.offers GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      name=excluded.name,brand=excluded.brand,image=excluded.image,
                      sku=NULL,gtin=NULL,mpn=NULL,size_ml=NULL,concentration=NULL,
@@ -722,7 +724,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 "hydration_queue",
                 """INSERT INTO hydration_queue(
                        store,url,state,priority,attempts,available_at,first_seen_at)
-                   SELECT ?,url,'DONE',0,0,?,? FROM offers WHERE 1 GROUP BY url
+                   SELECT ?,url,'DONE',0,0,?,? FROM notino_stage.offers WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
                      leased_until=NULL,lease_token=NULL,last_error=NULL""",
@@ -791,7 +793,7 @@ def _import_stream(source, started_at, deadline=None):
             stage.commit()
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise FeedImportError("notino_feed_staging_integrity_error")
-            count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
+            count = stage.execute("SELECT COUNT(*) FROM notino_stage.offers").fetchone()[0]
             stats["duplicate_items"] = stats["valid_items"] - count
             _persist_staged_offers(stage, count, started_at, deadline)
         finally:
