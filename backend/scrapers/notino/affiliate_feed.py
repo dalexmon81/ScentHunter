@@ -582,6 +582,14 @@ def _slug(url: str) -> str:
 
 
 def _persist_staged_offers(stage, count, started_at, deadline):
+    """Publish a staged feed with set-based SQLite statements.
+
+    The previous implementation issued several SQL statements for every
+    variant while holding the production writer lock. At feed scale this
+    exceeded the import deadline and blocked other catalog writers. The
+    staging database now does the grouping and SQLite performs publication
+    with a handful of bulk INSERT/UPDATE statements in one atomic transaction.
+    """
     from catalog_engine import DB_PATH
     from catalog_writer_lock import connect
 
@@ -593,23 +601,21 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
                         "store_product_variants": 0, "store_products": 0,
                         "hydration_queue": 0, "sync_state": 0, "other": 0}
-    counters = {"urls": 0, "variants": 0}
 
-    def timed_execute(sql, parameters=()):
-        if not profile_enabled:
-            return conn.execute(sql, parameters)
-        normalized = " ".join(str(sql).lower().split())
-        table = ("legacy_variant_updates" if normalized.startswith("update store_product_variants") else next((name for name in ("store_urls", "store_product_variants", "store_products", "hydration_queue", "sync_state") if name in normalized), "other"))
+    def timed_execute(table, sql, parameters=()):
         wall, cpu = time.monotonic(), time.process_time()
         try:
             return conn.execute(sql, parameters)
         finally:
-            phase_wall[table] = phase_wall.get(table, 0.0) + time.monotonic() - wall
-            phase_cpu[table] = phase_cpu.get(table, 0.0) + time.process_time() - cpu
-            statement_counts[table] += 1
+            if profile_enabled:
+                phase_wall[table] = phase_wall.get(table, 0.0) + time.monotonic() - wall
+                phase_cpu[table] = phase_cpu.get(table, 0.0) + time.process_time() - cpu
+                statement_counts[table] += 1
 
     connect_wall, connect_cpu = time.monotonic(), time.process_time()
     conn = connect(DB_PATH, timeout=45)
+    stage_path = stage.execute("PRAGMA database_list").fetchone()[2]
+    conn.execute("ATTACH DATABASE ? AS notino_stage", (stage_path,))
     connect_wall_elapsed = time.monotonic() - connect_wall
     connect_cpu_elapsed = time.process_time() - connect_cpu
     if deadline is not None:
@@ -621,101 +627,112 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             conn.execute("BEGIN IMMEDIATE")
             lock_wall_elapsed = time.monotonic() - lock_wall
             lock_cpu_elapsed = time.process_time() - lock_cpu
+
             previous = timed_execute(
-                "SELECT discovered_count, finished_at FROM sync_state WHERE store=? AND status='FEED_IMPORTED'",
+                "other",
+                "SELECT discovered_count, finished_at FROM sync_state "
+                "WHERE store=? AND status='FEED_IMPORTED'",
                 (STORE_KEY,),
             ).fetchone()
             if previous and previous[1] and float(previous[1]) >= started_at:
                 raise FeedImportError("notino_feed_newer_import_already_published")
             if previous and previous[0] and count * 10 < int(previous[0]) * 9:
                 raise FeedImportError("notino_feed_suspicious_offer_count")
-            stage_select_wall, stage_select_cpu = time.monotonic(), time.process_time()
-            rows = stage.execute("SELECT * FROM offers ORDER BY url, variant_key")
-            if profile_enabled:
-                phase_wall["stage_select"] = time.monotonic() - stage_select_wall
-                phase_cpu["stage_select"] = time.process_time() - stage_select_cpu
-            for url, variants in groupby(rows, key=lambda row: row["url"]):
-                counters["urls"] += 1
-                if deadline is not None and time.monotonic() >= deadline:
-                    raise FeedImportError("notino_feed_import_timeout")
-                timed_execute(
-                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                         slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
-                    (STORE_KEY, url, _slug(url), None, now),
-                )
-                names, brands = [], []
-                name_length = brand_length = 0
-                representative = None
-                for offer in variants:
-                    counters["variants"] += 1
-                    if representative is None:
-                        representative = offer
-                    if offer["title"] not in names and name_length < 1500:
-                        names.append(offer["title"])
-                        name_length += len(offer["title"]) + 3
-                    if offer["brand"] not in brands and brand_length < 500:
-                        brands.append(offer["brand"])
-                        brand_length += len(offer["brand"]) + 3
-                    legacy_key = _legacy_variant_key(offer)
-                    if legacy_key:
-                        timed_execute(
-                            """UPDATE store_product_variants SET variant_key=?
-                               WHERE store=? AND url=? AND variant_key=?
-                                 AND NOT EXISTS (
-                                     SELECT 1 FROM store_product_variants
-                                     WHERE store=? AND url=? AND variant_key=?
-                                 )""",
-                            (offer["variant_key"], STORE_KEY, url, legacy_key,
-                             STORE_KEY, url, offer["variant_key"]),
-                        )
-                    timed_execute(
-                        """INSERT INTO store_product_variants(
-                               store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                               concentration,gender,price,currency,availability,fetched_at,variant_url)
-                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                           ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                             name=excluded.name,brand=excluded.brand,image=excluded.image,
-                             sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                             size_ml=excluded.size_ml,concentration=excluded.concentration,
-                             price=excluded.price,
-                             currency=excluded.currency,availability=excluded.availability,
-                             fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
-                        (
-                            STORE_KEY, url, offer["variant_key"], offer["title"],
-                            offer["brand"], offer["image"], offer["sku"], offer["gtin"], offer["mpn"],
-                            offer["size_ml"], offer["concentration"], None,
-                            offer["price"], offer["currency"], offer["availability"], now,
-                            offer["affiliate_url"] or url,
-                        ),
-                    )
-                timed_execute(
-                    """INSERT INTO store_products(
-                           store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,
-                           gender,price,currency,availability,fetched_at,fetch_status)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'OK')
-                       ON CONFLICT(store,url) DO UPDATE SET
-                         name=excluded.name,brand=excluded.brand,image=excluded.image,
-                         sku=NULL,gtin=NULL,mpn=NULL,size_ml=NULL,concentration=NULL,gender=NULL,
-                         price=NULL,currency=excluded.currency,availability='variant_catalog',
-                         fetched_at=excluded.fetched_at,fetch_status='OK'""",
-                    (
-                        STORE_KEY, url, " | ".join(names)[:1500], " | ".join(brands)[:500],
-                        representative["image"], None, None, None, None, None,
-                        None, None, representative["currency"], 'variant_catalog', now,
-                    ),
-                )
-                timed_execute(
-                    """INSERT INTO hydration_queue(
-                           store,url,state,priority,attempts,available_at,first_seen_at)
-                       VALUES(?,?,'DONE',0,0,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                         state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
-                         leased_until=NULL,lease_token=NULL,last_error=NULL""",
-                    (STORE_KEY, url, now, now),
-                )
+
+            if deadline is not None and time.monotonic() >= deadline:
+                raise FeedImportError("notino_feed_import_timeout")
+
+            # Migrate legacy variant identities in one indexed statement.
+            # Do not overwrite a CJ identity that already exists for the URL.
             timed_execute(
+                "legacy_variant_updates",
+                """UPDATE store_product_variants AS current
+                   SET variant_key=(
+                       SELECT notino_stage.offers.variant_key FROM notino_stage.offers
+                       WHERE notino_stage.offers.url=current.url
+                         AND notino_stage.offers.legacy_variant_key=current.variant_key
+                       LIMIT 1
+                   )
+                   WHERE current.store=?
+                     AND EXISTS (
+                         SELECT 1 FROM notino_stage.offers
+                         WHERE notino_stage.offers.url=current.url
+                           AND notino_stage.offers.legacy_variant_key=current.variant_key
+                     )
+                     AND NOT EXISTS (
+                         SELECT 1 FROM store_product_variants AS existing
+                         WHERE existing.store=current.store
+                           AND existing.url=current.url
+                           AND existing.variant_key=(
+                               SELECT notino_stage.offers.variant_key FROM notino_stage.offers
+                               WHERE notino_stage.offers.url=current.url
+                                 AND notino_stage.offers.legacy_variant_key=current.variant_key
+                               LIMIT 1
+                           )
+                     )""",
+                (STORE_KEY,),
+            )
+
+            timed_execute(
+                "store_urls",
+                """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                   SELECT ?,url,MIN(slug),NULL,?,1 FROM notino_stage.offers
+                   WHERE 1 GROUP BY url
+                   ON CONFLICT(store,url) DO UPDATE SET
+                     slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
+                (STORE_KEY, now),
+            )
+
+            timed_execute(
+                "store_product_variants",
+                """INSERT INTO store_product_variants(
+                       store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                       concentration,gender,price,currency,availability,fetched_at,variant_url)
+                   SELECT ?,url,variant_key,title,brand,image,sku,gtin,mpn,size_ml,
+                          concentration,NULL,price,currency,availability,?,COALESCE(affiliate_url,url)
+                   FROM notino_stage.offers WHERE 1
+                   ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                     name=excluded.name,brand=excluded.brand,image=excluded.image,
+                     sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                     size_ml=excluded.size_ml,concentration=excluded.concentration,
+                     price=excluded.price,currency=excluded.currency,
+                     availability=excluded.availability,fetched_at=excluded.fetched_at,
+                     variant_url=excluded.variant_url""",
+                (STORE_KEY, now),
+            )
+
+            timed_execute(
+                "store_products",
+                """INSERT INTO store_products(
+                       store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,
+                       gender,price,currency,availability,fetched_at,fetch_status)
+                   SELECT ?,url,substr(group_concat(DISTINCT title),1,1500),
+                          substr(group_concat(DISTINCT brand),1,500),MAX(image),
+                          NULL,NULL,NULL,NULL,NULL,NULL,NULL,MAX(currency),
+                          'variant_catalog',?,'OK'
+                   FROM notino_stage.offers GROUP BY url
+                   ON CONFLICT(store,url) DO UPDATE SET
+                     name=excluded.name,brand=excluded.brand,image=excluded.image,
+                     sku=NULL,gtin=NULL,mpn=NULL,size_ml=NULL,concentration=NULL,
+                     gender=NULL,price=NULL,currency=excluded.currency,
+                     availability='variant_catalog',fetched_at=excluded.fetched_at,
+                     fetch_status='OK'""",
+                (STORE_KEY, now),
+            )
+
+            timed_execute(
+                "hydration_queue",
+                """INSERT INTO hydration_queue(
+                       store,url,state,priority,attempts,available_at,first_seen_at)
+                   SELECT ?,url,'DONE',0,0,?,? FROM notino_stage.offers WHERE 1 GROUP BY url
+                   ON CONFLICT(store,url) DO UPDATE SET
+                     state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
+                     leased_until=NULL,lease_token=NULL,last_error=NULL""",
+                (STORE_KEY, now, now),
+            )
+
+            timed_execute(
+                "sync_state",
                 """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                    VALUES(?,'FEED_IMPORTED',?,?,?,?,?)
                    ON CONFLICT(store) DO UPDATE SET status=excluded.status,
@@ -724,6 +741,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                        error=excluded.error""",
                 (STORE_KEY, started_at, time.time(), count, count, "source=cj_viv_authorized_xml"),
             )
+            if deadline is not None and time.monotonic() >= deadline:
+                raise FeedImportError("notino_feed_import_timeout")
             commit_wall, commit_cpu = time.monotonic(), time.process_time()
             conn.commit()
             if profile_enabled:
@@ -733,15 +752,14 @@ def _persist_staged_offers(stage, count, started_at, deadline):
         conn.close()
         if profile_enabled:
             LOGGER.info(
-                "Notino persistence profile: urls=%d variants=%d connect_wall=%.3fs connect_cpu=%.3fs "
+                "Notino persistence profile: variants=%d connect_wall=%.3fs connect_cpu=%.3fs "
                 "begin_immediate_wall=%.3fs begin_immediate_cpu=%.3fs phase_wall=%s phase_cpu=%s "
                 "statement_counts=%s total_wall=%.3fs total_cpu=%.3fs",
-                counters["urls"], counters["variants"], connect_wall_elapsed, connect_cpu_elapsed,
+                count, connect_wall_elapsed, connect_cpu_elapsed,
                 locals().get("lock_wall_elapsed", 0.0), locals().get("lock_cpu_elapsed", 0.0),
                 phase_wall, phase_cpu, statement_counts,
                 time.monotonic() - profile_started_wall, time.process_time() - profile_started_cpu,
             )
-
 
 def _import_stream(source, started_at, deadline=None):
     stats = {}
@@ -756,17 +774,21 @@ def _import_stream(source, started_at, deadline=None):
                 url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
                 title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
                 price REAL, currency TEXT, availability TEXT, image TEXT,
-                concentration TEXT, affiliate_url TEXT, PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
+                concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
+                PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
             with _xml_stream(source, deadline) as stream:
                 for offer in _parsed_offers(stream, stats):
                     if deadline is not None and time.monotonic() >= deadline:
                         raise FeedImportError("notino_feed_import_timeout")
                     stage.execute(
-                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
                          offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
                          offer.currency, offer.availability, offer.image, offer.concentration,
-                         offer.affiliate_url),
+                         offer.affiliate_url, _legacy_variant_key({
+                             "size_ml": offer.size_ml, "gtin": offer.gtin,
+                             "sku": offer.sku, "external_id": offer.external_id,
+                         }), _slug(offer.url)),
                     )
             stage.commit()
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
