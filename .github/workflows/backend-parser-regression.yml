@@ -1,5 +1,9 @@
 name: Backend parser regression tests
 
+concurrency:
+  group: backend-parser-regression-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
