@@ -599,7 +599,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
         if not profile_enabled:
             return conn.execute(sql, parameters)
         normalized = " ".join(str(sql).lower().split())
-        table = next((name for name in statement_counts if name != "other" and name in normalized), "other")
+        table = next((name for name in ("legacy_variant_updates", "store_urls", "store_product_variants", "store_products", "hydration_queue", "sync_state") if name in normalized), "other")
         wall, cpu = time.monotonic(), time.process_time()
         try:
             return conn.execute(sql, parameters)
@@ -621,7 +621,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             conn.execute("BEGIN IMMEDIATE")
             lock_wall_elapsed = time.monotonic() - lock_wall
             lock_cpu_elapsed = time.process_time() - lock_cpu
-            previous = conn.execute(
+            previous = timed_execute(
                 "SELECT discovered_count, finished_at FROM sync_state WHERE store=? AND status='FEED_IMPORTED'",
                 (STORE_KEY,),
             ).fetchone()
@@ -638,7 +638,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 counters["urls"] += 1
                 if deadline is not None and time.monotonic() >= deadline:
                     raise FeedImportError("notino_feed_import_timeout")
-                conn.execute(
+                timed_execute(
                     """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
                        VALUES(?,?,?,?,?,1)
                        ON CONFLICT(store,url) DO UPDATE SET
@@ -660,7 +660,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                         brand_length += len(offer["brand"]) + 3
                     legacy_key = _legacy_variant_key(offer)
                     if legacy_key:
-                        conn.execute(
+                        timed_execute(
                             """UPDATE store_product_variants SET variant_key=?
                                WHERE store=? AND url=? AND variant_key=?
                                  AND NOT EXISTS (
@@ -670,7 +670,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                             (offer["variant_key"], STORE_KEY, url, legacy_key,
                              STORE_KEY, url, offer["variant_key"]),
                         )
-                    conn.execute(
+                    timed_execute(
                         """INSERT INTO store_product_variants(
                                store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
                                concentration,gender,price,currency,availability,fetched_at,variant_url)
@@ -690,7 +690,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                             offer["affiliate_url"] or url,
                         ),
                     )
-                conn.execute(
+                timed_execute(
                     """INSERT INTO store_products(
                            store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,
                            gender,price,currency,availability,fetched_at,fetch_status)
@@ -706,7 +706,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                         None, None, representative["currency"], 'variant_catalog', now,
                     ),
                 )
-                conn.execute(
+                timed_execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,priority,attempts,available_at,first_seen_at)
                        VALUES(?,?,'DONE',0,0,?,?)
@@ -715,7 +715,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                          leased_until=NULL,lease_token=NULL,last_error=NULL""",
                     (STORE_KEY, url, now, now),
                 )
-            conn.execute(
+            timed_execute(
                 """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                    VALUES(?,'FEED_IMPORTED',?,?,?,?,?)
                    ON CONFLICT(store) DO UPDATE SET status=excluded.status,
