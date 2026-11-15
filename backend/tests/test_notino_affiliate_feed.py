@@ -152,6 +152,19 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 feed._import_stream(io.BytesIO(SAMPLE), 0, deadline=0)
             persist.assert_not_called()
 
+    def test_imported_offer_is_searchable_in_catalog(self):
+        import catalog_engine
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.sqlite"
+            with patch.object(catalog_engine, "DB_PATH", path), patch.object(catalog_engine, "_SCHEMA_READY", False):
+                conn = catalog_engine.db()
+                conn.close()
+                feed.import_feed_bytes(SAMPLE)
+                rows = catalog_engine._search_local_impl("French Avenue Liquid Brun", per_store=32)
+                self.assertTrue(any(row.get("store_key") == "notino" and row.get("price_num") == 49.9
+                                    for row in rows))
+
     def test_invalid_feeds_fail_closed(self):
         cases = [
             (b"", "notino_feed_empty"),
