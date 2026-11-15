@@ -45,7 +45,7 @@ with tempfile.TemporaryFile() as source:
     with tempfile.TemporaryFile() as transport, tempfile.TemporaryFile() as errors:
         result = subprocess.run(
             ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", command],
-            stdout=transport, stderr=errors, timeout=300, check=False,
+            stdout=transport, stderr=errors, timeout=1200, check=False,
         )
         if result.returncode:
             raise RuntimeError(f"fly_feed_download_failed:exit={result.returncode}")
@@ -102,7 +102,7 @@ def stage_feed(source, download_bytes, started):
             db = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
             try:
                 db.execute("CREATE TABLE offers(url TEXT, variant_key TEXT, PRIMARY KEY(url, variant_key)) WITHOUT ROWID")
-                with feed._xml_stream(source, time.monotonic() + 300) as stream:
+                with feed._xml_stream(source, time.monotonic() + 18 * 60) as stream:
                     for offer in feed._parsed_offers(stream, stats):
                         db.execute("INSERT OR IGNORE INTO offers VALUES(?,?)",
                                    (offer.url, feed._stable_variant_key(offer)))
