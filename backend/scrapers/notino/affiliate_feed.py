@@ -70,23 +70,28 @@ def _local(tag: str) -> str:
     return str(tag or "").rsplit("}", 1)[-1].lower()
 
 
-def _values(node: ET.Element, names: Iterable[str]) -> list[str]:
-    wanted = {name.lower() for name in names}
-    found = []
-    for child in list(node):
-        if _local(child.tag) in wanted:
-            text = (child.text or "").strip()
-            if text:
-                found.append(text)
-            elif _local(child.tag) == "link":
-                href = str(child.attrib.get("href") or "").strip()
-                if href:
-                    found.append(href)
-    return found
+def _field_map(node: ET.Element) -> dict[str, list[str]]:
+    """Read each product's direct children once instead of rescanning per field."""
+    fields: dict[str, list[str]] = {}
+    for child in node:
+        name = _local(child.tag)
+        value = (child.text or "").strip()
+        if not value and name == "link":
+            value = str(child.attrib.get("href") or "").strip()
+        if value:
+            fields.setdefault(name, []).append(value)
+    return fields
 
 
-def _first(node: ET.Element, *names: str) -> str:
-    values = _values(node, names)
+def _values(node: ET.Element, names: Iterable[str],
+            fields: dict[str, list[str]] | None = None) -> list[str]:
+    source = fields if fields is not None else _field_map(node)
+    return [value for name in names for value in source.get(name.lower(), ())]
+
+
+def _first(node: ET.Element, *names: str,
+           fields: dict[str, list[str]] | None = None) -> str:
+    values = _values(node, names, fields)
     return values[0] if values else ""
 
 
@@ -280,13 +285,6 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
         availability = "unknown"
 
     raw_link = _first(item, "link", "url", "producturl")
-    if not raw_link:
-        # Atom <link href="..."/> contains its destination as an attribute.
-        for child in list(item):
-            if _local(child.tag) == "link" and child.attrib.get("href"):
-                raw_link = str(child.attrib["href"]).strip()
-                break
-
     raw_size = _first(item, "size", "volume", "capacity", "product_size", "g:size")
     size_ml = _size_ml(raw_size, title)  # explicit field is preferred
     image = _first(item, "image_link", "image", "imageurl", "g:image_link")
@@ -430,7 +428,8 @@ def _parsed_offers(stream, stats):
     }
     for node in _feed_items(stream):
         candidate_count += 1
-        offer = _parse_item(node)
+        fields = _field_map(node)
+        offer = _parse_item(node, fields)
         if offer is not None:
             valid_items += 1
             valid_links += 1
@@ -445,11 +444,6 @@ def _parsed_offers(stream, stats):
         price, currency = _money(raw_price)
         currency = currency or _first(node, "currency", "pricecurrency").upper()
         raw_link = _first(node, "link", "url", "producturl")
-        if not raw_link:
-            for child in list(node):
-                if _local(child.tag) == "link" and child.attrib.get("href"):
-                    raw_link = str(child.attrib["href"]).strip()
-                    break
         if not title:
             rejected["missing_title"] += 1
         if not brand:
