@@ -81,6 +81,7 @@ jobs:
           }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
 
           if not is_fresh_feed(before):
+              import_started_at = time.time()
               import collections
               import io
               import zipfile
@@ -133,7 +134,7 @@ jobs:
                   catalog_engine._set_sync_state(
                       "notino",
                       "FEED_IMPORTED",
-                      started_at=finished_at,
+                      started_at=import_started_at,
                       finished_at=finished_at,
                       discovered_count=imported,
                       fetched_count=imported,
