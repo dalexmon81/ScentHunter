@@ -185,6 +185,18 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(feed._product_url("http://www.notino.fr/brand/item/"))
         self.assertIsNone(feed._product_url("https://user:pass@www.notino.fr/brand/item/"))
 
+    def test_brand_slugs_are_not_rejected_as_reserved_route_prefixes(self):
+        self.assertEqual(
+            feed._product_url("https://www.notino.fr/parfums-de-marly/percival/"),
+            "https://www.notino.fr/parfums-de-marly/percival/",
+        )
+        self.assertEqual(
+            feed._product_url("https://www.notino.fr/carthusia/mediterraneo/"),
+            "https://www.notino.fr/carthusia/mediterraneo/",
+        )
+        self.assertIsNone(feed._product_url("https://www.notino.fr/parfums/"))
+        self.assertIsNone(feed._product_url("https://www.notino.fr/cart/"))
+
     def test_cj_click_url_resolves_notino_product_and_preserves_affiliate_link(self):
         click_url = (
             "https://www.anrdoezrs.net/click-101918103-13485502"
