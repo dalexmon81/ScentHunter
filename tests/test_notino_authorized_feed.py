@@ -122,3 +122,21 @@ def test_no_credentials_fail_without_logging_values(monkeypatch, caplog):
         with pytest.raises(feed.FeedImportError, match="notino_feed_credentials_missing"):
             feed.import_configured_feed()
     assert "NOTINO_CJ_FEED_PASSWORD" not in caplog.text
+
+
+def test_rejected_feed_reports_safe_link_and_field_shapes_only():
+    payload = b"""<rss xmlns:g="http://base.google.com/ns/1.0"><channel>
+      <item><g:title>Secret Product Name 100 ml</g:title><g:brand>Secret Brand</g:brand>
+        <g:price>25.00 EUR</g:price><g:availability>in stock</g:availability>
+        <g:link>https://tracking.example.test/click-123-456?url=https%3A%2F%2Fnotino.fr%2Fsecret%2Fproduct</g:link>
+      </item>
+    </channel></rss>"""
+    with pytest.raises(feed.FeedImportError) as raised:
+        feed.parse_feed(payload)
+    message = str(raised.value)
+    assert "tracking.example.test|https:cj_click|url=1" in message
+    assert "title+brand+price+availability+link" in message
+    assert "Secret Product Name" not in message
+    assert "Secret Brand" not in message
+    assert "secret/product" not in message
+    assert "click-123-456" not in message
