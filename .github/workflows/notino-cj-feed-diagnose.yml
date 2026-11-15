@@ -45,7 +45,7 @@ jobs:
               link_shapes = collections.Counter()
               item_count = 0
               root_name = None
-              stack = []
+              element_stack = []
               candidate_names = {
                   "link", "url", "producturl", "deep_link", "deeplink",
                   "buy_url", "buyurl", "mobile_link", "canonical_link",
@@ -57,7 +57,7 @@ jobs:
                       if event == "start":
                           if root_name is None:
                               root_name = name
-                          stack.append(name)
+                          element_stack.append(node)
                           continue
                       if name in {"item", "entry", "product", "offer"}:
                           item_count += 1
@@ -66,7 +66,7 @@ jobs:
                                   continue
                               tag = feed._local(child.tag)
                               if child.text and child.text.strip():
-                                  path = "/".join(stack + [tag])
+                                  path = "/".join(feed._local(part.tag) for part in element_stack) + "/" + tag
                                   paths[path] += 1
                               if tag in candidate_names:
                                   raw = (child.text or child.attrib.get("href") or "").strip()
@@ -82,9 +82,12 @@ jobs:
                                           "query_keys": list(keys),
                                       }
                                       link_shapes[json.dumps(shape, sort_keys=True)] += 1
-                          node.clear()
-                      if stack:
-                          stack.pop()
+                          if name in {"item", "entry", "product", "offer"}:
+                              if len(element_stack) > 1:
+                                  element_stack[-2].remove(node)
+                              node.clear()
+                          if element_stack:
+                              element_stack.pop()
               print("NOTINO_CJ_STREAM_DIAGNOSTIC=" + json.dumps({
                   "items": item_count,
                   "download_bytes": downloaded,
