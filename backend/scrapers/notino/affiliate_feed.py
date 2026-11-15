@@ -724,6 +724,11 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                        error=excluded.error""",
                 (STORE_KEY, started_at, time.time(), count, count, "source=cj_viv_authorized_xml"),
             )
+            commit_wall, commit_cpu = time.monotonic(), time.process_time()
+            conn.commit()
+            if profile_enabled:
+                phase_wall["commit"] = time.monotonic() - commit_wall
+                phase_cpu["commit"] = time.process_time() - commit_cpu
     finally:
         conn.close()
         if profile_enabled:
