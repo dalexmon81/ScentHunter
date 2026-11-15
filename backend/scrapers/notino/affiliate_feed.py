@@ -86,7 +86,8 @@ def _field_map(node: ET.Element) -> dict[str, list[str]]:
 def _values(node: ET.Element, names: Iterable[str],
             fields: dict[str, list[str]] | None = None) -> list[str]:
     source = fields if fields is not None else _field_map(node)
-    return [value for name in names for value in source.get(name.lower(), ())]
+    wanted = {name.lower() for name in names}
+    return [value for name, values in source.items() if name in wanted for value in values]
 
 
 def _first(node: ET.Element, *names: str,
@@ -266,7 +267,7 @@ def _image_url(raw: str) -> str | None:
 
 def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) -> NotinoOffer | None:
     fields = fields if fields is not None else _field_map(item)
-    title = _first(item, "title", "name", "productname", fields=fields, fields=fields)
+    title = _first(item, "title", "name", "productname", fields=fields)
     brand = _first(item, "brand", "manufacturer", "vendor", fields=fields)
     external_id = _first(item, "id", "offerid", "productid", fields=fields)
     sku = _first(item, "sku", "g:id", fields=fields)
