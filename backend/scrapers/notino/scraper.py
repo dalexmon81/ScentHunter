@@ -1622,7 +1622,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
 
 
 def search(query: str) -> Dict[str, Any]:
-    """Return a verified feed-first Notino search report with public fallback."""
+    """Search the persistent authorized-feed catalog without live requests."""
     query = _clean(query)
     if not query:
         return {
@@ -1630,45 +1630,8 @@ def search(query: str) -> Dict[str, Any]:
             "error": None, "details": {"source": "notino", "empty_query": True},
         }
 
-    from . import affiliate_feed, legacy_public
-
-    feed_report = affiliate_feed.search_feed(query)
-    if isinstance(feed_report, dict) and feed_report.get("results"):
-        return feed_report
-
-    try:
-        public_rows = legacy_public.search(query)
-    except Exception as exc:
-        public_rows = []
-        public_error = f"{type(exc).__name__}:{exc}"
-    else:
-        public_error = None
-
-    if public_rows:
-        return {
-            "status": "success", "verified": True,
-            "results": [row for row in public_rows if isinstance(row, dict)],
-            "error": None,
-            "details": {"source": "notino_public_external_discovery"},
-        }
-
-    if isinstance(feed_report, dict):
-        report = dict(feed_report)
-        report.setdefault("status", "success")
-        report.setdefault("verified", True)
-        report.setdefault("results", [])
-        details = dict(report.get("details") or {})
-        details.setdefault("source", "cj_viv_authorized_xml")
-        report["details"] = details
-        if public_error:
-            report["details"]["public_fallback_error"] = public_error
-        return report
-
-    return {
-        "status": "unavailable", "verified": False, "results": [],
-        "error": public_error or "notino_search_unavailable",
-        "details": {"source": "notino_public_external_discovery"},
-    }
+    from . import affiliate_feed
+    return affiliate_feed.search_feed(query)
 
 
 def scrape(query: str) -> List[Dict[str, Any]]:

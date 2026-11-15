@@ -1,11 +1,6 @@
 name: Notino CJ Feed Import
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/notino-cj-feed-import.yml
   workflow_run:
     workflows:
       - Fly Deploy
@@ -27,7 +22,7 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -80,40 +75,6 @@ jobs:
               )
           }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
 
-          if not is_fresh_feed(before):
-              import_started_at = time.time()
-              import collections
-              import io
-              import zipfile
-              import xml.etree.ElementTree as ET
-              from scrapers.notino import affiliate_feed as notino_feed
-              payload = notino_feed._fetch_feed()
-              if zipfile.is_zipfile(io.BytesIO(payload)):
-                  with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-                      xml_name = next(name for name in archive.namelist() if name.lower().endswith('.xml'))
-                      payload = archive.read(xml_name)
-              root = ET.fromstring(payload)
-              items = [node for node in root.iter() if node.tag.rsplit('}', 1)[-1].lower() in {'item','entry','product'}]
-              tag_counts = collections.Counter()
-              host_counts = collections.Counter()
-              link_shapes = collections.Counter()
-              for item in items:
-                  for child in list(item):
-                      tag = child.tag.rsplit('}', 1)[-1].lower()
-                      tag_counts[tag] += 1
-                      if tag in {'link','url','producturl','deep_link','deeplink','buy_url'}:
-                          raw = (child.text or child.attrib.get('href') or '').strip()
-                          parsed = __import__('urllib.parse', fromlist=['urlparse']).urlparse(raw)
-                          host_counts[(parsed.hostname or 'NO_HOST').lower()] += 1
-                          keys = tuple(sorted(__import__('urllib.parse', fromlist=['parse_qs']).parse_qs(parsed.query).keys()))
-                          link_shapes[(parsed.scheme or 'NO_SCHEME', parsed.path.split('/')[1] if parsed.path.count('/') > 1 else '/', keys)] += 1
-              print('NOTINO_CJ_SCHEMA=' + json.dumps({
-                  'items': len(items),
-                  'field_names': dict(tag_counts.most_common(40)),
-                  'link_hosts': dict(host_counts.most_common(15)),
-                  'link_shapes': [{'scheme': k[0], 'first_path_segment': k[1], 'query_keys': list(k[2]), 'count': v} for k,v in link_shapes.most_common(12)],
-              }, ensure_ascii=False), flush=True)
-
           result = None
           if is_fresh_feed(before):
               result = {
@@ -122,29 +83,15 @@ jobs:
                   "source": "cj_viv_authorized_xml",
               }
           else:
-              # Import the exact payload already downloaded and inspected above.
-              # Do not call discover_store(): it downloads the 78k-item feed again
-              # and silently falls back to public crawling when CJ import fails.
+              import resource
+              from scrapers.notino import affiliate_feed as notino_feed
+              started = time.monotonic()
               try:
-                  report = notino_feed.import_feed_bytes(payload)
+                  report = notino_feed.import_configured_feed()
                   imported = int(report.get("imported_offers") or 0)
                   if imported <= 0:
                       raise RuntimeError("CJ parser returned zero imported offers")
-                  finished_at = time.time()
-                  catalog_engine._set_sync_state(
-                      "notino",
-                      "FEED_IMPORTED",
-                      started_at=import_started_at,
-                      finished_at=finished_at,
-                      discovered_count=imported,
-                      fetched_count=imported,
-                      error="source=cj_viv_authorized_xml",
-                  )
-                  result = {
-                      "status": "FEED_IMPORTED",
-                      "count": imported,
-                      "source": "cj_viv_authorized_xml",
-                  }
+                  result = {"status": "FEED_IMPORTED", **report}
               except Exception as exc:
                   print(
                       "NOTINO_IMPORT_FAILED="
@@ -155,6 +102,11 @@ jobs:
                       flush=True,
                   )
                   raise
+              finally:
+                  print("NOTINO_IMPORT_RESOURCES=" + json.dumps({
+                      "elapsed_seconds": round(time.monotonic() - started, 2),
+                      "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                  }), flush=True)
 
           after = state()
           print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
@@ -173,7 +125,20 @@ jobs:
               persisted = verify.execute(
                   "SELECT COUNT(*) FROM store_product_variants "
                   "WHERE store=? AND fetched_at>=?",
-                  ("notino", float(after["finished_at"]) - 60),
+                  ("notino", float(after["started_at"])),
+              ).fetchone()[0]
+              totals = verify.execute(
+                  "SELECT COUNT(*), "
+                  "SUM(CASE WHEN COALESCE(TRIM(name),'')='' OR COALESCE(TRIM(brand),'')='' "
+                  "OR price IS NULL OR price<=0 OR COALESCE(currency,'')!='EUR' "
+                  "OR COALESCE(availability,'') NOT IN ('in_stock','out_of_stock','preorder') "
+                  "OR url NOT LIKE 'https://www.notino.fr/%' THEN 1 ELSE 0 END), "
+                  "SUM(CASE WHEN size_ml IS NOT NULL THEN 1 ELSE 0 END) "
+                  "FROM store_product_variants WHERE store=? AND fetched_at>=?",
+                  ("notino", float(after["started_at"])),
+              ).fetchone()
+              all_variants = verify.execute(
+                  "SELECT COUNT(*) FROM store_product_variants WHERE store=?", ("notino",)
               ).fetchone()[0]
               urls = verify.execute(
                   "SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1",
@@ -183,11 +148,21 @@ jobs:
               verify.close()
           print("NOTINO_PERSISTED_VERIFY=" + json.dumps({
               "fresh_variant_rows": int(persisted),
+              "all_variant_rows": int(all_variants),
+              "invalid_fresh_variants": int(totals[1] or 0),
+              "fresh_variants_with_size": int(totals[2] or 0),
               "active_product_urls": int(urls),
               "reported_imported_offers": int(after.get("discovered_count") or 0),
           }), flush=True)
-          if int(persisted) <= 0 or int(urls) <= 0:
+          if (int(persisted) != int(after.get("discovered_count") or 0)
+                  or int(urls) <= 0 or int(totals[1] or 0)):
               raise SystemExit("Notino import state exists but no persisted variant/product rows were verified.")
+          results = catalog_engine._search_local_impl("Dior Sauvage", per_store=64)
+          matches = [item for item in results if item.get("store_key") == "notino"
+                     and float(item.get("fetched_at") or 0) >= float(after["started_at"])]
+          print("NOTINO_CATALOG_SEARCH=" + json.dumps({"query": "Dior Sauvage", "matches": len(matches)}), flush=True)
+          if not matches:
+              raise SystemExit("Catalog search did not return a newly imported Notino offer.")
           print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
           PY
           )

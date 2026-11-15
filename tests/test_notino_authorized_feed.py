@@ -103,7 +103,7 @@ def test_all_rejected_items_report_aggregate_field_diagnostics():
     assert "invalid_or_missing_price=1" in message
     assert "currency_not_eur=1" in message
     assert "invalid_or_missing_fr_product_url=1" in message
-    assert "missing_size_ml=0" in message
+    assert "invalid_or_missing_availability=2" in message
     assert "Perfume" not in message
     assert "notino.de" not in message
 
