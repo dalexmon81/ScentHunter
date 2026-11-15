@@ -32,14 +32,12 @@ other store keys.
 
 ## Notino source policy
 
-Notino.fr first uses the authorized CJ/VIV XML feed when its credentials are
-configured. If the feed is unavailable, catalog discovery may use ordinary
-public Notino.fr navigation pages and product-page requests. Public requests
-must succeed normally and return verifiable product identity, price, currency,
-availability and size evidence. HTTP 403/429, challenge pages, timeouts or
-incomplete parses are failures; the integration must not bypass access
-controls or invent offers. The quality gate requires actual persisted Notino
-offers before the baseline can pass.
+Notino.fr uses the authorized CJ/VIV XML feed. The feed is downloaded and
+validated on temporary storage before its offers and sync state are published
+in one catalog transaction. A malformed feed or a drop of more than 10% from
+the previous successful import fails closed without replacing published data.
+Feed failures do not fall back to public discovery. The quality gate requires
+actual persisted Notino offers before the baseline can pass.
 
 ## CSV grain and quality
 

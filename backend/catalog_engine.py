@@ -3407,13 +3407,11 @@ def discover_store(store):
             notino_feed_error = str(exc)
             if not notino_feed_error.startswith('notino_feed_'):
                 notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
-        # Do not invent prices or bypass access controls. If the authorized feed
-        # is not configured, continue with ordinary public catalog discovery;
-        # individual product refreshes must still return HTTP 200 and valid offers.
         print(
-            f'NOTINO_FEED_UNAVAILABLE fallback=public_catalog reason={notino_feed_error}',
+            f'NOTINO_FEED_UNAVAILABLE reason={notino_feed_error}',
             flush=True,
         )
+        return {'status': 'FEED_ERROR', 'count': 0, 'error': notino_feed_error}
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):

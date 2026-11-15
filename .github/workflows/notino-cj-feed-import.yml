@@ -75,12 +75,6 @@ jobs:
               )
           }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
 
-          if not is_fresh_feed(before):
-              import_started_at = time.time()
-              from scrapers.notino import affiliate_feed as notino_feed
-              payload = notino_feed._fetch_feed()
-              print("NOTINO_CJ_DOWNLOAD=SUCCESS bytes=" + str(len(payload)), flush=True)
-
           result = None
           if is_fresh_feed(before):
               result = {
@@ -89,31 +83,15 @@ jobs:
                   "source": "cj_viv_authorized_xml",
               }
           else:
-              # Import the exact payload already downloaded and inspected above.
-              # Do not call discover_store(): it downloads the 78k-item feed again
-              # and silently falls back to public crawling when CJ import fails.
+              import resource
+              from scrapers.notino import affiliate_feed as notino_feed
+              started = time.monotonic()
               try:
-                  report = notino_feed.import_feed_bytes(payload)
+                  report = notino_feed.import_configured_feed()
                   imported = int(report.get("imported_offers") or 0)
                   if imported <= 0:
                       raise RuntimeError("CJ parser returned zero imported offers")
-                  finished_at = time.time()
-                  catalog_engine._set_sync_state(
-                      "notino",
-                      "FEED_IMPORTED",
-                      started_at=import_started_at,
-                      finished_at=finished_at,
-                      discovered_count=imported,
-                      fetched_count=imported,
-                      error="source=cj_viv_authorized_xml",
-                  )
-                  result = {
-                      "status": "FEED_IMPORTED",
-                      "count": imported,
-                      "source": "cj_viv_authorized_xml",
-                      "products_read": report["products_read"],
-                      "valid_links": report["valid_links"],
-                  }
+                  result = {"status": "FEED_IMPORTED", **report}
               except Exception as exc:
                   print(
                       "NOTINO_IMPORT_FAILED="
@@ -124,6 +102,11 @@ jobs:
                       flush=True,
                   )
                   raise
+              finally:
+                  print("NOTINO_IMPORT_RESOURCES=" + json.dumps({
+                      "elapsed_seconds": round(time.monotonic() - started, 2),
+                      "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                  }), flush=True)
 
           after = state()
           print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
@@ -155,7 +138,7 @@ jobs:
               "active_product_urls": int(urls),
               "reported_imported_offers": int(after.get("discovered_count") or 0),
           }), flush=True)
-          if int(persisted) <= 0 or int(urls) <= 0:
+          if int(persisted) != int(after.get("discovered_count") or 0) or int(urls) <= 0:
               raise SystemExit("Notino import state exists but no persisted variant/product rows were verified.")
           print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
           PY

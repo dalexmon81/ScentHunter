@@ -3,7 +3,11 @@ import gzip
 import io
 import zipfile
 import os
+import sqlite3
+import tempfile
+import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from scrapers.notino import affiliate_feed as feed
@@ -52,9 +56,13 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
     def test_streamed_items_report_all_links_and_reject_malformed_tail(self):
         stats = {}
         self.assertEqual(len(feed.parse_feed(SAMPLE, stats=stats)), 2)
-        self.assertEqual(stats, {"products_read": 4, "valid_links": 3})
+        self.assertEqual(stats["products_read"], 4)
+        self.assertEqual(stats["valid_links"], 3)
+        self.assertEqual(stats["valid_items"], 2)
+        self.assertEqual(stats["rejected_items"], 2)
+        self.assertEqual(stats["rejection_reasons"]["invalid_or_missing_price"], 1)
         malformed = SAMPLE.replace(b"</channel></rss>", b"</channel>")
-        with patch.object(feed, "_persist_offers") as persist:
+        with patch.object(feed, "_persist_staged_offers") as persist:
             with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_invalid_xml"):
                 feed.import_feed_bytes(malformed)
             persist.assert_not_called()
@@ -63,6 +71,78 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         item = SAMPLE.split(b"<item>", 1)[1].split(b"</item>", 1)[0]
         payload = b"<catalog xmlns:g='http://base.google.com/ns/1.0'><offer>" + item + b"</offer></catalog>"
         self.assertEqual(len(feed.parse_feed(payload)), 1)
+
+    def test_missing_size_is_valid_and_does_not_change_feed_identity(self):
+        unknown_size = SAMPLE.replace(b" 100 ml", b"").replace(b"<g:size>100 ml</g:size>", b"")
+        first = feed.parse_feed(unknown_size)[0]
+        second = feed.parse_feed(SAMPLE)[0]
+        self.assertIsNone(first.size_ml)
+        self.assertEqual(feed._stable_variant_key(first), feed._stable_variant_key(second))
+
+    def test_staging_publication_is_atomic_and_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.sqlite"
+            db = sqlite3.connect(path)
+            db.executescript("""
+                CREATE TABLE store_urls(store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+                    discovered_at REAL, active INTEGER, PRIMARY KEY(store,url));
+                CREATE TABLE store_products(store TEXT, url TEXT, name TEXT, brand TEXT,
+                    image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+                    concentration TEXT, gender TEXT, price REAL, currency TEXT,
+                    availability TEXT, fetched_at REAL, fetch_status TEXT, PRIMARY KEY(store,url));
+                CREATE TABLE store_product_variants(store TEXT, url TEXT, variant_key TEXT,
+                    name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
+                    size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
+                    availability TEXT, fetched_at REAL, variant_url TEXT,
+                    PRIMARY KEY(store,url,variant_key));
+                CREATE TABLE hydration_queue(store TEXT, url TEXT, state TEXT, priority INTEGER,
+                    attempts INTEGER, available_at REAL, first_seen_at REAL, leased_until REAL,
+                    lease_token TEXT, last_error TEXT, PRIMARY KEY(store,url));
+                CREATE TABLE sync_state(store TEXT PRIMARY KEY, status TEXT, started_at REAL,
+                    finished_at REAL, discovered_count INTEGER, fetched_count INTEGER, error TEXT);
+            """)
+            db.close()
+            with patch.dict("sys.modules", {"catalog_engine": types.SimpleNamespace(DB_PATH=path)}):
+                result = feed.import_feed_bytes(SAMPLE)
+                self.assertEqual(result["imported_offers"], 2)
+                self.assertEqual(result["rejected_items"], 2)
+                db = sqlite3.connect(path)
+                db.execute("UPDATE store_product_variants SET variant_key=? WHERE size_ml=100",
+                           ("100ml:6291108730001",))
+                db.commit()
+                db.close()
+                feed.import_feed_bytes(SAMPLE)
+                db = sqlite3.connect(path)
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM store_product_variants").fetchone()[0], 2)
+                before = db.execute("SELECT * FROM sync_state").fetchall()
+                db.close()
+                partial = SAMPLE.replace(b"69.90 EUR", b"0 EUR")
+                with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_suspicious_offer_count"):
+                    feed.import_feed_bytes(partial)
+                with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_invalid_xml"):
+                    feed.import_feed_bytes(SAMPLE.replace(b"</channel></rss>", b"</channel>"))
+                db = sqlite3.connect(path)
+                self.assertEqual(db.execute("SELECT * FROM sync_state").fetchall(), before)
+                db.execute("""CREATE TRIGGER reject_second_variant BEFORE UPDATE ON store_product_variants
+                    WHEN NEW.name LIKE '%Limited Edition%'
+                    BEGIN SELECT RAISE(ABORT, 'injected failure'); END""")
+                db.commit()
+                db.close()
+                with self.assertRaises(sqlite3.IntegrityError):
+                    feed.import_feed_bytes(SAMPLE.replace(b"49,90 EUR", b"59,90 EUR"))
+                db = sqlite3.connect(path)
+                self.assertEqual(db.execute("SELECT * FROM sync_state").fetchall(), before)
+                self.assertEqual(db.execute("SELECT price FROM store_product_variants WHERE size_ml=100").fetchone()[0], 49.9)
+                db.close()
+
+    def test_incomplete_archives_and_unsafe_xml_fail_closed(self):
+        broken_gzip = gzip.compress(SAMPLE)[:-8]
+        unsafe = SAMPLE.replace(b"<rss", b'<!DOCTYPE rss [<!ENTITY x "x">]><rss', 1)
+        for payload in (broken_gzip, unsafe):
+            with self.subTest(payload=payload[:20]), patch.object(feed, "_persist_staged_offers") as persist:
+                with self.assertRaises(feed.FeedImportError):
+                    feed.import_feed_bytes(payload)
+                persist.assert_not_called()
 
     def test_invalid_feeds_fail_closed(self):
         cases = [

@@ -13,11 +13,15 @@ import hashlib
 import logging
 import os
 import re
+import sqlite3
+import tempfile
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
+from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from itertools import groupby
 from typing import Iterable
 
 import requests
@@ -50,7 +54,7 @@ class NotinoOffer:
     gtin: str | None
     sku: str | None
     mpn: str | None
-    size_ml: float
+    size_ml: float | None
     price: float
     currency: str
     availability: str
@@ -109,7 +113,8 @@ def _money(raw: str) -> tuple[Decimal | None, str]:
         return None, currency
     if not value.is_finite() or value <= 0:
         return None, currency
-    return value.quantize(Decimal("0.01")), currency
+    value = value.quantize(Decimal("0.01"))
+    return (value if value > 0 else None), currency
 
 
 def _size_ml(*values: str) -> float | None:
@@ -287,11 +292,11 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
                 break
 
     link, affiliate_url = _resolve_product_link(raw_link)
-    if not title or not brand or price is None or currency != "EUR" or not link or size_ml is None:
+    if not title or not brand or price is None or currency != "EUR" or not link or availability == "unknown":
         return None
     if not external_id:
         external_id = gtin or sku or hashlib.sha256(
-            f"{link}|{size_ml:g}|{title}".encode("utf-8")
+            f"{link}|{title}".encode("utf-8")
         ).hexdigest()[:24]
     return NotinoOffer(
         external_id=external_id.strip(),
@@ -311,13 +316,69 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
     )
 
 
-def _feed_items(raw: bytes):
+class _SafeXmlReader:
+    def __init__(self, stream):
+        self.stream = stream
+        self.size = 0
+        self.tail = b""
+
+    def read(self, size=-1):
+        chunk = self.stream.read(size)
+        self.size += len(chunk)
+        if self.size > MAX_DECOMPRESSED_BYTES:
+            raise FeedImportError("notino_feed_decompressed_too_large")
+        probe = self.tail + chunk
+        if b"\x00" in chunk or re.search(br"<!DOCTYPE|<!ENTITY", probe, re.I):
+            raise FeedImportError("notino_feed_unsafe_xml_declaration")
+        self.tail = probe[-16:]
+        return chunk
+
+
+@contextmanager
+def _xml_stream(source):
+    source.seek(0, os.SEEK_END)
+    size = source.tell()
+    source.seek(0)
+    if not size:
+        raise FeedImportError("notino_feed_empty")
+    if size > MAX_FEED_BYTES:
+        raise FeedImportError("notino_feed_too_large")
+    if zipfile.is_zipfile(source):
+        try:
+            with zipfile.ZipFile(source) as archive:
+                members = [info for info in archive.infolist()
+                           if not info.is_dir() and info.filename.casefold().endswith(".xml")]
+                if len(members) != 1:
+                    raise FeedImportError("notino_feed_zip_expected_one_xml")
+                if members[0].file_size > MAX_DECOMPRESSED_BYTES:
+                    raise FeedImportError("notino_feed_decompressed_too_large")
+                with archive.open(members[0]) as stream:
+                    yield _SafeXmlReader(stream)
+        except (OSError, EOFError, zipfile.BadZipFile, RuntimeError) as exc:
+            if isinstance(exc, FeedImportError):
+                raise
+            raise FeedImportError("notino_feed_invalid_zip") from None
+    else:
+        source.seek(0)
+        magic = source.read(2)
+        source.seek(0)
+        if magic == b"\x1f\x8b":
+            try:
+                with gzip.GzipFile(fileobj=source) as stream:
+                    yield _SafeXmlReader(stream)
+            except (OSError, EOFError):
+                raise FeedImportError("notino_feed_invalid_gzip") from None
+        else:
+            yield _SafeXmlReader(source)
+
+
+def _feed_items(stream):
     root = None
     root_name = ""
     stack = []
     count = 0
     try:
-        for event, node in ET.iterparse(io.BytesIO(raw), events=("start", "end")):
+        for event, node in ET.iterparse(stream, events=("start", "end")):
             if event == "start":
                 if root is None:
                     root = node
@@ -326,7 +387,10 @@ def _feed_items(raw: bytes):
                         raise FeedImportError("notino_feed_unrecognized_root")
                 stack.append(node)
                 continue
-            if _local(node.tag) in {"item", "entry", "product"}:
+            is_item = _local(node.tag) in {"item", "entry", "product"}
+            fallback = (root_name in {"catalog", "products", "productfeed"}
+                        and len(stack) == 2 and not count and len(node))
+            if is_item or fallback:
                 count += 1
                 yield node
                 if len(stack) > 1:
@@ -335,73 +399,29 @@ def _feed_items(raw: bytes):
             stack.pop()
     except ET.ParseError:
         raise FeedImportError("notino_feed_invalid_xml") from None
-    if not count and root_name in {"catalog", "products", "productfeed"}:
-        for node in list(root):
-            if len(list(node)):
-                count += 1
-                yield node
     if not count:
         raise FeedImportError("notino_feed_no_product_entries")
 
 
-def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
-    if not isinstance(data, (bytes, bytearray)) or not data:
-        raise FeedImportError("notino_feed_empty")
-    raw = bytes(data)
-    if len(raw) > MAX_FEED_BYTES:
-        raise FeedImportError("notino_feed_too_large")
-    if zipfile.is_zipfile(io.BytesIO(raw)):
-        try:
-            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-                members = [
-                    info for info in archive.infolist()
-                    if not info.is_dir() and info.filename.casefold().endswith(".xml")
-                ]
-                if len(members) != 1:
-                    raise FeedImportError("notino_feed_zip_expected_one_xml")
-                member = members[0]
-                if member.file_size > MAX_DECOMPRESSED_BYTES:
-                    raise FeedImportError("notino_feed_decompressed_too_large")
-                if archive.testzip() is not None:
-                    raise FeedImportError("notino_feed_invalid_zip_crc")
-                with archive.open(member) as stream:
-                    raw = stream.read(MAX_DECOMPRESSED_BYTES + 1)
-        except FeedImportError:
-            raise
-        except (OSError, EOFError, zipfile.BadZipFile, RuntimeError):
-            raise FeedImportError("notino_feed_invalid_zip") from None
-        if len(raw) > MAX_DECOMPRESSED_BYTES:
-            raise FeedImportError("notino_feed_decompressed_too_large")
-    elif raw[:2] == b"\x1f\x8b":
-        try:
-            decompressor = gzip.GzipFile(fileobj=io.BytesIO(raw))
-            raw = decompressor.read(MAX_DECOMPRESSED_BYTES + 1)
-            decompressor.close()
-        except (OSError, EOFError):
-            raise FeedImportError("notino_feed_invalid_gzip") from None
-        if len(raw) > MAX_DECOMPRESSED_BYTES:
-            raise FeedImportError("notino_feed_decompressed_too_large")
-    if not raw.strip():
-        raise FeedImportError("notino_feed_empty")
-    if re.search(br"<!DOCTYPE|<!ENTITY", raw, re.I):
-        raise FeedImportError("notino_feed_unsafe_xml_declaration")
-    parsed = []
+def _parsed_offers(stream, stats):
     candidate_count = 0
     valid_links = 0
+    valid_items = 0
     rejected = {
         "missing_title": 0,
         "missing_brand": 0,
         "invalid_or_missing_price": 0,
         "currency_not_eur": 0,
         "invalid_or_missing_fr_product_url": 0,
-        "missing_size_ml": 0,
+        "invalid_or_missing_availability": 0,
     }
-    for node in _feed_items(raw):
+    for node in _feed_items(stream):
         candidate_count += 1
         offer = _parse_item(node)
         if offer is not None:
-            parsed.append(offer)
+            valid_items += 1
             valid_links += 1
+            yield offer
             continue
 
         # Keep diagnostics aggregate-only: never include feed values, URLs,
@@ -417,7 +437,6 @@ def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
                 if _local(child.tag) == "link" and child.attrib.get("href"):
                     raw_link = str(child.attrib["href"]).strip()
                     break
-        raw_size = _first(node, "size", "volume", "capacity", "product_size", "g:size")
         if not title:
             rejected["missing_title"] += 1
         if not brand:
@@ -430,31 +449,36 @@ def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
             valid_links += 1
         else:
             rejected["invalid_or_missing_fr_product_url"] += 1
-        if _size_ml(raw_size, title) is None:
-            rejected["missing_size_ml"] += 1
+        if _first(node, "availability", "stock", "availabilitystatus").lower().strip() not in {
+            "in stock", "instock", "in_stock", "available", "limited availability",
+            "limitedavailability", "out of stock", "outofstock", "out_of_stock",
+            "sold out", "unavailable", "preorder", "pre-order",
+        }:
+            rejected["invalid_or_missing_availability"] += 1
 
-    if not parsed:
+    if not valid_items:
         detail = ";".join(f"{key}={value}" for key, value in rejected.items())
         raise FeedImportError(
             f"notino_feed_no_valid_priced_fr_offers:items={candidate_count};{detail}"
         )
-    # Identical feed duplicates are discarded; real size variants stay distinct.
+    stats.update(products_read=candidate_count, valid_links=valid_links,
+                 valid_items=valid_items, rejected_items=candidate_count - valid_items,
+                 rejection_reasons=rejected)
+
+
+def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
+    if not isinstance(data, (bytes, bytearray)) or not data:
+        raise FeedImportError("notino_feed_empty")
     unique = {}
-    for offer in parsed:
-        key = (
-            offer.external_id,
-            offer.url,
-            offer.size_ml,
-            offer.gtin or "",
-            offer.sku or "",
-        )
-        unique[key] = offer
-    if stats is not None:
-        stats.update(products_read=candidate_count, valid_links=valid_links)
+    counters = stats if stats is not None else {}
+    with _xml_stream(io.BytesIO(data)) as stream:
+        for offer in _parsed_offers(stream, counters):
+            key = (offer.external_id, offer.url, offer.size_ml, offer.gtin or "", offer.sku or "")
+            unique[key] = offer
     return list(unique.values())
 
 
-def _fetch_feed() -> bytes:
+def _download_feed(destination) -> int:
     feed_url = (
         os.environ.get("NOTINO_CJ_FEED_URL", "").strip()
         or DEFAULT_CJ_FEED_URL
@@ -504,7 +528,6 @@ def _fetch_feed() -> bytes:
         content_type = str(response.headers.get("Content-Type", "")).lower()
         if "html" in content_type:
             raise FeedImportError("notino_feed_returned_html_not_xml")
-        chunks = []
         size = 0
         for chunk in response.iter_content(chunk_size=64 * 1024):
             if not chunk:
@@ -512,11 +535,12 @@ def _fetch_feed() -> bytes:
             size += len(chunk)
             if size > MAX_FEED_BYTES:
                 raise FeedImportError("notino_feed_too_large")
-            chunks.append(chunk)
-        payload = b"".join(chunks)
-        if not payload:
+            destination.write(chunk)
+        if not size:
             raise FeedImportError("notino_feed_empty")
-        return payload
+        destination.flush()
+        destination.seek(0)
+        return size
     except FeedImportError:
         raise
     except requests.Timeout:
@@ -528,10 +552,22 @@ def _fetch_feed() -> bytes:
             response.close()
 
 
+def _fetch_feed() -> bytes:
+    output = io.BytesIO()
+    _download_feed(output)
+    return output.getvalue()
+
+
 def _stable_variant_key(offer: NotinoOffer) -> str:
-    identity = offer.gtin or offer.sku or offer.external_id
+    return "cj:" + hashlib.sha256(offer.external_id.encode("utf-8")).hexdigest()
+
+
+def _legacy_variant_key(offer) -> str | None:
+    if offer["size_ml"] is None:
+        return None
+    identity = offer["gtin"] or offer["sku"] or offer["external_id"]
     identity = re.sub(r"[^A-Za-z0-9._:-]+", "_", identity)[:100]
-    return f"{offer.size_ml:g}ml:{identity}"
+    return f"{offer['size_ml']:g}ml:{identity}"
 
 
 def _slug(url: str) -> str:
@@ -539,24 +575,25 @@ def _slug(url: str) -> str:
     return re.sub(r"[-_/]+", " ", path).strip().lower()
 
 
-def _persist_offers(offers: list[NotinoOffer]) -> int:
-    from catalog_engine import db
+def _persist_staged_offers(stage, count, started_at):
+    from catalog_engine import DB_PATH
+    from catalog_writer_lock import connect
 
-    conn = db()
+    conn = connect(DB_PATH, timeout=45)
     now = time.time()
-    grouped: dict[str, list[NotinoOffer]] = {}
-    for offer in offers:
-        grouped.setdefault(offer.url, []).append(offer)
     try:
         with conn:
-            for url, variants in grouped.items():
-                # Keep the parent URL searchable without creating an unqualified
-                # price. Every size/edition is persisted as a separate offer row.
-                names = list(dict.fromkeys(item.title for item in variants))
-                brands = list(dict.fromkeys(item.brand for item in variants))
-                representative = variants[0]
-                searchable_name = " | ".join(names)[:1500]
-                searchable_brand = " | ".join(brands)[:500]
+            conn.execute("BEGIN IMMEDIATE")
+            previous = conn.execute(
+                "SELECT discovered_count, finished_at FROM sync_state WHERE store=? AND status='FEED_IMPORTED'",
+                (STORE_KEY,),
+            ).fetchone()
+            if previous and previous[1] and float(previous[1]) >= started_at:
+                raise FeedImportError("notino_feed_newer_import_already_published")
+            if previous and previous[0] and count * 10 < int(previous[0]) * 9:
+                raise FeedImportError("notino_feed_suspicious_offer_count")
+            rows = stage.execute("SELECT * FROM offers ORDER BY url, variant_key")
+            for url, variants in groupby(rows, key=lambda row: row["url"]):
                 conn.execute(
                     """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
                        VALUES(?,?,?,?,?,1)
@@ -564,6 +601,50 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                          slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
                     (STORE_KEY, url, _slug(url), None, now),
                 )
+                names, brands = [], []
+                name_length = brand_length = 0
+                representative = None
+                for offer in variants:
+                    if representative is None:
+                        representative = offer
+                    if offer["title"] not in names and name_length < 1500:
+                        names.append(offer["title"])
+                        name_length += len(offer["title"]) + 3
+                    if offer["brand"] not in brands and brand_length < 500:
+                        brands.append(offer["brand"])
+                        brand_length += len(offer["brand"]) + 3
+                    legacy_key = _legacy_variant_key(offer)
+                    if legacy_key:
+                        conn.execute(
+                            """UPDATE store_product_variants SET variant_key=?
+                               WHERE store=? AND url=? AND variant_key=?
+                                 AND NOT EXISTS (
+                                     SELECT 1 FROM store_product_variants
+                                     WHERE store=? AND url=? AND variant_key=?
+                                 )""",
+                            (offer["variant_key"], STORE_KEY, url, legacy_key,
+                             STORE_KEY, url, offer["variant_key"]),
+                        )
+                    conn.execute(
+                        """INSERT INTO store_product_variants(
+                               store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                               concentration,gender,price,currency,availability,fetched_at,variant_url)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                           ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                             name=excluded.name,brand=excluded.brand,image=excluded.image,
+                             sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                             size_ml=excluded.size_ml,concentration=excluded.concentration,
+                             price=excluded.price,
+                             currency=excluded.currency,availability=excluded.availability,
+                             fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
+                        (
+                            STORE_KEY, url, offer["variant_key"], offer["title"],
+                            offer["brand"], offer["image"], offer["sku"], offer["gtin"], offer["mpn"],
+                            offer["size_ml"], offer["concentration"], None,
+                            offer["price"], offer["currency"], offer["availability"], now,
+                            offer["affiliate_url"] or url,
+                        ),
+                    )
                 conn.execute(
                     """INSERT INTO store_products(
                            store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,
@@ -575,32 +656,11 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                          price=NULL,currency=excluded.currency,availability='variant_catalog',
                          fetched_at=excluded.fetched_at,fetch_status='OK'""",
                     (
-                        STORE_KEY, url, searchable_name, searchable_brand,
-                        representative.image, None, None, None, None, None,
-                        None, None, representative.currency, 'variant_catalog', now,
+                        STORE_KEY, url, " | ".join(names)[:1500], " | ".join(brands)[:500],
+                        representative["image"], None, None, None, None, None,
+                        None, None, representative["currency"], 'variant_catalog', now,
                     ),
                 )
-                for offer in variants:
-                    conn.execute(
-                        """INSERT INTO store_product_variants(
-                               store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                               concentration,gender,price,currency,availability,fetched_at,variant_url)
-                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                           ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                             name=excluded.name,brand=excluded.brand,image=excluded.image,
-                             sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                             size_ml=excluded.size_ml,concentration=excluded.concentration,
-                             price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
-                             currency=excluded.currency,availability=excluded.availability,
-                             fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
-                        (
-                            STORE_KEY, url, _stable_variant_key(offer), offer.title,
-                            offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
-                            offer.size_ml, offer.concentration, None,
-                            offer.price, offer.currency, offer.availability, now,
-                            offer.affiliate_url or url,
-                        ),
-                    )
                 conn.execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,priority,attempts,available_at,first_seen_at)
@@ -610,15 +670,45 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                          leased_until=NULL,lease_token=NULL,last_error=NULL""",
                     (STORE_KEY, url, now, now),
                 )
+            conn.execute(
+                """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+                   VALUES(?,'FEED_IMPORTED',?,?,?,?,?)
+                   ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+                       started_at=excluded.started_at,finished_at=excluded.finished_at,
+                       discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+                       error=excluded.error""",
+                (STORE_KEY, started_at, time.time(), count, count, "source=cj_viv_authorized_xml"),
+            )
     finally:
         conn.close()
-    return len(offers)
 
-def import_feed_bytes(data: bytes) -> dict:
-    """Parse completely before opening the DB so malformed feeds cannot affect offers."""
+
+def _import_stream(source, started_at):
     stats = {}
-    offers = parse_feed(data, stats=stats)
-    count = _persist_offers(offers)
+    with tempfile.TemporaryDirectory(prefix="notino-feed-") as directory:
+        stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
+        stage.row_factory = sqlite3.Row
+        try:
+            stage.execute("""CREATE TABLE offers(
+                url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
+                title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
+                price REAL, currency TEXT, availability TEXT, image TEXT,
+                concentration TEXT, affiliate_url TEXT, PRIMARY KEY(url, variant_key))""")
+            with _xml_stream(source) as stream:
+                for offer in _parsed_offers(stream, stats):
+                    stage.execute(
+                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
+                         offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
+                         offer.currency, offer.availability, offer.image, offer.concentration,
+                         offer.affiliate_url),
+                    )
+            stage.commit()
+            count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
+            stats["duplicate_items"] = stats["valid_items"] - count
+            _persist_staged_offers(stage, count, started_at)
+        finally:
+            stage.close()
     LOGGER.info("Notino authorized feed import completed: offers=%d", count)
     return {
         "ok": True,
@@ -629,10 +719,20 @@ def import_feed_bytes(data: bytes) -> dict:
     }
 
 
+def import_feed_bytes(data: bytes) -> dict:
+    if not isinstance(data, (bytes, bytearray)) or not data:
+        raise FeedImportError("notino_feed_empty")
+    return _import_stream(io.BytesIO(data), time.time())
+
+
 def import_configured_feed() -> dict:
-    """Fetch/import from env config. Diagnostics deliberately omit URL and credentials."""
-    payload = _fetch_feed()
-    return import_feed_bytes(payload)
+    """Download and validate on temporary storage before atomic publication."""
+    started_at = time.time()
+    with tempfile.TemporaryFile() as source:
+        download_bytes = _download_feed(source)
+        report = _import_stream(source, started_at)
+    report["download_bytes"] = download_bytes
+    return report
 
 
 def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
