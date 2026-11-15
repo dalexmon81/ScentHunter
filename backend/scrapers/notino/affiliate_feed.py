@@ -7,6 +7,7 @@ without assuming a fixed namespace prefix or a specific feed URL.
 from __future__ import annotations
 
 import gzip
+from collections import Counter
 import io
 import zipfile
 import hashlib
@@ -411,6 +412,24 @@ def _feed_items(stream):
         raise FeedImportError("notino_feed_no_product_entries")
 
 
+def _safe_link_shape(raw: str) -> tuple[str, str, str]:
+    """Return aggregate-only URL metadata; never expose URL values or path slugs."""
+    parsed = urllib.parse.urlparse(str(raw or "").strip())
+    host = (parsed.hostname or "").lower().rstrip(".") or "missing"
+    scheme = parsed.scheme.lower() or "missing"
+    path = parsed.path or ""
+    if not path:
+        path_kind = "no_path"
+    elif re.fullmatch(r"/click-\\d+-\\d+/?", path, re.I):
+        path_kind = "cj_click"
+    elif path == "/":
+        path_kind = "root"
+    else:
+        path_kind = f"other_segments_{len([part for part in path.split('/') if part])}"
+    query_keys = ",".join(sorted({key.lower()[:32] for key in urllib.parse.parse_qs(parsed.query, keep_blank_values=True)}))
+    return host[:80], f"{scheme}:{path_kind}", query_keys[:120] or "none"
+
+
 def _parsed_offers(stream, stats):
     candidate_count = 0
     valid_links = 0
@@ -423,9 +442,14 @@ def _parsed_offers(stream, stats):
         "invalid_or_missing_fr_product_url": 0,
         "invalid_or_missing_availability": 0,
     }
+    link_shapes = Counter()
+    field_shapes = Counter()
     for node in _feed_items(stream):
         candidate_count += 1
         fields = _field_map(node)
+        field_shapes.update(["+".join(sorted(fields.keys()))[:240] or "no_fields"])
+        raw_link_for_shape = _first(node, "link", "url", "producturl", fields=fields)
+        link_shapes.update(["|".join(_safe_link_shape(raw_link_for_shape))])
         offer = _parse_item(node, fields)
         if offer is not None:
             valid_items += 1
@@ -462,8 +486,17 @@ def _parsed_offers(stream, stats):
 
     if not valid_items:
         detail = ";".join(f"{key}={value}" for key, value in rejected.items())
+        # Bounded aggregate shapes reveal feed link conventions without leaking
+        # product names, complete URLs, query values, or credentials.
+        link_summary = ",".join(
+            f"{shape}={count}" for shape, count in link_shapes.most_common(8)
+        ) or "none"
+        field_summary = ",".join(
+            f"{shape}={count}" for shape, count in field_shapes.most_common(5)
+        ) or "none"
         raise FeedImportError(
-            f"notino_feed_no_valid_priced_fr_offers:items={candidate_count};{detail}"
+            f"notino_feed_no_valid_priced_fr_offers:items={candidate_count};{detail};"
+            f"link_shapes=[{link_summary}];field_shapes=[{field_summary}]"
         )
     stats.update(products_read=candidate_count, valid_links=valid_links,
                  valid_items=valid_items, rejected_items=candidate_count - valid_items,
