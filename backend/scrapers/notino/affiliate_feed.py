@@ -33,6 +33,7 @@ MARKET_HOST = "www.notino.fr"
 TIMEOUT = (5.0, 30.0)
 MAX_FEED_BYTES = 256 * 1024 * 1024
 MAX_DECOMPRESSED_BYTES = 512 * 1024 * 1024
+MAX_IMPORT_SECONDS = 10 * 60
 USER_AGENT = "ScentHunter/authorized-affiliate-feed (+price-comparison)"
 # CJ HTTP/S subscription configured for the accepted NOTINO.fr product export.
 DEFAULT_CJ_FEED_URL = (
@@ -317,12 +318,15 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
 
 
 class _SafeXmlReader:
-    def __init__(self, stream):
+    def __init__(self, stream, deadline=None):
         self.stream = stream
+        self.deadline = deadline
         self.size = 0
         self.tail = b""
 
     def read(self, size=-1):
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise FeedImportError("notino_feed_import_timeout")
         chunk = self.stream.read(size)
         self.size += len(chunk)
         if self.size > MAX_DECOMPRESSED_BYTES:
@@ -335,7 +339,7 @@ class _SafeXmlReader:
 
 
 @contextmanager
-def _xml_stream(source):
+def _xml_stream(source, deadline=None):
     source.seek(0, os.SEEK_END)
     size = source.tell()
     source.seek(0)
@@ -353,7 +357,7 @@ def _xml_stream(source):
                 if members[0].file_size > MAX_DECOMPRESSED_BYTES:
                     raise FeedImportError("notino_feed_decompressed_too_large")
                 with archive.open(members[0]) as stream:
-                    yield _SafeXmlReader(stream)
+                    yield _SafeXmlReader(stream, deadline)
         except (OSError, EOFError, zipfile.BadZipFile, RuntimeError) as exc:
             if isinstance(exc, FeedImportError):
                 raise
@@ -365,11 +369,11 @@ def _xml_stream(source):
         if magic == b"\x1f\x8b":
             try:
                 with gzip.GzipFile(fileobj=source) as stream:
-                    yield _SafeXmlReader(stream)
+                    yield _SafeXmlReader(stream, deadline)
             except (OSError, EOFError):
                 raise FeedImportError("notino_feed_invalid_gzip") from None
         else:
-            yield _SafeXmlReader(source)
+            yield _SafeXmlReader(source, deadline)
 
 
 def _feed_items(stream):
@@ -377,6 +381,7 @@ def _feed_items(stream):
     root_name = ""
     stack = []
     count = 0
+    fallback_count = 0
     try:
         for event, node in ET.iterparse(stream, events=("start", "end")):
             if event == "start":
@@ -389,9 +394,13 @@ def _feed_items(stream):
                 continue
             is_item = _local(node.tag) in {"item", "entry", "product"}
             fallback = (root_name in {"catalog", "products", "productfeed"}
-                        and len(stack) == 2 and not count and len(node))
+                        and len(stack) == 2 and not is_item
+                        and count == fallback_count and len(node))
+            if is_item and fallback_count:
+                raise FeedImportError("notino_feed_mixed_item_shapes")
             if is_item or fallback:
                 count += 1
+                fallback_count += int(bool(fallback))
                 yield node
                 if len(stack) > 1:
                     stack[-2].remove(node)
@@ -478,7 +487,7 @@ def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
     return list(unique.values())
 
 
-def _download_feed(destination) -> int:
+def _download_feed(destination, deadline=None) -> int:
     feed_url = (
         os.environ.get("NOTINO_CJ_FEED_URL", "").strip()
         or DEFAULT_CJ_FEED_URL
@@ -530,6 +539,8 @@ def _download_feed(destination) -> int:
             raise FeedImportError("notino_feed_returned_html_not_xml")
         size = 0
         for chunk in response.iter_content(chunk_size=64 * 1024):
+            if deadline is not None and time.monotonic() >= deadline:
+                raise FeedImportError("notino_feed_import_timeout")
             if not chunk:
                 continue
             size += len(chunk)
@@ -575,11 +586,13 @@ def _slug(url: str) -> str:
     return re.sub(r"[-_/]+", " ", path).strip().lower()
 
 
-def _persist_staged_offers(stage, count, started_at):
+def _persist_staged_offers(stage, count, started_at, deadline):
     from catalog_engine import DB_PATH
     from catalog_writer_lock import connect
 
     conn = connect(DB_PATH, timeout=45)
+    if deadline is not None:
+        conn.set_progress_handler(lambda: int(time.monotonic() >= deadline), 10000)
     now = time.time()
     try:
         with conn:
@@ -594,6 +607,8 @@ def _persist_staged_offers(stage, count, started_at):
                 raise FeedImportError("notino_feed_suspicious_offer_count")
             rows = stage.execute("SELECT * FROM offers ORDER BY url, variant_key")
             for url, variants in groupby(rows, key=lambda row: row["url"]):
+                if deadline is not None and time.monotonic() >= deadline:
+                    raise FeedImportError("notino_feed_import_timeout")
                 conn.execute(
                     """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
                        VALUES(?,?,?,?,?,1)
@@ -683,7 +698,7 @@ def _persist_staged_offers(stage, count, started_at):
         conn.close()
 
 
-def _import_stream(source, started_at):
+def _import_stream(source, started_at, deadline=None):
     stats = {}
     with tempfile.TemporaryDirectory(prefix="notino-feed-") as directory:
         stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
@@ -694,8 +709,10 @@ def _import_stream(source, started_at):
                 title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
                 price REAL, currency TEXT, availability TEXT, image TEXT,
                 concentration TEXT, affiliate_url TEXT, PRIMARY KEY(url, variant_key))""")
-            with _xml_stream(source) as stream:
+            with _xml_stream(source, deadline) as stream:
                 for offer in _parsed_offers(stream, stats):
+                    if deadline is not None and time.monotonic() >= deadline:
+                        raise FeedImportError("notino_feed_import_timeout")
                     stage.execute(
                         """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
@@ -706,7 +723,7 @@ def _import_stream(source, started_at):
             stage.commit()
             count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
             stats["duplicate_items"] = stats["valid_items"] - count
-            _persist_staged_offers(stage, count, started_at)
+            _persist_staged_offers(stage, count, started_at, deadline)
         finally:
             stage.close()
     LOGGER.info("Notino authorized feed import completed: offers=%d", count)
@@ -728,9 +745,10 @@ def import_feed_bytes(data: bytes) -> dict:
 def import_configured_feed() -> dict:
     """Download and validate on temporary storage before atomic publication."""
     started_at = time.time()
+    deadline = time.monotonic() + MAX_IMPORT_SECONDS
     with tempfile.TemporaryFile() as source:
-        download_bytes = _download_feed(source)
-        report = _import_stream(source, started_at)
+        download_bytes = _download_feed(source, deadline)
+        report = _import_stream(source, started_at, deadline)
     report["download_bytes"] = download_bytes
     return report
 

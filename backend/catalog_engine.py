@@ -3395,11 +3395,6 @@ def discover_store(store):
             report = feed.import_configured_feed()
             count = int(report.get('imported_offers') or 0)
             if count:
-                _set_sync_state(
-                    store, 'FEED_IMPORTED', started_at=started_at,
-                    finished_at=time.time(), discovered_count=count, fetched_count=count,
-                    error='source=cj_viv_authorized_xml',
-                )
                 return {'status': 'FEED_IMPORTED', 'count': count,
                         'source': 'cj_viv_authorized_xml'}
             notino_feed_error = 'notino_feed_empty'

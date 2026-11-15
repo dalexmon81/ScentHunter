@@ -69,8 +69,10 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
 
     def test_catalog_with_nonstandard_item_tags_is_still_supported(self):
         item = SAMPLE.split(b"<item>", 1)[1].split(b"</item>", 1)[0]
-        payload = b"<catalog xmlns:g='http://base.google.com/ns/1.0'><offer>" + item + b"</offer></catalog>"
-        self.assertEqual(len(feed.parse_feed(payload)), 1)
+        payload = (b"<catalog xmlns:g='http://base.google.com/ns/1.0'><offer>" + item
+                   + b"</offer><offer>" + item.replace(b"LB100", b"OTHER")
+                   + b"</offer></catalog>")
+        self.assertEqual(len(feed.parse_feed(payload)), 2)
 
     def test_missing_size_is_valid_and_does_not_change_feed_identity(self):
         unknown_size = SAMPLE.replace(b" 100 ml", b"").replace(b"<g:size>100 ml</g:size>", b"")
@@ -143,6 +145,12 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 with self.assertRaises(feed.FeedImportError):
                     feed.import_feed_bytes(payload)
                 persist.assert_not_called()
+
+    def test_expired_import_never_publishes(self):
+        with patch.object(feed, "_persist_staged_offers") as persist:
+            with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_import_timeout"):
+                feed._import_stream(io.BytesIO(SAMPLE), 0, deadline=0)
+            persist.assert_not_called()
 
     def test_invalid_feeds_fail_closed(self):
         cases = [

@@ -127,6 +127,19 @@ jobs:
                   "WHERE store=? AND fetched_at>=?",
                   ("notino", float(after["started_at"])),
               ).fetchone()[0]
+              totals = verify.execute(
+                  "SELECT COUNT(*), "
+                  "SUM(CASE WHEN COALESCE(TRIM(name),'')='' OR COALESCE(TRIM(brand),'')='' "
+                  "OR price IS NULL OR price<=0 OR COALESCE(currency,'')!='EUR' "
+                  "OR COALESCE(availability,'') NOT IN ('in_stock','out_of_stock','preorder') "
+                  "OR url NOT LIKE 'https://www.notino.fr/%' THEN 1 ELSE 0 END), "
+                  "SUM(CASE WHEN size_ml IS NOT NULL THEN 1 ELSE 0 END) "
+                  "FROM store_product_variants WHERE store=? AND fetched_at>=?",
+                  ("notino", float(after["started_at"])),
+              ).fetchone()
+              all_variants = verify.execute(
+                  "SELECT COUNT(*) FROM store_product_variants WHERE store=?", ("notino",)
+              ).fetchone()[0]
               urls = verify.execute(
                   "SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1",
                   ("notino",),
@@ -135,11 +148,21 @@ jobs:
               verify.close()
           print("NOTINO_PERSISTED_VERIFY=" + json.dumps({
               "fresh_variant_rows": int(persisted),
+              "all_variant_rows": int(all_variants),
+              "invalid_fresh_variants": int(totals[1] or 0),
+              "fresh_variants_with_size": int(totals[2] or 0),
               "active_product_urls": int(urls),
               "reported_imported_offers": int(after.get("discovered_count") or 0),
           }), flush=True)
-          if int(persisted) != int(after.get("discovered_count") or 0) or int(urls) <= 0:
+          if (int(persisted) != int(after.get("discovered_count") or 0)
+                  or int(urls) <= 0 or int(totals[1] or 0)):
               raise SystemExit("Notino import state exists but no persisted variant/product rows were verified.")
+          results = catalog_engine._search_local_impl("Dior Sauvage", per_store=64)
+          matches = [item for item in results if item.get("store_key") == "notino"
+                     and float(item.get("fetched_at") or 0) >= float(after["started_at"])]
+          print("NOTINO_CATALOG_SEARCH=" + json.dumps({"query": "Dior Sauvage", "matches": len(matches)}), flush=True)
+          if not matches:
+              raise SystemExit("Catalog search did not return a newly imported Notino offer.")
           print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
           PY
           )
