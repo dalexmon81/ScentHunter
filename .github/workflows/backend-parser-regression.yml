@@ -50,6 +50,7 @@ jobs:
 
 
   notino-live-parser-dry-run:
+    if: github.event_name == 'pull_request'
     name: Parse live CJ feed with PR parser (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 12
