@@ -420,7 +420,7 @@ def _safe_link_shape(raw: str) -> tuple[str, str, str]:
     path = parsed.path or ""
     if not path:
         path_kind = "no_path"
-    elif re.fullmatch(r"/click-\\d+-\\d+/?", path, re.I):
+    elif re.fullmatch(r"/click-\d+-\d+/?", path, re.I):
         path_kind = "cj_click"
     elif path == "/":
         path_kind = "root"
