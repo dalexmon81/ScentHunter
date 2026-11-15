@@ -121,25 +121,39 @@ jobs:
                   "source": "cj_viv_authorized_xml",
               }
           else:
-              last_error = None
-              for attempt in range(1, 4):
-                  try:
-                      result = catalog_engine.discover_store("notino")
-                      break
-                  except Exception as exc:
-                      last_error = exc
-                      print(
-                          "NOTINO_IMPORT_ATTEMPT_FAILED="
-                          + json.dumps({"attempt": attempt, "type": type(exc).__name__, "detail": str(exc)[:240]}),
-                          flush=True,
-                      )
-                      if attempt < 3:
-                          time.sleep(attempt * 20)
-              if result is None:
-                  raise RuntimeError(
-                      "Notino importer could not complete safely after three attempts: "
-                      + type(last_error).__name__
+              # Import the exact payload already downloaded and inspected above.
+              # Do not call discover_store(): it downloads the 78k-item feed again
+              # and silently falls back to public crawling when CJ import fails.
+              try:
+                  report = notino_feed.import_feed_bytes(payload)
+                  imported = int(report.get("imported_offers") or 0)
+                  if imported <= 0:
+                      raise RuntimeError("CJ parser returned zero imported offers")
+                  finished_at = time.time()
+                  catalog_engine._set_sync_state(
+                      "notino",
+                      "FEED_IMPORTED",
+                      started_at=finished_at,
+                      finished_at=finished_at,
+                      discovered_count=imported,
+                      fetched_count=imported,
+                      error="source=cj_viv_authorized_xml",
                   )
+                  result = {
+                      "status": "FEED_IMPORTED",
+                      "count": imported,
+                      "source": "cj_viv_authorized_xml",
+                  }
+              except Exception as exc:
+                  print(
+                      "NOTINO_IMPORT_FAILED="
+                      + json.dumps({
+                          "type": type(exc).__name__,
+                          "detail": str(exc)[:400],
+                      }, ensure_ascii=False),
+                      flush=True,
+                  )
+                  raise
 
           after = state()
           print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
@@ -150,10 +164,29 @@ jobs:
           } if after else None, ensure_ascii=False, default=str), flush=True)
 
           if not is_fresh_feed(after):
-              raise SystemExit(
-                  "Notino CJ feed import did not reach a fresh FEED_IMPORTED state; "
-                  "public discovery fallback is not accepted as a successful CJ import."
-              )
+              raise SystemExit("Notino CJ feed import did not reach a fresh FEED_IMPORTED state.")
+
+          # Independently verify persisted rows, not only the sync_state marker.
+          verify = sqlite3.connect("file:" + str(catalog_engine.DB_PATH) + "?mode=ro", uri=True, timeout=45)
+          try:
+              persisted = verify.execute(
+                  "SELECT COUNT(*) FROM store_product_variants "
+                  "WHERE store=? AND fetched_at>=?",
+                  ("notino", float(after["finished_at"]) - 60),
+              ).fetchone()[0]
+              urls = verify.execute(
+                  "SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1",
+                  ("notino",),
+              ).fetchone()[0]
+          finally:
+              verify.close()
+          print("NOTINO_PERSISTED_VERIFY=" + json.dumps({
+              "fresh_variant_rows": int(persisted),
+              "active_product_urls": int(urls),
+              "reported_imported_offers": int(after.get("discovered_count") or 0),
+          }), flush=True)
+          if int(persisted) <= 0 or int(urls) <= 0:
+              raise SystemExit("Notino import state exists but no persisted variant/product rows were verified.")
           print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
           PY
           )
