@@ -297,8 +297,7 @@ def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) ->
     if not external_id:
         external_id = gtin or sku or hashlib.sha256(
             f"{link}|{title}".encode("utf-8")
-        ).hexdigest()[:24]
-    return NotinoOffer(
+        ).hexdigest()[:24]    return NotinoOffer(
         external_id=external_id.strip(),
         title=re.sub(r"\s+", " ", title).strip(),
         brand=re.sub(r"\s+", " ", brand).strip(),
@@ -597,8 +596,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     profile_started_wall = time.monotonic()
     profile_started_cpu = time.process_time()
     phase_wall = {}
-    phase_cpu = {}
-    statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
+    phase_cpu = {}    statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
                         "store_product_variants": 0, "store_products": 0,
                         "hydration_queue": 0, "sync_state": 0, "other": 0}
 
@@ -791,6 +789,14 @@ def _import_stream(source, started_at, deadline=None):
                          }), _slug(offer.url)),
                     )
             stage.commit()
+            # The legacy-key migration probes this table by (url, legacy_variant_key)
+            # for every existing Notino variant. The primary key is (url, variant_key),
+            # so without this index SQLite repeatedly scans the staged offers table.
+            stage.execute(
+                "CREATE INDEX idx_notino_offers_legacy_url "
+                "ON offers(url, legacy_variant_key) "
+                "WHERE legacy_variant_key IS NOT NULL"
+            )
             if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise FeedImportError("notino_feed_staging_integrity_error")
             count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
@@ -898,15 +904,3 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "fetched_at": row["fetched_at"],
         })
     results.sort(key=lambda item: (item["price_num"], item["size_ml"] or 0, item["url"]))
-    return {
-        "status": "success",
-        "verified": True,
-        "results": results,
-        "error": None,
-        "details": {
-            "source": "cj_viv_authorized_xml",
-            "freshness_seconds": max_age_seconds,
-            "catalog_candidates": len(rows),
-            "matched_offers": len(results),
-        },
-    }
