@@ -311,7 +311,40 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
     )
 
 
-def parse_feed(data: bytes) -> list[NotinoOffer]:
+def _feed_items(raw: bytes):
+    root = None
+    root_name = ""
+    stack = []
+    count = 0
+    try:
+        for event, node in ET.iterparse(io.BytesIO(raw), events=("start", "end")):
+            if event == "start":
+                if root is None:
+                    root = node
+                    root_name = _local(node.tag)
+                    if root_name not in {"rss", "feed", "channel", "catalog", "products", "productfeed"}:
+                        raise FeedImportError("notino_feed_unrecognized_root")
+                stack.append(node)
+                continue
+            if _local(node.tag) in {"item", "entry", "product"}:
+                count += 1
+                yield node
+                if len(stack) > 1:
+                    stack[-2].remove(node)
+                node.clear()
+            stack.pop()
+    except ET.ParseError:
+        raise FeedImportError("notino_feed_invalid_xml") from None
+    if not count and root_name in {"catalog", "products", "productfeed"}:
+        for node in list(root):
+            if len(list(node)):
+                count += 1
+                yield node
+    if not count:
+        raise FeedImportError("notino_feed_no_product_entries")
+
+
+def parse_feed(data: bytes, *, stats: dict | None = None) -> list[NotinoOffer]:
     if not isinstance(data, (bytes, bytearray)) or not data:
         raise FeedImportError("notino_feed_empty")
     raw = bytes(data)
@@ -352,19 +385,9 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
         raise FeedImportError("notino_feed_empty")
     if re.search(br"<!DOCTYPE|<!ENTITY", raw, re.I):
         raise FeedImportError("notino_feed_unsafe_xml_declaration")
-    try:
-        root = ET.fromstring(raw)
-    except ET.ParseError:
-        raise FeedImportError("notino_feed_invalid_xml") from None
-    root_name = _local(root.tag)
-    if root_name not in {"rss", "feed", "channel", "catalog", "products", "productfeed"}:
-        raise FeedImportError("notino_feed_unrecognized_root")
-    candidates = [node for node in root.iter() if _local(node.tag) in {"item", "entry", "product"}]
-    if not candidates and root_name in {"catalog", "products", "productfeed"}:
-        candidates = [node for node in list(root) if len(list(node))]
-    if not candidates:
-        raise FeedImportError("notino_feed_no_product_entries")
     parsed = []
+    candidate_count = 0
+    valid_links = 0
     rejected = {
         "missing_title": 0,
         "missing_brand": 0,
@@ -373,10 +396,12 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
         "invalid_or_missing_fr_product_url": 0,
         "missing_size_ml": 0,
     }
-    for node in candidates:
+    for node in _feed_items(raw):
+        candidate_count += 1
         offer = _parse_item(node)
         if offer is not None:
             parsed.append(offer)
+            valid_links += 1
             continue
 
         # Keep diagnostics aggregate-only: never include feed values, URLs,
@@ -401,7 +426,9 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
             rejected["invalid_or_missing_price"] += 1
         if currency != "EUR":
             rejected["currency_not_eur"] += 1
-        if not _product_url(raw_link):
+        if _product_url(raw_link):
+            valid_links += 1
+        else:
             rejected["invalid_or_missing_fr_product_url"] += 1
         if _size_ml(raw_size, title) is None:
             rejected["missing_size_ml"] += 1
@@ -409,7 +436,7 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
     if not parsed:
         detail = ";".join(f"{key}={value}" for key, value in rejected.items())
         raise FeedImportError(
-            f"notino_feed_no_valid_priced_fr_offers:items={len(candidates)};{detail}"
+            f"notino_feed_no_valid_priced_fr_offers:items={candidate_count};{detail}"
         )
     # Identical feed duplicates are discarded; real size variants stay distinct.
     unique = {}
@@ -422,6 +449,8 @@ def parse_feed(data: bytes) -> list[NotinoOffer]:
             offer.sku or "",
         )
         unique[key] = offer
+    if stats is not None:
+        stats.update(products_read=candidate_count, valid_links=valid_links)
     return list(unique.values())
 
 
@@ -587,7 +616,8 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
 
 def import_feed_bytes(data: bytes) -> dict:
     """Parse completely before opening the DB so malformed feeds cannot affect offers."""
-    offers = parse_feed(data)
+    stats = {}
+    offers = parse_feed(data, stats=stats)
     count = _persist_offers(offers)
     LOGGER.info("Notino authorized feed import completed: offers=%d", count)
     return {
@@ -595,6 +625,7 @@ def import_feed_bytes(data: bytes) -> dict:
         "store": STORE_KEY,
         "imported_offers": count,
         "feed_source": "cj_viv_authorized_xml",
+        **stats,
     }
 
 

@@ -49,6 +49,21 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertEqual(float(price), 1299.9)
         self.assertEqual(currency, "EUR")
 
+    def test_streamed_items_report_all_links_and_reject_malformed_tail(self):
+        stats = {}
+        self.assertEqual(len(feed.parse_feed(SAMPLE, stats=stats)), 2)
+        self.assertEqual(stats, {"products_read": 4, "valid_links": 3})
+        malformed = SAMPLE.replace(b"</channel></rss>", b"</channel>")
+        with patch.object(feed, "_persist_offers") as persist:
+            with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_invalid_xml"):
+                feed.import_feed_bytes(malformed)
+            persist.assert_not_called()
+
+    def test_catalog_with_nonstandard_item_tags_is_still_supported(self):
+        item = SAMPLE.split(b"<item>", 1)[1].split(b"</item>", 1)[0]
+        payload = b"<catalog xmlns:g='http://base.google.com/ns/1.0'><offer>" + item + b"</offer></catalog>"
+        self.assertEqual(len(feed.parse_feed(payload)), 1)
+
     def test_invalid_feeds_fail_closed(self):
         cases = [
             (b"", "notino_feed_empty"),
