@@ -1,7 +1,6 @@
 name: Notino CJ Feed Import
 
 on:
-  # A deployment may deliver newer importer code or refresh staged Fly secrets.
   workflow_run:
     workflows:
       - Fly Deploy
@@ -9,7 +8,6 @@ on:
       - completed
     branches:
       - main
-  # CJ publishes this feed daily. Run independently from deploys.
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
@@ -30,9 +28,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: superfly/flyctl-actions/setup-flyctl@master
-
       - name: Import latest CJ offers into the persistent production catalog
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -49,8 +45,6 @@ jobs:
           sys.path.insert(0, "/app/backend")
           import catalog_engine
 
-          # Status inspection must not initialize/migrate the schema or acquire
-          # the process-wide writer lock while hydration workers write the DB.
           def state():
               uri = "file:" + str(catalog_engine.DB_PATH) + "?mode=ro"
               conn = sqlite3.connect(uri, uri=True, timeout=45)
@@ -81,7 +75,6 @@ jobs:
               )
           }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
 
-          # Diagnose the actual CJ link schema without emitting product data or URLs.
           if not is_fresh_feed(before):
               import collections
               import io
@@ -123,8 +116,6 @@ jobs:
                   "source": "cj_viv_authorized_xml",
               }
           else:
-              # Keep the attempt bounded. A busy hydration transaction should
-              # delay this run, not cause a false-success fallback to scraping.
               last_error = None
               for attempt in range(1, 4):
                   try:
@@ -134,7 +125,7 @@ jobs:
                       last_error = exc
                       print(
                           "NOTINO_IMPORT_ATTEMPT_FAILED="
-                          + json.dumps({"attempt": attempt, "type": type(exc).__name__, "detail": str(exc)[:240]),
+                          + json.dumps({"attempt": attempt, "type": type(exc).__name__, "detail": str(exc)[:240]}),
                           flush=True,
                       )
                       if attempt < 3:
