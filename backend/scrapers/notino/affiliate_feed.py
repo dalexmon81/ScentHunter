@@ -33,7 +33,7 @@ MARKET_HOST = "www.notino.fr"
 TIMEOUT = (5.0, 30.0)
 MAX_FEED_BYTES = 256 * 1024 * 1024
 MAX_DECOMPRESSED_BYTES = 512 * 1024 * 1024
-MAX_IMPORT_SECONDS = 10 * 60
+MAX_IMPORT_SECONDS = 35 * 60
 USER_AGENT = "ScentHunter/authorized-affiliate-feed (+price-comparison)"
 # CJ HTTP/S subscription configured for the accepted NOTINO.fr product export.
 DEFAULT_CJ_FEED_URL = (
