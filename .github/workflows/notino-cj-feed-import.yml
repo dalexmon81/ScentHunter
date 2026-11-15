@@ -81,6 +81,40 @@ jobs:
               )
           }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
 
+          # Diagnose the actual CJ link schema without emitting product data or URLs.
+          if not is_fresh_feed(before):
+              import collections
+              import io
+              import zipfile
+              import xml.etree.ElementTree as ET
+              from scrapers.notino import affiliate_feed as notino_feed
+              payload = notino_feed._fetch_feed()
+              if zipfile.is_zipfile(io.BytesIO(payload)):
+                  with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                      xml_name = next(name for name in archive.namelist() if name.lower().endswith('.xml'))
+                      payload = archive.read(xml_name)
+              root = ET.fromstring(payload)
+              items = [node for node in root.iter() if node.tag.rsplit('}', 1)[-1].lower() in {'item','entry','product'}]
+              tag_counts = collections.Counter()
+              host_counts = collections.Counter()
+              link_shapes = collections.Counter()
+              for item in items:
+                  for child in list(item):
+                      tag = child.tag.rsplit('}', 1)[-1].lower()
+                      tag_counts[tag] += 1
+                      if tag in {'link','url','producturl','deep_link','deeplink','buy_url'}:
+                          raw = (child.text or child.attrib.get('href') or '').strip()
+                          parsed = __import__('urllib.parse', fromlist=['urlparse']).urlparse(raw)
+                          host_counts[(parsed.hostname or 'NO_HOST').lower()] += 1
+                          keys = tuple(sorted(__import__('urllib.parse', fromlist=['parse_qs']).parse_qs(parsed.query).keys()))
+                          link_shapes[(parsed.scheme or 'NO_SCHEME', parsed.path.split('/')[1] if parsed.path.count('/') > 1 else '/', keys)] += 1
+              print('NOTINO_CJ_SCHEMA=' + json.dumps({
+                  'items': len(items),
+                  'field_names': dict(tag_counts.most_common(40)),
+                  'link_hosts': dict(host_counts.most_common(15)),
+                  'link_shapes': [{'scheme': k[0], 'first_path_segment': k[1], 'query_keys': list(k[2]), 'count': v} for k,v in link_shapes.most_common(12)],
+              }, ensure_ascii=False), flush=True)
+
           result = None
           if is_fresh_feed(before):
               result = {
@@ -100,7 +134,7 @@ jobs:
                       last_error = exc
                       print(
                           "NOTINO_IMPORT_ATTEMPT_FAILED="
-                          + json.dumps({"attempt": attempt, "type": type(exc).__name__}),
+                          + json.dumps({"attempt": attempt, "type": type(exc).__name__, "detail": str(exc)[:240]),
                           flush=True,
                       )
                       if attempt < 3:
