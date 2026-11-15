@@ -585,13 +585,42 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     from catalog_engine import DB_PATH
     from catalog_writer_lock import connect
 
+    profile_enabled = os.environ.get("NOTINO_PERSIST_PROFILE", "").strip() == "1"
+    profile_started_wall = time.monotonic()
+    profile_started_cpu = time.process_time()
+    phase_wall = {}
+    phase_cpu = {}
+    statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
+                        "store_product_variants": 0, "store_products": 0,
+                        "hydration_queue": 0, "sync_state": 0, "other": 0}
+    counters = {"urls": 0, "variants": 0}
+
+    def timed_execute(sql, parameters=()):
+        if not profile_enabled:
+            return conn.execute(sql, parameters)
+        normalized = " ".join(str(sql).lower().split())
+        table = next((name for name in statement_counts if name != "other" and name in normalized), "other")
+        wall, cpu = time.monotonic(), time.process_time()
+        try:
+            return conn.execute(sql, parameters)
+        finally:
+            phase_wall[table] = phase_wall.get(table, 0.0) + time.monotonic() - wall
+            phase_cpu[table] = phase_cpu.get(table, 0.0) + time.process_time() - cpu
+            statement_counts[table] += 1
+
+    connect_wall, connect_cpu = time.monotonic(), time.process_time()
     conn = connect(DB_PATH, timeout=45)
+    connect_wall_elapsed = time.monotonic() - connect_wall
+    connect_cpu_elapsed = time.process_time() - connect_cpu
     if deadline is not None:
         conn.set_progress_handler(lambda: int(time.monotonic() >= deadline), 10000)
     now = time.time()
     try:
         with conn:
+            lock_wall, lock_cpu = time.monotonic(), time.process_time()
             conn.execute("BEGIN IMMEDIATE")
+            lock_wall_elapsed = time.monotonic() - lock_wall
+            lock_cpu_elapsed = time.process_time() - lock_cpu
             previous = conn.execute(
                 "SELECT discovered_count, finished_at FROM sync_state WHERE store=? AND status='FEED_IMPORTED'",
                 (STORE_KEY,),
@@ -600,8 +629,13 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 raise FeedImportError("notino_feed_newer_import_already_published")
             if previous and previous[0] and count * 10 < int(previous[0]) * 9:
                 raise FeedImportError("notino_feed_suspicious_offer_count")
+            stage_select_wall, stage_select_cpu = time.monotonic(), time.process_time()
             rows = stage.execute("SELECT * FROM offers ORDER BY url, variant_key")
+            if profile_enabled:
+                phase_wall["stage_select"] = time.monotonic() - stage_select_wall
+                phase_cpu["stage_select"] = time.process_time() - stage_select_cpu
             for url, variants in groupby(rows, key=lambda row: row["url"]):
+                counters["urls"] += 1
                 if deadline is not None and time.monotonic() >= deadline:
                     raise FeedImportError("notino_feed_import_timeout")
                 conn.execute(
@@ -615,6 +649,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 name_length = brand_length = 0
                 representative = None
                 for offer in variants:
+                    counters["variants"] += 1
                     if representative is None:
                         representative = offer
                     if offer["title"] not in names and name_length < 1500:
@@ -691,6 +726,16 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             )
     finally:
         conn.close()
+        if profile_enabled:
+            LOGGER.info(
+                "Notino persistence profile: urls=%d variants=%d connect_wall=%.3fs connect_cpu=%.3fs "
+                "begin_immediate_wall=%.3fs begin_immediate_cpu=%.3fs phase_wall=%s phase_cpu=%s "
+                "statement_counts=%s total_wall=%.3fs total_cpu=%.3fs",
+                counters["urls"], counters["variants"], connect_wall_elapsed, connect_cpu_elapsed,
+                locals().get("lock_wall_elapsed", 0.0), locals().get("lock_cpu_elapsed", 0.0),
+                phase_wall, phase_cpu, statement_counts,
+                time.monotonic() - profile_started_wall, time.process_time() - profile_started_cpu,
+            )
 
 
 def _import_stream(source, started_at, deadline=None):
