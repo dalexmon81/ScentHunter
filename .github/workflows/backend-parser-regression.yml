@@ -52,6 +52,14 @@ jobs:
           tests/test_catalog_notino_discovery.py
           backend/tests/test_seed_catalog_store_safety.py
 
+      - name: Verify opt-in Notino persistence profiling including SQLite commit
+        env:
+          PYTHONPATH: backend
+          NOTINO_PERSIST_PROFILE: "1"
+        run: >-
+          python -m pytest -q
+          backend/tests/test_notino_affiliate_feed.py::NotinoAffiliateFeedTests::test_staging_publication_is_atomic_and_idempotent
+
 
   notino-live-parser-dry-run:
     if: github.event_name == 'pull_request'
