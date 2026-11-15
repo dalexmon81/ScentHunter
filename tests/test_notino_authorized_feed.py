@@ -135,7 +135,7 @@ def test_rejected_feed_reports_safe_link_and_field_shapes_only():
         feed.parse_feed(payload)
     message = str(raised.value)
     assert "tracking.example.test|https:cj_click|url=1" in message
-    assert "title+brand+price+availability+link" in message
+    assert "availability+brand+link+price+title" in message
     assert "Secret Product Name" not in message
     assert "Secret Brand" not in message
     assert "secret/product" not in message
