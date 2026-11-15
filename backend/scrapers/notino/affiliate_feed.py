@@ -264,17 +264,18 @@ def _image_url(raw: str) -> str | None:
     return str(raw).strip()
 
 
-def _parse_item(item: ET.Element) -> NotinoOffer | None:
-    title = _first(item, "title", "name", "productname")
-    brand = _first(item, "brand", "manufacturer", "vendor")
-    external_id = _first(item, "id", "offerid", "productid")
-    sku = _first(item, "sku", "g:id")
-    gtin = _first(item, "gtin", "gtin13", "gtin12", "gtin14", "ean", "barcode")
-    mpn = _first(item, "mpn", "manufacturer_part_number")
-    raw_price = _first(item, "price", "saleprice", "currentprice")
+def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) -> NotinoOffer | None:
+    fields = fields if fields is not None else _field_map(item)
+    title = _first(item, "title", "name", "productname", fields=fields, fields=fields)
+    brand = _first(item, "brand", "manufacturer", "vendor", fields=fields)
+    external_id = _first(item, "id", "offerid", "productid", fields=fields)
+    sku = _first(item, "sku", "g:id", fields=fields)
+    gtin = _first(item, "gtin", "gtin13", "gtin12", "gtin14", "ean", "barcode", fields=fields)
+    mpn = _first(item, "mpn", "manufacturer_part_number", fields=fields)
+    raw_price = _first(item, "price", "saleprice", "currentprice", fields=fields)
     price, currency = _money(raw_price)
-    currency = currency or _first(item, "currency", "pricecurrency").upper()
-    raw_availability = _first(item, "availability", "stock", "availabilitystatus").lower().strip()
+    currency = currency or _first(item, "currency", "pricecurrency", fields=fields).upper()
+    raw_availability = _first(item, "availability", "stock", "availabilitystatus", fields=fields).lower().strip()
     if raw_availability in {"in stock", "instock", "in_stock", "available", "limited availability", "limitedavailability"}:
         availability = "in_stock"
     elif raw_availability in {"out of stock", "outofstock", "out_of_stock", "sold out", "unavailable"}:
@@ -284,15 +285,10 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
     else:
         availability = "unknown"
 
-    raw_link = _first(item, "link", "url", "producturl")
-    raw_size = _first(item, "size", "volume", "capacity", "product_size", "g:size")
+    raw_link = _first(item, "link", "url", "producturl", fields=fields)
+    raw_size = _first(item, "size", "volume", "capacity", "product_size", "g:size", fields=fields)
     size_ml = _size_ml(raw_size, title)  # explicit field is preferred
-    image = _first(item, "image_link", "image", "imageurl", "g:image_link")
-    if not image:
-        for child in list(item):
-            if _local(child.tag) == "image_link" and child.text:
-                image = child.text.strip()
-                break
+    image = _first(item, "image_link", "image", "imageurl", "g:image_link", fields=fields)
 
     link, affiliate_url = _resolve_product_link(raw_link)
     if not title or not brand or price is None or currency != "EUR" or not link or availability == "unknown":
@@ -438,12 +434,12 @@ def _parsed_offers(stream, stats):
 
         # Keep diagnostics aggregate-only: never include feed values, URLs,
         # credentials, or product-level data in production error messages.
-        title = _first(node, "title", "name", "productname")
-        brand = _first(node, "brand", "manufacturer", "vendor")
-        raw_price = _first(node, "price", "saleprice", "currentprice")
+        title = _first(node, "title", "name", "productname", fields=fields)
+        brand = _first(node, "brand", "manufacturer", "vendor", fields=fields)
+        raw_price = _first(node, "price", "saleprice", "currentprice", fields=fields)
         price, currency = _money(raw_price)
-        currency = currency or _first(node, "currency", "pricecurrency").upper()
-        raw_link = _first(node, "link", "url", "producturl")
+        currency = currency or _first(node, "currency", "pricecurrency", fields=fields).upper()
+        raw_link = _first(node, "link", "url", "producturl", fields=fields)
         if not title:
             rejected["missing_title"] += 1
         if not brand:
@@ -456,7 +452,7 @@ def _parsed_offers(stream, stats):
             valid_links += 1
         else:
             rejected["invalid_or_missing_fr_product_url"] += 1
-        if _first(node, "availability", "stock", "availabilitystatus").lower().strip() not in {
+        if _first(node, "availability", "stock", "availabilitystatus", fields=fields).lower().strip() not in {
             "in stock", "instock", "in_stock", "available", "limited availability",
             "limitedavailability", "out of stock", "outofstock", "out_of_stock",
             "sold out", "unavailable", "preorder", "pre-order",
