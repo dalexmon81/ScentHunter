@@ -242,3 +242,26 @@ jobs:
           remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
           remote_command="/bin/sh -lc 'export NOTINO_PARSER_SOURCE_B64=\"$parser_source_b64\"; printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
           timeout 570s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+  notino-runner-parser-dry-run:
+    if: github.event_name == 'pull_request'
+    name: Parse live CJ feed on runner (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Install parser dependency
+        run: python -m pip install requests==2.32.3
+      - name: Download via Fly and validate with temporary runner staging
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/notino_cj_runner_dry_run.py
