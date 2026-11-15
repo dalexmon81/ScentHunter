@@ -904,3 +904,15 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "fetched_at": row["fetched_at"],
         })
     results.sort(key=lambda item: (item["price_num"], item["size_ml"] or 0, item["url"]))
+    return {
+        "status": "success",
+        "verified": True,
+        "results": results,
+        "error": None,
+        "details": {
+            "source": "cj_viv_authorized_xml",
+            "freshness_seconds": max_age_seconds,
+            "catalog_candidates": len(rows),
+            "matched_offers": len(results),
+        },
+    }
