@@ -599,7 +599,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
         if not profile_enabled:
             return conn.execute(sql, parameters)
         normalized = " ".join(str(sql).lower().split())
-        table = next((name for name in ("legacy_variant_updates", "store_urls", "store_product_variants", "store_products", "hydration_queue", "sync_state") if name in normalized), "other")
+        table = ("legacy_variant_updates" if normalized.startswith("update store_product_variants") else next((name for name in ("store_urls", "store_product_variants", "store_products", "hydration_queue", "sync_state") if name in normalized), "other"))
         wall, cpu = time.monotonic(), time.process_time()
         try:
             return conn.execute(sql, parameters)
