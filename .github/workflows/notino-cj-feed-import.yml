@@ -24,7 +24,7 @@ jobs:
     name: Import authorized Notino CJ feed
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Import latest CJ offers into the persistent production catalog
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 12
+        timeout-minutes: 40
         shell: bash
         run: |
           set -euo pipefail
