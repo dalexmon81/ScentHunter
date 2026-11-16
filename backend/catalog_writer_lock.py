@@ -9,10 +9,13 @@ share the same database file/volume.
 from __future__ import annotations
 
 import fcntl
+import json
 import os
 import re
 import sqlite3
+import threading
 import time
+import traceback
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -69,6 +72,44 @@ def _needs_writer_lock(sql):
     ):
         return False
     return True
+
+def _lock_owner_path(lock_path):
+    return Path(str(lock_path) + ".owner.json")
+
+
+def _write_lock_owner(lock_path):
+    """Persist the acquiring thread and Python stack for stuck-lock diagnosis."""
+    owner = {
+        "pid": os.getpid(),
+        "thread_id": threading.get_ident(),
+        "thread_name": threading.current_thread().name,
+        "acquired_at": time.time(),
+        "stack": traceback.format_stack(limit=18),
+    }
+    target = _lock_owner_path(lock_path)
+    temporary = target.with_name(target.name + f".{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        temporary.write_text(json.dumps(owner, ensure_ascii=False), encoding="utf-8")
+        os.replace(temporary, target)
+    except OSError:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _clear_lock_owner(lock_path, owner_token):
+    """Remove metadata only when it still belongs to this lock holder."""
+    if owner_token is None:
+        return
+    target = _lock_owner_path(lock_path)
+    try:
+        owner = json.loads(target.read_text(encoding="utf-8"))
+        if (owner.get("pid"), owner.get("thread_id")) == owner_token:
+            target.unlink(missing_ok=True)
+    except (OSError, ValueError, TypeError):
+        pass
+
 
 def _database_path(database, uri):
     value = os.fspath(database)
@@ -130,6 +171,7 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
         timeout = kwargs.get("timeout", args[0] if args else 5.0)
         self._writer_lock_timeout = max(0.0, float(timeout))
         self._writer_lock_fd = None
+        self._writer_lock_owner_token = None
 
     def cursor(self, factory=None):
         return super().cursor(factory or CoordinatedSQLiteCursor)
@@ -144,6 +186,8 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 self._writer_lock_fd = fd
+                self._writer_lock_owner_token = (os.getpid(), threading.get_ident())
+                _write_lock_owner(self._writer_lock_path)
                 return
             except BlockingIOError:
                 if time.monotonic() >= deadline:
@@ -158,7 +202,9 @@ class CoordinatedSQLiteConnection(sqlite3.Connection):
 
     def _release_writer_lock(self):
         fd, self._writer_lock_fd = self._writer_lock_fd, None
+        owner_token, self._writer_lock_owner_token = self._writer_lock_owner_token, None
         if fd is not None:
+            _clear_lock_owner(self._writer_lock_path, owner_token)
             try:
                 fcntl.flock(fd, fcntl.LOCK_UN)
             finally:
