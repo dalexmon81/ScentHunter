@@ -25,6 +25,14 @@ class CatalogSearchFTSMappingTests(unittest.TestCase):
                 PRIMARY KEY(store,url)
             )
         """)
+        # Notino feed publication uses this durable marker to suppress
+        # per-row FTS triggers while its atomic bulk refresh is in progress.
+        self.conn.execute("""
+            CREATE TABLE sync_state(
+                store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
+                discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT
+            )
+        """)
         self.conn.execute(
             "INSERT INTO store_urls(store,url,slug,discovered_at,active) VALUES(?,?,?,?,1)",
             ("notino", "https://www.notino.fr/a/", "initial-fragrance", 1.0),
