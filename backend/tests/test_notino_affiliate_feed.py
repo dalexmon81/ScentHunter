@@ -55,6 +55,18 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertEqual(result["reason"], "dedicated_notino_cj_feed_workflow")
         import_module.assert_not_called()
 
+    def test_staged_slug_matches_catalog_slug_for_normalized_paths(self):
+        import catalog_engine
+
+        urls = (
+            "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+            "https://www.notino.fr/l-oreal/parfum-%C3%A9dition.html",
+            "https://www.notino.fr/brand/product.php",
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(feed._slug(url), catalog_engine.url_slug(url))
+
     def test_parses_price_size_gtin_stock_and_french_product_url(self):
         offers = feed.parse_feed(SAMPLE)
         self.assertEqual(len(offers), 2)
