@@ -153,6 +153,7 @@ jobs:
           outer_keys = collections.Counter()
           destination_keys = collections.Counter()
           destination_hosts = collections.Counter()
+          click_hosts = collections.Counter()
           malformed_links = 0
           items_inspected = 0
           with feed._xml_stream(io.BytesIO(bytes(payload))) as stream:
@@ -228,6 +229,25 @@ jobs:
               "destination_hosts": dict(destination_hosts.most_common(10)),
               "malformed_links": malformed_links,
               "values_emitted": False,
+          }
+          validated_clicks = 0
+          rejected_clicks = 0
+          for offer in offers:
+              click_url = offer.affiliate_url
+              if not click_url:
+                  continue
+              click_host = (urllib.parse.urlparse(click_url).hostname or "").lower()
+              if click_host and re.fullmatch(r"[a-z0-9.-]{1,253}", click_host):
+                  click_hosts[click_host] += 1
+              if feed.validated_cj_offer_url(click_url, offer.url):
+                  validated_clicks += 1
+              else:
+                  rejected_clicks += 1
+          shape["cj_click_hosts"] = dict(click_hosts.most_common(10))
+          shape["cj_validation"] = {
+              "offers_with_cj_click": validated_clicks + rejected_clicks,
+              "validated_for_stored_product": validated_clicks,
+              "rejected": rejected_clicks,
           }
           print(
               "NOTINO_CJ_PARAMETER_DIAGNOSTIC="
