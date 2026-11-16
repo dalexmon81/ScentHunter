@@ -111,7 +111,7 @@ def test_search_uses_public_discovery_when_cached_feed_has_no_match(monkeypatch)
     assert report["details"]["feed_required"] is False
 
 
-def test_search_uses_cached_feed_only_after_public_discovery_has_no_match(monkeypatch):
+def test_search_uses_cached_feed_when_matching_offer_exists(monkeypatch):
     from backend.scrapers.notino import affiliate_feed, legacy_public
 
     expected = [{
@@ -119,20 +119,21 @@ def test_search_uses_cached_feed_only_after_public_discovery_has_no_match(monkey
         "price": "89.90 €", "price_num": 89.90,
         "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
     }]
-    calls = []
-    monkeypatch.setattr(legacy_public, "search", lambda query: calls.append("public") or [])
     monkeypatch.setattr(
         affiliate_feed,
         "search_feed",
-        lambda query: calls.append("cached_feed") or {
+        lambda query: {
             "status": "success", "verified": True, "results": expected,
             "error": None, "details": {"source": "cj_viv_authorized_xml"},
         },
     )
+    monkeypatch.setattr(
+        legacy_public, "search",
+        lambda query: (_ for _ in ()).throw(AssertionError("public fallback must not run")),
+    )
 
     report = scraper.search("Dior Sauvage Eau de Parfum")
 
-    assert calls == ["public", "cached_feed"]
     assert report["results"] == expected
     assert report["details"]["source"] == "cj_viv_authorized_xml"
 
