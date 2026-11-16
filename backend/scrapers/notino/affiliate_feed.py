@@ -836,19 +836,19 @@ def _import_stream(source, started_at, deadline=None):
     stats = {}
     import_started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="notino-feed-") as directory:
-        with _profile_phase("staging_database_setup"):
-            stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
-            stage.row_factory = sqlite3.Row
-            stage.execute("PRAGMA journal_mode=OFF")
-            stage.execute("PRAGMA synchronous=OFF")
-            stage.execute("PRAGMA cache_size=-65536")
-            stage.execute("""CREATE TABLE offers(
-                url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
-                title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
-                price REAL, currency TEXT, availability TEXT, image TEXT,
-                concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
-                PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
+        stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
         try:
+            with _profile_phase("staging_database_setup"):
+                stage.row_factory = sqlite3.Row
+                stage.execute("PRAGMA journal_mode=OFF")
+                stage.execute("PRAGMA synchronous=OFF")
+                stage.execute("PRAGMA cache_size=-65536")
+                stage.execute("""CREATE TABLE offers(
+                    url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
+                    title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
+                    price REAL, currency TEXT, availability TEXT, image TEXT,
+                    concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
+                    PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
             with _profile_phase("feed_parse_and_stage_insert"):
                 with _xml_stream(source, deadline) as stream:
                     for offer in _parsed_offers(stream, stats):
