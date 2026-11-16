@@ -258,15 +258,20 @@ jobs:
                           )[0][1]
                       )
                       decoded_path = urllib.parse.unquote(destination.path)
-                      if (
-                          destination.params
-                          or destination.fragment
-                          or re.search(r"%(?![0-9a-fA-F]{2})|%2f|%5c|%25", destination.path, re.I)
-                          or re.search(r"[\x00-\x20\x7f\\;?#]", decoded_path)
-                          or "//" in decoded_path
-                          or any(segment in {".", ".."} for segment in decoded_path.split("/"))
-                      ):
-                          reason = "ambiguous_destination_path"
+                      if destination.params or destination.fragment:
+                          reason = "path_params_or_fragment"
+                      elif re.search(r"%(?![0-9a-fA-F]{2})", destination.path):
+                          reason = "malformed_percent_encoding"
+                      elif re.search(r"%2f|%5c", destination.path, re.I):
+                          reason = "encoded_path_separator"
+                      elif re.search(r"%25", destination.path, re.I):
+                          reason = "double_encoded_path_component"
+                      elif re.search(r"[\x00-\x20\x7f\\;?#]", decoded_path):
+                          reason = "encoded_delimiter_or_control"
+                      elif "//" in decoded_path:
+                          reason = "repeated_path_separator"
+                      elif any(segment in {".", ".."} for segment in decoded_path.split("/")):
+                          reason = "dot_path_segment"
                       elif destination.query:
                           reason = "destination_query_parameters"
                       else:

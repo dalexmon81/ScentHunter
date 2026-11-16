@@ -288,6 +288,8 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             (link(product + "?redirect=https%3A%2F%2Fevil.example"), product),
             (link(product + "../other/"), product),
             (link(product.replace("/dior/", "/dior%2Fother/")), product),
+            (link(product.replace("/dior/", "/dior%252Fother/")), product),
+            (link(product.replace("/dior/", "/dior%5Cother/")), product),
             (valid + "&sid=%ZZ", product),
             ("https://[invalid", product),
             (product + "?variant=100", product + "?variant=100"),
@@ -297,8 +299,16 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 self.assertEqual(catalog_engine._notino_variant_url(raw, product), expected)
         encoded_product = "https://www.notino.fr/dior/parfum-%C3%A9dition/"
         self.assertEqual(feed.validated_cj_offer_url(link(encoded_product), encoded_product), link(encoded_product))
-        unsafe_product = "https://www.notino.fr/dior/%2e%2e/other/"
-        self.assertIsNone(feed.validated_cj_offer_url(link(unsafe_product), unsafe_product))
+        for unsafe_path in (
+            "/dior/%2e%2e/other/",
+            "/dior%2Fother/",
+            "/dior%252Fother/",
+            "/dior%5Cother/",
+            "/dior;parameter/other/",
+        ):
+            unsafe_product = "https://www.notino.fr" + unsafe_path
+            with self.subTest(unsafe_path=unsafe_path):
+                self.assertIsNone(feed.validated_cj_offer_url(link(unsafe_product), unsafe_product))
         self.assertIsNone(catalog_engine._store_allowed_variant_url("sabina", valid, product))
         self.assertIsNone(catalog_engine._store_allowed_url("notino", valid, product))
         self.assertIsNone(catalog_engine._notino_variant_url(valid, "https://evil.example/item"))
