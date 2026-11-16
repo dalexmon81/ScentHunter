@@ -167,16 +167,9 @@ jobs:
           ):
               raise SystemExit("Preflight failed: catalog reports an unfinished Notino import.")
 
-          if not runtime_ready:
-              raise SystemExit(
-                  "Preflight failed: deployed runtime cannot preserve validated Notino CJ links."
-              )
-
           # Inspect the shared advisory lock before probing SQLite. Catalog
           # writers coordinate through <database>.writer.lock; a raw sqlite3
           # BEGIN IMMEDIATE can race a normal short-lived catalog transaction.
-          import fcntl
-          import stat
           from catalog_writer_lock import connect as coordinated_connect
 
           db_path = os.path.realpath(catalog_engine.DB_PATH)
@@ -276,6 +269,10 @@ jobs:
               if lock_probe is not None:
                   lock_probe.close()
           print("NOTINO_PREFLIGHT_WRITER_LOCK=clear", flush=True)
+          if not runtime_ready:
+              raise SystemExit(
+                  "Preflight failed: deployed runtime cannot preserve validated Notino CJ links."
+              )
 
           before = state()
           print("NOTINO_IMPORT_BEFORE=" + json.dumps({
