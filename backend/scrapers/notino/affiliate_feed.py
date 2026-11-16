@@ -766,9 +766,9 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 "store_product_variants",
                 """INSERT INTO store_product_variants(
                        store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                       concentration,gender,price,currency,availability,fetched_at,variant_url)
+                       concentration,gender,price,currency,availability,fetched_at,variant_url,last_seen_at)
                    SELECT ?,url,variant_key,title,brand,image,sku,gtin,mpn,size_ml,
-                          concentration,NULL,price,currency,availability,?,COALESCE(affiliate_url,url)
+                          concentration,NULL,price,currency,availability,?,COALESCE(affiliate_url,url),?
                    FROM notino_stage.offers WHERE 1
                    ON CONFLICT(store,url,variant_key) DO UPDATE SET
                      name=excluded.name,brand=excluded.brand,image=excluded.image,
@@ -776,7 +776,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                      size_ml=excluded.size_ml,concentration=excluded.concentration,
                      price=excluded.price,currency=excluded.currency,
                      availability=excluded.availability,fetched_at=excluded.fetched_at,
-                     variant_url=excluded.variant_url
+                     variant_url=excluded.variant_url,last_seen_at=excluded.last_seen_at
                    WHERE store_product_variants.name IS NOT excluded.name
                       OR store_product_variants.brand IS NOT excluded.brand
                       OR store_product_variants.image IS NOT excluded.image
@@ -789,7 +789,7 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                       OR store_product_variants.currency IS NOT excluded.currency
                       OR store_product_variants.availability IS NOT excluded.availability
                       OR store_product_variants.variant_url IS NOT excluded.variant_url""",
-                (STORE_KEY, now),
+                (STORE_KEY, now, now),
             )
 
             timed_execute(
@@ -976,9 +976,9 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
                      LEFT JOIN sync_state s
                        ON s.store=v.store AND s.status='FEED_IMPORTED'
                     WHERE v.store=? AND u.active=1
-                      AND COALESCE(s.finished_at,v.fetched_at)>=? AND v.price>0
+                      AND COALESCE(v.last_seen_at,v.fetched_at)>=? AND v.price>0
                       AND upper(COALESCE(v.currency,''))='EUR'
-                    ORDER BY COALESCE(s.finished_at,v.fetched_at) DESC""",
+                    ORDER BY COALESCE(v.last_seen_at,v.fetched_at) DESC""",
                 (STORE_KEY, cutoff),
             ).fetchall()
         finally:
@@ -1037,7 +1037,7 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             # The feed verification timestamp proves this unchanged offer was
             # present in the latest successful CJ snapshot. Preserve the actual
             # commercial-change timestamp separately for audit/debugging.
-            "fetched_at": row["feed_verified_at"] or row["fetched_at"],
+            "fetched_at": row["last_seen_at"] or row["fetched_at"],
             "price_updated_at": row["fetched_at"],
         })
     results.sort(key=lambda item: (item["price_num"], item["size_ml"] or 0, item["url"]))
