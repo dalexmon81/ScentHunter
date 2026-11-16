@@ -428,6 +428,10 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 self.assertGreaterEqual(
                     refreshed_feed_rows[0]["fetched_at"], original_price_updated_at
                 )
+                catalog_rows = catalog_engine.search_local("Dior Sauvage")
+                notino_row = next(row for row in catalog_rows if row.get("store_key") == "notino")
+                self.assertEqual(notino_row["price_updated_at"], original_price_updated_at)
+                self.assertGreaterEqual(notino_row["fetched_at"], original_price_updated_at)
 
                 response = TestClient(main.app).get("/search", params={"q": "Dior Sauvage"})
                 self.assertEqual(response.status_code, 200)
