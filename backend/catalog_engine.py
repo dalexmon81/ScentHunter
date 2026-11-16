@@ -4983,6 +4983,15 @@ def _notino_search_variants(conn, url):
 
 
 def _variant_search_result(store, url, product, variant, variant_url):
+    # Notino's authorized feed distinguishes when the offer was last observed
+    # from when its commercial fields last changed. Search freshness follows
+    # the observation timestamp; price_updated_at retains the commercial time.
+    variant_keys = variant.keys() if hasattr(variant, 'keys') else ()
+    last_seen_at = (
+        variant['last_seen_at']
+        if 'last_seen_at' in variant_keys and variant['last_seen_at'] is not None
+        else variant['fetched_at']
+    )
     return {
         'url': variant_url,
         'product_url': url, 'slug': product['slug'] or '', 'lastmod': product['lastmod'] or '',
@@ -4992,7 +5001,8 @@ def _variant_search_result(store, url, product, variant, variant_url):
         'size_ml': variant['size_ml'], 'concentration': variant['concentration'] or product['product_concentration'] or '',
         'gender': variant['gender'] or product['product_gender'] or '', 'price': variant['price'],
         'currency': variant['currency'] or 'EUR', 'availability': variant['availability'] or product['product_availability'] or '',
-        'fetched_at': variant['fetched_at'], 'fetch_status': 'OK', 'price_num': variant['price'],
+        'fetched_at': last_seen_at, 'price_updated_at': variant['fetched_at'],
+        'fetch_status': 'OK', 'price_num': variant['price'],
         'store': STORE_LABELS[store], 'store_key': store, 'variant_key': variant['variant_key'],
     }
 
