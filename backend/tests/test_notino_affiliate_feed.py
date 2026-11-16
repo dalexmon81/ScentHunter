@@ -216,6 +216,21 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 ).fetchone()["id"]
                 conn.close()
                 self.assertEqual(mapping_after, mapping_before)
+                first_fetched_at = conn.execute(
+                    "SELECT fetched_at FROM store_product_variants WHERE store='notino' AND url=?",
+                    ("https://www.notino.fr/french-avenue/liquid-brun/",),
+                ).fetchone()["fetched_at"]
+                conn.close()
+
+                # Repeating an identical snapshot must not rewrite unchanged variant rows.
+                feed.import_feed_bytes(SAMPLE)
+                conn = catalog_engine.db()
+                second_fetched_at = conn.execute(
+                    "SELECT fetched_at FROM store_product_variants WHERE store='notino' AND url=?",
+                    ("https://www.notino.fr/french-avenue/liquid-brun/",),
+                ).fetchone()["fetched_at"]
+                conn.close()
+                self.assertEqual(second_fetched_at, first_fetched_at)
 
                 rows = catalog_engine._search_local_impl("French Avenue Liquid Brun", per_store=32)
                 self.assertTrue(any(row.get("store_key") == "notino" and row.get("price_num") == 49.9
