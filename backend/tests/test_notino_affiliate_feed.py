@@ -133,6 +133,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                     with self.assertLogs("scenthunter.notino_feed", level="INFO") as profile:
                         result = feed.import_feed_bytes(SAMPLE)
                 self.assertIn("'commit':", " ".join(profile.output))
+                self.assertIn("'attach':", " ".join(profile.output))
                 self.assertEqual(result["imported_offers"], 2)
                 self.assertEqual(result["rejected_items"], 2)
                 db = sqlite3.connect(path)
@@ -163,6 +164,16 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT * FROM sync_state").fetchall(), before)
                 self.assertEqual(db.execute("SELECT price FROM store_product_variants WHERE size_ml=100").fetchone()[0], 49.9)
                 db.close()
+
+    def test_publication_failure_does_not_mark_staging_setup_as_failed(self):
+        with patch.object(feed, "_persist_staged_offers", side_effect=RuntimeError("failure")):
+            with self.assertLogs("scenthunter.notino_feed", level="WARNING") as logs:
+                with self.assertRaisesRegex(RuntimeError, "failure"):
+                    feed.import_feed_bytes(SAMPLE)
+        self.assertTrue(any("staging_database_setup" in line and "outcome=ok" in line
+                            for line in logs.output))
+        self.assertTrue(any("catalog_publication" in line and "outcome=error" in line
+                            for line in logs.output))
 
     def test_incomplete_archives_and_unsafe_xml_fail_closed(self):
         broken_gzip = gzip.compress(SAMPLE)[:-8]
