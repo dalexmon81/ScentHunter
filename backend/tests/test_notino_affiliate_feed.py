@@ -402,6 +402,29 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 feed_rows = feed.search_feed("Dior Sauvage")["results"]
                 self.assertEqual([(r["product_url"], r["url"]) for r in feed_rows], [(product, click)])
 
+                # An identical import must not rewrite commercial variant data,
+                # but the successful feed snapshot must keep the offer fresh.
+                conn = catalog_engine.db()
+                original_price_updated_at = conn.execute(
+                    "SELECT fetched_at FROM store_product_variants WHERE store='notino'"
+                ).fetchone()["fetched_at"]
+                conn.close()
+                self.assertEqual(feed.import_feed_bytes(xml)["imported_offers"], 1)
+                conn = catalog_engine.db()
+                unchanged_price_updated_at = conn.execute(
+                    "SELECT fetched_at FROM store_product_variants WHERE store='notino'"
+                ).fetchone()["fetched_at"]
+                conn.close()
+                self.assertEqual(unchanged_price_updated_at, original_price_updated_at)
+                refreshed_feed_rows = feed.search_feed("Dior Sauvage")["results"]
+                self.assertEqual(len(refreshed_feed_rows), 1)
+                self.assertEqual(
+                    refreshed_feed_rows[0]["price_updated_at"], original_price_updated_at
+                )
+                self.assertGreaterEqual(
+                    refreshed_feed_rows[0]["fetched_at"], original_price_updated_at
+                )
+
                 response = TestClient(main.app).get("/search", params={"q": "Dior Sauvage"})
                 self.assertEqual(response.status_code, 200)
                 result = response.json()
