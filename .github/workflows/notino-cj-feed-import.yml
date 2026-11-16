@@ -96,7 +96,7 @@ jobs:
                                   OR price IS NULL OR price<=0
                                   OR COALESCE(currency,'')!='EUR'
                                   OR COALESCE(availability,'') NOT IN ('in_stock','out_of_stock','preorder')
-                                  OR url NOT LIKE 'https://www.notino.fr/%'
+                                  OR COALESCE(url,'') NOT LIKE 'https://www.notino.fr/%'
                                   OR COALESCE(variant_url,'')=''
                                 THEN 1 ELSE 0 END),0)
                            FROM store_product_variants WHERE store=?""",
