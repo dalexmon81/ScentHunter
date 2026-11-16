@@ -105,7 +105,8 @@ def test_all_rejected_items_report_aggregate_field_diagnostics():
     assert "invalid_or_missing_fr_product_url=1" in message
     assert "invalid_or_missing_availability=2" in message
     assert "Perfume" not in message
-    assert "notino.de" not in message
+    assert "https://www.notino.de/item/" not in message
+    assert "www.notino.de|https:other_segments_1|none=1" in message
 
 
 def test_item_url_rejects_non_fr_host_credentials_and_non_https():
