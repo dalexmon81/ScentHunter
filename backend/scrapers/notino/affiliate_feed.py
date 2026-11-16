@@ -675,15 +675,43 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                         "hydration_queue": 0, "search_fts": 0,
                         "sync_state": 0, "other": 0}
 
+    current_statement = ["publication_setup"]
+    heartbeat_at = [time.monotonic()]
+
+    def progress_handler():
+        current = time.monotonic()
+        if current - heartbeat_at[0] >= 30:
+            LOGGER.warning(
+                "NOTINO_PERSIST_HEARTBEAT statement=%s elapsed_seconds=%.1f cpu_seconds=%.1f",
+                current_statement[0],
+                current - profile_started_wall,
+                time.process_time() - profile_started_cpu,
+            )
+            heartbeat_at[0] = current
+        return int(deadline is not None and current >= deadline)
+
     def timed_execute(table, sql, parameters=()):
         wall, cpu = time.monotonic(), time.process_time()
+        current_statement[0] = table
+        outcome = "ok"
+        LOGGER.warning("NOTINO_PERSIST_STATEMENT_START=%s", table)
         try:
             return conn.execute(sql, parameters)
+        except Exception:
+            outcome = "error"
+            raise
         finally:
+            elapsed_wall = time.monotonic() - wall
+            elapsed_cpu = time.process_time() - cpu
             if profile_enabled:
-                phase_wall[table] = phase_wall.get(table, 0.0) + time.monotonic() - wall
-                phase_cpu[table] = phase_cpu.get(table, 0.0) + time.process_time() - cpu
+                phase_wall[table] = phase_wall.get(table, 0.0) + elapsed_wall
+                phase_cpu[table] = phase_cpu.get(table, 0.0) + elapsed_cpu
                 statement_counts[table] += 1
+            LOGGER.warning(
+                "NOTINO_PERSIST_STATEMENT_END table=%s outcome=%s wall_seconds=%.3f cpu_seconds=%.3f",
+                table, outcome, elapsed_wall, elapsed_cpu,
+            )
+            current_statement[0] = "publication_setup"
 
     connect_wall, connect_cpu = time.monotonic(), time.process_time()
     # Publishing the full CJ feed competes with the always-on hydration worker.
@@ -692,20 +720,35 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     lock_wait_seconds = 15 * 60
     if deadline is not None:
         lock_wait_seconds = max(1.0, min(lock_wait_seconds, deadline - time.monotonic()))
+    LOGGER.warning("NOTINO_PERSIST_CONNECT_START timeout_seconds=%.1f", lock_wait_seconds)
     conn = connect(DB_PATH, timeout=lock_wait_seconds)
     connect_wall_elapsed = time.monotonic() - connect_wall
     connect_cpu_elapsed = time.process_time() - connect_cpu
+    LOGGER.warning(
+        "NOTINO_PERSIST_CONNECT_END wall_seconds=%.3f cpu_seconds=%.3f",
+        connect_wall_elapsed, connect_cpu_elapsed,
+    )
     now = time.time()
     try:
         stage_path = stage.execute("PRAGMA database_list").fetchone()[2]
+        attach_started = time.monotonic()
+        LOGGER.warning("NOTINO_PERSIST_ATTACH_START")
         conn.execute("ATTACH DATABASE ? AS notino_stage", (stage_path,))
-        if deadline is not None:
-            conn.set_progress_handler(lambda: int(time.monotonic() >= deadline), 10000)
+        LOGGER.warning(
+            "NOTINO_PERSIST_ATTACH_END wall_seconds=%.3f",
+            time.monotonic() - attach_started,
+        )
+        conn.set_progress_handler(progress_handler, 10000)
         with conn:
             lock_wall, lock_cpu = time.monotonic(), time.process_time()
+            LOGGER.warning("NOTINO_PERSIST_BEGIN_IMMEDIATE_START")
             conn.execute("BEGIN IMMEDIATE")
             lock_wall_elapsed = time.monotonic() - lock_wall
             lock_cpu_elapsed = time.process_time() - lock_cpu
+            LOGGER.warning(
+                "NOTINO_PERSIST_BEGIN_IMMEDIATE_END wall_seconds=%.3f cpu_seconds=%.3f",
+                lock_wall_elapsed, lock_cpu_elapsed,
+            )
 
             previous = timed_execute(
                 "other",
