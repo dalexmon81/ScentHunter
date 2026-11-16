@@ -5875,6 +5875,9 @@ def _hydration_store_order(conn):
     return stores[start:] + stores[:start], start
 
 
+_HYDRATION_CLAIM_MAX_SECONDS = 5.0
+
+
 def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     """Atomically claim one ready URL, with at most two active tasks per store."""
     now = time.time()
@@ -5886,6 +5889,8 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     conn.execute('PRAGMA busy_timeout=2000')
     try:
         conn.execute('BEGIN IMMEDIATE')
+        claim_deadline = time.monotonic() + _HYDRATION_CLAIM_MAX_SECONDS
+        conn.set_progress_handler(lambda: int(time.monotonic() >= claim_deadline), 1000)
 
         # A worker crash/restart must never strand a URL forever.
         conn.execute(
@@ -5914,7 +5919,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      AND (
                          SELECT COUNT(*)
                          FROM hydration_queue p
-                         WHERE p.store=q.store
+                         WHERE p.store=?
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
@@ -5923,7 +5928,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      q.available_at ASC,
                      q.first_seen_at ASC
                    LIMIT 1""",
-                (store, now),
+                (store, now, store),
             ).fetchone()
             if row:
                 chosen = row
@@ -5970,6 +5975,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             'attempts': int(chosen['attempts'] or 0) + 1,
         }
     except sqlite3.OperationalError as exc:
+        conn.set_progress_handler(None, 0)
         try:
             conn.rollback()
         except Exception:
@@ -5982,6 +5988,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
         traceback.print_exc()
         raise
     except Exception:
+        conn.set_progress_handler(None, 0)
         try:
             conn.rollback()
         except Exception:

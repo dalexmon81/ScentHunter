@@ -623,6 +623,62 @@ class StaleHydrationQueueTests(unittest.TestCase):
         conn.close()
         return url
 
+    def test_claim_respects_store_limit_and_selects_ready_task(self):
+        import sqlite3
+        import time
+        from unittest.mock import patch
+        import catalog_engine
+
+        pending = self._seed("bplatz", "pending", "PENDING", 1)
+        first = self._seed("bplatz", "processing-1", "PROCESSING", 1)
+        second = self._seed("bplatz", "processing-2", "PROCESSING", 1)
+        conn = sqlite3.connect(str(self._path))
+        conn.execute(
+            "UPDATE hydration_queue SET leased_until=? WHERE url IN (?,?)",
+            (time.time() + 3600, first, second),
+        )
+        conn.commit()
+        conn.close()
+        with patch.object(catalog_engine, "ACTIVE_STORES", ["bplatz"]):
+            self.assertIsNone(catalog_engine._claim_one_hydration_task())
+            conn = sqlite3.connect(str(self._path))
+            conn.execute("UPDATE hydration_queue SET state='DONE' WHERE url=?", (first,))
+            conn.commit()
+            conn.close()
+            self.assertEqual(catalog_engine._claim_one_hydration_task()["url"], pending)
+
+    def test_timed_out_claim_rolls_back_and_releases_writer_lock(self):
+        import sqlite3
+        from unittest.mock import patch
+        import catalog_engine
+        from catalog_writer_lock import connect
+
+        conn = sqlite3.connect(str(self._path))
+        conn.executemany(
+            "INSERT INTO hydration_queue(store,url,state,first_seen_at) VALUES(?,?,?,?)",
+            [("bplatz", f"https://example.invalid/{i}", "PROCESSING", 1)
+             for i in range(500)],
+        )
+        conn.commit()
+        conn.close()
+
+        with patch.object(catalog_engine, "_HYDRATION_CLAIM_MAX_SECONDS", 0):
+            with self.assertRaisesRegex(sqlite3.OperationalError, "interrupted"):
+                catalog_engine._claim_one_hydration_task()
+
+        check = connect(str(self._path), timeout=0.2)
+        try:
+            check.execute("BEGIN IMMEDIATE")
+            self.assertEqual(
+                check.execute(
+                    "SELECT COUNT(*) FROM hydration_queue WHERE state='PROCESSING'"
+                ).fetchone()[0],
+                500,
+            )
+            check.rollback()
+        finally:
+            check.close()
+
     def test_recent_done_product_is_not_requeued(self):
         import sqlite3
         import catalog_engine

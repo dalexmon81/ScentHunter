@@ -307,6 +307,17 @@ jobs:
                       raise RuntimeError("CJ parser returned zero imported offers")
                   result = {"status": "FEED_IMPORTED", **report}
               except Exception as exc:
+                  if isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower():
+                      try:
+                          with open(owner_path, "r", encoding="utf-8") as owner_file:
+                              owner_diagnostic = json.load(owner_file)
+                      except (OSError, ValueError):
+                          owner_diagnostic = None
+                      print("NOTINO_IMPORT_LOCK_DIAGNOSTIC=" + json.dumps({
+                          "owners": lock_owners(writer_lock_path),
+                          "owner_detail": owner_diagnostic,
+                          "database_openers": database_openers(),
+                      }, ensure_ascii=False, sort_keys=True), flush=True)
                   print(
                       "NOTINO_IMPORT_FAILED="
                       + json.dumps({
