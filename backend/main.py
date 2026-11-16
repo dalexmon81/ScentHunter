@@ -2426,7 +2426,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino',)
@@ -2440,7 +2440,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # public pages as a fallback. 3-4 seconds killed them before they could
     # return, especially Notino's reader/enrichment path.
     bridge_timeouts = {
-        store: (8.0 if store == 'notino' else 8.0)
+        store: (35.0 if store == 'notino' else 8.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
