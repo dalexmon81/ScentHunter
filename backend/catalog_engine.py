@@ -555,11 +555,27 @@ def _ensure_search_fts(conn):
 
 
 def _ensure_search_fts_triggers(conn):
-    """Keep FTS synchronized using indexed map lookups, never URL scans."""
+    """Keep FTS synchronized; Notino bulk imports rebuild its FTS rows once."""
+    # Replace these definitions so an importer can suppress per-row FTS work
+    # inside its own atomic transaction by setting sync_state=FEED_IMPORTING.
+    # The importer then performs one set-based refresh before publishing
+    # FEED_IMPORTED. Other stores and ordinary Notino writes retain triggers.
+    for name in (
+        "catalog_search_fts_store_urls_ai",
+        "catalog_search_fts_store_urls_au",
+        "catalog_search_fts_store_products_ai",
+        "catalog_search_fts_store_products_au",
+    ):
+        conn.execute(f"DROP TRIGGER IF EXISTS {name}")
     trigger_sql = (
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ai
         AFTER INSERT ON store_urls
+        WHEN NOT (
+            NEW.store='notino' AND EXISTS (
+                SELECT 1 FROM sync_state WHERE store='notino' AND status='FEED_IMPORTING'
+            )
+        )
         BEGIN
             DELETE FROM catalog_search_fts
              WHERE rowid=(SELECT id FROM catalog_search_fts_map
@@ -582,6 +598,11 @@ def _ensure_search_fts_triggers(conn):
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_au
         AFTER UPDATE OF store,url,slug,active ON store_urls
+        WHEN NOT (
+            NEW.store='notino' AND EXISTS (
+                SELECT 1 FROM sync_state WHERE store='notino' AND status='FEED_IMPORTING'
+            )
+        )
         BEGIN
             DELETE FROM catalog_search_fts
              WHERE rowid=(SELECT id FROM catalog_search_fts_map
@@ -620,6 +641,11 @@ def _ensure_search_fts_triggers(conn):
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ai
         AFTER INSERT ON store_products
+        WHEN NOT (
+            NEW.store='notino' AND EXISTS (
+                SELECT 1 FROM sync_state WHERE store='notino' AND status='FEED_IMPORTING'
+            )
+        )
         BEGIN
             DELETE FROM catalog_search_fts
              WHERE rowid=(SELECT id FROM catalog_search_fts_map
@@ -641,6 +667,11 @@ def _ensure_search_fts_triggers(conn):
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_au
         AFTER UPDATE OF store,url,name,brand,fetch_status ON store_products
+        WHEN NOT (
+            NEW.store='notino' AND EXISTS (
+                SELECT 1 FROM sync_state WHERE store='notino' AND status='FEED_IMPORTING'
+            )
+        )
         BEGIN
             DELETE FROM catalog_search_fts
              WHERE rowid=(SELECT id FROM catalog_search_fts_map
@@ -746,10 +777,10 @@ def _ensure_schema(conn):
         if 'variant_url' not in variant_columns:
             conn.execute('ALTER TABLE store_product_variants ADD COLUMN variant_url TEXT')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
-        _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
             store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
             discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
+        _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS hydration_queue(
             store TEXT NOT NULL,
             url TEXT NOT NULL,
