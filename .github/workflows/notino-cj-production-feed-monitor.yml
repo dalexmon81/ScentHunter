@@ -233,6 +233,7 @@ jobs:
           validated_clicks = 0
           rejected_clicks = 0
           rejection_reasons = collections.Counter()
+          rejected_path_features = collections.Counter()
           for offer in offers:
               click_url = offer.affiliate_url
               if not click_url:
@@ -277,12 +278,25 @@ jobs:
                       else:
                           reason = "other_validation_guard"
                   rejection_reasons[reason] += 1
+                  if reason == "encoded_delimiter_or_control":
+                      for feature, present in {
+                          "space": " " in decoded_path,
+                          "control": any(ord(char) < 32 or ord(char) == 127 for char in decoded_path),
+                          "backslash": "\\" in decoded_path,
+                          "semicolon": ";" in decoded_path,
+                          "question_mark": "?" in decoded_path,
+                          "hash": "#" in decoded_path,
+                          "encoded_space": bool(re.search(r"%20", destination.path, re.I)),
+                      }.items():
+                          if present:
+                              rejected_path_features[feature] += 1
           shape["cj_click_hosts"] = dict(click_hosts.most_common(10))
           shape["cj_validation"] = {
               "offers_with_cj_click": validated_clicks + rejected_clicks,
               "validated_for_stored_product": validated_clicks,
               "rejected": rejected_clicks,
               "rejection_categories": dict(sorted(rejection_reasons.items())),
+              "rejected_path_features": dict(sorted(rejected_path_features.items())),
           }
           print(
               "NOTINO_CJ_PARAMETER_DIAGNOSTIC="
