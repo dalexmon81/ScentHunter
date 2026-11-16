@@ -62,14 +62,49 @@ jobs:
               finally:
                   conn.close()
 
-          def is_fresh_feed(value):
+          def is_fresh_feed(value, active_urls, variants, invalid_variants):
+              """A feed is fresh only when the persisted catalog agrees with its sync marker."""
+              try:
+                  expected = int(value.get("discovered_count") or 0)
+                  finished = float(value.get("finished_at"))
+                  age = time.time() - finished
+              except (AttributeError, TypeError, ValueError):
+                  return False
               return bool(
                   value
                   and value.get("status") == "FEED_IMPORTED"
-                  and value.get("finished_at") is not None
-                  and 0 <= time.time() - float(value["finished_at"]) < 23 * 60 * 60
-                  and int(value.get("discovered_count") or 0) > 0
+                  and expected > 0
+                  and 0 <= age < 23 * 60 * 60
+                  and active_urls > 0
+                  and variants == expected
+                  and invalid_variants == 0
               )
+
+          def persisted_snapshot():
+              """Read-only proof of the Notino publication, independent of sync_state."""
+              uri = "file:" + str(catalog_engine.DB_PATH) + "?mode=ro"
+              conn = sqlite3.connect(uri, uri=True, timeout=15)
+              try:
+                  active_urls = conn.execute(
+                      "SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1",
+                      ("notino",),
+                  ).fetchone()[0]
+                  variants, invalid = conn.execute(
+                      """SELECT COUNT(*),
+                                COALESCE(SUM(CASE WHEN
+                                  COALESCE(TRIM(name),'')='' OR COALESCE(TRIM(brand),'')=''
+                                  OR price IS NULL OR price<=0
+                                  OR COALESCE(currency,'')!='EUR'
+                                  OR COALESCE(availability,'') NOT IN ('in_stock','out_of_stock','preorder')
+                                  OR url NOT LIKE 'https://www.notino.fr/%'
+                                  OR COALESCE(variant_url,'')=''
+                                THEN 1 ELSE 0 END),0)
+                           FROM store_product_variants WHERE store=?""",
+                      ("notino",),
+                  ).fetchone()
+                  return int(active_urls or 0), int(variants or 0), int(invalid or 0)
+              finally:
+                  conn.close()
 
           # Fail closed unless the deployed runtime can both parse the
           # allowlisted CJ wrapper and preserve it in catalog search.
