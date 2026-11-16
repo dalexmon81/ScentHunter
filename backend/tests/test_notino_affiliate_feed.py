@@ -216,6 +216,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 ).fetchone()["id"]
                 conn.close()
                 self.assertEqual(mapping_after, mapping_before)
+                conn = catalog_engine.db()
                 first_fetched_at = conn.execute(
                     "SELECT fetched_at FROM store_product_variants WHERE store='notino' AND url=?",
                     ("https://www.notino.fr/french-avenue/liquid-brun/",),
