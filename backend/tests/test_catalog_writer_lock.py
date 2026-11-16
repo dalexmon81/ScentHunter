@@ -188,6 +188,30 @@ class CatalogWriterLockTests(unittest.TestCase):
                 first.close()
                 second.close()
 
+    def test_writer_owner_diagnostic_tracks_lock_lifetime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            owner_path = Path(database + ".writer.lock.owner.json")
+            conn = connect(database, timeout=1.0)
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute("INSERT INTO writes(value) VALUES (1)")
+                self.assertTrue(owner_path.exists())
+                import json
+                owner = json.loads(owner_path.read_text(encoding="utf-8"))
+                self.assertEqual(owner["pid"], __import__("os").getpid())
+                self.assertTrue(owner["stack"])
+                conn.commit()
+                self.assertFalse(owner_path.exists())
+            finally:
+                conn.close()
+
+
     def test_rollback_releases_lock_for_next_transaction(self):
         with tempfile.TemporaryDirectory() as directory:
             database = str(Path(directory) / "catalog.sqlite3")
