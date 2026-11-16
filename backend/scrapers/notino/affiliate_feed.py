@@ -17,6 +17,7 @@ import sqlite3
 import tempfile
 import time
 import urllib.parse
+import unicodedata
 import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -640,8 +641,14 @@ def _legacy_variant_key(offer) -> str | None:
 
 
 def _slug(url: str) -> str:
+    """Match catalog_engine.url_slug exactly so unchanged URLs stay unchanged."""
     path = urllib.parse.unquote(urllib.parse.urlparse(url).path)
-    return re.sub(r"[-_/]+", " ", path).strip().lower()
+    path = re.sub(r"\.(?:html?|php)$", "", path, flags=re.I)
+    path = re.sub(r"[-_/]+", " ", path)
+    path = unicodedata.normalize("NFKD", path)
+    path = "".join(char for char in path if not unicodedata.combining(char)).lower()
+    path = re.sub(r"[^a-z0-9]+", " ", path)
+    return re.sub(r"\s+", " ", path).strip()
 
 
 def _persist_staged_offers(stage, count, started_at, deadline):
@@ -750,7 +757,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                    SELECT ?,url,MIN(slug),NULL,?,1 FROM notino_stage.offers
                    WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
-                     slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
+                     slug=excluded.slug,discovered_at=excluded.discovered_at,active=1
+                   WHERE store_urls.slug IS NOT excluded.slug OR store_urls.active != 1""",
                 (STORE_KEY, now),
             )
 
@@ -787,7 +795,17 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                      sku=NULL,gtin=NULL,mpn=NULL,size_ml=NULL,concentration=NULL,
                      gender=NULL,price=NULL,currency=excluded.currency,
                      availability='variant_catalog',fetched_at=excluded.fetched_at,
-                     fetch_status='OK'""",
+                     fetch_status='OK'
+                   WHERE store_products.name IS NOT excluded.name
+                      OR store_products.brand IS NOT excluded.brand
+                      OR store_products.image IS NOT excluded.image
+                      OR store_products.sku IS NOT NULL OR store_products.gtin IS NOT NULL
+                      OR store_products.mpn IS NOT NULL OR store_products.size_ml IS NOT NULL
+                      OR store_products.concentration IS NOT NULL OR store_products.gender IS NOT NULL
+                      OR store_products.price IS NOT NULL
+                      OR store_products.currency IS NOT excluded.currency
+                      OR store_products.availability IS NOT 'variant_catalog'
+                      OR store_products.fetch_status IS NOT excluded.fetch_status""",
                 (STORE_KEY, now),
             )
 
@@ -798,7 +816,13 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                    SELECT ?,url,'DONE',0,0,?,? FROM notino_stage.offers WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
-                     leased_until=NULL,lease_token=NULL,last_error=NULL""",
+                     leased_until=NULL,lease_token=NULL,last_error=NULL
+                   WHERE hydration_queue.state IS NOT 'DONE'
+                      OR hydration_queue.priority != 0
+                      OR hydration_queue.attempts != 0
+                      OR hydration_queue.leased_until IS NOT NULL
+                      OR hydration_queue.lease_token IS NOT NULL
+                      OR hydration_queue.last_error IS NOT NULL""",
                 (STORE_KEY, now, now),
             )
 
