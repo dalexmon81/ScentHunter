@@ -1622,12 +1622,11 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
 
 
 def search(query: str) -> Dict[str, Any]:
-    """Search Notino.fr directly; the CJ XML feed is no longer a dependency.
+    """Search cached affiliate offers first, then public Notino discovery.
 
-    Public discovery is query-scoped and each offer is accepted only after
-    the destination product page supplies matching identity and live price
-    evidence. The old feed-backed catalog remains a read-only last resort
-    during migration, never a prerequisite for returning public results.
+    The CJ feed is not required at search time: the local cached rows are
+    optional. If the cache is empty or unavailable, public discovery can
+    still return verified Notino product offers without importing the feed.
     """
     query = _clean(query)
     if not query:
@@ -1636,15 +1635,38 @@ def search(query: str) -> Dict[str, Any]:
             "error": None, "details": {"source": "notino_public", "empty_query": True},
         }
 
-    from . import legacy_public
     started = time.monotonic()
+    cached = None
+    cached_error = None
+    try:
+        from . import affiliate_feed
+        cached = affiliate_feed.search_feed(query)
+    except Exception as exc:
+        cached_error = type(exc).__name__
+
+    # Preserve existing CJ tracking links whenever a matching cached offer
+    # is already available. This performs a local lookup only, never a feed
+    # download, refresh, or import.
+    if isinstance(cached, dict) and cached.get("results"):
+        return cached
+
+    from . import legacy_public
     try:
         rows = legacy_public.search(query)
     except Exception as exc:
-        rows = []
-        public_error = type(exc).__name__
-    else:
-        public_error = None
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "count": 0,
+            "error": type(exc).__name__,
+            "details": {
+                "source": "notino_public_product_pages",
+                "feed_required": False,
+                "cached_feed_error": cached_error,
+                "elapsed_seconds": round(time.monotonic() - started, 3),
+            },
+        }
 
     if rows:
         return {
@@ -1656,39 +1678,22 @@ def search(query: str) -> Dict[str, Any]:
             "details": {
                 "source": "notino_public_product_pages",
                 "feed_required": False,
+                "cached_feed_error": cached_error,
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             },
         }
 
-    # Compatibility only: existing persisted feed rows may still serve a
-    # result if Notino blocks public discovery. No network feed download or
-    # import is started from a user search.
-    try:
-        from . import affiliate_feed
-        cached = affiliate_feed.search_feed(query)
-        if isinstance(cached, dict) and cached.get("results"):
-            cached.setdefault("details", {})
-            cached["details"] = {
-                **cached["details"],
-                "source": "notino_cached_feed_fallback",
-                "public_discovery_error": public_error,
-                "feed_import_started": False,
-            }
-            return cached
-    except Exception as exc:
-        if public_error is None:
-            public_error = type(exc).__name__
-
     return {
-        "status": "no_match" if public_error is None else "error",
-        "verified": public_error is None,
+        "status": "success",
+        "verified": True,
         "results": [],
         "count": 0,
-        "error": public_error,
+        "error": None,
         "details": {
             "source": "notino_public_product_pages",
             "feed_required": False,
             "public_discovery_attempted": True,
+            "cached_feed_error": cached_error,
             "elapsed_seconds": round(time.monotonic() - started, 3),
         },
     }
