@@ -556,18 +556,22 @@ def _ensure_search_fts(conn):
 
 def _ensure_search_fts_triggers(conn):
     """Keep FTS synchronized; Notino bulk imports rebuild its FTS rows once."""
-    # Replace these definitions so an importer can suppress per-row FTS work
-    # inside its own atomic transaction by setting sync_state=FEED_IMPORTING.
-    # The importer then performs one set-based refresh before publishing
-    # FEED_IMPORTED. Other stores and ordinary Notino writes retain triggers.
-    for name in (
-        "catalog_search_fts_store_urls_ai",
-        "catalog_search_fts_store_urls_au",
-        "catalog_search_fts_store_products_ai",
-        "catalog_search_fts_store_products_au",
-    ):
-        conn.execute(f"DROP TRIGGER IF EXISTS {name}")
-    trigger_sql = (
+    # Replace these definitions atomically so no concurrent catalog writer can
+    # slip between dropping the old triggers and installing the guarded ones.
+    # The importer suppresses per-row FTS work inside its own transaction by
+    # setting sync_state=FEED_IMPORTING, then refreshes FTS set-wise.
+    own_transaction = not conn.in_transaction
+    if own_transaction:
+        conn.execute("BEGIN IMMEDIATE")
+    try:
+        for name in (
+            "catalog_search_fts_store_urls_ai",
+            "catalog_search_fts_store_urls_au",
+            "catalog_search_fts_store_products_ai",
+            "catalog_search_fts_store_products_au",
+        ):
+            conn.execute(f"DROP TRIGGER IF EXISTS {name}")
+        trigger_sql = (
         """
         CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ai
         AFTER INSERT ON store_urls
@@ -709,9 +713,15 @@ def _ensure_search_fts_triggers(conn):
              WHERE m.store=OLD.store AND m.url=OLD.url;
         END
         """,
-    )
-    for sql in trigger_sql:
-        conn.execute(sql)
+        )
+        for sql in trigger_sql:
+            conn.execute(sql)
+        if own_transaction:
+            conn.commit()
+    except Exception:
+        if own_transaction:
+            conn.rollback()
+        raise
 
 
 def _fts_query_for_tokens(token_set):
