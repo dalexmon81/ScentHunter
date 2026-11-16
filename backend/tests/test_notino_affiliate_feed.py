@@ -305,6 +305,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             "/dior%252Fother/",
             "/dior%5Cother/",
             "/dior;parameter/other/",
+            "/dior%3Bparameter/other/",
         ):
             unsafe_product = "https://www.notino.fr" + unsafe_path
             with self.subTest(unsafe_path=unsafe_path):
