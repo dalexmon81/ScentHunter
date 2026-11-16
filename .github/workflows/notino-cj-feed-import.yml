@@ -167,21 +167,115 @@ jobs:
           ):
               raise SystemExit("Preflight failed: catalog reports an unfinished Notino import.")
 
-          # A short BEGIN IMMEDIATE/ROLLBACK checks current writer contention;
-          # no data is modified, and failure aborts before downloading the feed.
-          lock_probe = sqlite3.connect(catalog_engine.DB_PATH, timeout=2)
-          try:
-              lock_probe.execute("BEGIN IMMEDIATE")
-              lock_probe.rollback()
-          except sqlite3.OperationalError:
-              raise SystemExit("Preflight failed: catalog SQLite is currently write-locked.")
-          finally:
-              lock_probe.close()
-          print("NOTINO_PREFLIGHT_WRITER_LOCK=clear", flush=True)
           if not runtime_ready:
               raise SystemExit(
                   "Preflight failed: deployed runtime cannot preserve validated Notino CJ links."
               )
+
+          # Inspect the shared advisory lock before probing SQLite. Catalog
+          # writers coordinate through <database>.writer.lock; a raw sqlite3
+          # BEGIN IMMEDIATE can race a normal short-lived catalog transaction.
+          import fcntl
+          import stat
+          from catalog_writer_lock import connect as coordinated_connect
+
+          db_path = os.path.realpath(catalog_engine.DB_PATH)
+          writer_lock_path = db_path + ".writer.lock"
+
+          def process_label(pid):
+              try:
+                  with open(f"/proc/{pid}/comm", "r", encoding="utf-8") as stream:
+                      comm = stream.read().strip()
+                  with open(f"/proc/{pid}/cmdline", "rb") as stream:
+                      argv = [part.decode("utf-8", "replace") for part in stream.read().split(b"\\0") if part]
+                  if len(argv) > 2 and argv[1] == "-m":
+                      script = argv[2]
+                  elif len(argv) > 1 and argv[1] == "-c":
+                      script = "python -c"
+                  elif len(argv) > 1:
+                      script = os.path.basename(argv[1])
+                  else:
+                      script = comm
+                  return {"pid": int(pid), "comm": comm, "program": script}
+              except (OSError, ValueError):
+                  return {"pid": int(pid), "comm": "unavailable", "program": "unavailable"}
+
+          def lock_owners(path):
+              try:
+                  info = os.stat(path)
+              except FileNotFoundError:
+                  return []
+              device_inode = (
+                  f"{os.major(info.st_dev):02x}:"
+                  f"{os.minor(info.st_dev):02x}:{info.st_ino}"
+              )
+              owners = []
+              try:
+                  with open("/proc/locks", "r", encoding="utf-8") as stream:
+                      for line in stream:
+                          fields = line.split()
+                          if len(fields) < 6 or fields[5] != device_inode:
+                              continue
+                          try:
+                              pid = int(fields[4])
+                          except ValueError:
+                              continue
+                          owners.append(process_label(pid))
+              except OSError:
+                  pass
+              return owners
+
+          writer_owners = lock_owners(writer_lock_path)
+          print("NOTINO_WRITER_LOCK_OWNER=" + json.dumps({
+              "lock_file_present": os.path.exists(writer_lock_path),
+              "owners": writer_owners,
+          }, sort_keys=True), flush=True)
+
+          # If the SQLite lock remains busy after the coordinated wait, report
+          # processes holding the database/WAL/SHM open. Do not kill processes
+          # or start a second importer automatically.
+          def database_openers():
+              openers = {}
+              for entry in os.listdir("/proc"):
+                  if not entry.isdigit() or int(entry) == os.getpid():
+                      continue
+                  pid = int(entry)
+                  try:
+                      fd_dir = f"/proc/{entry}/fd"
+                      for fd in os.listdir(fd_dir):
+                          try:
+                              target = os.readlink(os.path.join(fd_dir, fd))
+                          except OSError:
+                              continue
+                          if target == db_path or target.startswith(db_path + "-"):
+                              openers[pid] = process_label(pid)
+                              break
+                  except OSError:
+                      continue
+              return list(openers.values())[:30]
+
+          lock_probe = None
+          try:
+              # Use the same cross-process flock as normal catalog writers.
+              # A normal in-flight transaction can finish during this wait.
+              lock_probe = coordinated_connect(catalog_engine.DB_PATH, timeout=45)
+              lock_probe.execute("BEGIN IMMEDIATE")
+              lock_probe.rollback()
+          except sqlite3.OperationalError as exc:
+              print("NOTINO_SQLITE_LOCK_DIAGNOSTIC=" + json.dumps({
+                  "error_type": type(exc).__name__,
+                  "error": str(exc)[:200],
+                  "writer_lock_owners": lock_owners(writer_lock_path),
+                  "database_openers": database_openers(),
+              }, sort_keys=True), flush=True)
+              raise SystemExit(
+                  "Preflight failed: catalog writer/SQLite lock did not clear; "
+                  "inspect NOTINO_SQLITE_LOCK_DIAGNOSTIC before retrying."
+              )
+          finally:
+              if lock_probe is not None:
+                  lock_probe.close()
+          print("NOTINO_PREFLIGHT_WRITER_LOCK=clear", flush=True)
 
           before = state()
           print("NOTINO_IMPORT_BEFORE=" + json.dumps({
