@@ -131,7 +131,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 CREATE TABLE store_product_variants(store TEXT, url TEXT, variant_key TEXT,
                     name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
                     size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
-                    availability TEXT, fetched_at REAL, variant_url TEXT,
+                    availability TEXT, fetched_at REAL, variant_url TEXT, last_seen_at REAL,
                     PRIMARY KEY(store,url,variant_key));
                 CREATE TABLE hydration_queue(store TEXT, url TEXT, state TEXT, priority INTEGER,
                     attempts INTEGER, available_at REAL, first_seen_at REAL, leased_until REAL,
@@ -414,8 +414,12 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 unchanged_price_updated_at = conn.execute(
                     "SELECT fetched_at FROM store_product_variants WHERE store='notino'"
                 ).fetchone()["fetched_at"]
+                last_seen_at = conn.execute(
+                    "SELECT last_seen_at FROM store_product_variants WHERE store='notino'"
+                ).fetchone()["last_seen_at"]
                 conn.close()
                 self.assertEqual(unchanged_price_updated_at, original_price_updated_at)
+                self.assertGreaterEqual(last_seen_at, original_price_updated_at)
                 refreshed_feed_rows = feed.search_feed("Dior Sauvage")["results"]
                 self.assertEqual(len(refreshed_feed_rows), 1)
                 self.assertEqual(
