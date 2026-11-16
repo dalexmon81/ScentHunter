@@ -2,7 +2,15 @@
 import gzip
 import os
 import unittest
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import patch
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.models import Base, Store, StoreAuthorization
 
 from scrapers.notino import affiliate_feed as feed
 
@@ -64,15 +72,45 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(feed._product_url("https://user:pass@www.notino.fr/brand/item/"))
 
     def test_missing_credentials_are_reported_without_secrets(self):
-        values = {
-            "NOTINO_CJ_FEED_URL": "",
-            "NOTINO_CJ_FEED_USERNAME": "",
-            "NOTINO_CJ_FEED_PASSWORD": "secret-canary-value",
-        }
-        with patch.dict(os.environ, values, clear=False):
-            with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing") as raised:
-                feed.import_configured_feed()
-        self.assertNotIn("secret-canary-value", str(raised.exception))
+        # Exercise the credential diagnostic only after a valid, isolated
+        # canonical consent record passes the mandatory authorization gate.
+        with tempfile.TemporaryDirectory() as directory:
+            engine = create_engine(f"sqlite:///{Path(directory) / 'notino-auth.sqlite'}")
+            Base.metadata.create_all(engine)
+            factory = sessionmaker(bind=engine, expire_on_commit=False)
+            with factory() as session:
+                store = Store(
+                    name="Notino", slug="notino", domain="notino.fr",
+                    country="FR", currency="EUR", status="active",
+                )
+                session.add(store)
+                session.flush()
+                session.add(StoreAuthorization(
+                    store_id=store.id,
+                    status="approved",
+                    collection_method="affiliate_feed",
+                    scopes=["product_discovery", "offer_data"],
+                    authorization_reference="isolated-test-approval",
+                    evidence_url="https://affiliate.example.test/approval",
+                    approved_by="isolated-test",
+                    approved_at=datetime.now(timezone.utc),
+                    terms={},
+                ))
+                session.commit()
+
+            values = {
+                "NOTINO_CJ_FEED_URL": "",
+                "NOTINO_CJ_FEED_USERNAME": "",
+                "NOTINO_CJ_FEED_PASSWORD": "secret-canary-value",
+            }
+            try:
+                with patch("app.db.make_session_factory", return_value=factory):
+                    with patch.dict(os.environ, values, clear=False):
+                        with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing") as raised:
+                            feed.import_configured_feed()
+                self.assertNotIn("secret-canary-value", str(raised.exception))
+            finally:
+                engine.dispose()
 
 
     def test_authorized_feed_http_403_and_429_fail_closed_and_close_response(self):

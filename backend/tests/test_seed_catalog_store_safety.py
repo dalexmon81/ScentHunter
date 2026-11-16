@@ -25,6 +25,30 @@ def run_seed(*extra: str) -> dict:
     return json.loads(completed.stdout)
 
 
+def test_seed_resolves_one_valid_gtin_from_catalog_gtins_array():
+    from scripts.seed_catalog import canonical_gtin
+
+    assert canonical_gtin({"gtins": ["6290360375694"]}) == "6290360375694"
+    assert canonical_gtin({"gtin": "6290360375694"}) == "6290360375694"
+    assert canonical_gtin({"gtins": [], "gtin": None}) is None
+
+
+def test_seed_rejects_multiple_gtins_for_one_variant():
+    import pytest
+    from scripts.seed_catalog import canonical_gtin
+
+    with pytest.raises(ValueError, match="split multiple GTINs"):
+        canonical_gtin({"gtins": ["6290360375694", "6290360375700"]})
+
+
+def test_seed_rejects_invalid_gtin_check_digit():
+    import pytest
+    from scripts.seed_catalog import canonical_gtin
+
+    with pytest.raises(ValueError, match="check digit"):
+        canonical_gtin({"gtins": ["6290360375695"]})
+
+
 def test_default_dry_run_does_not_activate_any_retailer():
     report = run_seed()
     assert report["status"] == "validated"

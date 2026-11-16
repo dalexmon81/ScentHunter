@@ -23,7 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db import make_session_factory
 from app.connectors.runtime_registry import build_connectors, get_connector
 from app.connectors.base import validate_offer_payload
-from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store
+from app.models import IngestionArtifact, IngestionDeadLetter, IngestionRaw, IngestionRun, Offer, Store, StoreAuthorization
 from app.matching.offer_matcher import match_staged_offer
 from app.services.product_normalization import normalize_product
 from app.workers.celery_app import celery_app
@@ -40,6 +40,11 @@ class IngestionTask(celery_app.Task):
     max_retries = 5
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+        if isinstance(exc, PermissionError):
+            # Missing/expired/revoked permission is a policy block, not a
+            # connector outage: never retry or quarantine the retailer for it.
+            logger.warning("Retailer ingestion blocked by authorization policy: %s", exc)
+            return
         try:
             record_dead_letter.apply_async(
                 kwargs={
@@ -79,7 +84,34 @@ def _json_safe(value: Any):
         return value
     return repr(value)[:2000]
 
-def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict]) -> list[str]:
+def _require_store_authorization(session, store: Store, scope: str, reference: str | None = None) -> StoreAuthorization:
+    """Fail closed unless a current, approved permission explicitly grants scope."""
+    now = datetime.now(timezone.utc)
+    grant = session.scalar(
+        select(StoreAuthorization)
+        .where(
+            StoreAuthorization.store_id == store.id,
+            StoreAuthorization.status == "approved",
+            StoreAuthorization.approved_at.is_not(None),
+            StoreAuthorization.revoked_at.is_(None),
+            (StoreAuthorization.valid_from.is_(None) | (StoreAuthorization.valid_from <= now)),
+            (StoreAuthorization.expires_at.is_(None) | (StoreAuthorization.expires_at > now)),
+        )
+        .order_by(StoreAuthorization.approved_at.desc(), StoreAuthorization.created_at.desc())
+        .limit(1)
+    )
+    if grant is None:
+        raise PermissionError(f"store_collection_not_authorized:{store.slug}")
+    if scope not in (grant.scopes or []):
+        raise PermissionError(f"store_authorization_scope_missing:{store.slug}:{scope}")
+    if not (grant.authorization_reference or "").strip():
+        raise PermissionError(f"store_authorization_reference_missing:{store.slug}")
+    if reference is not None and grant.authorization_reference != reference:
+        raise PermissionError(f"store_authorization_reference_mismatch:{store.slug}")
+    return grant
+
+
+def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[dict], required_scope: str = "offer_data") -> list[str]:
     """Persist exact source bytes (or deterministic JSON evidence) once per hash."""
     factory = make_session_factory()
     artifact_ids = []
@@ -90,6 +122,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[d
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
+            _require_store_authorization(session, store, required_scope)
             for artifact in artifacts:
                 raw = artifact.get("data")
                 fmt = str(artifact.get("format") or "json").lower()
@@ -128,7 +161,7 @@ def _persist_raw_artifacts(store_key: str, run_id: str | None, artifacts: list[d
     finally:
         factory.kw["bind"].dispose()
 
-def _stage_record(store_key: str, record, discovery_evidence: dict | None = None) -> str:
+def _stage_record(store_key: str, record, discovery_evidence: dict | None = None, required_scope: str = "offer_data") -> str:
     factory = make_session_factory()
     try:
         with factory() as session:
@@ -137,6 +170,7 @@ def _stage_record(store_key: str, record, discovery_evidence: dict | None = None
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 raise ValueError(f"connector_store_not_active:{store_key}")
+            _require_store_authorization(session, store, required_scope)
             payload = record.to_dict()
             # Keep fields at the root for existing matcher/promotion contracts;
             # preserve source evidence separately for replay and audit.
@@ -243,6 +277,8 @@ def ingest_bounded_bplatz_product_url(self, product_url: str, authorization_refe
                 raise ValueError("connector_store_not_configured:bplatz")
             if store.status != "active":
                 return {"store": store_key, "status": "inactive", "staged": 0}
+            _require_store_authorization(session, store, "single_product_fetch", authorization_reference)
+            _require_store_authorization(session, store, "offer_data", authorization_reference)
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
             session.flush()
@@ -335,6 +371,8 @@ def discover_store_products(self, store_key: str):
                 raise ValueError(f"connector_store_not_configured:{store_key}")
             if store.status != "active":
                 return {"store": store_key, "status": "inactive", "queued": 0}
+            _require_store_authorization(session, store, "product_discovery")
+            _require_store_authorization(session, store, "offer_data")
             run = IngestionRun(store_id=store.id, status="running", errors=[])
             session.add(run)
             session.flush()
@@ -405,6 +443,15 @@ def discover_store_products(self, store_key: str):
 
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.fetch_store_offers")
 def fetch_store_offers(self, store_key: str, product_key: str, discovery_evidence: dict | None = None):
+    factory = make_session_factory()
+    try:
+        with factory() as session:
+            store = session.scalar(select(Store).where(Store.slug == store_key))
+            if store is None or store.status != "active":
+                raise PermissionError(f"connector_store_not_active_or_configured:{store_key}")
+            _require_store_authorization(session, store, "offer_data")
+    finally:
+        factory.kw["bind"].dispose()
     connector = get_connector(store_key)
     records = _run(connector.fetch_offers(product_key))
     ids = []
@@ -507,7 +554,13 @@ def match_offer_to_variant(self, raw_id: str):
 @celery_app.task(bind=True, base=IngestionTask, name="app.workers.ingestion_tasks.promote_matched_offers_task")
 def promote_matched_offers_task(self, limit: int = 100):
     from app.workers.offer_promotion import promote_matched_offers
-    return promote_matched_offers(make_session_factory, limit=limit)
+    # Promotion expects a SQLAlchemy sessionmaker, not the factory function.
+    # Keep the same per-task engine lifecycle used by the other ingestion tasks.
+    factory = make_session_factory()
+    try:
+        return promote_matched_offers(factory, limit=limit)
+    finally:
+        factory.kw["bind"].dispose()
 
 def enqueue_product_detail_refresh(store_key: str, offer_id: str) -> str:
     """Queue a fresh price/stock check when a product detail is opened."""
@@ -540,6 +593,10 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
             ).first()
         if refreshable is None:
             return {"store": store_key, "offer_id": offer_id, "status": "not_refreshable"}
+        store_row = session.scalar(select(Store).where(Store.slug == store_key))
+        if store_row is None:
+            raise ValueError(f"connector_store_not_configured:{store_key}")
+        _require_store_authorization(session, store_row, "price_stock")
         external_product_id, product_url = refreshable
     finally:
         factory.kw["bind"].dispose()
@@ -552,7 +609,7 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
     record = _run(connector.fetch_price_and_stock(refresh_key))
     raw_artifacts = list(getattr(connector, "_raw_artifacts", []) or [])
     artifact_ids = (
-        _persist_raw_artifacts(store_key, None, raw_artifacts)
+        _persist_raw_artifacts(store_key, None, raw_artifacts, required_scope="price_stock")
         if raw_artifacts else []
     )
     if record is None:
@@ -563,6 +620,7 @@ def refresh_price_and_stock(self, store_key: str, offer_id: str):
     raw_id = _stage_record(
         store_key, record,
         {"refresh_of": offer_id, "raw_artifact_ids": artifact_ids},
+        required_scope="price_stock",
     )
     validate_offer.apply_async(args=[raw_id], queue="validation")
     return {
@@ -649,15 +707,25 @@ def record_dead_letter(task_name: str, task_id: str, args_repr: str, kwargs_repr
         factory.kw["bind"].dispose()
 
 def _configured_store_keys():
-    """Schedule only connectors whose Phase 2 store row is explicitly active."""
+    """Schedule only active connectors with current discovery and offer-data grants."""
     connector_keys = set(build_connectors().keys())
     factory = make_session_factory()
     try:
         with factory() as session:
-            active_store_keys = set(session.scalars(
-                select(Store.slug).where(Store.status == "active")
-            ).all())
-        return sorted(connector_keys & active_store_keys)
+            stores = session.scalars(
+                select(Store).where(Store.status == "active")
+            ).all()
+            authorized = set()
+            for store in stores:
+                if store.slug not in connector_keys:
+                    continue
+                try:
+                    _require_store_authorization(session, store, "product_discovery")
+                    _require_store_authorization(session, store, "offer_data")
+                except PermissionError:
+                    continue
+                authorized.add(store.slug)
+        return sorted(authorized)
     finally:
         factory.kw["bind"].dispose()
 
@@ -686,7 +754,19 @@ def enqueue_offer_collection_for_configured_stores():
             ).all()
             queued = 0
             seen = set()
+            authorization_cache = {}
             for external_product_id, store_key in rows:
+                if store_key not in authorization_cache:
+                    store = session.scalar(select(Store).where(Store.slug == store_key))
+                    try:
+                        if store is None:
+                            raise PermissionError("store_not_configured")
+                        _require_store_authorization(session, store, "price_stock")
+                        authorization_cache[store_key] = True
+                    except PermissionError:
+                        authorization_cache[store_key] = False
+                if not authorization_cache[store_key]:
+                    continue
                 key = (store_key, external_product_id)
                 if key in seen:
                     continue
@@ -719,7 +799,19 @@ def enqueue_refresh_for_active_stores():
                        Offer.external_product_id.is_not(None), Store.slug.in_(main_stores))
             ).all()
             queued = 0
+            authorization_cache = {}
             for external_product_id, store_key in rows:
+                if store_key not in authorization_cache:
+                    store = session.scalar(select(Store).where(Store.slug == store_key))
+                    try:
+                        if store is None:
+                            raise PermissionError("store_not_configured")
+                        _require_store_authorization(session, store, "price_stock")
+                        authorization_cache[store_key] = True
+                    except PermissionError:
+                        authorization_cache[store_key] = False
+                if not authorization_cache[store_key]:
+                    continue
                 refresh_price_and_stock.apply_async(
                     kwargs={"store_key": store_key, "offer_id": external_product_id},
                     queue="refresh",

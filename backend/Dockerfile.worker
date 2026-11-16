@@ -4,5 +4,6 @@ WORKDIR /app
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt && useradd --system --uid 10001 --create-home celery && chown -R celery:celery /app
 COPY --chown=celery:celery backend /app/backend
+COPY --chown=celery:celery frontend /app/frontend
 USER celery
 CMD ["sh", "/app/backend/start_worker.sh", "worker"]

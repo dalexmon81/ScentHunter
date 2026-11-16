@@ -5,19 +5,28 @@ The workflow provisions a disposable PostgreSQL database and seeds the
 canonical catalog before running this test.
 """
 from decimal import Decimal
+from dataclasses import replace
+import json
+from pathlib import Path
 
 from sqlalchemy import select
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.api.legacy_catalog import router as legacy_catalog_router
+import app.api.catalog_search as catalog_search_api
 from app.api.catalog_search import router as catalog_search_router
 from app.connectors.notino import NotinoAffiliateFeedConnector
+from app.connectors.bplatz import BplatzConnector
 from app.db import make_engine
 from app.matching.offer_matcher import match_staged_offer
+from app.services.product_normalization import normalize_product
+from app.workers.offer_promotion import promote_matched_offers
+from scrapers.bplatz.scraper import parse_product_html
 from app.models import (
     IngestionRaw,
     LegacyProductIdMap,
+    LegacyVariantIdMap,
     MatchAudit,
     Offer,
     PriceHistory,
@@ -75,8 +84,9 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
                 )
                 session.add(store)
                 session.flush()
-            if store.offer_ttl_minutes is None:
-                store.offer_ttl_minutes = 1440
+            # Keep this disposable test deterministic: the six-day-old fixture
+            # must exceed the configured one-day freshness window.
+            store.offer_ttl_minutes = 1440
             assert store.status == "active"
             session.commit()
 
@@ -187,5 +197,267 @@ def test_fixture_offer_flows_through_postgres_to_catalog_api():
         assert notino_published_offers[0]["url"] == (
             "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
         )
+    finally:
+        engine.dispose()
+
+
+
+def test_bplatz_liquid_brun_fixture_matches_canonical_variant_but_stale_capture_is_not_published(monkeypatch):
+    """Use authentic Bplatz HTML and the production parser; never assign a variant by hand."""
+    root = Path(__file__).resolve().parents[2]
+    fixture_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.raw.html"
+    meta_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    html = fixture_path.read_text(encoding="utf-8")
+    parsed = parse_product_html(html, meta["url_final"], "French Avenue Liquid Brun")
+
+    assert parsed is not None
+    assert parsed["brand"] == "French Avenue"
+    assert parsed["size_ml"] == 100
+    assert parsed["concentration"] == "Eau de Parfum"
+    assert parsed["sku"] == "6290360375694"
+    assert parsed["gtin"] == "6290360375694"
+
+    connector = BplatzConnector()
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    # Preserve the source capture time from the fixture metadata. Do not replace
+    # it with test execution time: the observation is several days old.
+    record = replace(
+        records[0],
+        external_product_id=meta["shopify_variant_id"],
+        captured_at=meta["acquired_at_utc"],
+    )
+    assert record.price is not None and record.price > 0
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    identity = normalize_product(
+        record.brand, record.title,
+        concentration=record.concentration,
+        size_ml=record.size_ml,
+    )
+    assert identity.canonical_key == "french-avenue|liquid-brun|edp|100|standard"
+
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        with factory() as session:
+            legacy_map = session.get(
+                LegacyVariantIdMap, "VAR-f87146c82d167f4c"
+            )
+            assert legacy_map is not None, (
+                "seeded legacy map for French Avenue Liquid Brun 100 ml missing"
+            )
+            variant = session.get(ProductVariant, legacy_map.product_variant_id)
+            assert variant is not None, "mapped Liquid Brun variant row missing"
+            assert variant.size_ml == Decimal("100")
+            assert variant.concentration == "Eau de Parfum"
+            assert variant.gtin == "6290360375694"
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            # This is an isolated CI database. Provisioning the retailer row here
+            # does not activate a production connector or write to staging.
+            if store is None:
+                store = Store(
+                    name="Bplatz",
+                    slug="bplatz",
+                    domain="bplatz.de",
+                    country="DE",
+                    currency="EUR",
+                    status="active",
+                )
+                session.add(store)
+                session.flush()
+            assert store.status == "active"
+            # The six-day-old fixture must exceed this one-day freshness window.
+            store.offer_ttl_minutes = 1440
+            raw_payload = record.to_dict()
+            raw_payload["_source_fixture"] = {
+                "url": meta["url_final"],
+                "acquired_at_utc": meta["acquired_at_utc"],
+                "sha256": meta["sha256"],
+                "fixture_path": str(fixture_path.relative_to(root)),
+            }
+            raw = IngestionRaw(
+                store_id=store.id,
+                external_product_id=record.external_product_id,
+                raw_payload=raw_payload,
+                status="pending",
+            )
+            session.add(raw)
+            session.flush()
+
+            decision = match_staged_offer(session, raw.id)
+            assert decision.status == "matched"
+            assert decision.method == "gtin_exact"
+            assert decision.product_variant_id == variant.id
+            session.commit()
+            raw_id = raw.id
+            store_id = store.id
+
+        # The real publication worker must reject this six-day-old capture.
+        # A successful parser + match is not enough to make stale pricing live.
+        assert promote_matched_offers(factory) == {
+            "processed": 1, "published": 0, "blocked": 1,
+        }
+
+        with factory() as session:
+            raw = session.get(IngestionRaw, raw_id)
+            assert raw.status == "matched"
+            assert raw.rejection_reason == "promotion_blocked:source_capture_expired"
+            assert session.scalar(
+                select(Offer).where(
+                    Offer.store_id == store_id,
+                    Offer.external_product_id == meta["shopify_variant_id"],
+                )
+            ) is None
+            assert session.scalars(
+                select(PriceHistory)
+                .join(Offer, PriceHistory.offer_id == Offer.id)
+                .where(
+                    Offer.store_id == store_id,
+                    Offer.external_product_id == meta["shopify_variant_id"],
+                )
+            ).all() == []
+
+        # Catalog search may return the identity, but must not surface the stale
+        # fixture as a purchasable offer.
+        # Route the HTTP adapter to this test's isolated PostgreSQL database;
+        # otherwise the module-level production session factory would query a
+        # different database and make this integration assertion meaningless.
+        monkeypatch.setattr(
+            catalog_search_api,
+            "search_catalog",
+            lambda query, *, limit=20: catalog_search_api._search_catalog(
+                query, limit=limit, session_factory=factory
+            ),
+        )
+        api = FastAPI()
+        api.include_router(catalog_search_router)
+        with TestClient(api) as client:
+            response = client.get("/catalog/search", params={"q": "Liquid Brun"})
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        product = next(
+            row for row in payload["results"]
+            if row["brand"].lower() == "french avenue"
+            and row["fragrance"].lower() == "liquid brun"
+        )
+        matching_variant = next(
+            row for row in product["variants"]
+            if row["variant_id"] == str(variant.id)
+        )
+        assert matching_variant["offers"] == []
+    finally:
+        engine.dispose()
+
+
+def test_liquid_brun_bplatz_fixture_flows_through_postgres_to_catalog_search(monkeypatch):
+    """Authentic Bplatz capture proves Liquid Brun's full catalog-first path.
+
+    This is a disposable CI database only. A long TTL isolates lifecycle
+    verification from the separate freshness test below; it does not change
+    production freshness policy or activate a retailer.
+    """
+    root = Path(__file__).resolve().parents[2]
+    fixture_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.raw.html"
+    meta_path = root / "tests" / "fixtures" / "bplatz" / "liquid-brun-54015243419916.meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    html = fixture_path.read_text(encoding="utf-8")
+    parsed = parse_product_html(html, meta["url_final"], "French Avenue Liquid Brun")
+    assert parsed is not None
+
+    connector = BplatzConnector()
+    records = connector.parse_raw(parsed)
+    assert len(records) == 1
+    record = replace(
+        records[0],
+        external_product_id=meta["shopify_variant_id"] + "-lifecycle",
+        captured_at=meta["acquired_at_utc"],
+    )
+    assert record.gtin == "6290360375694"
+    assert record.price is not None and record.price > 0
+    assert record.currency == "EUR"
+    assert record.availability == "in_stock"
+
+    engine = make_engine()
+    assert engine.dialect.name == "postgresql"
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        with factory() as session:
+            legacy_map = session.get(LegacyVariantIdMap, "VAR-f87146c82d167f4c")
+            assert legacy_map is not None, "Liquid Brun 100 ml legacy mapping missing"
+            variant = session.get(ProductVariant, legacy_map.product_variant_id)
+            assert variant is not None
+            assert variant.gtin == "6290360375694"
+
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            if store is None:
+                store = Store(
+                    name="Bplatz", slug="bplatz", domain="bplatz.de",
+                    country="DE", currency="EUR", status="active",
+                )
+                session.add(store)
+                session.flush()
+            # Long TTL is scoped to this disposable test database. A separate
+            # integration test asserts that expired source captures are blocked.
+            store.offer_ttl_minutes = 365 * 24 * 60
+            raw_payload = record.to_dict()
+            raw_payload["_source_fixture"] = {
+                "url": meta["url_final"],
+                "acquired_at_utc": meta["acquired_at_utc"],
+                "sha256": meta["sha256"],
+                "fixture_path": str(fixture_path.relative_to(root)),
+                "test_only": True,
+            }
+            raw = IngestionRaw(
+                store_id=store.id,
+                external_product_id=record.external_product_id,
+                raw_payload=raw_payload,
+                status="pending",
+            )
+            session.add(raw)
+            session.commit()
+            raw_id = raw.id
+
+        with factory() as session:
+            decision = match_staged_offer(session, raw_id)
+            assert decision.status == "matched"
+            assert decision.method == "gtin_exact"
+            assert decision.product_variant_id == variant.id
+            session.commit()
+
+        publication = promote_matched_offers(factory)
+        assert publication == {"processed": 1, "published": 1, "blocked": 0}
+
+        monkeypatch.setattr(
+            catalog_search_api,
+            "search_catalog",
+            lambda query, *, limit=20: catalog_search_api._search_catalog(
+                query, limit=limit, session_factory=factory
+            ),
+        )
+        api = FastAPI()
+        api.include_router(catalog_search_router)
+        with TestClient(api) as client:
+            response = client.get("/catalog/search", params={"q": "Liquid Brun"})
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        product = next(
+            row for row in payload["results"]
+            if row["brand"].lower() == "french avenue"
+            and row["fragrance"].lower() == "liquid brun"
+        )
+        matching_variant = next(
+            row for row in product["variants"]
+            if row["variant_id"] == str(variant.id)
+        )
+        offers = [offer for offer in matching_variant["offers"] if offer["store"] == "bplatz"]
+        assert len(offers) == 1
+        assert offers[0]["price"] == float(record.price)
+        assert offers[0]["currency"] == "EUR"
+        assert offers[0]["availability"] == "in_stock"
+        assert offers[0]["url"] == meta["url_final"]
     finally:
         engine.dispose()

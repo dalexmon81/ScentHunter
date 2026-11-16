@@ -24,7 +24,7 @@ def test_pipeline_beat_cadence_is_catalog_first():
     )
     assert schedule["refresh-main-store-prices-every-thirty-minutes"]["schedule"] == 1800.0
 
-def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
+def test_all_pipeline_jobs_are_registered_and_runtime_has_ten_connectors():
     import app.workers.ingestion_tasks  # noqa: F401
     from app.connectors.runtime_registry import build_connectors
 
@@ -44,7 +44,7 @@ def test_all_pipeline_jobs_are_registered_and_runtime_has_nine_connectors():
     assert expected <= registered
     assert set(build_connectors()) == {
         "notino", "deloox", "easycosmetic", "sabina", "parfumzentrum",
-        "perfumemarket", "parfumcity", "bplatz", "orioudh",
+        "perfumemarket", "parfumcity", "bplatz", "orioudh", "perfumesmem",
     }
 
 
@@ -98,17 +98,24 @@ def test_dead_letter_model_is_durable_and_unique_per_task():
 def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, Store
+    from app.models import Base, Store, StoreAuthorization
     from app.workers import ingestion_tasks
+    from datetime import datetime, timezone
 
     engine = create_engine(f"sqlite:///{tmp_path / 'active-stores.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add_all([
-            Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"),
-            Store(name="Notino", slug="notino", currency="EUR", status="inactive"),
-        ])
+        active = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        inactive = Store(name="Notino", slug="notino", currency="EUR", status="inactive")
+        session.add_all([active, inactive])
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=active.id, status="approved", collection_method="other",
+            scopes=["product_discovery", "offer_data"],
+            authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
     monkeypatch.setattr(ingestion_tasks, "build_connectors", lambda: {"bplatz": object(), "notino": object(), "sabina": object()})
@@ -121,14 +128,22 @@ def test_periodic_discovery_uses_only_active_catalog_stores(tmp_path, monkeypatc
 def test_refresh_raw_artifacts_are_persisted_without_an_ingestion_run(tmp_path, monkeypatch):
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, IngestionArtifact, Store
+    from app.models import Base, IngestionArtifact, Store, StoreAuthorization
+    from datetime import datetime, timezone
     from app.workers import ingestion_tasks
 
     engine = create_engine(f"sqlite:///{tmp_path / 'refresh-artifacts.sqlite'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as session:
-        session.add(Store(name="Bplatz", slug="bplatz", currency="EUR", status="active"))
+        store = Store(name="Bplatz", slug="bplatz", currency="EUR", status="active")
+        session.add(store)
+        session.flush()
+        session.add(StoreAuthorization(
+            store_id=store.id, status="approved", collection_method="other",
+            scopes=["offer_data"], authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.commit()
     monkeypatch.setattr(ingestion_tasks, "make_session_factory", lambda: factory)
 
@@ -155,8 +170,9 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
     from decimal import Decimal
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.models import Base, Offer, Store
+    from app.models import Base, Offer, Store, StoreAuthorization
     from app.workers import ingestion_tasks
+    from datetime import datetime, timezone
 
     engine = create_engine(f"sqlite:///{tmp_path / 'eight-hour-refresh.sqlite'}")
     Base.metadata.create_all(engine)
@@ -166,6 +182,11 @@ def test_eight_hour_collection_refreshes_known_active_offers_not_discovery(tmp_p
         inactive = Store(name="Notino", slug="notino", currency="EUR", status="inactive")
         session.add_all([active, inactive])
         session.flush()
+        session.add(StoreAuthorization(
+            store_id=active.id, status="approved", collection_method="other",
+            scopes=["price_stock"], authorization_reference="fixture-written-consent",
+            approved_by="isolated-test", approved_at=datetime.now(timezone.utc), terms={},
+        ))
         session.add_all([
             Offer(store_id=active.id, external_product_id="sku-active",
                   url="https://shop.example/active", price=Decimal("49.90"),
