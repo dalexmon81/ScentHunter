@@ -1,5 +1,6 @@
 """Regression tests for Notino's authorized CJ/VIV product feed."""
 import gzip
+import html
 import io
 import zipfile
 import os
@@ -7,6 +8,7 @@ import sqlite3
 import tempfile
 import types
 import unittest
+from urllib.parse import quote
 from pathlib import Path
 from unittest.mock import patch
 
@@ -257,6 +259,125 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             "https://www.anrdoezrs.net/click-101918103-13485502"
             "?url=https%3A%2F%2Fwww.notino.de%2Frasasi%2Fhawas%2F"
         ))
+
+    def test_search_validates_cj_urls_without_changing_other_retailers(self):
+        import catalog_engine
+
+        product = "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+        click = "https://www.anrdoezrs.net/click-101918103-13485502?url="
+
+        def link(destination):
+            return click + quote(destination, safe="")
+
+        valid = link(product)
+        tracking = link(product + "?utm_source=cj&utm_campaign=parfum%20homme")
+        cases = [
+            (valid, valid),
+            (tracking, tracking),
+            (link(product.replace("sauvage", "miss-dior")), product),
+            (valid.replace("www.anrdoezrs.net", "anrdoezrs.net.evil.example"), product),
+            (valid.replace("https://www.anrdoezrs.net", "http://www.anrdoezrs.net"), product),
+            (valid + "&url=", product),
+            (valid + "&%75rl=" + quote(product, safe=""), product),
+            (valid + "&%2575rl=" + quote(product, safe=""), product),
+            (valid + ";url=" + quote(product, safe=""), product),
+            (link(product.replace("notino.fr", "notino.de")), product),
+            (valid.replace("click-101918103-13485502", "redirect"), product),
+            (valid + "#fragment", product),
+            (link(product + "?redirect=https%3A%2F%2Fevil.example"), product),
+            (link(product + "../other/"), product),
+            (link(product.replace("/dior/", "/dior%2Fother/")), product),
+            (valid + "&sid=%ZZ", product),
+            ("https://[invalid", product),
+            (product + "?variant=100", product + "?variant=100"),
+        ]
+        for raw, expected in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(catalog_engine._notino_variant_url(raw, product), expected)
+        encoded_product = "https://www.notino.fr/dior/parfum-%C3%A9dition/"
+        self.assertEqual(feed.validated_cj_offer_url(link(encoded_product), encoded_product), link(encoded_product))
+        unsafe_product = "https://www.notino.fr/dior/%2e%2e/other/"
+        self.assertIsNone(feed.validated_cj_offer_url(link(unsafe_product), unsafe_product))
+        self.assertIsNone(catalog_engine._store_allowed_variant_url("sabina", valid, product))
+        self.assertIsNone(catalog_engine._store_allowed_url("notino", valid, product))
+        self.assertIsNone(catalog_engine._notino_variant_url(valid, "https://evil.example/item"))
+
+    def test_cj_offer_survives_import_database_search_and_publication(self):
+        import catalog_engine
+        import main
+        from fastapi.testclient import TestClient
+
+        product = "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+        click = (
+            "https://www.anrdoezrs.net/click-101918103-13485502?sid=test%20value&url="
+            + quote(product, safe="")
+        )
+        xml = f"""<rss xmlns:g="http://base.google.com/ns/1.0"><channel>
+          <item><g:id>SAUVAGE100</g:id><g:title>Dior Sauvage Eau de Parfum 100 ml</g:title>
+          <g:brand>Dior</g:brand><g:price>89.90 EUR</g:price>
+          <g:availability>in stock</g:availability><g:link>{html.escape(click)}</g:link>
+          <g:size>100 ml</g:size></item></channel></rss>""".encode()
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.sqlite"
+            with patch.object(catalog_engine, "DB_PATH", path), \
+                 patch.object(catalog_engine, "_SCHEMA_READY", False), \
+                 patch.object(catalog_engine, "ACTIVE_STORES", ("notino",)), \
+                 patch.object(catalog_engine, "_schedule_easycosmetic_missing_size_repairs"), \
+                 patch.object(catalog_engine, "_schedule_stale_price_repairs"), \
+                 patch.object(main, "_catalog_search_terms", return_value=["Dior Sauvage"]), \
+                 patch.object(main, "catalog_refresh_candidates", None), \
+                 patch.object(main, "STORES", ["notino"]):
+                catalog_engine.db().close()
+                self.assertEqual(feed.import_feed_bytes(xml)["imported_offers"], 1)
+                conn = catalog_engine.db()
+                row = conn.execute(
+                    "SELECT url, variant_url FROM store_product_variants WHERE store='notino'"
+                ).fetchone()
+                self.assertEqual((row["url"], row["variant_url"]), (product, click))
+                conn.close()
+
+                rows = catalog_engine.search_local("Dior Sauvage")
+                self.assertEqual([(r["product_url"], r["url"]) for r in rows], [(product, click)])
+                feed_rows = feed.search_feed("Dior Sauvage")["results"]
+                self.assertEqual([(r["product_url"], r["url"]) for r in feed_rows], [(product, click)])
+
+                response = TestClient(main.app).get("/search", params={"q": "Dior Sauvage"})
+                self.assertEqual(response.status_code, 200)
+                result = response.json()
+                public_offers = [
+                    offer for group in result["results"] for offer in group["offers"]
+                ] + result["unresolved_offers"]
+                self.assertEqual([offer["url"] for offer in public_offers], [click])
+                self.assertEqual([offer["product_url"] for offer in public_offers], [product])
+
+                conn = catalog_engine.db()
+                conn.execute(
+                    "UPDATE store_product_variants SET variant_url=? WHERE store='notino'",
+                    (click + "&url=",),
+                )
+                conn.commit()
+                conn.close()
+                self.assertEqual(catalog_engine.search_local("Dior Sauvage")[0]["url"], product)
+                self.assertEqual(feed.search_feed("Dior Sauvage")["results"][0]["url"], product)
+                result = TestClient(main.app).get("/search", params={"q": "Dior Sauvage"}).json()
+                public_offers = [
+                    offer for group in result["results"] for offer in group["offers"]
+                ] + result["unresolved_offers"]
+                self.assertEqual([offer["url"] for offer in public_offers], [product])
+                conn = catalog_engine.db()
+                conn.execute("DROP TABLE catalog_search_fts")
+                conn.commit()
+                conn.close()
+                self.assertEqual(catalog_engine.search_local("Dior Sauvage")[0]["url"], product)
+                conn = catalog_engine.db()
+                conn.execute(
+                    "UPDATE store_product_variants SET variant_url=? WHERE store='notino'", (click,)
+                )
+                conn.commit()
+                conn.close()
+                legacy_rows = catalog_engine.search_local("Dior Sauvage")
+                self.assertEqual([(r["product_url"], r["url"]) for r in legacy_rows], [(product, click)])
 
     def test_missing_credentials_are_reported_without_secrets(self):
         values = {

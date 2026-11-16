@@ -178,9 +178,9 @@ CJ_CLICK_PATH = re.compile(r"^/click-\d+-\d+/?$", re.I)
 
 
 def _canonical_notino_product_url(raw: str) -> str | None:
-    parsed = urllib.parse.urlparse(str(raw or "").strip())
-    host = (parsed.hostname or "").lower().rstrip(".")
     try:
+        parsed = urllib.parse.urlparse(str(raw or "").strip())
+        host = (parsed.hostname or "").lower().rstrip(".")
         port = parsed.port
     except ValueError:
         return None
@@ -208,9 +208,9 @@ def _canonical_notino_product_url(raw: str) -> str | None:
 def _cj_affiliate_link(raw: str) -> tuple[str, str] | None:
     """Validate an allowlisted CJ click URL and return its Notino target."""
     click_url = str(raw or "").strip()
-    parsed = urllib.parse.urlparse(click_url)
-    host = (parsed.hostname or "").lower().rstrip(".")
     try:
+        parsed = urllib.parse.urlparse(click_url)
+        host = (parsed.hostname or "").lower().rstrip(".")
         port = parsed.port
     except ValueError:
         return None
@@ -221,21 +221,68 @@ def _cj_affiliate_link(raw: str) -> tuple[str, str] | None:
         or parsed.password is not None
         or port not in (None, 443)
         or not CJ_CLICK_PATH.fullmatch(parsed.path or "")
+        or parsed.params
+        or parsed.fragment
+        or ";" in parsed.query
+        or re.search(r"%(?![0-9a-fA-F]{2})|[\x00-\x20\x7f]", click_url)
     ):
         return None
-    params = urllib.parse.parse_qs(parsed.query, keep_blank_values=False)
-    destinations = [
-        value
-        for key, values in params.items()
-        if key.lower() == "url"
-        for value in values
-    ]
+    try:
+        params = urllib.parse.parse_qsl(
+            parsed.query, keep_blank_values=True, strict_parsing=True, errors="strict"
+        )
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if any(not re.fullmatch(r"[a-zA-Z0-9_.~-]+", key) for key, _value in params):
+        return None
+    destinations = [value for key, value in params if key.lower() == "url"]
     if len(destinations) != 1:
         return None
     target = _canonical_notino_product_url(destinations[0])
     if not target:
         return None
     return click_url, target
+
+
+def validated_cj_offer_url(raw: str, product_url: str) -> str | None:
+    """Accept a CJ click only when its destination is the stored product."""
+    try:
+        affiliate = _cj_affiliate_link(raw)
+        product = _canonical_notino_product_url(product_url)
+        if not affiliate or not product or affiliate[1] != product:
+            return None
+        destination = next(
+            value for key, value in urllib.parse.parse_qsl(
+                urllib.parse.urlparse(affiliate[0]).query, keep_blank_values=True
+            ) if key.lower() == "url"
+        )
+        parsed = urllib.parse.urlparse(destination)
+        path = urllib.parse.unquote(parsed.path, errors="strict")
+        # Do not let server-side path normalization or redirect parameters
+        # turn a matching catalog path into a different destination.
+        if (
+            parsed.params or parsed.fragment
+            or re.search(r"%(?![0-9a-fA-F]{2})|%2f|%5c|%25", parsed.path, re.I)
+            or re.search(r"[\x00-\x20\x7f\\;?#]", path)
+            or re.search(r"[\x00-\x20\x7f]", destination)
+            or "//" in path
+            or any(segment in {".", ".."} for segment in path.split("/"))
+        ):
+            return None
+        if parsed.query:
+            query = urllib.parse.parse_qsl(
+                parsed.query, keep_blank_values=True, strict_parsing=True, errors="strict"
+            )
+            if re.search(r"%(?![0-9a-fA-F]{2})|[\x00-\x20\x7f]", parsed.query) or any(
+                key.lower() not in {
+                    "utm_source", "utm_medium", "utm_campaign", "utm_term",
+                    "utm_content", "utm_id",
+                } for key, _value in query
+            ):
+                return None
+        return affiliate[0]
+    except (ValueError, UnicodeDecodeError):
+        return None
 
 
 def _resolve_product_link(raw: str) -> tuple[str | None, str | None]:
@@ -840,7 +887,7 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
         return {"status": "success", "verified": True, "results": [], "error": None,
                 "details": {"source": "cj_viv_authorized_xml", "empty_query": True}}
     try:
-        from catalog_engine import db
+        from catalog_engine import db, _notino_variant_url
         conn = db()
         try:
             cutoff = time.time() - max_age_seconds
@@ -882,6 +929,9 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             continue
         if str(row["availability"] or "").lower() not in {"in_stock", "preorder"}:
             continue
+        offer_url = _notino_variant_url(row["variant_url"], row["url"])
+        if not offer_url:
+            continue
         key = (row["url"], float(size or 0), float(row["price"]))
         if key in seen:
             continue
@@ -900,7 +950,8 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "image": row["image"],
             "size_ml": size,
             "concentration": row["concentration"],
-            "url": row["variant_url"] or row["url"],
+            "url": offer_url,
+            "product_url": row["url"],
             "gtin": row["gtin"],
             "sku": row["sku"],
             "fetched_at": row["fetched_at"],
