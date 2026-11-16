@@ -170,7 +170,10 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 db.commit()
                 db.close()
                 with self.assertRaises(sqlite3.IntegrityError):
-                    feed.import_feed_bytes(SAMPLE.replace(b"49,90 EUR", b"59,90 EUR"))
+                    feed.import_feed_bytes(
+                        SAMPLE.replace(b"49,90 EUR", b"59,90 EUR")
+                        .replace(b"69.90 EUR", b"79.90 EUR")
+                    )
                 db = sqlite3.connect(path)
                 self.assertEqual(db.execute("SELECT * FROM sync_state").fetchall(), before)
                 self.assertEqual(db.execute("SELECT price FROM store_product_variants WHERE size_ml=100").fetchone()[0], 49.9)
