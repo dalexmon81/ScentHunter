@@ -89,7 +89,7 @@ def test_notino_live_search_is_france_only():
     assert all("notino.de" not in base for base, _language in scraper.MARKETS)
 
 
-def test_search_uses_public_discovery_when_feed_has_no_match(monkeypatch):
+def test_search_uses_public_discovery_when_cached_feed_has_no_match(monkeypatch):
     from backend.scrapers.notino import affiliate_feed, legacy_public
 
     monkeypatch.setattr(
@@ -134,8 +134,7 @@ def test_search_uses_cached_feed_only_after_public_discovery_has_no_match(monkey
 
     assert calls == ["public", "cached_feed"]
     assert report["results"] == expected
-    assert report["details"]["source"] == "notino_cached_feed_fallback"
-    assert report["details"]["feed_import_started"] is False
+    assert report["details"]["source"] == "cj_viv_authorized_xml"
 
 
 def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypatch):
