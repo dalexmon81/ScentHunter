@@ -1,6 +1,6 @@
 """Regression tests for bounded Notino external-discovery fallback."""
 
-from backend.scrapers.notino import legacy_public
+from backend.scrapers.notino import legacy_public, scraper
 
 
 def test_price_bearing_search_result_returns_before_blocked_product_browser(monkeypatch):
@@ -55,3 +55,28 @@ def test_discovery_uses_external_rss_before_blocked_store_browser(monkeypatch):
     )
     assert candidates == [candidate]
     assert report["primary_channel"] == "bing-rss"
+
+
+
+def test_search_adapter_uses_public_discovery_without_calling_cj_feed(monkeypatch):
+    expected = [{
+        "store": "notino",
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/",
+        "price": "89,90€",
+    }]
+    monkeypatch.setattr(legacy_public, "search", lambda query: expected)
+    monkeypatch.setattr(
+        "backend.scrapers.notino.affiliate_feed.search_feed",
+        lambda query: (_ for _ in ()).throw(
+            AssertionError("CJ feed must not be required for public discovery")
+        ),
+    )
+
+    report = scraper.search("Dior Sauvage Eau de Parfum 100 ml")
+
+    assert report["status"] == "success"
+    assert report["verified"] is True
+    assert report["results"] == expected
+    assert report["details"]["source"] == "notino_public_product_pages"
+    assert report["details"]["feed_required"] is False
