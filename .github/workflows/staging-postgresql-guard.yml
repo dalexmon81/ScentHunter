@@ -1,0 +1,67 @@
+name: Staging PostgreSQL runtime guard
+
+on:
+  push:
+    branches:
+      - phase2/staging-postgresql-guard
+    paths:
+      - "backend/app/db.py"
+      - "backend/tests/test_db_postgresql_policy.py"
+      - ".github/workflows/staging-postgresql-guard.yml"
+      - "fly.staging-workers.toml"
+  pull_request:
+    paths:
+      - "backend/app/db.py"
+      - "backend/tests/test_db_postgresql_policy.py"
+      - ".github/workflows/staging-postgresql-guard.yml"
+      - "fly.staging-workers.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-guard:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: scenthunter_guard
+          POSTGRES_USER: scenthunter
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scenthunter -d scenthunter_guard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://scenthunter:ci_only_password@localhost:5432/scenthunter_guard
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+      - name: Test fail-closed policy
+        run: pytest -q backend/tests/test_db_postgresql_policy.py
+      - name: Verify live PostgreSQL connection under required policy
+        run: |
+          python - <<'PY'
+          from sqlalchemy import text
+          from app.db import make_engine
+          engine = make_engine()
+          try:
+              assert engine.dialect.name == "postgresql"
+              with engine.connect() as connection:
+                  assert connection.execute(text("SELECT 1")).scalar_one() == 1
+          finally:
+              engine.dispose()
+          print("PostgreSQL runtime guard and live connection verified.")
+          PY
