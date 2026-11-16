@@ -672,7 +672,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     phase_cpu = {}
     statement_counts = {"store_urls": 0, "legacy_variant_updates": 0,
                         "store_product_variants": 0, "store_products": 0,
-                        "hydration_queue": 0, "sync_state": 0, "other": 0}
+                        "hydration_queue": 0, "search_fts": 0,
+                        "sync_state": 0, "other": 0}
 
     def timed_execute(table, sql, parameters=()):
         wall, cpu = time.monotonic(), time.process_time()
@@ -719,6 +720,22 @@ def _persist_staged_offers(stage, count, started_at, deadline):
 
             if deadline is not None and time.monotonic() >= deadline:
                 raise FeedImportError("notino_feed_import_timeout")
+
+            # Tell the FTS triggers that this transaction is publishing a
+            # complete Notino feed. The trigger guard is visible inside this
+            # transaction, so per-row trigger work is skipped; rollback also
+            # rolls back this marker if publication fails.
+            timed_execute(
+                "sync_state",
+                """INSERT INTO sync_state(
+                       store,status,started_at,finished_at,discovered_count,fetched_count,error)
+                   VALUES(?,'FEED_IMPORTING',?,NULL,?,?,?)
+                   ON CONFLICT(store) DO UPDATE SET
+                       status=excluded.status,started_at=excluded.started_at,
+                       finished_at=NULL,discovered_count=excluded.discovered_count,
+                       fetched_count=excluded.fetched_count,error=excluded.error""",
+                (STORE_KEY, started_at, count, count, "source=cj_viv_authorized_xml"),
+            )
 
             # Migrate legacy variant identities in one indexed statement.
             # Do not overwrite a CJ identity that already exists for the URL.
@@ -825,6 +842,47 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                       OR hydration_queue.last_error IS NOT NULL""",
                 (STORE_KEY, now, now),
             )
+
+            # The feed can add tens of thousands of products. Rebuild Notino's
+            # FTS rows in set-based statements rather than firing several FTS
+            # DELETE/INSERT operations from a trigger for every new product.
+            # Existing mapping IDs are retained so unchanged catalog URLs do
+            # not churn the mapping table on every refresh.
+            fts_table = timed_execute(
+                "search_fts",
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'",
+            ).fetchone()
+            if fts_table:
+                timed_execute(
+                    "search_fts",
+                    """INSERT INTO catalog_search_fts_map(store,url)
+                       SELECT su.store,su.url FROM store_urls AS su
+                       WHERE su.store=? AND su.active=1
+                       ON CONFLICT(store,url) DO NOTHING""",
+                    (STORE_KEY,),
+                )
+                timed_execute(
+                    "search_fts",
+                    """DELETE FROM catalog_search_fts
+                       WHERE rowid IN (
+                           SELECT id FROM catalog_search_fts_map WHERE store=?
+                       )""",
+                    (STORE_KEY,),
+                )
+                timed_execute(
+                    "search_fts",
+                    """INSERT INTO catalog_search_fts(rowid,store,url,search_text)
+                       SELECT m.id,su.store,su.url,
+                              trim(COALESCE(su.slug,'') || ' ' ||
+                                   COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
+                         FROM catalog_search_fts_map AS m
+                         JOIN store_urls AS su ON su.store=m.store AND su.url=m.url
+                         LEFT JOIN store_products AS p
+                           ON p.store=su.store AND p.url=su.url
+                          AND p.fetch_status='OK'
+                        WHERE m.store=? AND su.active=1""",
+                    (STORE_KEY,),
+                )
 
             timed_execute(
                 "sync_state",
