@@ -281,6 +281,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             (valid + "&%75rl=" + quote(product, safe=""), product),
             (valid + "&%2575rl=" + quote(product, safe=""), product),
             (valid + ";url=" + quote(product, safe=""), product),
+            (valid + "&sid=unobserved", product),
             (link(product.replace("notino.fr", "notino.de")), product),
             (valid.replace("click-101918103-13485502", "redirect"), product),
             (valid + "#fragment", product),
@@ -309,7 +310,7 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
 
         product = "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
         click = (
-            "https://www.anrdoezrs.net/click-101918103-13485502?sid=test%20value&url="
+            "https://www.anrdoezrs.net/click-101918103-13485502?url="
             + quote(product, safe="")
         )
         xml = f"""<rss xmlns:g="http://base.google.com/ns/1.0"><channel>

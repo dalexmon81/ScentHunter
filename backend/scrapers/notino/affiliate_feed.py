@@ -235,10 +235,9 @@ def _cj_affiliate_link(raw: str) -> tuple[str, str] | None:
         return None
     if any(not re.fullmatch(r"[a-zA-Z0-9_.~-]+", key) for key, _value in params):
         return None
-    destinations = [value for key, value in params if key.lower() == "url"]
-    if len(destinations) != 1:
+    if len(params) != 1 or params[0][0].lower() != "url":
         return None
-    target = _canonical_notino_product_url(destinations[0])
+    target = _canonical_notino_product_url(params[0][1])
     if not target:
         return None
     return click_url, target

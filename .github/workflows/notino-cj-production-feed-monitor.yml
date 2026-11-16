@@ -232,6 +232,7 @@ jobs:
           }
           validated_clicks = 0
           rejected_clicks = 0
+          rejection_reasons = collections.Counter()
           for offer in offers:
               click_url = offer.affiliate_url
               if not click_url:
@@ -243,11 +244,40 @@ jobs:
                   validated_clicks += 1
               else:
                   rejected_clicks += 1
+                  parsed_click = feed._cj_affiliate_link(click_url)
+                  product_url = feed._canonical_notino_product_url(offer.url)
+                  if not parsed_click:
+                      reason = "invalid_click_wrapper"
+                  elif not product_url or parsed_click[1] != product_url:
+                      reason = "stored_product_mismatch"
+                  else:
+                      destination = urllib.parse.urlparse(
+                          urllib.parse.parse_qsl(
+                              urllib.parse.urlparse(click_url).query,
+                              keep_blank_values=True,
+                          )[0][1]
+                      )
+                      decoded_path = urllib.parse.unquote(destination.path)
+                      if (
+                          destination.params
+                          or destination.fragment
+                          or re.search(r"%(?![0-9a-fA-F]{2})|%2f|%5c|%25", destination.path, re.I)
+                          or re.search(r"[\x00-\x20\x7f\\;?#]", decoded_path)
+                          or "//" in decoded_path
+                          or any(segment in {".", ".."} for segment in decoded_path.split("/"))
+                      ):
+                          reason = "ambiguous_destination_path"
+                      elif destination.query:
+                          reason = "destination_query_parameters"
+                      else:
+                          reason = "other_validation_guard"
+                  rejection_reasons[reason] += 1
           shape["cj_click_hosts"] = dict(click_hosts.most_common(10))
           shape["cj_validation"] = {
               "offers_with_cj_click": validated_clicks + rejected_clicks,
               "validated_for_stored_product": validated_clicks,
               "rejected": rejected_clicks,
+              "rejection_categories": dict(sorted(rejection_reasons.items())),
           }
           print(
               "NOTINO_CJ_PARAMETER_DIAGNOSTIC="
