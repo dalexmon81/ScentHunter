@@ -788,7 +788,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                       OR store_product_variants.price IS NOT excluded.price
                       OR store_product_variants.currency IS NOT excluded.currency
                       OR store_product_variants.availability IS NOT excluded.availability
-                      OR store_product_variants.variant_url IS NOT excluded.variant_url""",
+                      OR store_product_variants.variant_url IS NOT excluded.variant_url
+                      OR store_product_variants.last_seen_at IS NOT excluded.last_seen_at""",
                 (STORE_KEY, now, now),
             )
 
