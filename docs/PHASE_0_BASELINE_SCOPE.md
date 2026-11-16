@@ -38,6 +38,11 @@ in one catalog transaction. A malformed feed or a drop of more than 10% from
 the previous successful import fails closed without replacing published data.
 Feed failures do not fall back to public discovery. The quality gate requires
 actual persisted Notino offers before the baseline can pass.
+Search retains a CJ click URL only for an allowlisted HTTPS click host and
+path whose single destination matches the stored Notino.fr product. The
+destination may carry standard UTM parameters, but not other query parameters
+or ambiguous paths; otherwise search uses the direct product URL. Catalog
+identity remains the direct Notino URL.
 
 ## CSV grain and quality
 

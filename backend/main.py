@@ -1588,7 +1588,7 @@ def _public_offer(item):
         or item.get("manufacturer")
     )
 
-    return {
+    public_offer = {
         # Canonical identity is deliberately repeated on every public offer.
         # The frontend can therefore flatten offers without losing the product
         # identity that the central matcher already resolved.
@@ -1626,6 +1626,9 @@ def _public_offer(item):
             or item.get("brand")
             or item.get("manufacturer"),
     }
+    if _normalise_store(item.get("store") or item.get("shop"), "") == "notino" and item.get("product_url"):
+        public_offer["product_url"] = item["product_url"]
+    return public_offer
 
 def _aggregate_identity_results(offers):
     """

@@ -1586,6 +1586,31 @@ def _store_allowed_variant_url(store, raw_url, base_url=None):
     return absolute
 
 
+def _notino_variant_url(raw_url, product_url):
+    """Preserve validated CJ attribution without widening retailer host rules."""
+    try:
+        from scrapers.notino.affiliate_feed import (
+            _canonical_notino_product_url, validated_cj_offer_url,
+        )
+    except ModuleNotFoundError as exc:
+        if exc.name != 'scrapers':
+            raise
+        from backend.scrapers.notino.affiliate_feed import (
+            _canonical_notino_product_url, validated_cj_offer_url,
+        )
+
+    if not _canonical_notino_product_url(product_url):
+        return None
+    try:
+        return (
+            validated_cj_offer_url(raw_url, product_url)
+            or _store_allowed_variant_url('notino', raw_url, product_url)
+            or product_url
+        )
+    except ValueError:
+        return product_url
+
+
 
 def _sabina_variant_url(raw_url, base_url, size_ml):
     """Return the Spanish Sabina URL for the exact variant."""
@@ -4943,6 +4968,33 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         _mark_foreground_search_finished()
 
 
+def _notino_search_variants(conn, url):
+    return conn.execute(
+        """SELECT * FROM store_product_variants
+           WHERE store='notino' AND url=? AND price IS NOT NULL AND price>0
+             AND upper(COALESCE(currency,''))='EUR'
+             AND lower(COALESCE(availability,'')) IN ('in_stock','preorder')
+             AND fetched_at>=?
+           ORDER BY size_ml""",
+        (url, time.time() - 48 * 60 * 60),
+    ).fetchall()
+
+
+def _variant_search_result(store, url, product, variant, variant_url):
+    return {
+        'url': variant_url,
+        'product_url': url, 'slug': product['slug'] or '', 'lastmod': product['lastmod'] or '',
+        'name': variant['name'] or product['product_name'] or '', 'brand': variant['brand'] or product['product_brand'] or '',
+        'image': variant['image'] or product['product_image'] or '', 'sku': variant['sku'] or product['product_sku'] or '',
+        'gtin': variant['gtin'] or product['product_gtin'] or '', 'mpn': variant['mpn'] or product['product_mpn'] or '',
+        'size_ml': variant['size_ml'], 'concentration': variant['concentration'] or product['product_concentration'] or '',
+        'gender': variant['gender'] or product['product_gender'] or '', 'price': variant['price'],
+        'currency': variant['currency'] or 'EUR', 'availability': variant['availability'] or product['product_availability'] or '',
+        'fetched_at': variant['fetched_at'], 'fetch_status': 'OK', 'price_num': variant['price'],
+        'store': STORE_LABELS[store], 'store_key': store, 'variant_key': variant['variant_key'],
+    }
+
+
 def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate bounded local-catalog candidates using retailer-scoped FTS queries."""
     _diag_t0 = time.monotonic()
@@ -5208,15 +5260,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                             if store == 'notino' and str(r['product_availability'] or '').lower() == 'variant_catalog':
                                 if url not in variant_rows_by_url:
                                     try:
-                                        variant_rows_by_url[url] = store_conn.execute(
-                                            """SELECT * FROM store_product_variants
-                                               WHERE store=? AND url=? AND price IS NOT NULL AND price>0
-                                                 AND upper(COALESCE(currency,''))='EUR'
-                                                 AND lower(COALESCE(availability,'')) IN ('in_stock','preorder')
-                                                 AND fetched_at>=?
-                                               ORDER BY size_ml""",
-                                            (store, url, time.time() - 48 * 60 * 60),
-                                        ).fetchall()
+                                        variant_rows_by_url[url] = _notino_search_variants(store_conn, url)
                                     except sqlite3.OperationalError:
                                         variant_rows_by_url[url] = []
                                 variant_rows = variant_rows_by_url[url]
@@ -5248,23 +5292,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                             url, vr['size_ml']
                                         )
                                     elif store == 'notino':
-                                        variant_url = _store_allowed_variant_url(
-                                            store, vr['variant_url'] or url, url
-                                        ) or url
+                                        variant_url = _notino_variant_url(vr['variant_url'], url)
+                                        if not variant_url:
+                                            continue
                                     else:
                                         variant_url = vr['variant_url'] or url
-                                    store_rows.append({
-                                        'url': variant_url,
-                                        'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
-                                        'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
-                                        'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
-                                        'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
-                                        'size_ml': vr['size_ml'], 'concentration': vr['concentration'] or r['product_concentration'] or '',
-                                        'gender': vr['gender'] or r['product_gender'] or '', 'price': vr['price'],
-                                        'currency': vr['currency'] or 'EUR', 'availability': vr['availability'] or r['product_availability'] or '',
-                                        'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': vr['price'],
-                                        'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
-                                    })
+                                    store_rows.append(_variant_search_result(store, url, r, vr, variant_url))
                                 continue
                             store_rows.append({
                                 'url': url, 'slug': r['slug'] or '',
@@ -5481,6 +5514,25 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
         for _score, r in ordered:
             url = str(r.get('url') or '').strip()
             if not url:
+                continue
+            if store == 'notino' and str(r.get('product_availability') or '').lower() == 'variant_catalog':
+                try:
+                    variants = _notino_search_variants(conn, url)
+                except sqlite3.OperationalError as exc:
+                    print(f"CATALOG NOTINO VARIANT READ ERROR: {type(exc).__name__}: {exc}", flush=True)
+                    variants = []
+                for variant in variants:
+                    variant_tokens = set(norm(' '.join((
+                        str(r['slug'] or ''),
+                        str(variant['name'] or r['product_name'] or ''),
+                        str(variant['brand'] or r['product_brand'] or ''),
+                        f"{variant['size_ml'] or ''} ml",
+                    ))).split())
+                    if not any(all(token in variant_tokens for token in ts) for ts in token_sets):
+                        continue
+                    variant_url = _notino_variant_url(variant['variant_url'], url)
+                    if variant_url:
+                        rows.append(_variant_search_result(store, url, r, variant, variant_url))
                 continue
             if r.get('product_name'):
                 rows.append({
