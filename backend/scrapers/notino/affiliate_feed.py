@@ -659,15 +659,21 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                 statement_counts[table] += 1
 
     connect_wall, connect_cpu = time.monotonic(), time.process_time()
-    conn = connect(DB_PATH, timeout=45)
-    stage_path = stage.execute("PRAGMA database_list").fetchone()[2]
-    conn.execute("ATTACH DATABASE ? AS notino_stage", (stage_path,))
+    # Publishing the full CJ feed competes with the always-on hydration worker.
+    # Allow a bounded wait for that worker to finish its current SQLite write;
+    # the import deadline still bounds the complete operation.
+    lock_wait_seconds = 15 * 60
+    if deadline is not None:
+        lock_wait_seconds = max(1.0, min(lock_wait_seconds, deadline - time.monotonic()))
+    conn = connect(DB_PATH, timeout=lock_wait_seconds)
     connect_wall_elapsed = time.monotonic() - connect_wall
     connect_cpu_elapsed = time.process_time() - connect_cpu
-    if deadline is not None:
-        conn.set_progress_handler(lambda: int(time.monotonic() >= deadline), 10000)
     now = time.time()
     try:
+        stage_path = stage.execute("PRAGMA database_list").fetchone()[2]
+        conn.execute("ATTACH DATABASE ? AS notino_stage", (stage_path,))
+        if deadline is not None:
+            conn.set_progress_handler(lambda: int(time.monotonic() >= deadline), 10000)
         with conn:
             lock_wall, lock_cpu = time.monotonic(), time.process_time()
             conn.execute("BEGIN IMMEDIATE")
