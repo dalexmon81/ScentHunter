@@ -775,7 +775,21 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                      sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
                      size_ml=excluded.size_ml,concentration=excluded.concentration,
                      price=excluded.price,currency=excluded.currency,
-                     availability=excluded.availability,fetched_at=excluded.fetched_at,
+                     availability=excluded.availability,
+                     fetched_at=CASE WHEN
+                       store_product_variants.name IS NOT excluded.name
+                       OR store_product_variants.brand IS NOT excluded.brand
+                       OR store_product_variants.image IS NOT excluded.image
+                       OR store_product_variants.sku IS NOT excluded.sku
+                       OR store_product_variants.gtin IS NOT excluded.gtin
+                       OR store_product_variants.mpn IS NOT excluded.mpn
+                       OR store_product_variants.size_ml IS NOT excluded.size_ml
+                       OR store_product_variants.concentration IS NOT excluded.concentration
+                       OR store_product_variants.price IS NOT excluded.price
+                       OR store_product_variants.currency IS NOT excluded.currency
+                       OR store_product_variants.availability IS NOT excluded.availability
+                       OR store_product_variants.variant_url IS NOT excluded.variant_url
+                       THEN excluded.fetched_at ELSE store_product_variants.fetched_at END,
                      variant_url=excluded.variant_url,last_seen_at=excluded.last_seen_at
                    WHERE store_product_variants.name IS NOT excluded.name
                       OR store_product_variants.brand IS NOT excluded.brand
