@@ -970,13 +970,15 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
         try:
             cutoff = time.time() - max_age_seconds
             rows = conn.execute(
-                """SELECT v.*, u.active
+                """SELECT v.*, u.active, s.finished_at AS feed_verified_at
                      FROM store_product_variants v
                      JOIN store_urls u ON u.store=v.store AND u.url=v.url
+                     LEFT JOIN sync_state s
+                       ON s.store=v.store AND s.status='FEED_IMPORTED'
                     WHERE v.store=? AND u.active=1
-                      AND v.fetched_at>=? AND v.price>0
+                      AND COALESCE(s.finished_at,v.fetched_at)>=? AND v.price>0
                       AND upper(COALESCE(v.currency,''))='EUR'
-                    ORDER BY v.fetched_at DESC""",
+                    ORDER BY COALESCE(s.finished_at,v.fetched_at) DESC""",
                 (STORE_KEY, cutoff),
             ).fetchall()
         finally:
@@ -1032,7 +1034,11 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "product_url": row["url"],
             "gtin": row["gtin"],
             "sku": row["sku"],
-            "fetched_at": row["fetched_at"],
+            # The feed verification timestamp proves this unchanged offer was
+            # present in the latest successful CJ snapshot. Preserve the actual
+            # commercial-change timestamp separately for audit/debugging.
+            "fetched_at": row["feed_verified_at"] or row["fetched_at"],
+            "price_updated_at": row["fetched_at"],
         })
     results.sort(key=lambda item: (item["price_num"], item["size_ml"] or 0, item["url"]))
     return {
