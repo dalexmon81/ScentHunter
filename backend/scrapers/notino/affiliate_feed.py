@@ -384,6 +384,23 @@ class _SafeXmlReader:
 
 
 @contextmanager
+def _profile_phase(name, **details):
+    """Emit safe wall-time diagnostics even when an import phase fails."""
+    started = time.monotonic()
+    outcome = "ok"
+    try:
+        yield
+    except Exception:
+        outcome = "error"
+        raise
+    finally:
+        LOGGER.warning(
+            "NOTINO_IMPORT_PHASE=%s elapsed_seconds=%.3f outcome=%s details=%s",
+            name, time.monotonic() - started, outcome, details,
+        )
+
+
+@contextmanager
 def _xml_stream(source, deadline=None):
     source.seek(0, os.SEEK_END)
     size = source.tell()
@@ -639,7 +656,9 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     from catalog_engine import DB_PATH
     from catalog_writer_lock import connect
 
-    profile_enabled = os.environ.get("NOTINO_PERSIST_PROFILE", "").strip() == "1"
+    # The persistence profile is intentionally always enabled: it emits only
+    # aggregate timings and statement counts, never product data or credentials.
+    profile_enabled = True
     profile_started_wall = time.monotonic()
     profile_started_cpu = time.process_time()
     phase_wall = {}
@@ -803,8 +822,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
     finally:
         conn.close()
         if profile_enabled:
-            LOGGER.info(
-                "Notino persistence profile: variants=%d connect_wall=%.3fs connect_cpu=%.3fs "
+            LOGGER.warning(
+                "NOTINO_PERSIST_PROFILE variants=%d connect_wall=%.3fs connect_cpu=%.3fs "
                 "begin_immediate_wall=%.3fs begin_immediate_cpu=%.3fs phase_wall=%s phase_cpu=%s "
                 "statement_counts=%s total_wall=%.3fs total_cpu=%.3fs",
                 count, connect_wall_elapsed, connect_cpu_elapsed,
@@ -815,49 +834,64 @@ def _persist_staged_offers(stage, count, started_at, deadline):
 
 def _import_stream(source, started_at, deadline=None):
     stats = {}
+    import_started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="notino-feed-") as directory:
-        stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
-        stage.row_factory = sqlite3.Row
-        try:
-            stage.execute("PRAGMA journal_mode=OFF")
-            stage.execute("PRAGMA synchronous=OFF")
-            stage.execute("PRAGMA cache_size=-65536")
-            stage.execute("""CREATE TABLE offers(
-                url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
-                title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
-                price REAL, currency TEXT, availability TEXT, image TEXT,
-                concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
-                PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
-            with _xml_stream(source, deadline) as stream:
-                for offer in _parsed_offers(stream, stats):
-                    if deadline is not None and time.monotonic() >= deadline:
-                        raise FeedImportError("notino_feed_import_timeout")
+        with _profile_phase("staging_database_setup"):
+            stage = sqlite3.connect(os.path.join(directory, "offers.sqlite3"))
+            stage.row_factory = sqlite3.Row
+            try:
+                stage.execute("PRAGMA journal_mode=OFF")
+                stage.execute("PRAGMA synchronous=OFF")
+                stage.execute("PRAGMA cache_size=-65536")
+                stage.execute("""CREATE TABLE offers(
+                    url TEXT NOT NULL, variant_key TEXT NOT NULL, external_id TEXT,
+                    title TEXT, brand TEXT, gtin TEXT, sku TEXT, mpn TEXT, size_ml REAL,
+                    price REAL, currency TEXT, availability TEXT, image TEXT,
+                    concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
+                    PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
+                with _profile_phase("feed_parse_and_stage_insert"):
+                    with _xml_stream(source, deadline) as stream:
+                        for offer in _parsed_offers(stream, stats):
+                            if deadline is not None and time.monotonic() >= deadline:
+                                raise FeedImportError("notino_feed_import_timeout")
+                            stage.execute(
+                                """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
+                                 offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
+                                 offer.currency, offer.availability, offer.image, offer.concentration,
+                                 offer.affiliate_url, _legacy_variant_key({
+                                     "size_ml": offer.size_ml, "gtin": offer.gtin,
+                                     "sku": offer.sku, "external_id": offer.external_id,
+                                 }), _slug(offer.url)),
+                            )
+                    stage.commit()
+                LOGGER.warning(
+                    "NOTINO_IMPORT_PARSE_COUNTS candidates=%s valid=%s rejected=%s duplicates_pending=%s",
+                    stats.get("products_read", 0), stats.get("valid_items", 0),
+                    stats.get("rejected_items", 0),
+                    max(0, int(stats.get("valid_items", 0)) - int(stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0])),
+                )
+                with _profile_phase("staging_index_integrity_and_count"):
+                    # The legacy-key migration probes by (url, legacy_variant_key).
+                    # The table primary key is (url, variant_key), so add the missing
+                    # lookup index before publication to avoid repeated staging scans.
                     stage.execute(
-                        """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                        (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
-                         offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
-                         offer.currency, offer.availability, offer.image, offer.concentration,
-                         offer.affiliate_url, _legacy_variant_key({
-                             "size_ml": offer.size_ml, "gtin": offer.gtin,
-                             "sku": offer.sku, "external_id": offer.external_id,
-                         }), _slug(offer.url)),
+                        "CREATE INDEX idx_notino_offers_legacy_url "
+                        "ON offers(url, legacy_variant_key) "
+                        "WHERE legacy_variant_key IS NOT NULL"
                     )
-            stage.commit()
-            # The legacy-key migration probes by (url, legacy_variant_key).
-            # The table primary key is (url, variant_key), so add the missing
-            # lookup index before publication to avoid repeated staging scans.
-            stage.execute(
-                "CREATE INDEX idx_notino_offers_legacy_url "
-                "ON offers(url, legacy_variant_key) "
-                "WHERE legacy_variant_key IS NOT NULL"
-            )
-            if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
-                raise FeedImportError("notino_feed_staging_integrity_error")
-            count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
-            stats["duplicate_items"] = stats["valid_items"] - count
-            _persist_staged_offers(stage, count, started_at, deadline)
-        finally:
-            stage.close()
+                    if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                        raise FeedImportError("notino_feed_staging_integrity_error")
+                    count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
+                stats["duplicate_items"] = stats["valid_items"] - count
+                with _profile_phase("catalog_publication", offer_count=count):
+                    _persist_staged_offers(stage, count, started_at, deadline)
+            finally:
+                stage.close()
+    LOGGER.warning(
+        "NOTINO_IMPORT_TOTAL_STAGING_AND_PUBLISH elapsed_seconds=%.3f offers=%s",
+        time.monotonic() - import_started, count,
+    )
     LOGGER.info("Notino authorized feed import completed: offers=%d", count)
     return {
         "ok": True,
@@ -879,7 +913,9 @@ def import_configured_feed() -> dict:
     started_at = time.time()
     deadline = time.monotonic() + MAX_IMPORT_SECONDS
     with tempfile.TemporaryFile() as source:
-        download_bytes = _download_feed(source, deadline)
+        with _profile_phase("feed_download"):
+            download_bytes = _download_feed(source, deadline)
+        LOGGER.warning("NOTINO_IMPORT_DOWNLOAD_BYTES=%s", download_bytes)
         report = _import_stream(source, started_at, deadline)
     report["download_bytes"] = download_bytes
     return report
