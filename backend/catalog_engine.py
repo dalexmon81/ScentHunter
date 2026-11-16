@@ -736,7 +736,7 @@ def _ensure_schema(conn):
             store TEXT NOT NULL, url TEXT NOT NULL, variant_key TEXT NOT NULL,
             name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
             size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
-            availability TEXT, fetched_at REAL, variant_url TEXT,
+            availability TEXT, fetched_at REAL, variant_url TEXT, last_seen_at REAL,
             PRIMARY KEY(store,url,variant_key))""")
         # Migrate existing catalogs in place: retailer variant URLs are distinct
         # from the canonical product URL (e.g. Sabina's #/dimensione-100_ml).
@@ -745,6 +745,8 @@ def _ensure_schema(conn):
         ).fetchall()}
         if 'variant_url' not in variant_columns:
             conn.execute('ALTER TABLE store_product_variants ADD COLUMN variant_url TEXT')
+        if 'last_seen_at' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN last_seen_at REAL')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
         _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
