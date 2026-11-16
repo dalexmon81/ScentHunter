@@ -188,6 +188,23 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 conn = catalog_engine.db()
                 conn.close()
                 feed.import_feed_bytes(SAMPLE)
+                conn = catalog_engine.db()
+                mapping_before = conn.execute(
+                    "SELECT id FROM catalog_search_fts_map WHERE store='notino' AND url=?",
+                    ("https://www.notino.fr/french-avenue/liquid-brun/",),
+                ).fetchone()["id"]
+                conn.close()
+
+                # An unchanged refresh must not rebuild the FTS mapping.
+                feed.import_feed_bytes(SAMPLE)
+                conn = catalog_engine.db()
+                mapping_after = conn.execute(
+                    "SELECT id FROM catalog_search_fts_map WHERE store='notino' AND url=?",
+                    ("https://www.notino.fr/french-avenue/liquid-brun/",),
+                ).fetchone()["id"]
+                conn.close()
+                self.assertEqual(mapping_after, mapping_before)
+
                 rows = catalog_engine._search_local_impl("French Avenue Liquid Brun", per_store=32)
                 self.assertTrue(any(row.get("store_key") == "notino" and row.get("price_num") == 49.9
                                     for row in rows))
