@@ -55,7 +55,7 @@ jobs:
           import urllib.parse
           import xml.etree.ElementTree as ET
           import zipfile
-          from scrapers.notino import affiliate_feed as feed
+          import scrapers.notino.affiliate_feed as feed
           from scrapers.notino.affiliate_feed import (
               FeedImportError, _fetch_feed, _first, _local, _size_ml, parse_feed,
           )
