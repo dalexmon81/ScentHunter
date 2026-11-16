@@ -970,11 +970,9 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
         try:
             cutoff = time.time() - max_age_seconds
             rows = conn.execute(
-                """SELECT v.*, u.active, s.finished_at AS feed_verified_at
+                """SELECT v.*, u.active
                      FROM store_product_variants v
                      JOIN store_urls u ON u.store=v.store AND u.url=v.url
-                     LEFT JOIN sync_state s
-                       ON s.store=v.store AND s.status='FEED_IMPORTED'
                     WHERE v.store=? AND u.active=1
                       AND COALESCE(v.last_seen_at,v.fetched_at)>=? AND v.price>0
                       AND upper(COALESCE(v.currency,''))='EUR'
