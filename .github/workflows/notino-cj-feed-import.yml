@@ -1,16 +1,16 @@
 name: Notino CJ Feed Import
 
 on:
-  workflow_run:
-    workflows:
-      - Fly Deploy
-    types:
-      - completed
-    branches:
-      - main
-  schedule:
-    - cron: "17 5 * * *"
   workflow_dispatch:
+    inputs:
+      confirm_production_import:
+        description: "Type yes to authorize this production catalog import"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_production_import == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
