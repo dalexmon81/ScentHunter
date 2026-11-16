@@ -17,6 +17,7 @@ import sqlite3
 import tempfile
 import time
 import urllib.parse
+import unicodedata
 import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -640,8 +641,14 @@ def _legacy_variant_key(offer) -> str | None:
 
 
 def _slug(url: str) -> str:
+    """Match catalog_engine.url_slug exactly so unchanged URLs stay unchanged."""
     path = urllib.parse.unquote(urllib.parse.urlparse(url).path)
-    return re.sub(r"[-_/]+", " ", path).strip().lower()
+    path = re.sub(r"\\.(?:html?|php)$", "", path, flags=re.I)
+    path = re.sub(r"[-_/]+", " ", path)
+    path = unicodedata.normalize("NFKD", path)
+    path = "".join(char for char in path if not unicodedata.combining(char)).lower()
+    path = re.sub(r"[^a-z0-9]+", " ", path)
+    return re.sub(r"\\s+", " ", path).strip()
 
 
 def _persist_staged_offers(stage, count, started_at, deadline):
