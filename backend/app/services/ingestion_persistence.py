@@ -158,8 +158,22 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     if availability not in _ALLOWED_AVAILABILITY:
         raise PromotionRejected("availability must be explicit")
     parsed = urlparse(url or "")
-    if parsed.scheme != "https" or not parsed.hostname:
-        raise PromotionRejected("offer URL must be absolute HTTPS")
+    try:
+        host = (parsed.hostname or "").lower().rstrip(".")
+        port = parsed.port
+    except ValueError as exc:
+        raise PromotionRejected("offer URL has an invalid host or port") from exc
+    allowed_domain = (store.domain or "").lower().rstrip(".")
+    if (
+        parsed.scheme != "https"
+        or not host
+        or not allowed_domain
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or (host != allowed_domain and not host.endswith("." + allowed_domain))
+    ):
+        raise PromotionRejected("offer URL must be HTTPS on the configured store domain")
     if not source or not source.strip():
         raise PromotionRejected("source is required")
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
