@@ -7,10 +7,11 @@ Phase 2 uses a dedicated SQLite database on the existing Fly volume:
 - Phase 0 queue: `/data/phase0/queue.sqlite3` (untouched)
 
 The canonical database is isolated from both existing files. It uses WAL mode,
-foreign-key enforcement, a 30-second busy timeout, and the same eight logical
-tables intended for the future PostgreSQL schema:
+foreign-key enforcement, a 30-second busy timeout, and the canonical schema
+tables:
 `brands`, `fragrances`, `product_variants`, `stores`, `offers`,
-`price_history`, `match_audit`, and `ingestion_runs`.
+`price_history`, `match_audit`, `ingestion_runs`, `ingestion_raw`,
+`legacy_product_id_map`, and `legacy_variant_id_map`.
 
 From the repository root:
 
@@ -29,12 +30,14 @@ engine rejects non-SQLite URLs. Without an override, it uses
 
 The seed imports brands, fragrances and explicitly declared variants only.
 It does not import retailer offers, invent missing variants, or modify source
-JSON, the storefront SQLite database, or the Phase 0 queue. It stops if any
-product lacks explicit variant records. Missing tester/refill/gift-set flags
-and GTINs are not inferred; unknown flags stay NULL. Dry-run is the default;
-`--apply` is required to write canonical rows.
+JSON, the storefront SQLite database, or the Phase 0 queue. Products without
+known variants are retained as fragrance identities and reported in
+`products_without_variants`; they are not searchable as variant results until
+explicit variant data is added. Missing tester/refill/gift-set flags and GTINs
+are not inferred; unknown flags stay NULL. Dry-run is the default; `--apply`
+is required to write canonical rows.
 
-After an apply, the seed verifies all eight tables exist, reports row counts,
+After an apply, the seed verifies all eleven tables exist, reports row counts,
 and checks that no active offer has a NULL price, empty/NULL URL, or NULL
 availability. The initial seed intentionally imports no offers, so the
 expected offer count is zero until a separately reviewed offer-import phase.
