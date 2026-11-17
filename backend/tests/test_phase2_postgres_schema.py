@@ -28,7 +28,7 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
         self.assertTrue(set(Base.metadata.tables).issubset(tables))
         with self.engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        self.assertEqual(revision, "0003_store_domain")
+        self.assertEqual(revision, ScriptDirectory.from_config(Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))).get_current_head())
         for table in ("fragrances", "product_variants", "offers", "ingestion_raw"):
             self.assertTrue(inspector.get_foreign_keys(table), table)
 
