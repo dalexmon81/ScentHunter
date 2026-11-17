@@ -155,11 +155,11 @@ def _collect_variant_identifiers(product: dict, variant: dict) -> list[dict]:
         if not original:
             return
         if kind == "gtin":
-            normalized = re.sub(r"[\\s-]", "", original)
+            normalized = re.sub(r"[\s-]", "", original)
             if not normalized.isdigit() or len(normalized) not in {8, 12, 13, 14}:
                 raise ValueError(f"invalid GTIN {original!r}")
         else:
-            normalized = re.sub(r"\\s+", "", original).upper()
+            normalized = re.sub(r"\s+", "", original).upper()
         key = (kind, namespace, normalized)
         if key in seen:
             return
@@ -193,7 +193,12 @@ def _collect_variant_identifiers(product: dict, variant: dict) -> list[dict]:
         if not store_name or not isinstance(sku, str) or not sku.strip():
             raise ValueError("store mapping requires a store name and non-empty string SKU")
         store_slug = slugify(store_name)
-        add("sku", sku, f"store:{store_slug}", source_url=mapping.get("url"))
+        source_url = mapping.get("url")
+        if not store_slug:
+            raise ValueError("store mapping has an invalid store name")
+        if source_url is not None and not isinstance(source_url, str):
+            raise ValueError("store mapping URL must be a string")
+        add("sku", sku, f"store:{store_slug}", source_url=source_url)
     return result
 
 
