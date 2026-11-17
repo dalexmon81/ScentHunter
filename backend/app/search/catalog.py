@@ -31,10 +31,10 @@ def _offer_url_valid(url: str, domain: str | None) -> bool:
         host = (parsed.hostname or "").lower().rstrip(".")
         allowed = (domain or "").lower().rstrip(".")
         return (
-            parsed.scheme in {"http", "https"} and bool(allowed)
+            parsed.scheme == "https" and bool(allowed)
             and (host == allowed or host.endswith("." + allowed))
             and parsed.username is None and parsed.password is None
-            and parsed.port in (None, 80, 443)
+            and parsed.port in (None, 443)
         )
     except ValueError:
         return False
