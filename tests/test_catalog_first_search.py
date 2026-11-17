@@ -7,7 +7,7 @@ import pytest
 import requests
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from test_bplatz_persistence_service import (
@@ -15,7 +15,7 @@ from test_bplatz_persistence_service import (
 )
 import catalog_engine
 from app.api import catalog_search
-from app.models import IngestionRaw, MatchAudit, Offer, ProductVariant, Store
+from app.models import IngestionRaw, MatchAudit, Offer, ProductVariant, Store, StoreAuthorization
 from app.search.catalog import _format_size_ml, catalog_status, search_catalog
 
 
@@ -39,6 +39,37 @@ def pilot(tmp_path, monkeypatch):
                                  product_variant_id=offer.product_variant_id)
     yield engine, result
     engine.dispose()
+
+
+
+
+def test_hydration_worker_skips_bplatz_fetch_without_collection_authorization(pilot, monkeypatch):
+    engine, _result = pilot
+    with Session(engine) as session, session.begin():
+        store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+        assert store is not None
+        session.execute(delete(StoreAuthorization).where(
+            StoreAuthorization.store_id == store.id
+        ))
+
+    errors = []
+    monkeypatch.setattr(catalog_engine, "_foreground_search_running", lambda: False)
+    monkeypatch.setattr(
+        catalog_engine, "_queue_mark_error",
+        lambda task, detail, *args, **kwargs: errors.append(detail),
+    )
+    monkeypatch.setattr(
+        catalog_engine, "refresh_url",
+        lambda *args, **kwargs: pytest.fail("unauthorized Bplatz page must not be fetched"),
+    )
+
+    result = catalog_engine._hydrate_one_task({
+        "store": "bplatz",
+        "url": "https://en.bplatz.de/products/unauthorized-fixture",
+        "attempts": 1,
+    })
+    assert result is False
+    assert errors == ["store_offer_collection_not_authorized"]
 
 
 
