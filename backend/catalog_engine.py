@@ -6101,6 +6101,62 @@ def _queue_mark_error(task, error, http_status=None):
         conn.close()
 
 
+def _bplatz_phase2_collection_authorized():
+    """Read-only fail-closed authorization preflight before a Phase 2 page fetch."""
+    flag = str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return True
+
+    engine = None
+    try:
+        from datetime import datetime, timezone
+        from sqlalchemy import create_engine, inspect, select
+        from sqlalchemy.engine import make_url
+        from sqlalchemy.orm import Session
+        from app.models import Store
+        from app.services.ingestion_persistence import (
+            has_store_offer_collection_authorization,
+        )
+
+        database_url = (
+            os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+            or os.environ.get("SCENTHUNTER_DATABASE_URL")
+            or "sqlite:////data/catalog/catalog.sqlite3"
+        ).strip()
+        parsed_url = make_url(database_url)
+        backend = parsed_url.get_backend_name()
+        if backend == "sqlite":
+            if not parsed_url.database or parsed_url.database == ":memory:":
+                return False
+            if not os.path.isfile(os.path.expanduser(parsed_url.database)):
+                return False
+        elif backend != "postgresql":
+            return False
+
+        engine = create_engine(database_url, pool_pre_ping=True, pool_size=1, max_overflow=0)
+        tables = set(inspect(engine).get_table_names())
+        if not {"stores", "store_authorizations"}.issubset(tables):
+            return False
+
+        with Session(engine) as session:
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            if store is None or store.status != "active":
+                return False
+            return has_store_offer_collection_authorization(
+                session, store_id=store.id, now=datetime.now(timezone.utc),
+            )
+    except Exception as exc:
+        print(
+            "BPLATZ_PHASE2_SKIPPED reason=authorization_preflight_error "
+            f"error={type(exc).__name__}",
+            flush=True,
+        )
+        return False
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+
 def _hydrate_one_task(task):
     """Execute one claimed page fetch and transition its queue state.
 
@@ -6113,6 +6169,15 @@ def _hydrate_one_task(task):
     if _foreground_search_running():
         _queue_release_claim(task)
         return None
+
+    if (
+        task.get("store") == "bplatz"
+        and str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
+        in {"1", "true", "yes", "on"}
+        and not _bplatz_phase2_collection_authorized()
+    ):
+        _queue_mark_error(task, "store_offer_collection_not_authorized")
+        return False
 
     previous_context = getattr(_thread_local, "hydration_worker_context", None)
     worker_context = {
