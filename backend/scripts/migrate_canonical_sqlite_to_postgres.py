@@ -7,6 +7,7 @@ discovery/hydration database is supported by this importer.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -27,8 +28,10 @@ from app.models import Base  # noqa: E402
 
 TABLE_ORDER = (
     "brands", "fragrances", "product_variants", "stores",
+    "store_authorizations", "store_shipping_rates",
     "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
-    "offers", "price_history", "match_audit", "ingestion_runs",
+    "ingestion_runs", "ingestion_artifacts", "ingestion_dead_letters",
+    "canonical_identity_reviews", "offers", "price_history", "match_audit",
 )
 EXPECTED_REVISION = "0015_user_sessions"
 
@@ -98,6 +101,8 @@ def _same_row(existing, incoming, columns):
 
 
 def _canonical_value(value, column_type=None):
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return {"__bytes_base64__": base64.b64encode(bytes(value)).decode("ascii")}
     if isinstance(column_type, Uuid) and value is not None:
         return str(value if isinstance(value, UUID) else UUID(str(value)))
     if isinstance(value, datetime):
