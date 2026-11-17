@@ -33,7 +33,7 @@ def setup_db(availability="in_stock", captured_at=None, offer_ttl_minutes=1440):
             fragrance_id=fragrance.id, concentration="edp", size_ml=100,
             canonical_key=identity.canonical_key,
         )
-        store = Store(name="Test Shop", slug="test-shop", currency="EUR", offer_ttl_minutes=offer_ttl_minutes, status="active")
+        store = Store(name="Test Shop", slug="test-shop", domain="shop.example", currency="EUR", offer_ttl_minutes=offer_ttl_minutes, status="active")
         session.add_all([variant, store])
         session.flush()
         raw = IngestionRaw(
@@ -180,6 +180,26 @@ def test_distinct_retailer_listings_for_same_variant_create_distinct_offers():
         assert {offer.price for offer in offers} == {
             Decimal("90.50"), Decimal("87.25"),
         }
+
+
+
+def test_foreign_domain_offer_url_is_blocked_by_publication_gate():
+    factory, raw_id = setup_db()
+    with factory() as session:
+        raw = session.get(IngestionRaw, raw_id)
+        raw.raw_payload = {
+            **raw.raw_payload,
+            "url": "https://attacker.example/item/sku-100",
+        }
+        session.commit()
+    assert promote_matched_offers(factory) == {
+        "processed": 1, "published": 0, "blocked": 1,
+    }
+    with factory() as session:
+        assert session.scalar(select(Offer)) is None
+        raw = session.get(IngestionRaw, raw_id)
+        assert raw.status == "matched"
+        assert "configured store domain" in raw.rejection_reason
 
 
 def test_http_offer_url_is_blocked_by_publication_gate():
