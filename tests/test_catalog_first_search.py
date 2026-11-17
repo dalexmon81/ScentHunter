@@ -16,7 +16,7 @@ from test_bplatz_persistence_service import (
 import catalog_engine
 from app.api import catalog_search
 from app.models import IngestionRaw, MatchAudit, Offer, Store
-from app.search.catalog import catalog_status, search_catalog
+from app.search.catalog import _format_size_ml, catalog_status, search_catalog
 
 
 @pytest.fixture
@@ -36,6 +36,13 @@ def pilot(tmp_path, monkeypatch):
                                  product_variant_id=offer.product_variant_id)
     yield engine, result
     engine.dispose()
+
+
+
+def test_decimal_variant_size_display_is_stable():
+    assert _format_size_ml(Decimal("100.0000")) == "100"
+    assert _format_size_ml(Decimal("50.5000")) == "50.5"
+    assert _format_size_ml(None) is None
 
 
 def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
