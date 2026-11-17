@@ -142,7 +142,7 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert {
             "brands", "fragrances", "product_variants", "stores", "offers",
             "price_history", "match_audit", "ingestion_runs", "ingestion_raw",
-            "legacy_product_id_map", "legacy_variant_id_map", "alembic_version",
+            "legacy_product_id_map", "legacy_variant_id_map", "product_identifiers", "alembic_version",
         }.issubset(tables)
         raw_columns = {column["name"] for column in inspector.get_columns("ingestion_raw")}
         assert {"legacy_product_id", "legacy_variant_id", "product_variant_id", "status"}.issubset(raw_columns)
@@ -150,8 +150,8 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert "ingestion_raw_id" in offer_columns
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-        assert revision == "0015_user_sessions"
-        print("ALEMBIC_REVISION=0015_user_sessions")
+        assert revision == "0016_product_identifiers"
+        print("ALEMBIC_REVISION=0016_product_identifiers")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
