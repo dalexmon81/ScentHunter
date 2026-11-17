@@ -85,6 +85,23 @@ class RecoveryCatalogIntegrityTests(unittest.TestCase):
                 names = [normalized(product["canonical_name"]) for product in family.get("products", [])]
                 self.assertEqual(len(names), len(set(names)))
 
+    def test_verified_cumulative_family_format_hints_are_preserved(self):
+        expected = {
+            ("velixir_catalog", "Comus"): {35, 100},
+            ("velixir_catalog", "Ether"): {35, 100},
+            ("velixir_catalog", "Orpheus"): {35, 100},
+            ("velixir_catalog", "Panacea"): {35, 100},
+            ("arabiyat_prestige_catalog", "Marwa"): {100},
+            ("arabiyat_prestige_catalog", "Aariz"): {100},
+            ("arabiyat_prestige_catalog", "Aariz L’Absolu"): {100},
+            ("arabiyat_prestige_catalog", "Asháa Oud Noir"): {110},
+        }
+        for (family_id, canonical_name), formats in expected.items():
+            family = next(f for f in self.families["families"] if f["family_id"] == family_id)
+            product = next(p for p in family["products"] if p["canonical_name"] == canonical_name)
+            with self.subTest(family_id=family_id, canonical_name=canonical_name):
+                self.assertTrue(formats.issubset(set(product.get("formats_ml", []))))
+
     def test_every_catalog_family_id_exists_in_registry(self):
         family_ids = {family["family_id"] for family in self.families["families"]}
         missing = sorted({
