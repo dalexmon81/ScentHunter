@@ -143,6 +143,43 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                     ).fetchone()[0],
                     50.5,
                 )
+                connection.execute(
+                    "UPDATE product_variants SET size_ml=100 WHERE id=?", (variant_id,)
+                )
+
+            # Exercise the complete reverse path too. This checks the SQLite
+            # table rebuild on downgrade while offers and legacy maps still
+            # reference product_variants.
+            self._run_alembic(database_url, "downgrade", PRE_PRECISION_REVISION)
+            with sqlite3.connect(db_path) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                self.assertEqual(
+                    connection.execute("PRAGMA foreign_keys").fetchone()[0], 1
+                )
+                self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT product_variant_id FROM offers WHERE id=?", (offer_id,)
+                    ).fetchone()[0],
+                    variant_id,
+                )
+
+            self._run_alembic(database_url, "upgrade", "head")
+            with sqlite3.connect(db_path) as connection:
+                revision = connection.execute(
+                    "SELECT version_num FROM alembic_version"
+                ).fetchone()[0]
+                self.assertEqual(revision, EXPECTED_HEAD)
+                self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+                connection.execute(
+                    "UPDATE product_variants SET size_ml=? WHERE id=?", (50.5, variant_id)
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT size_ml FROM product_variants WHERE id=?", (variant_id,)
+                    ).fetchone()[0],
+                    50.5,
+                )
 
 
 if __name__ == "__main__":
