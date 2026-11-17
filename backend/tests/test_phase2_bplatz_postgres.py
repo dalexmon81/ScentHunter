@@ -22,6 +22,7 @@ from app.models import (  # noqa: E402
 )
 from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
 from app.services.ingestion_persistence import PromotionRejected  # noqa: E402
+from app.search.catalog import search_catalog  # noqa: E402
 
 
 DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
@@ -46,7 +47,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
         seed_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + seed_env.get("PYTHONPATH", "")
         seeded = subprocess.run(
             [sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
-             "--catalog", str(BACKEND / "product_catalog.json"), "--apply"],
+             "--catalog", str(BACKEND / "product_catalog.json"), "--apply", "--seed-bplatz-store"],
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, (
@@ -67,10 +68,14 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
             "French Avenue Liquid Brun",
         )
         assert parsed is not None
+        from catalog_engine import parse_product
+        worker_item = parse_product("bplatz", meta["url_final"], fixture.read_bytes())
+        assert worker_item["currency_explicit"] is True
         record = {
             "raw_name": parsed["name"], "brand_raw": parsed["brand"],
             "size_ml": parsed["size_ml"], "price": parsed["price_num"],
             "currency": parsed["offer"]["currency"],
+            "currency_explicit": worker_item["currency_explicit"],
             "product_url": parsed["url"], "availability": parsed["availability"],
             "sku": parsed["sku"], "gtin": parsed["gtin"],
         }
@@ -111,6 +116,10 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
             assert session.scalar(select(func.count()).select_from(MatchAudit).where(
                 MatchAudit.offer_id == first.offer_id
             )) == 1
+            results = search_catalog(session, "French Avenue Liquid Brun EDP 100ml")
+            assert results["count"] == 1
+            assert results["results"][0]["catalog_id"] == str(first.product_variant_id)
+            assert results["offer_count"] == (1 if offer.availability == "in_stock" else 0)
 
         # A later hydration updates the same retailer offer and appends an
         # auditable price observation; it must not create a duplicate Offer.
@@ -185,7 +194,7 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
         seed_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + seed_env.get("PYTHONPATH", "")
         seeded = subprocess.run(
             [sys.executable, str(BACKEND / "scripts/seed_catalog.py"),
-             "--catalog", str(BACKEND / "product_catalog.json"), "--apply"],
+             "--catalog", str(BACKEND / "product_catalog.json"), "--apply", "--seed-bplatz-store"],
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr
@@ -199,14 +208,8 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
             "French Avenue Liquid Brun",
         )
         assert parsed is not None
-        item = {
-            "name": parsed["name"], "brand": parsed["brand"],
-            "size_ml": parsed["size_ml"], "price_num": parsed["price_num"],
-            "currency": parsed["offer"]["currency"], "url": parsed["url"],
-            "availability": parsed["availability"], "sku": parsed["sku"],
-            "gtin": parsed.get("gtin"), "mpn": parsed.get("mpn"),
-            "concentration": parsed.get("concentration"),
-        }
+        item = catalog_engine.parse_product("bplatz", meta["url_final"], fixture.read_bytes())
+        assert item["currency_explicit"] is True
         completed = []
         task = {"store": "bplatz", "url": item["url"], "attempts": 1}
         with patch.dict(os.environ, {
@@ -224,6 +227,8 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
         with Session(engine) as session:
             offer = session.scalar(select(Offer))
             assert offer is not None
+            results = search_catalog(session, "French Avenue Liquid Brun EDP 100ml")
+            assert results["offer_count"] == 1
             assert offer.price > 0
             assert offer.currency == "EUR"
             assert offer.url == item["url"]

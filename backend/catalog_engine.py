@@ -3806,7 +3806,8 @@ def parse_product(store, url, data):
     offer = _first_offer(p)
     price_specification = _price_specification(offer)
     price = _offer_price(offer)
-    currency = str(offer.get('priceCurrency') or price_specification.get('priceCurrency') or 'EUR')
+    explicit_currency = offer.get('priceCurrency') or price_specification.get('priceCurrency')
+    currency = str(explicit_currency or 'EUR')
     availability = str(offer.get('availability') or '').lower()
     if 'instock' in availability or 'limitedavailability' in availability or 'onlineonly' in availability:
         availability = 'in_stock'
@@ -3896,6 +3897,7 @@ def parse_product(store, url, data):
         'price_num': price,
         'price': price,
         'currency': currency,
+        'currency_explicit': bool(explicit_currency),
         'availability': availability,
         'available': True if availability == 'in_stock' else False if availability == 'out_of_stock' else None,
         'size_ml': size_ml,
@@ -4206,6 +4208,7 @@ def _maybe_persist_bplatz_phase2(item, url):
             "size_ml": item.get("size_ml"),
             "price": item.get("price_num"),
             "currency": item.get("currency") or "EUR",
+            "currency_explicit": item.get("currency_explicit") is True,
             "product_url": item.get("url") or url,
             "availability": item.get("availability"),
             "sku": item.get("sku"),
