@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
@@ -13,6 +14,15 @@ from app.models import Brand, Fragrance, IngestionRaw, MatchAudit, Offer, Produc
 
 def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def _format_size_ml(value) -> str | None:
+    if value is None:
+        return None
+    amount = Decimal(str(value))
+    if amount == amount.to_integral_value():
+        return str(int(amount))
+    return format(amount.normalize(), "f")
 
 
 def _offer_url_valid(url: str, domain: str | None) -> bool:
@@ -121,7 +131,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     for variant, fragrance, brand in rows:
         label = " ".join(filter(None, (
             fragrance.name, variant.concentration,
-            f"{variant.size_ml} ml" if variant.size_ml else None,
+            f"{_format_size_ml(variant.size_ml)} ml" if variant.size_ml is not None else None,
             "Tester" if variant.is_tester else None,
             "Refill" if variant.is_refill else None,
             "Gift set" if variant.is_gift_set else None,
