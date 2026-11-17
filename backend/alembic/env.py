@@ -29,7 +29,6 @@ def run_migrations_offline():
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
-        include_object=include_object,
         render_as_batch=(parsed.get_backend_name() == "sqlite"),
     )
     with context.begin_transaction():
