@@ -131,5 +131,8 @@ jobs:
           tests/test_offer_promotion_worker.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
+      - name: Verify fractional variant sizes survive catalog seeding
+        working-directory: backend
+        run: pytest -q tests/test_seed_catalog_precision.py
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
