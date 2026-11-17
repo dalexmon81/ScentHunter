@@ -25,7 +25,7 @@ def normalized(value):
 
 
 def valid_gtin13(value):
-    if not re.fullmatch(r"\\d{13}", str(value or "")):
+    if not re.fullmatch(r"\d{13}", str(value or "")):
         return False
     digits = [int(char) for char in value]
     weighted = sum(digits[0:12:2]) + 3 * sum(digits[1:12:2])
