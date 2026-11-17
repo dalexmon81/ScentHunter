@@ -45,7 +45,9 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
             ),
         )
 
-    def _run_alembic_expected_failure(self, database_url: str, *args: str) -> str:
+    def _run_alembic_expected_failure(
+        self, database_url: str, *args: str, expected_message: str = "duplicate active store/external_product_id rows"
+    ) -> str:
         env = os.environ.copy()
         env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
         env.pop("SCENTHUNTER_DATABASE_URL", None)
@@ -61,7 +63,7 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0, msg="Alembic unexpectedly accepted duplicate live ingestion rows")
         output = result.stdout + result.stderr
-        self.assertIn("duplicate active store/external_product_id rows", output)
+        self.assertIn(expected_message, output)
         return output
 
     def test_upgrade_from_pre_precision_schema_preserves_linked_rows(self):
@@ -188,13 +190,32 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                     ).fetchone()[0],
                     50.5,
                 )
+
+            # A downgrade must stop before converting a fractional size back
+            # to Integer; silently rounding a canonical size would corrupt data.
+            self._run_alembic(database_url, "downgrade", "0008_variant_size_precision")
+            self._run_alembic_expected_failure(
+                database_url, "downgrade", PRE_PRECISION_REVISION,
+                expected_message="fractional variant sizes would be lost",
+            )
+            with sqlite3.connect(db_path) as connection:
+                self.assertEqual(
+                    connection.execute("SELECT version_num FROM alembic_version").fetchone()[0],
+                    "0008_variant_size_precision",
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT size_ml FROM product_variants WHERE id=?", (variant_id,)
+                    ).fetchone()[0],
+                    50.5,
+                )
                 connection.execute(
                     "UPDATE product_variants SET size_ml=100 WHERE id=?", (variant_id,)
                 )
 
-            # Exercise the complete reverse path too. This checks the SQLite
-            # table rebuild on downgrade while offers and legacy maps still
-            # reference product_variants.
+            # Exercise the complete reverse path with integral sizes. This
+            # checks the SQLite table rebuild while offers and legacy maps
+            # still reference product_variants.
             self._run_alembic(database_url, "downgrade", PRE_PRECISION_REVISION)
             with sqlite3.connect(db_path) as connection:
                 connection.execute("PRAGMA foreign_keys=ON")
