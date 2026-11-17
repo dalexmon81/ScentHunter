@@ -119,14 +119,9 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             session.add(StoreShippingRate(
                 id=cls.shipping_rate_id, store_id=cls.store_id,
                 country_code="LU", currency="EUR", base_cost=Decimal("4.90"),
-                status="verified", method="official_page",
+                status="estimated", method="official_page",
                 source_url="https://example.invalid/shipping",
-                valid_until=None,
             ))
-            # Estimated shipping evidence is deliberately used here because
-            # verified rates require an explicit validity window.
-            shipping = session.get(StoreShippingRate, cls.shipping_rate_id)
-            shipping.status = "estimated"
             session.add(IngestionArtifact(
                 id=cls.artifact_id, store_id=cls.store_id,
                 ingestion_run_id=cls.run_id, artifact_format="xml",
