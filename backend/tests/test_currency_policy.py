@@ -1,3 +1,5 @@
+import pytest
+
 from app.services.currency_policy import (
     SUPPORTED_CURRENCY_CODES,
     is_supported_currency_code,
