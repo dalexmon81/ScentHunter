@@ -34,11 +34,11 @@ from scenthunter_next_engine.offer_normalizer import normalize_offer  # noqa: E4
 PRODUCT_URL_PATH = "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
 CANONICAL_PRODUCT_ID = "SH-0030"
 CANONICAL_VARIANT_ID = "VAR-f87146c82d167f4c"
-SCHEMA_REVISION = "0015_user_sessions"
+SCHEMA_REVISION = "0016_product_identifiers"
 TABLES = (
     "brands", "fragrances", "ingestion_raw", "ingestion_runs",
     "legacy_product_id_map", "legacy_variant_id_map", "match_audit",
-    "offers", "price_history", "product_variants", "stores",
+    "offers", "price_history", "product_variants", "stores", "product_identifiers",
 )
 
 
