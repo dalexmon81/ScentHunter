@@ -18,7 +18,7 @@ import uuid
 BACKEND = Path(__file__).resolve().parents[1]
 ALEMBIC_INI = BACKEND / "alembic.ini"
 PRE_PRECISION_REVISION = "0007_ingestion_dead_letters"
-EXPECTED_HEAD = "0015_user_sessions"
+EXPECTED_HEAD = "0016_product_identifiers"
 
 
 class SQLiteAlembicUpgradeTests(unittest.TestCase):
@@ -180,6 +180,20 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                 )
                 self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
                 self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+                connection.execute(
+                    """INSERT INTO product_identifiers
+                       (id, product_variant_id, identifier_type, namespace, value, normalized_value, store_id, source_url)
+                       VALUES (?, ?, 'sku', ?, 'SKU-TEST', 'SKU-TEST', ?, ?)""",
+                    (str(uuid.uuid4()), variant_id, "store:migration-store-" + store_id[:8],
+                     store_id, "https://example.invalid/product"),
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM product_identifiers WHERE product_variant_id=?",
+                        (variant_id,),
+                    ).fetchone()[0],
+                    1,
+                )
                 connection.execute(
                     "UPDATE product_variants SET size_ml=? WHERE id=?",
                     (50.5, variant_id),
