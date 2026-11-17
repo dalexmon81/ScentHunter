@@ -61,7 +61,7 @@ def _validate_report(report: dict, *, now: datetime) -> tuple[dict, Decimal]:
     if captured_at.tzinfo is None:
         raise ValueError("live report timestamp must include a timezone")
     age = now.astimezone(timezone.utc) - captured_at.astimezone(timezone.utc)
-    if age < timedelta(minutes=-5) or age > timedelta(hours=1):
+    if age < timedelta(0) or age > timedelta(hours=1):
         raise ValueError("live report is outside the one-hour persistence window")
 
     raw_record = report.get("raw_record")
@@ -136,7 +136,7 @@ def _backup_database(source: Path, backup_dir: Path, run_id: str) -> tuple[Path,
     if backup.exists():
         raise FileExistsError(f"refusing to overwrite existing backup: {backup}")
     with closing(_readonly_connection(source)) as source_connection:
-        with sqlite3.connect(backup, timeout=30) as backup_connection:
+        with closing(sqlite3.connect(backup, timeout=30)) as backup_connection:
             source_connection.backup(backup_connection)
     verified = _database_snapshot(backup)
     if backup.stat().st_size <= 0:
@@ -166,7 +166,7 @@ def persist_report(
             raise FileNotFoundError("provisioned Phase 2 SQLite database does not exist")
 
         before = _database_snapshot(database_path)
-        with _readonly_connection(database_path) as connection:
+        with closing(_readonly_connection(database_path)) as connection:
             store_rows = connection.execute(
                 "SELECT id, domain, status FROM stores WHERE slug='bplatz'"
             ).fetchall()
@@ -233,6 +233,8 @@ def persist_report(
                 or not history_count or not audit_count
             ):
                 raise RuntimeError("persisted pilot offer failed its publication-contract checks")
+            offer.captured_at = datetime.fromisoformat(raw_record["captured_at"])
+            session.flush()
 
             expected_counts = dict(before["counts"])
             expected_counts["ingestion_raw"] += 1

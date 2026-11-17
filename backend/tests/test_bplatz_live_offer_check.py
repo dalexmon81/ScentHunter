@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
+import shlex
 import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
@@ -14,6 +17,7 @@ from catalog_engine import parse_product  # noqa: E402
 from scrapers.bplatz.scraper import parse_product_html  # noqa: E402
 from scripts.check_bplatz_liquid_brun_live import build_report  # noqa: E402
 from scripts.persist_bplatz_phase2_live_offer import _validate_report  # noqa: E402
+from scripts import persist_bplatz_liquid_brun_live as writer  # noqa: E402
 
 
 class BplatzLiveOfferCheckTests(unittest.TestCase):
@@ -74,3 +78,33 @@ class BplatzLiveOfferCheckTests(unittest.TestCase):
         wrong_variant = dict(report, canonical_variant_id="another-variant")
         with self.assertRaisesRegex(ValueError, "authorized Liquid Brun pilot"):
             _validate_report(wrong_variant, now=datetime.now(timezone.utc))
+
+    def test_api_verification_compares_prices_numerically(self):
+        report = {"url": self.url, "price": "27.5"}
+        search = Mock()
+        search.json.return_value = {
+            "status": "completed", "count": 1,
+            "results": [{"offers": [{
+                "store": "Bplatz", "availability": "in_stock", "currency": "EUR",
+                "url": self.url, "price": "27.50",
+            }]}],
+        }
+        status = Mock()
+        status.json.return_value = {"status": "ready", "published_offers": 1}
+        with patch.object(writer.requests, "get", side_effect=[search, status]):
+            self.assertEqual(writer.verify_public_api(report)["search"]["count"], 1)
+
+    def test_remote_writer_runs_in_a_shell(self):
+        report = {"url": self.url, "price": "27.5"}
+        env = {
+            "CONFIRM_PRODUCTION_WRITE": "true", "GITHUB_REF": "refs/heads/main",
+            "GITHUB_RUN_ID": "12345",
+        }
+        with patch.dict(os.environ, env), \
+             patch.object(writer, "fetch_live_offer", return_value=report), \
+             patch.object(writer, "verify_public_api", return_value={}), \
+             patch.object(writer.subprocess, "run") as run:
+            self.assertEqual(writer.main(), 0)
+        command = shlex.split(run.call_args.args[0][-1])
+        self.assertEqual(command[:2], ["/bin/sh", "-lc"])
+        self.assertIn("scripts/persist_bplatz_phase2_live_offer.py", command[2])

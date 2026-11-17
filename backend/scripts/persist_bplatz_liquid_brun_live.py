@@ -7,6 +7,7 @@ import os
 import shlex
 import subprocess
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
@@ -33,14 +34,17 @@ def verify_public_api(report: dict) -> dict:
     if result.get("status") != "completed" or result.get("count") != 1:
         raise RuntimeError("production catalog search did not return the Liquid Brun variant")
     product = result["results"][0]
-    matches = [
-        offer for offer in product.get("offers", [])
-        if offer.get("store") == "Bplatz"
-        and offer.get("availability") == "in_stock"
-        and offer.get("currency") == "EUR"
-        and offer.get("url") == report["url"]
-        and offer.get("price") == report["price"]
-    ]
+    try:
+        matches = [
+            offer for offer in product.get("offers", [])
+            if offer.get("store") == "Bplatz"
+            and offer.get("availability") == "in_stock"
+            and offer.get("currency") == "EUR"
+            and offer.get("url") == report["url"]
+            and Decimal(str(offer.get("price"))) == Decimal(str(report["price"]))
+        ]
+    except InvalidOperation as exc:
+        raise RuntimeError("production catalog API returned an invalid offer price") from exc
     if len(matches) != 1:
         raise RuntimeError("production catalog API did not publish the exact verified live offer")
 
@@ -79,7 +83,7 @@ def main() -> int:
         subprocess.run(
             [
                 "flyctl", "ssh", "console", "--app", "scenthunter",
-                "--select=false", "-C", remote_command,
+                "--select=false", "-C", shlex.join(["/bin/sh", "-lc", remote_command]),
             ],
             check=True,
             timeout=300,

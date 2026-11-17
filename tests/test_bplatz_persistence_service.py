@@ -419,6 +419,7 @@ def test_live_liquid_brun_persistence_makes_one_backed_up_offer_searchable(tmp_p
             assert result["offer_count"] == 1
             assert result["results"][0]["offers"][0]["store"] == "Bplatz"
             assert result["results"][0]["offers"][0]["price"] == persisted["offer"]["price"]
+            assert result["results"][0]["offers"][0]["captured_at"] == report["captured_at"]
             assert status["published_offers"] == 1
     finally:
         engine.dispose()
