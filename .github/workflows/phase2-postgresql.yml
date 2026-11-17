@@ -10,6 +10,13 @@ on:
       - "backend/app/search/catalog.py"
       - "backend/catalog_engine.py"
       - "backend/app/models/**"
+      - "backend/app/matching/**"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/app/services/product_normalization.py"
+      - "backend/app/services/canonical_identity_review_queue.py"
+      - "backend/app/services/currency_policy.py"
+      - "backend/app/workers/matching_worker.py"
+      - "backend/app/workers/offer_promotion.py"
       - "backend/alembic/**"
       - "backend/alembic.ini"
       - "backend/tests/test_phase2_database_backends.py"
@@ -18,6 +25,11 @@ on:
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
+      - "backend/tests/test_product_normalization.py"
+      - "backend/tests/test_canonical_identity_review_queue.py"
+      - "backend/tests/test_currency_policy.py"
+      - "backend/tests/test_offer_matching_worker.py"
+      - "backend/tests/test_offer_promotion_worker.py"
       - "tests/test_catalog_offer_price_selection.py"
       - "tests/test_catalog_first_search.py"
       - "tests/test_bplatz_persistence_service.py"
@@ -65,6 +77,9 @@ jobs:
       - name: Confirm a second upgrade is a no-op
         working-directory: backend
         run: alembic upgrade head
+      - name: Verify ORM metadata matches the migrated PostgreSQL schema
+        working-directory: backend
+        run: alembic check
       - name: Import the complete checked-in canonical catalog into disposable PostgreSQL
         shell: bash
         run: |
@@ -94,16 +109,24 @@ jobs:
           assert seed["status"] == "seeded" and seed["database_written"] is True
           assert dry["status"] == "dry_run" and dry["destination_written"] is False
           assert applied["status"] == "applied" and applied["destination_written"] is True
-          assert applied["source_alembic_revision"] == "0003_store_domain"
+          assert applied["source_alembic_revision"] == "0015_user_sessions"
           assert all(row["checksums_match_after_import"] for row in applied["tables"].values())
           assert all(row["would_insert"] == 0 for row in repeated["tables"].values())
           print("Full checked-in catalog import, checksums and idempotent repeat: PASS")
           print("Source counts:", {name: row["source_rows"] for name, row in applied["tables"].items()})
           PY
-      - name: Verify PostgreSQL schema, constraints and rollback behavior
+      - name: Verify migration, PostgreSQL and catalog seed contracts
         working-directory: backend
-        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
-      - name: Verify catalog-first API with the historical Bplatz fixture
-        run: pytest -q tests/test_catalog_first_search.py
+        run: >-
+          pytest -q
+          tests/test_phase2_database_backends.py
+          tests/test_phase2_postgres_schema.py
+          tests/test_phase2_runtime_db_identity.py
+          tests/test_phase2_sqlite_postgres_import.py
+          tests/test_phase2_bplatz_postgres.py
+          tests/test_alembic_sqlite_upgrade.py
+          tests/test_seed_catalog_precision.py
+      - name: Verify Bplatz persistence and catalog-first API
+        run: pytest -q tests/test_bplatz_persistence_service.py tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py

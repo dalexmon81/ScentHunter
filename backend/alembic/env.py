@@ -7,7 +7,6 @@ configured_url = database_url()
 config.set_main_option("sqlalchemy.url", configured_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
-
 def _configure(connection=None, url=None):
     dialect = connection.dialect.name if connection is not None else "sqlite"
     context.configure(
@@ -40,9 +39,37 @@ def run_migrations_online():
     connectable = make_engine()
     try:
         with connectable.connect() as connection:
-            _configure(connection=connection)
-            with context.begin_transaction():
-                context.run_migrations()
+            sqlite_foreign_keys_disabled = connection.dialect.name == "sqlite"
+            if sqlite_foreign_keys_disabled:
+                # Alembic batch migrations rebuild tables. SQLite refuses to
+                # DROP a referenced parent table while FK enforcement is ON.
+                # Toggle it only outside a transaction, then validate every
+                # relationship before allowing the migration command to finish.
+                connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+                connection.commit()
+            try:
+                _configure(connection=connection)
+                with context.begin_transaction():
+                    context.run_migrations()
+            except Exception:
+                if connection.in_transaction():
+                    connection.rollback()
+                raise
+            finally:
+                if sqlite_foreign_keys_disabled:
+                    if connection.in_transaction():
+                        connection.rollback()
+                    connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+                    connection.commit()
+            if sqlite_foreign_keys_disabled:
+                violations = connection.exec_driver_sql(
+                    "PRAGMA foreign_key_check"
+                ).fetchall()
+                if violations:
+                    raise RuntimeError(
+                        "SQLite migration left foreign-key violations: "
+                        + repr(violations[:10])
+                    )
     finally:
         connectable.dispose()
 

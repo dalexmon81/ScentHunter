@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from datetime import datetime
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -107,10 +108,16 @@ def persist_bplatz_record(
             product_variant_id=resolved.product_variant_id, reason="availability_not_explicit",
         )
 
+    captured_at = None
+    if raw_record.get("captured_at") not in (None, ""):
+        captured_at = datetime.fromisoformat(
+            str(raw_record["captured_at"]).strip().replace("Z", "+00:00")
+        )
     offer_id = promote_offer(
         session, ingestion_raw_id=raw_id, price=normalized.price,
         currency=normalized.currency, url=normalized.product_url,
         availability=normalized.availability, source="bplatz_parser",
+        captured_at=captured_at,
     )
     return BplatzPhase2Result(
         raw_id, "promoted", offer_id=offer_id,

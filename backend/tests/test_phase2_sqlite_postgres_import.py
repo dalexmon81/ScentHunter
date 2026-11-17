@@ -12,7 +12,8 @@ from app.models import Base
 from app.models.catalog import (
     Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap,
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
-    IngestionRun,
+    IngestionRun, StoreAuthorization, StoreShippingRate, IngestionArtifact,
+    IngestionDeadLetter, CanonicalIdentityReview,
 )
 from scripts.migrate_canonical_sqlite_to_postgres import inspect_and_import
 
@@ -37,7 +38,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
             ))
             connection.execute(text(
-                "INSERT INTO alembic_version (version_num) VALUES ('0003_store_domain')"
+                "INSERT INTO alembic_version (version_num) VALUES ('0015_user_sessions')"
             ))
 
         cls.brand_id = uuid.uuid4()
@@ -47,6 +48,11 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         cls.raw_id = uuid.uuid4()
         cls.offer_id = uuid.uuid4()
         cls.run_id = uuid.uuid4()
+        cls.authorization_id = uuid.uuid4()
+        cls.shipping_rate_id = uuid.uuid4()
+        cls.artifact_id = uuid.uuid4()
+        cls.dead_letter_id = uuid.uuid4()
+        cls.review_id = uuid.uuid4()
 
         with Session(cls.source) as session, session.begin():
             session.add(Brand(
@@ -103,6 +109,37 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 offers_created=1, offers_updated=0, offers_rejected=0,
                 errors=[],
             ))
+            session.flush()
+            session.add(StoreAuthorization(
+                id=cls.authorization_id, store_id=cls.store_id,
+                status="approved", collection_method="affiliate_feed",
+                scopes=["offer_data"], authorization_reference="fixture-consent",
+                terms={"fixture": True},
+            ))
+            session.add(StoreShippingRate(
+                id=cls.shipping_rate_id, store_id=cls.store_id,
+                country_code="LU", currency="EUR", base_cost=Decimal("4.90"),
+                status="estimated", method="official_page",
+                source_url="https://example.invalid/shipping",
+            ))
+            session.add(IngestionArtifact(
+                id=cls.artifact_id, store_id=cls.store_id,
+                ingestion_run_id=cls.run_id, artifact_format="xml",
+                content_type="application/xml", source_url="https://example.invalid/feed.xml",
+                sha256="a" * 64, size_bytes=12, raw_data=b"<feed></feed>",
+                metadata_json={"fixture": True},
+            ))
+            session.add(IngestionDeadLetter(
+                id=cls.dead_letter_id, task_name="fixture.task",
+                task_id="fixture-task-" + cls.dead_letter_id.hex,
+                args_repr="[]", kwargs_repr="{}", error="fixture error",
+            ))
+            session.add(CanonicalIdentityReview(
+                id=cls.review_id, fingerprint="b" * 64,
+                canonical_key="fixture|product|edp|50|standard",
+                normalized_payload={"brand": "Fixture", "fragrance_name": "Product"},
+                reason="fixture_review",
+            ))
 
     @classmethod
     def tearDownClass(cls):
@@ -116,6 +153,8 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertFalse(dry["source_modified"])
         self.assertFalse(dry["destination_written"])
         self.assertEqual(dry["tables"]["offers"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["ingestion_artifacts"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["canonical_identity_reviews"]["would_insert"], 1)
 
         with self.target.connect() as connection:
             before = connection.execute(
@@ -131,6 +170,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertEqual(applied["status"], "applied")
         self.assertTrue(applied["destination_written"])
         self.assertEqual(applied["tables"]["offers"]["would_insert"], 1)
+        self.assertEqual(applied["tables"]["ingestion_artifacts"]["would_insert"], 1)
         for table_report in applied["tables"].values():
             self.assertTrue(table_report["checksums_match_after_import"])
             self.assertEqual(
@@ -148,6 +188,23 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 select(func.count()).select_from(Offer).where(Offer.id == self.offer_id)
             ).scalar_one()
         self.assertEqual(source_offer_count, 1)
+        with self.target.connect() as connection:
+            artifact_raw_data = connection.execute(
+                select(IngestionArtifact.raw_data).where(IngestionArtifact.id == self.artifact_id)
+            ).scalar_one()
+            authorization_reference = connection.execute(
+                select(StoreAuthorization.authorization_reference).where(
+                    StoreAuthorization.id == self.authorization_id
+                )
+            ).scalar_one()
+            review_reason = connection.execute(
+                select(CanonicalIdentityReview.reason).where(
+                    CanonicalIdentityReview.id == self.review_id
+                )
+            ).scalar_one()
+        self.assertEqual(artifact_raw_data, b"<feed></feed>")
+        self.assertEqual(authorization_reference, "fixture-consent")
+        self.assertEqual(review_reason, "fixture_review")
 
 
 if __name__ == "__main__":

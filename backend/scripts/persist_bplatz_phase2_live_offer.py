@@ -34,7 +34,7 @@ from scenthunter_next_engine.offer_normalizer import normalize_offer  # noqa: E4
 PRODUCT_URL_PATH = "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
 CANONICAL_PRODUCT_ID = "SH-0030"
 CANONICAL_VARIANT_ID = "VAR-f87146c82d167f4c"
-SCHEMA_REVISION = "0003_store_domain"
+SCHEMA_REVISION = "0015_user_sessions"
 TABLES = (
     "brands", "fragrances", "ingestion_raw", "ingestion_runs",
     "legacy_product_id_map", "legacy_variant_id_map", "match_audit",
@@ -168,10 +168,16 @@ def persist_report(
         before = _database_snapshot(database_path)
         with closing(_readonly_connection(database_path)) as connection:
             store_rows = connection.execute(
-                "SELECT id, domain, status FROM stores WHERE slug='bplatz'"
+                "SELECT id, domain, status, offer_ttl_minutes FROM stores WHERE slug='bplatz'"
             ).fetchall()
-            if len(store_rows) != 1 or store_rows[0][1:] != ("bplatz.de", "active"):
-                raise RuntimeError("Bplatz store is not uniquely configured and active")
+            if (
+                len(store_rows) != 1
+                or store_rows[0][1] != "bplatz.de"
+                or store_rows[0][2] != "active"
+                or not isinstance(store_rows[0][3], int)
+                or store_rows[0][3] <= 0
+            ):
+                raise RuntimeError("Bplatz store is not uniquely configured, active and freshness-bounded")
             variant_rows = connection.execute(
                 "SELECT product_variant_id FROM legacy_variant_id_map "
                 "WHERE legacy_variant_id=?",
@@ -226,14 +232,20 @@ def persist_report(
                 or offer.currency != "EUR"
                 or offer.availability != "in_stock"
                 or offer.status != "active"
-                or offer.valid_until is not None
+                or offer.valid_until is None
+                or offer.valid_until <= offer.captured_at
                 or raw.status != "promoted"
                 or raw.product_variant_id != result.product_variant_id
                 or raw.raw_payload.get("currency_explicit") is not True
                 or not history_count or not audit_count
             ):
                 raise RuntimeError("persisted pilot offer failed its publication-contract checks")
-            offer.captured_at = datetime.fromisoformat(raw_record["captured_at"])
+            expected_capture = datetime.fromisoformat(raw_record["captured_at"])
+            actual_capture = offer.captured_at
+            if actual_capture.tzinfo is None:
+                actual_capture = actual_capture.replace(tzinfo=timezone.utc)
+            if actual_capture.astimezone(timezone.utc) != expected_capture.astimezone(timezone.utc):
+                raise RuntimeError("persisted pilot capture time differs from source evidence")
             session.flush()
 
             expected_counts = dict(before["counts"])

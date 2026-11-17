@@ -15,8 +15,8 @@ from test_bplatz_persistence_service import (
 )
 import catalog_engine
 from app.api import catalog_search
-from app.models import IngestionRaw, MatchAudit, Offer, Store
-from app.search.catalog import catalog_status, search_catalog
+from app.models import IngestionRaw, MatchAudit, Offer, ProductVariant, Store
+from app.search.catalog import _format_size_ml, catalog_status, search_catalog
 
 
 @pytest.fixture
@@ -36,6 +36,34 @@ def pilot(tmp_path, monkeypatch):
                                  product_variant_id=offer.product_variant_id)
     yield engine, result
     engine.dispose()
+
+
+
+def test_decimal_variant_size_display_is_stable():
+    assert _format_size_ml(Decimal("100.0000")) == "100"
+    assert _format_size_ml(Decimal("50.5000")) == "50.5"
+    assert _format_size_ml(None) is None
+
+
+def test_catalog_search_matches_fractional_variant_sizes(pilot):
+    engine, result = pilot
+    with Session(engine) as session, session.begin():
+        base = session.get(ProductVariant, result.product_variant_id)
+        assert base is not None
+        session.add(ProductVariant(
+            fragrance_id=base.fragrance_id,
+            concentration=base.concentration,
+            size_ml=Decimal("50.5"),
+            is_tester=False,
+            is_refill=False,
+            is_gift_set=False,
+            canonical_key="phase2-fractional-size-regression|50.5",
+        ))
+        session.flush()
+        dot = search_catalog(session, "Liquid Brun 50.5 ml")
+        comma = search_catalog(session, "Liquid Brun 50,5 ml")
+        assert dot["count"] == 1 and dot["results"][0]["name"].endswith("50.5 ml")
+        assert comma["count"] == 1 and comma["results"][0]["name"].endswith("50.5 ml")
 
 
 def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):

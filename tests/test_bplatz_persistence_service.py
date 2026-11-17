@@ -102,7 +102,7 @@ def _create_bplatz_store(session):
     if store is None:
         store = Store(
             name="Bplatz", slug="bplatz", domain="bplatz.de",
-            country="DE", currency="EUR", status="active",
+            country="DE", currency="EUR", status="active", offer_ttl_minutes=60,
         )
         session.add(store)
         session.flush()
@@ -125,8 +125,8 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert "ingestion_raw_id" in offer_columns
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-        assert revision == "0003_store_domain"
-        print("ALEMBIC_REVISION=0003_store_domain")
+        assert revision == "0015_user_sessions"
+        print("ALEMBIC_REVISION=0015_user_sessions")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
@@ -366,7 +366,8 @@ def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_
             assert len(audits) == 3
             assert offers[0].price == Decimal(str(updated_record["price"]))
             assert offers[0].ingestion_raw_id == third.ingestion_raw_id
-            assert offers[0].valid_until is None
+            assert offers[0].valid_until is not None
+            assert offers[0].valid_until > offers[0].captured_at
     finally:
         engine.dispose()
 
