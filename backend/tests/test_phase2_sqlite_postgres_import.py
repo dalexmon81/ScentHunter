@@ -189,8 +189,8 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             ).scalar_one()
         self.assertEqual(source_offer_count, 1)
         with self.target.connect() as connection:
-            artifact = connection.execute(
-                select(IngestionArtifact).where(IngestionArtifact.id == self.artifact_id)
+            artifact_raw_data = connection.execute(
+                select(IngestionArtifact.raw_data).where(IngestionArtifact.id == self.artifact_id)
             ).scalar_one()
             authorization = connection.execute(
                 select(StoreAuthorization).where(StoreAuthorization.id == self.authorization_id)
@@ -198,7 +198,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             review = connection.execute(
                 select(CanonicalIdentityReview).where(CanonicalIdentityReview.id == self.review_id)
             ).scalar_one()
-        self.assertEqual(artifact.raw_data, b"<feed></feed>")
+        self.assertEqual(artifact_raw_data, b"<feed></feed>")
         self.assertEqual(authorization.authorization_reference, "fixture-consent")
         self.assertEqual(review.reason, "fixture_review")
 
