@@ -15,7 +15,7 @@ from app.models.catalog import (
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
     IngestionRun, StoreAuthorization, StoreShippingRate, IngestionArtifact,
     IngestionDeadLetter, CanonicalIdentityReview,
-    UserAccount, UserDeliveryDestination, UserSession,
+    UserAccount, UserDeliveryDestination, UserSession, ProductIdentifier,
 )
 from scripts.migrate_canonical_sqlite_to_postgres import inspect_and_import
 
@@ -40,7 +40,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
             ))
             connection.execute(text(
-                "INSERT INTO alembic_version (version_num) VALUES ('0015_user_sessions')"
+                "INSERT INTO alembic_version (version_num) VALUES ('0016_product_identifiers')"
             ))
 
         cls.brand_id = uuid.uuid4()
@@ -58,6 +58,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         cls.user_id = uuid.uuid4()
         cls.destination_id = uuid.uuid4()
         cls.session_id = uuid.uuid4()
+        cls.identifier_id = uuid.uuid4()
 
         with Session(cls.source) as session, session.begin():
             session.add(Brand(
@@ -76,6 +77,13 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             session.add(Store(
                 id=cls.store_id, name="Importer Test Store",
                 slug="importer-test-store", domain="example.invalid",
+            ))
+            session.flush()
+            session.add(ProductIdentifier(
+                id=cls.identifier_id, product_variant_id=cls.variant_id,
+                identifier_type="sku", namespace="store:importer-test-store",
+                value="SKU-001", normalized_value="SKU-001",
+                store_id=cls.store_id, source_url="https://example.invalid/item",
             ))
             session.flush()
             session.add(LegacyProductIdMap(
@@ -177,6 +185,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertEqual(dry["tables"]["user_accounts"]["would_insert"], 1)
         self.assertEqual(dry["tables"]["user_delivery_destinations"]["would_insert"], 1)
         self.assertEqual(dry["tables"]["user_sessions"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["product_identifiers"]["would_insert"], 1)
 
         with self.target.connect() as connection:
             before = connection.execute(
@@ -193,6 +202,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertTrue(applied["destination_written"])
         self.assertEqual(applied["tables"]["offers"]["would_insert"], 1)
         self.assertEqual(applied["tables"]["ingestion_artifacts"]["would_insert"], 1)
+        self.assertEqual(applied["tables"]["product_identifiers"]["would_insert"], 1)
         for table_report in applied["tables"].values():
             self.assertTrue(table_report["checksums_match_after_import"])
             self.assertEqual(
@@ -204,6 +214,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         )
         self.assertEqual(repeated["tables"]["offers"]["would_insert"], 0)
         self.assertEqual(repeated["tables"]["offers"]["already_present_identical"], 1)
+        self.assertEqual(repeated["tables"]["product_identifiers"]["would_insert"], 0)
 
         with self.source.connect() as connection:
             source_offer_count = connection.execute(
@@ -235,12 +246,16 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             imported_session = connection.execute(
                 select(UserSession.token_hash).where(UserSession.id == self.session_id)
             ).scalar_one()
+            imported_identifier = connection.execute(
+                select(ProductIdentifier.normalized_value).where(ProductIdentifier.id == self.identifier_id)
+            ).scalar_one()
         self.assertEqual(artifact_raw_data, b"<feed></feed>")
         self.assertEqual(authorization_reference, "fixture-consent")
         self.assertEqual(review_reason, "fixture_review")
         self.assertEqual(imported_email, "importer-user@example.invalid")
         self.assertEqual(imported_destination, "L-1234")
         self.assertEqual(imported_session, "c" * 64)
+        self.assertEqual(imported_identifier, "SKU-001")
 
 
 if __name__ == "__main__":
