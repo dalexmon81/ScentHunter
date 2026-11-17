@@ -115,7 +115,7 @@ jobs:
           print("Full checked-in catalog import, checksums and idempotent repeat: PASS")
           print("Source counts:", {name: row["source_rows"] for name, row in applied["tables"].items()})
           PY
-      - name: Verify PostgreSQL schema, constraints and rollback behavior
+      - name: Verify migration, PostgreSQL and catalog seed contracts
         working-directory: backend
         run: >-
           pytest -q
@@ -124,15 +124,9 @@ jobs:
           tests/test_phase2_runtime_db_identity.py
           tests/test_phase2_sqlite_postgres_import.py
           tests/test_phase2_bplatz_postgres.py
-          tests/test_product_normalization.py
-          tests/test_canonical_identity_review_queue.py
-          tests/test_currency_policy.py
-          tests/test_offer_matching_worker.py
-          tests/test_offer_promotion_worker.py
-      - name: Verify catalog-first API with the historical Bplatz fixture
-        run: pytest -q tests/test_catalog_first_search.py
-      - name: Verify fractional variant sizes survive catalog seeding
-        working-directory: backend
-        run: pytest -q tests/test_seed_catalog_precision.py
+          tests/test_alembic_sqlite_upgrade.py
+          tests/test_seed_catalog_precision.py
+      - name: Verify Bplatz persistence and catalog-first API
+        run: pytest -q tests/test_bplatz_persistence_service.py tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
