@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -156,7 +157,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             session.add(UserSession(
                 id=cls.session_id, user_id=cls.user_id,
                 token_hash="c" * 64,
-                expires_at=__import__("datetime").datetime(2030, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+                expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
             ))
 
     @classmethod
