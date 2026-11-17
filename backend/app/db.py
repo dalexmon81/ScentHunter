@@ -15,6 +15,24 @@ from sqlalchemy.orm import sessionmaker
 
 DEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
 _ENV_KEYS = ("SCENTHUNTER_CATALOG_DATABASE_URL", "SCENTHUNTER_DATABASE_URL")
+_REQUIRE_POSTGRESQL_ENV = "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL"
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+_FALSE_VALUES = {"0", "false", "no", "off", ""}
+
+
+def _postgresql_required(env) -> bool:
+    raw = env.get(_REQUIRE_POSTGRESQL_ENV)
+    if raw is None:
+        return False
+    value = raw.strip().lower()
+    if value in _TRUE_VALUES:
+        return True
+    if value in _FALSE_VALUES:
+        return False
+    raise RuntimeError(
+        f"Invalid {_REQUIRE_POSTGRESQL_ENV} value: expected a boolean "
+        "(1/0, true/false, yes/no, on/off)."
+    )
 
 
 def database_url(environ=None) -> str:
@@ -33,16 +51,24 @@ def database_url(environ=None) -> str:
 
     backend = url.get_backend_name()
     if backend == "sqlite":
-        return url.render_as_string(hide_password=False)
-
-    if backend == "postgresql":
+        resolved_url = url.render_as_string(hide_password=False)
+    elif backend == "postgresql":
         if url.drivername != "postgresql+psycopg":
             raise RuntimeError("Unsupported PostgreSQL driver for Phase 2; use psycopg 3.")
         if not url.database:
             raise RuntimeError("PostgreSQL Phase 2 database name is missing.")
-        return url.render_as_string(hide_password=False)
+        resolved_url = url.render_as_string(hide_password=False)
+    else:
+        raise RuntimeError("Unsupported Phase 2 database dialect; use SQLite or PostgreSQL.")
 
-    raise RuntimeError("Unsupported Phase 2 database dialect; use SQLite or PostgreSQL.")
+    if _postgresql_required(env) and backend != "postgresql":
+        raise RuntimeError(
+            f"{_REQUIRE_POSTGRESQL_ENV}=1 requires a PostgreSQL catalog URL; "
+            f"the resolved backend is {backend}. Configure "
+            "SCENTHUNTER_CATALOG_DATABASE_URL before starting this service."
+        )
+
+    return resolved_url
 
 
 def make_engine() -> Engine:
