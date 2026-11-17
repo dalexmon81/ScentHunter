@@ -71,8 +71,11 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python backend/scripts/check_bplatz_liquid_brun_live.py
 
+  # Full-feed validation is expensive; run only when explicitly requested by label.
   notino-live-parser-dry-run:
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'live-feed-validation')
     name: Parse live CJ feed with PR parser (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -262,7 +265,9 @@ jobs:
           timeout 1830s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
   notino-runner-parser-dry-run:
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'live-feed-validation')
     name: Parse live CJ feed on runner (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 25
