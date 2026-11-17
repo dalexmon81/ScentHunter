@@ -23,6 +23,8 @@ on:
       - "backend/tests/test_phase2_postgres_schema.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/scripts/persist_bplatz_phase2_live_offer.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
       - "backend/tests/test_product_normalization.py"
