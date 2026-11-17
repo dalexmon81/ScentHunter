@@ -29,7 +29,7 @@ The family registry combines the cumulative harvest, PR #425 seed and current ma
 ## Known limitations / review gates
 - The source seed contains 1,635 `source_listed_name` identities and 33 `source_verified_name` identities. Product-level URL provenance is present, but not every identity has individual product-detail-page evidence.
 - Variant evidence is uneven: 53/141 variants have a `source_evidence_url`; 88 do not. Concentration is present on 127/141 variants; 14 remain blank. Do not infer missing concentration or variant provenance from a parent product URL.
-- 25 punctuation/diacritic-normalized name-collision groups remain listed in `name-collision-audit.md`. They are deliberately not auto-merged.
+- 16 punctuation/diacritic-normalized name-collision groups remain listed in `name-collision-audit.md`. They are deliberately not auto-merged.
 - The canonical product seed contains two Giorgio Armani Acqua di Giò Profondo product IDs with separate GTIN-backed variants. They are intentionally kept separate; see the collision audit.
 - Cross-family repetition (e.g. Lattafa Asad and French Avenue Liquid Brun in both dedicated and general families) is retained as discovery coverage, not treated as duplicate canonical products.
 - The family registry is discovery metadata. It does not create canonical products, variants, commercial offers, prices, stock or shipping costs.
