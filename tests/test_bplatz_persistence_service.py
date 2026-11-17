@@ -148,6 +148,17 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         assert {"legacy_product_id", "legacy_variant_id", "product_variant_id", "status"}.issubset(raw_columns)
         offer_columns = {column["name"] for column in inspector.get_columns("offers")}
         assert "ingestion_raw_id" in offer_columns
+        identifier_columns = {
+            column["name"] for column in inspector.get_columns("product_identifiers")
+        }
+        assert {
+            "product_variant_id", "identifier_type", "namespace",
+            "value", "normalized_value", "store_id", "source_url",
+        }.issubset(identifier_columns)
+        identifier_foreign_keys = inspector.get_foreign_keys("product_identifiers")
+        assert {fk["referred_table"] for fk in identifier_foreign_keys} == {
+            "product_variants", "stores",
+        }
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
         assert revision == "0016_product_identifiers"
