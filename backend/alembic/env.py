@@ -7,6 +7,17 @@ configured_url = database_url()
 config.set_main_option("sqlalchemy.url", configured_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
+# These PostgreSQL GIN indexes are deliberately created with dialect-specific
+# SQL in revision 0011. They are not represented as portable SQLAlchemy Index
+# objects, so exclude only those exact reflected indexes from autogenerate.
+DIALECT_SPECIFIC_INDEXES = {"ix_brands_name_fts", "ix_fragrances_name_fts"}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "index" and reflected and name in DIALECT_SPECIFIC_INDEXES:
+        return False
+    return True
+
 
 def _configure(connection=None, url=None):
     dialect = connection.dialect.name if connection is not None else "sqlite"
@@ -17,6 +28,7 @@ def _configure(connection=None, url=None):
         literal_binds=connection is None,
         dialect_opts={"paramstyle": "named"} if connection is None else {},
         compare_type=True,
+        include_object=include_object,
         render_as_batch=(dialect == "sqlite"),
     )
 
@@ -30,6 +42,7 @@ def run_migrations_offline():
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=include_object,
         render_as_batch=(parsed.get_backend_name() == "sqlite"),
     )
     with context.begin_transaction():
