@@ -104,7 +104,7 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                 revision = connection.execute(
                     "SELECT version_num FROM alembic_version"
                 ).fetchone()[0]
-                self.assertEqual(revision, "0013_store_shipping_rates")
+                self.assertEqual(revision, "0015_user_sessions")
                 self.assertEqual(
                     connection.execute(
                         "SELECT size_ml FROM product_variants WHERE id=?", (variant_id,)
