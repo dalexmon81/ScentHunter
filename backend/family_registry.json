@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "Reconciled discovery family registry combining the cumulative requested-brand harvest, the canonical PR #425 seed and current main safety exclusions. This registry is discovery metadata; canonical products, variants and commercial offers remain separate.",
+  "description": "Reconciled discovery family registry combining the cumulative requested-brand harvest, verified Velixir and Arabiyat family-format updates, the canonical PR #425 seed and current main safety exclusions. This registry is discovery metadata; canonical products, variants and commercial offers remain separate.",
   "families": [
     {
       "family_id": "afnan_catalog",
@@ -8573,8 +8573,8 @@
             "Game of Spades Blue Sapphire"
           ],
           "formats_ml": [
-            90,
-            30
+            30,
+            90
           ]
         },
         {
@@ -8633,9 +8633,9 @@
             "Game of Spades Emerald Extrait"
           ],
           "formats_ml": [
-            90,
+            10,
             50,
-            10
+            90
           ]
         },
         {
@@ -8739,9 +8739,9 @@
             "Game of Spades Rouge Extrait"
           ],
           "formats_ml": [
-            100,
+            10,
             30,
-            10
+            100
           ]
         },
         {
@@ -15504,7 +15504,6 @@
           "canonical_name": "Attratus",
           "aliases": [
             "Attratus",
-            "Paris Corner Attratus",
             "Paris Corner Attratus"
           ]
         },
@@ -15980,7 +15979,6 @@
           "canonical_name": "Harrier Absoulte",
           "aliases": [
             "Harrier Absoulte",
-            "Paris Corner Harrier Absoulte",
             "Paris Corner Harrier Absoulte"
           ]
         },
@@ -16386,7 +16384,6 @@
           "canonical_name": "Ministry of Oud - Amber Oud",
           "aliases": [
             "Ministry of Oud - Amber Oud",
-            "Paris Corner Ministry of Oud - Amber Oud",
             "Paris Corner Ministry of Oud - Amber Oud"
           ]
         },
@@ -16394,7 +16391,6 @@
           "canonical_name": "Ministry of Oud - Gladiators Oath",
           "aliases": [
             "Ministry of Oud - Gladiators Oath",
-            "Paris Corner Ministry of Oud - Gladiators Oath",
             "Paris Corner Ministry of Oud - Gladiators Oath"
           ]
         },
@@ -16402,7 +16398,6 @@
           "canonical_name": "Ministry of Oud - Maestro's Symphony",
           "aliases": [
             "Ministry of Oud - Maestro's Symphony",
-            "Paris Corner Ministry of Oud - Maestro's Symphony",
             "Paris Corner Ministry of Oud - Maestro's Symphony"
           ]
         },
@@ -16410,7 +16405,6 @@
           "canonical_name": "Ministry of Oud - Nile Whispers",
           "aliases": [
             "Ministry of Oud - Nile Whispers",
-            "Paris Corner Ministry of Oud - Nile Whispers",
             "Paris Corner Ministry of Oud - Nile Whispers"
           ]
         },
@@ -16418,7 +16412,6 @@
           "canonical_name": "Ministry of Oud - Oud Beyond the Wall",
           "aliases": [
             "Ministry of Oud - Oud Beyond the Wall",
-            "Paris Corner Ministry of Oud - Oud Beyond the Wall",
             "Paris Corner Ministry of Oud - Oud Beyond the Wall"
           ]
         },
@@ -16426,7 +16419,6 @@
           "canonical_name": "Ministry of Oud - Oud Indonesian",
           "aliases": [
             "Ministry of Oud - Oud Indonesian",
-            "Paris Corner Ministry of Oud - Oud Indonesian",
             "Paris Corner Ministry of Oud - Oud Indonesian"
           ]
         },
@@ -16434,7 +16426,6 @@
           "canonical_name": "Ministry of Oud - Oud Royal",
           "aliases": [
             "Ministry of Oud - Oud Royal",
-            "Paris Corner Ministry of Oud - Oud Royal",
             "Paris Corner Ministry of Oud - Oud Royal"
           ]
         },
@@ -16442,7 +16433,6 @@
           "canonical_name": "Ministry of Oud - Oud Satin",
           "aliases": [
             "Ministry of Oud - Oud Satin",
-            "Paris Corner Ministry of Oud - Oud Satin",
             "Paris Corner Ministry of Oud - Oud Satin"
           ]
         },
@@ -16450,7 +16440,6 @@
           "canonical_name": "Ministry of Oud - Romance Reverie",
           "aliases": [
             "Ministry of Oud - Romance Reverie",
-            "Paris Corner Ministry of Oud - Romance Reverie",
             "Paris Corner Ministry of Oud - Romance Reverie"
           ]
         },
@@ -16458,7 +16447,6 @@
           "canonical_name": "Ministry of Oud - Strictly Oud",
           "aliases": [
             "Ministry of Oud - Strictly Oud",
-            "Paris Corner Ministry of Oud - Strictly Oud",
             "Paris Corner Ministry of Oud - Strictly Oud"
           ]
         },
@@ -16466,7 +16454,6 @@
           "canonical_name": "Ministry of Oud - Thailand Oud in Cairo",
           "aliases": [
             "Ministry of Oud - Thailand Oud in Cairo",
-            "Paris Corner Ministry of Oud - Thailand Oud in Cairo",
             "Paris Corner Ministry of Oud - Thailand Oud in Cairo"
           ]
         },
@@ -17077,7 +17064,6 @@
           "canonical_name": "The Show Magnifique",
           "aliases": [
             "The Show Magnifique",
-            "Paris Corner The Show Magnifique",
             "Paris Corner The Show Magnifique"
           ]
         },
@@ -17377,7 +17363,6 @@
           "canonical_name": "Zariya",
           "aliases": [
             "Zariya",
-            "Paris Corner Zariya",
             "Paris Corner Zariya"
           ]
         },
@@ -18232,6 +18217,10 @@
           "aliases": [
             "Comus",
             "Velixir Comus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -18261,6 +18250,10 @@
           "aliases": [
             "Ether",
             "Velixir Ether"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -18366,6 +18359,10 @@
           "aliases": [
             "Orpheus",
             "Velixir Orpheus"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
@@ -18380,6 +18377,10 @@
           "aliases": [
             "Panacea",
             "Velixir Panacea"
+          ],
+          "formats_ml": [
+            35,
+            100
           ]
         },
         {
