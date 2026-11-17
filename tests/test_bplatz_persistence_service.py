@@ -366,7 +366,8 @@ def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_
             assert len(audits) == 3
             assert offers[0].price == Decimal(str(updated_record["price"]))
             assert offers[0].ingestion_raw_id == third.ingestion_raw_id
-            assert offers[0].valid_until is None
+            assert offers[0].valid_until is not None
+            assert offers[0].valid_until > offers[0].captured_at
     finally:
         engine.dispose()
 
