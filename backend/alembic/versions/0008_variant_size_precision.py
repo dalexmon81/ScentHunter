@@ -36,6 +36,17 @@ def upgrade():
 
 
 def downgrade():
+    fractional_sizes = op.get_bind().execute(
+        sa.text(
+            "SELECT id, size_ml FROM product_variants "
+            "WHERE size_ml IS NOT NULL AND size_ml <> round(size_ml) LIMIT 5"
+        )
+    ).fetchall()
+    if fractional_sizes:
+        raise RuntimeError(
+            "Cannot downgrade variant size precision: fractional variant sizes "
+            "would be lost: " + repr(fractional_sizes)
+        )
     if op.get_bind().dialect.name == "sqlite":
         with op.batch_alter_table("product_variants", recreate="always") as batch_op:
             batch_op.alter_column(
