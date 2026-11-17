@@ -1,8 +1,12 @@
 from decimal import Decimal
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
 import pytest
 
-from scripts.seed_catalog import _parse_size_ml, validate_catalog
+from app.models import Base, Store
+from scripts.seed_catalog import _parse_size_ml, ensure_bplatz_store, validate_catalog
 
 
 def test_seed_size_parser_preserves_fractional_precision():
@@ -54,3 +58,30 @@ def test_catalog_validation_rejects_sizes_beyond_numeric_scale():
         "variants": variants,
     })
     assert blocked == ["fractional-variant: invalid size_ml '50.12345'"]
+
+
+
+def test_bplatz_seed_preserves_existing_operator_ttl_and_fills_missing_value():
+    engine = create_engine("sqlite:///:memory:")
+    try:
+        Base.metadata.create_all(engine)
+        with Session(engine) as session, session.begin():
+            store = Store(
+                name="Bplatz old", slug="bplatz", domain="old.example",
+                country="DE", currency="EUR", status="active",
+                offer_ttl_minutes=75,
+            )
+            session.add(store)
+            session.flush()
+
+            seeded = ensure_bplatz_store(session)
+            assert seeded.id == store.id
+            assert seeded.domain == "bplatz.de"
+            assert seeded.offer_ttl_minutes == 75
+
+            seeded.offer_ttl_minutes = None
+            session.flush()
+            seeded_again = ensure_bplatz_store(session)
+            assert seeded_again.offer_ttl_minutes == 1440
+    finally:
+        engine.dispose()
