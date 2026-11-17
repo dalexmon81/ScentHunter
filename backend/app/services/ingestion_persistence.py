@@ -53,11 +53,18 @@ def resolve_legacy_ids(
 
 def stage_raw_offer(session: Session, *, store_id: UUID, raw_payload: dict,
                     external_product_id: str | None = None) -> UUID:
-    """Persist original retailer payload as pending. Caller owns transaction."""
+    """Persist a retailer payload only for an active, authorized store."""
     if not isinstance(raw_payload, dict):
         raise TypeError("raw_payload must be a dict")
-    if session.get(Store, store_id) is None:
+    store = session.get(Store, store_id)
+    if store is None:
         raise ValueError("unknown store_id")
+    if store.status != "active":
+        raise PromotionRejected("store is not active")
+    if not has_store_offer_collection_authorization(
+        session, store_id=store.id, now=datetime.now(timezone.utc),
+    ):
+        raise PromotionRejected("store_offer_collection_not_authorized")
     row = IngestionRaw(store_id=store_id, raw_payload=raw_payload,
                        external_product_id=external_product_id, status="pending")
     session.add(row)
@@ -141,7 +148,7 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _has_offer_collection_authorization(
+def has_store_offer_collection_authorization(
     session: Session, *, store_id: UUID, now: datetime,
 ) -> bool:
     """Require a current, explicitly approved authorization for offer data."""
@@ -180,7 +187,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
     now = datetime.now(timezone.utc)
-    if not _has_offer_collection_authorization(session, store_id=store.id, now=now):
+    if not has_store_offer_collection_authorization(session, store_id=store.id, now=now):
         raise PromotionRejected("store_offer_collection_not_authorized")
     if not isinstance(store.offer_ttl_minutes, int) or store.offer_ttl_minutes <= 0:
         raise PromotionRejected("store_offer_ttl_not_configured")
