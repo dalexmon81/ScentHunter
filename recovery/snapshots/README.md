@@ -1,19 +1,21 @@
-# ScentHunter recovery snapshot — 2026-11-17
+# ScentHunter recovery candidate — 2026-11-17
 
-This directory preserves source data from the open draft pull request #425 without activating it in the application.
+This directory records provenance for the recovery candidate. The canonical files are restored at their runtime paths in this branch; duplicate copies are intentionally not stored here.
 
 ## Source
 - Repository: `dalexmon81/ScentHunter`
 - Source branch: `catalog/brand-expansion-2026-11`
 - Source commit: `54d84edabd927f5c6a60616e176adc02a81b3af6`
-- Pull request: https://github.com/dalexmon81/ScentHunter/pull/425 (open, draft; NOT merged)
+- Source PR: [#425](https://github.com/dalexmon81/ScentHunter/pull/425) (open, draft; NOT merged)
 
-## Preserved files
-| Snapshot | Original path | Source blob |
-|---|---|---|
-| `recovery/snapshots/product_catalog.pr425.json` | `backend/product_catalog.json` | `b4cbbab6cb31c8d209ccd0802909cf88d91b74a1` |
-| `recovery/snapshots/family_registry.pr425.json` | `backend/family_registry.json` | `97e952effb069889667cf9fe9b66e5ece1b58d18` |
-| `recovery/snapshots/verified_gtin_variant_map.pr425.json` | `backend/scenthunter_next_engine/verified_gtin_variant_map.json` | `6a5b4cb6ac2917fe45f4e528c45a8f673de1d2ab` |
+## Restored runtime-path files
+| Runtime path | Source blob |
+|---|---|
+| `backend/product_catalog.json` | `b4cbbab6cb31c8d209ccd0802909cf88d91b74a1` |
+| `backend/family_registry.json` | `97e952effb069889667cf9fe9b66e5ece1b58d18` |
+| `backend/scenthunter_next_engine/verified_gtin_variant_map.json` | `6a5b4cb6ac2917fe45f4e528c45a8f673de1d2ab` |
+
+The original source branch and blobs remain unchanged on GitHub. These references preserve the provenance without duplicating large JSON files in this recovery branch.
 
 ## Initial structural checks on source catalog
 - 1,668 canonical product rows
@@ -22,16 +24,23 @@ This directory preserves source data from the open draft pull request #425 witho
 - 31 family-registry entries
 - 0 duplicate product IDs
 - 0 duplicate variant IDs
-- 0 duplicate (product_id, size_ml, concentration) tuples
+- 0 duplicate normalized (brand, canonical_name) identities
+- 0 duplicate (product_id, size_ml) variant pairs
 - 0 orphan variant rows
-- 5 verified GTIN mapping records
+- 1,668 products have source URLs and a supported identity status
+- 5 verified GTIN mappings resolve to existing products and exact variants with matching sizes
+
+## Reconciliation against current main
+- All 9 current-main family records are present unchanged in the 31-family source registry; the source registry adds the remaining families and identities.
+- All 4 current-main GTIN records are exact matches in the 5-record source registry.
+- The current-main `product_catalog.json` was empty; the candidate restores the source seed at the runtime path.
+- The current-main catalog-first PostgreSQL/offer pipeline remains present and is not replaced by this JSON seed.
 
 ## Important limitations
-- These files are preserved as evidence and recovery inputs only. They are NOT wired into runtime and must NOT be treated as production-ready.
-- The PR's own audit document contains older/inconsistent counts; the counts above were computed from the fetched JSON at the source commit.
-- Main currently has a non-empty family registry with 9 entries, including Liquid Brun pilot families, and 4 GTIN records. Those current-main records must be reconciled with this snapshot before replacing active files.
-- The source seed's tests do not yet validate every provenance, identity, family-registry and GTIN invariant needed for safe integration.
-- No production database, offers, retailer connectors, deployment configuration, secrets or live data are changed by this snapshot.
+- This is a draft recovery candidate, not a production release.
+- The source audit document in PR #425 contains stale counts; counts above were computed from the exact fetched JSON blobs.
+- The source seed has 1,635 `source_listed_name` identities and 33 `source_verified_name` identities. Product-level URL provenance exists, but this does not mean all variants, GTINs or commercial offers are verified.
+- No production database, live offer, retailer connector, deployment configuration or secret is changed.
 
 ## Recovery rule
-Keep this snapshot immutable. Build and test a separate candidate by reconciling it with current `main`; only promote the candidate after full validation and explicit review.
+Do not merge until GitHub Actions pass, runtime/search behavior is reviewed, and the candidate is compared against the current catalog-first pilot.
