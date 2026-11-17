@@ -43,6 +43,34 @@ class Phase2DatabaseConfigurationTests(unittest.TestCase):
                     database_url({"SCENTHUNTER_DATABASE_URL": value})
                 self.assertNotIn("secret", str(caught.exception))
 
+
+    def test_postgresql_requirement_rejects_sqlite_default(self):
+        with self.assertRaisesRegex(RuntimeError, "requires a PostgreSQL catalog URL"):
+            database_url({"SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "1"})
+
+    def test_postgresql_requirement_accepts_explicit_postgresql_url(self):
+        env = {
+            "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://catalog:secret@db.example/catalog",
+            "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "true",
+        }
+        self.assertEqual(
+            database_url(env),
+            "postgresql+psycopg://catalog:secret@db.example/catalog",
+        )
+
+    def test_postgresql_requirement_can_be_disabled_for_local_sqlite(self):
+        env = {
+            "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "false",
+        }
+        self.assertEqual(database_url(env), "sqlite:////data/catalog/catalog.sqlite3")
+
+    def test_invalid_postgresql_requirement_value_fails_closed(self):
+        with self.assertRaisesRegex(RuntimeError, "expected a boolean"):
+            database_url({
+                "SCENTHUNTER_CATALOG_DATABASE_URL": "postgresql://catalog:secret@db.example/catalog",
+                "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "sometimes",
+            })
+
     def test_postgres_url_requires_database_name(self):
         with self.assertRaisesRegex(RuntimeError, "database name"):
             database_url({"SCENTHUNTER_DATABASE_URL": "postgresql://db.example"})
