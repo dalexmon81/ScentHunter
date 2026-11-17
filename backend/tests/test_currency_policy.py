@@ -1,11 +1,7 @@
-import pytest
-from decimal import Decimal
-
 from app.services.currency_policy import (
     SUPPORTED_CURRENCY_CODES,
     is_supported_currency_code,
 )
-from scenthunter_next_engine.models import RetailerOffer
 
 
 def test_initial_supported_currency_policy_is_explicit_euro_only():
