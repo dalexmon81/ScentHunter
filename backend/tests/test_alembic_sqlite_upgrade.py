@@ -131,6 +131,7 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                     ).fetchone()[0],
                     variant_id,
                 )
+                self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
                 self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
                 connection.execute(
                     "UPDATE product_variants SET size_ml=? WHERE id=?",
