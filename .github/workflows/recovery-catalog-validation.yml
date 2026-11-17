@@ -82,4 +82,4 @@ jobs:
           )
           PY
       - name: Run catalog seed unit tests
-        run: python -m unittest discover -s backend/tests -p 'test_catalog_seed_integrity.py' -v
+        run: python -m unittest discover -s backend/tests -p 'test_recovery_catalog_integrity.py' -v
