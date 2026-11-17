@@ -1,4 +1,4 @@
-name: Recovery catalog validation
+name: Recovery catalog validation # Re-run after final evidence-gap audit
 
 on:
   pull_request:
