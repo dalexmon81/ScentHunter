@@ -45,6 +45,25 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
             ),
         )
 
+    def _run_alembic_expected_failure(self, database_url: str, *args: str) -> str:
+        env = os.environ.copy()
+        env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+        env.pop("SCENTHUNTER_DATABASE_URL", None)
+        env.pop("SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL", None)
+        env["PYTHONPATH"] = str(BACKEND)
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "-c", str(ALEMBIC_INI), *args],
+            cwd=BACKEND,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        self.assertNotEqual(result.returncode, 0, msg="Alembic unexpectedly accepted duplicate live ingestion rows")
+        output = result.stdout + result.stderr
+        self.assertIn("duplicate active store/external_product_id rows", output)
+        return output
+
     def test_upgrade_from_pre_precision_schema_preserves_linked_rows(self):
         with tempfile.TemporaryDirectory(prefix="scenthunter-alembic-") as tmp:
             db_path = Path(tmp) / "migration.sqlite3"
@@ -98,6 +117,32 @@ class SQLiteAlembicUpgradeTests(unittest.TestCase):
                      "https://example.invalid/" + offer_id, 42.50),
                 )
 
+            # The uniqueness migration must fail closed when historical
+            # active rows collide. It must not delete or rewrite raw evidence.
+            duplicate_raw_id = str(uuid.uuid4())
+            with sqlite3.connect(db_path) as connection:
+                connection.execute(
+                    """INSERT INTO ingestion_raw
+                       (id,store_id,raw_payload,external_product_id,status)
+                       VALUES (?,?,?,?,'pending')""",
+                    (duplicate_raw_id, store_id, '{"fixture":"duplicate"}', "external-" + raw_id),
+                )
+            self._run_alembic_expected_failure(database_url, "upgrade", "head")
+            with sqlite3.connect(db_path) as connection:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM ingestion_raw WHERE external_product_id=?",
+                        ("external-" + raw_id,),
+                    ).fetchone()[0],
+                    2,
+                )
+                self.assertEqual(
+                    connection.execute("SELECT version_num FROM alembic_version").fetchone()[0],
+                    "0008_variant_size_precision",
+                )
+                connection.execute(
+                    "DELETE FROM ingestion_raw WHERE id=?", (duplicate_raw_id,)
+                )
             self._run_alembic(database_url, "upgrade", "head")
 
             with sqlite3.connect(db_path) as connection:
