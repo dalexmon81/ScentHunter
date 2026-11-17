@@ -86,7 +86,12 @@ def test_catalog_refresh_preserves_existing_price_when_new_parse_has_no_price():
     from pathlib import Path
 
     source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
-    assert "price=COALESCE(excluded.price,store_products.price)" in source
+    assert (
+        "WHEN excluded.price IS NOT NULL THEN excluded.price\n"
+        "                           ELSE store_products.price\n"
+        "                         END"
+    ) in source
+    assert "WHEN excluded.availability='out_of_stock' THEN NULL" in source
     assert "currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END" in source
 
 

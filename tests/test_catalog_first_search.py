@@ -66,6 +66,9 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert "Limited Edition" in other["results"][0]["name"]
         assert client.get("/api/catalog/search", params={"q": "no-such-perfume"}).json()["count"] == 0
         assert client.get("/api/catalog/search", params={"q": "9" * 100}).json()["count"] == 0
+        assert client.get("/api/catalog/search", params={"q": "Liquid Brun tester"}).json()["count"] == 0
+        assert client.get("/api/catalog/search", params={"q": "Liquid Brun refill"}).json()["count"] == 0
+        assert client.get("/api/catalog/search", params={"q": "Liquid Brun gift set"}).json()["count"] == 0
 
 
 def test_missing_catalog_returns_503_without_creating_database(tmp_path, monkeypatch):
@@ -77,6 +80,12 @@ def test_missing_catalog_returns_503_without_creating_database(tmp_path, monkeyp
     with TestClient(app) as client:
         assert client.get("/api/catalog/search", params={"q": "Liquid Brun"}).status_code == 503
     assert not database.parent.exists()
+
+
+def test_search_route_is_registered_on_production_app():
+    import main
+
+    assert any(route.path == "/api/catalog/search" for route in main.app.routes)
 
 
 def test_publication_gate_and_freshness(pilot):

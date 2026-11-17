@@ -54,10 +54,13 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
                 func.lower(ProductVariant.concentration).contains(concentration, autoescape=True),
                 func.lower(ProductVariant.concentration) == token,
             ))
-        elif token in {"tester", "refill"}:
-            statement = statement.where(
-                (ProductVariant.is_tester if token == "tester" else ProductVariant.is_refill).is_(True)
+        elif token in {"tester", "refill", "gift", "set"}:
+            flag = (
+                ProductVariant.is_tester if token == "tester" else
+                ProductVariant.is_refill if token == "refill" else
+                ProductVariant.is_gift_set
             )
+            statement = statement.where(flag.is_(True))
         else:
             statement = statement.where(or_(*(
                 func.lower(field).contains(token, autoescape=True) for field in text_fields
