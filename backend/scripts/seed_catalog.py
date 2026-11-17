@@ -39,6 +39,27 @@ BPLATZ_STORE = {
     "offer_ttl_minutes": 1440,
 }
 
+def ensure_bplatz_store(session: Session) -> Store:
+    """Create the opt-in Bplatz store or fill missing configuration safely.
+
+    An operator's existing freshness TTL is preserved. The default is applied
+    only when the store is first created or its TTL has never been configured.
+    """
+    store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
+    if store is None:
+        store = Store(**BPLATZ_STORE)
+        session.add(store)
+        session.flush()
+        return store
+
+    for field, value in BPLATZ_STORE.items():
+        if field == "offer_ttl_minutes" and store.offer_ttl_minutes is not None:
+            continue
+        setattr(store, field, value)
+    session.flush()
+    return store
+
+
 
 def norm(value: str) -> str:
     value = unicodedata.normalize("NFKD", value)
@@ -317,12 +338,7 @@ def main() -> int:
         # silently activate Bplatz (or any other store) in staging.
         if args.seed_bplatz_store:
             with Session(engine) as session, session.begin():
-                store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
-                if store is None:
-                    session.add(Store(**BPLATZ_STORE))
-                else:
-                    for field, value in BPLATZ_STORE.items():
-                        setattr(store, field, value)
+                ensure_bplatz_store(session)
 
         inspector = inspect(engine)
         expected_tables = {
