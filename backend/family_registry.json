@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic. Expanded with sourced fragrance-family identities. This registry contains discovery aliases only; canonical product/variant records and commercial offers must still be imported and validated separately.",
+  "description": "Merged recovery candidate: catalog PR #425 family registry plus current main family entries. This is a review artifact; not active runtime data.",
   "families": [
     {
       "family_id": "rasasi_hawas",
@@ -391,7 +391,9 @@
           "canonical_image": "https://www.valentino-beauty.us/dw/image/v2/AAFM_PRD/on/demandware.static/-/Sites-valentino-master-catalog/default/dwe9607b6d/images/pdp/MPL02469-3/3614274899900.webp?q=70&sfrm=jpeg&sh=320&sm=cut&sw=320",
           "image_source": "https://www.valentino-beauty.us/fragrances/fragrances-women/born-in-roma-ruby-donna-eau-de-parfum-MPL024693.html"
         }
-      ]
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     },
     {
       "family_id": "versace_eros",
@@ -455,7 +457,9 @@
             "Eros Pour Femme EDP"
           ]
         }
-      ]
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     },
     {
       "family_id": "lattafa_asad",
@@ -785,7 +789,9 @@
             "Lattafa Ana Abiyedh Scarlet"
           ]
         }
-      ]
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     },
     {
       "family_id": "french_avenue_liquid_brun_limited_edition",
@@ -884,7 +890,9 @@
             "Pisces"
           ]
         }
-      ]
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     },
     {
       "family_id": "french_avenue_liquid_brun",
