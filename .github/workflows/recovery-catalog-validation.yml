@@ -1,0 +1,76 @@
+name: Recovery catalog validation
+
+on:
+  push:
+    branches:
+      - recovery/scenthunter-stabilization-2026-11-17
+    paths:
+      - "backend/product_catalog.json"
+      - "backend/family_registry.json"
+      - "backend/scenthunter_next_engine/verified_gtin_variant_map.json"
+      - "backend/tests/test_catalog_seed_integrity.py"
+      - ".github/workflows/recovery-catalog-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate canonical catalog, families and GTIN mappings
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("backend")
+          catalog = json.loads((root / "product_catalog.json").read_text(encoding="utf-8"))
+          families = json.loads((root / "family_registry.json").read_text(encoding="utf-8"))
+          gtins = json.loads((root / "scenthunter_next_engine/verified_gtin_variant_map.json").read_text(encoding="utf-8"))
+
+          products = catalog["products"]
+          variants = catalog["variants"]
+          product_ids = [p["product_id"] for p in products]
+          variant_ids = [v["variant_id"] for v in variants]
+          assert len(product_ids) == len(set(product_ids)), "duplicate product_id"
+          assert len(variant_ids) == len(set(variant_ids)), "duplicate variant_id"
+
+          products_by_id = {p["product_id"]: p for p in products}
+          variants_by_id = {v["variant_id"]: v for v in variants}
+          assert all(v["product_id"] in products_by_id for v in variants), "orphan variant"
+
+          variant_tuples = [
+              (v["product_id"], v.get("size_ml"), v.get("concentration", ""))
+              for v in variants
+          ]
+          assert len(variant_tuples) == len(set(variant_tuples)), "duplicate product/size/concentration tuple"
+
+          family_ids = {f["family_id"] for f in families["families"]}
+          assert len(family_ids) == len(families["families"]), "duplicate family_id"
+          assert all(p["family_id"] in family_ids for p in products), "product references missing family"
+
+          for family in families["families"]:
+              names = [p["canonical_name"].strip().casefold() for p in family["products"]]
+              assert len(names) == len(set(names)), f"duplicate canonical name inside family {family['family_id']}"
+
+          gtin_values = [r["gtin"] for r in gtins["records"]]
+          assert len(gtin_values) == len(set(gtin_values)), "duplicate GTIN"
+          for record in gtins["records"]:
+              assert record["product_id"] in products_by_id, f"GTIN {record['gtin']} has missing product"
+              variant = variants_by_id.get(record["variant_id"])
+              assert variant is not None, f"GTIN {record['gtin']} has missing variant"
+              assert variant["product_id"] == record["product_id"], f"GTIN {record['gtin']} maps to wrong product"
+              assert variant.get("size_ml") == record.get("size_ml"), f"GTIN {record['gtin']} size mismatch"
+
+          print(
+              f"Validated {len(products)} products, {len(variants)} variants, "
+              f"{len(families['families'])} families and {len(gtins['records'])} GTIN mappings."
+          )
+          PY
+      - name: Run catalog seed unit tests
+        run: python -m unittest discover -s backend/tests -p 'test_catalog_seed_integrity.py' -v
