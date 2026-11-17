@@ -45,6 +45,9 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+from app.api.catalog_search import router as catalog_search_router
+app.include_router(catalog_search_router)
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of

@@ -6,6 +6,9 @@ on:
     paths:
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/search/catalog.py"
+      - "backend/catalog_engine.py"
       - "backend/app/models/**"
       - "backend/alembic/**"
       - "backend/alembic.ini"
@@ -15,6 +18,10 @@ on:
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
+      - "tests/test_catalog_offer_price_selection.py"
+      - "tests/test_catalog_first_search.py"
+      - "tests/test_bplatz_persistence_service.py"
+      - "frontend/index.html"
       - ".github/workflows/phase2-postgresql.yml"
 
 permissions:
@@ -39,7 +46,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      PYTHONPATH: ${{ github.workspace }}/backend
+      PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}
       SCENTHUNTER_CATALOG_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
       SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
       SCENTHUNTER_TEST_POSTGRES_URL: postgresql+psycopg://phase2:phase2_ci_only@127.0.0.1:5432/phase2_test
@@ -96,3 +103,7 @@ jobs:
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
         run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
+      - name: Verify catalog-first API with the historical Bplatz fixture
+        run: pytest -q tests/test_catalog_first_search.py
+      - name: Verify retailer offer price selection regression
+        run: pytest -q tests/test_catalog_offer_price_selection.py

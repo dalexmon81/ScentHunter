@@ -1,0 +1,58 @@
+name: Persist verified Liquid Brun pilot offer
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_write:
+        description: Back up Phase 2, persist only the freshly verified Liquid Brun 100 ml Bplatz offer, and verify the production catalog API
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: persist-liquid-brun-pilot-production
+  cancel-in-progress: false
+
+jobs:
+  persist-pilot-offer:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require explicit production confirmation
+        env:
+          CONFIRM_PRODUCTION_WRITE: ${{ inputs.confirm_production_write }}
+        run: |
+          test "$CONFIRM_PRODUCTION_WRITE" = "true" || {
+            echo "STOP: confirm_production_write must be enabled."
+            exit 1
+          }
+
+      - name: Check out deployed main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fetch one live offer, back up Phase 2, persist and verify the API
+        env:
+          CONFIRM_PRODUCTION_WRITE: ${{ inputs.confirm_production_write }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/persist_bplatz_liquid_brun_live.py

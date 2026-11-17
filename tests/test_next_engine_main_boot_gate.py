@@ -61,6 +61,32 @@ def _run_api_import(next_enabled: str, preview_enabled: str) -> str:
     return result.stdout + result.stderr
 
 
+def test_main_import_does_not_require_optional_sqlalchemy_dependency():
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(ROOT / "backend"), str(ROOT), env.get("PYTHONPATH", "")]
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.modules['sqlalchemy'] = None; import main; "
+            "print('MAIN_BOOT=OK')",
+        ],
+        cwd=ROOT / "backend",
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"API import failed without optional SQLAlchemy: "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert "MAIN_BOOT=OK" in result.stdout
+
+
 def test_real_api_boot_hook_keeps_preview_route_disabled_by_default():
     output = _run_api_import("0", "0")
     assert "NEXT_ENGINE_ROUTE_PRESENT=False" in output

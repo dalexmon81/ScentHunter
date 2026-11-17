@@ -51,6 +51,8 @@ jobs:
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
           backend/tests/test_seed_catalog_store_safety.py
+          backend/tests/test_bplatz_live_offer_check.py
+          tests/test_bplatz_persistence_service.py
 
       - name: Verify opt-in Notino persistence profiling including SQLite commit
         env:
@@ -60,6 +62,14 @@ jobs:
           python -m pytest -q
           backend/tests/test_notino_affiliate_feed.py::NotinoAffiliateFeedTests::test_staging_publication_is_atomic_and_idempotent
 
+      - name: Verify live Bplatz Liquid Brun offer (read-only pilot)
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.ref == 'feat/catalog-first-liquid-brun'
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_bplatz_liquid_brun_live.py
 
   notino-live-parser-dry-run:
     if: github.event_name == 'pull_request'
