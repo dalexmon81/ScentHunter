@@ -140,6 +140,15 @@ def _parse_size_ml(value) -> Decimal | None:
     return amount
 
 
+def _flag_key(value) -> str:
+    """Keep unknown packaging flags distinct from explicit false values."""
+    if value is None:
+        return "unknown"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    raise ValueError(f"packaging flag must be true, false, or null; got {value!r}")
+
+
 def _collect_variant_identifiers(product: dict, variant: dict) -> list[dict]:
     """Return source identifiers with explicit namespaces; never guess a namespace."""
     result: list[dict] = []
@@ -251,6 +260,8 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
         size = row.get("size_ml")
         try:
             _parse_size_ml(size)
+            for flag in ("is_tester", "is_refill", "is_gift_set", "is_mini"):
+                _flag_key(row.get(flag))
             identifiers = _collect_variant_identifiers(product_by_id[pid], row)
         except ValueError as exc:
             blocked.append(f"{source_id}: {exc}")
@@ -380,9 +391,10 @@ def main() -> int:
                         norm(name),
                         norm(str(concentration or "")),
                         format(numeric_size.normalize(), "f") if numeric_size is not None else "",
-                        str(bool(variant.get("is_tester", False))),
-                        str(bool(variant.get("is_refill", False))),
-                        str(bool(variant.get("is_gift_set", False))),
+                        _flag_key(variant.get("is_tester")),
+                        _flag_key(variant.get("is_refill")),
+                        _flag_key(variant.get("is_gift_set")),
+                        _flag_key(variant.get("is_mini")),
                         source_id,
                     ))
                     variant_id = stable_id("variant", source_id)
