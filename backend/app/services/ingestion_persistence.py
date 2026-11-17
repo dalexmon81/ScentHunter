@@ -14,7 +14,7 @@ from app.services.currency_policy import is_supported_currency_code
 
 from app.models import (
     Fragrance, IngestionRaw, LegacyProductIdMap, LegacyVariantIdMap,
-    MatchAudit, Offer, PriceHistory, ProductVariant, Store,
+    MatchAudit, Offer, PriceHistory, ProductVariant, Store, StoreAuthorization,
 )
 
 _ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock"}
@@ -134,6 +134,38 @@ def record_legacy_match(
     return resolved
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalize SQLite-naive and timezone-aware timestamps for policy checks."""
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _has_offer_collection_authorization(
+    session: Session, *, store_id: UUID, now: datetime,
+) -> bool:
+    """Require a current, explicitly approved authorization for offer data."""
+    records = session.scalars(select(StoreAuthorization).where(
+        StoreAuthorization.store_id == store_id,
+        StoreAuthorization.status == "approved",
+    )).all()
+    for record in records:
+        if record.revoked_at is not None:
+            continue
+        if not isinstance(record.scopes, list) or "offer_data" not in record.scopes:
+            continue
+        if not record.approved_by or not record.approved_by.strip() or record.approved_at is None:
+            continue
+        if _as_utc(record.approved_at) > now:
+            continue
+        if record.valid_from is not None and _as_utc(record.valid_from) > now:
+            continue
+        if record.expires_at is not None and _as_utc(record.expires_at) <= now:
+            continue
+        return True
+    return False
+
+
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
                   confidence: Decimal | None = None,
@@ -147,6 +179,9 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     store = session.get(Store, row.store_id)
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
+    now = datetime.now(timezone.utc)
+    if not _has_offer_collection_authorization(session, store_id=store.id, now=now):
+        raise PromotionRejected("store_offer_collection_not_authorized")
     if not isinstance(store.offer_ttl_minutes, int) or store.offer_ttl_minutes <= 0:
         raise PromotionRejected("store_offer_ttl_not_configured")
     if session.get(ProductVariant, row.product_variant_id) is None:
@@ -185,7 +220,6 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     ):
         raise PromotionRejected("captured_at must be a timezone-aware datetime")
     observation_time = captured_at or datetime.now(timezone.utc)
-    now = datetime.now(timezone.utc)
     if observation_time < now - timedelta(minutes=store.offer_ttl_minutes):
         raise PromotionRejected("source_capture_expired")
     if observation_time > now + timedelta(minutes=5):
