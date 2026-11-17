@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 import pytest
 
 from app.models import Base, Store
-from scripts.seed_catalog import _collect_variant_identifiers, _parse_size_ml, ensure_bplatz_store, validate_catalog
+from scripts.seed_catalog import _collect_variant_identifiers, _flag_key, _parse_size_ml, ensure_bplatz_store, validate_catalog
 
 
 def test_seed_size_parser_preserves_fractional_precision():
@@ -142,3 +142,29 @@ def test_catalog_validation_rejects_identifier_collision_across_variants():
         "variants": variants,
     })
     assert any("already assigned to variant-1" in item for item in blocked)
+
+
+
+def test_unknown_packaging_flags_remain_distinct_from_explicit_false():
+    assert _flag_key(None) == "unknown"
+    assert _flag_key(False) == "false"
+    assert _flag_key(True) == "true"
+
+
+def test_catalog_validation_rejects_non_boolean_packaging_flags():
+    products = [{
+        "product_id": "product-1",
+        "brand_name": "Test Brand",
+        "canonical_name": "Test Fragrance",
+    }]
+    variants = [{
+        "variant_id": "variant-1",
+        "product_id": "product-1",
+        "size_ml": "50",
+        "is_tester": "false",
+    }]
+    _products, _by_product, blocked = validate_catalog({
+        "products": products,
+        "variants": variants,
+    })
+    assert any("packaging flag must be true, false, or null" in item for item in blocked)
