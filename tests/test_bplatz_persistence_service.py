@@ -102,7 +102,7 @@ def _create_bplatz_store(session):
     if store is None:
         store = Store(
             name="Bplatz", slug="bplatz", domain="bplatz.de",
-            country="DE", currency="EUR", status="active",
+            country="DE", currency="EUR", status="active", offer_ttl_minutes=60,
         )
         session.add(store)
         session.flush()
@@ -126,7 +126,7 @@ def test_alembic_0002_migration_creates_required_schema(tmp_path):
         with engine.connect() as connection:
             revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
         assert revision == "0015_user_sessions"
-        print("ALEMBIC_REVISION=0003_store_domain")
+        print("ALEMBIC_REVISION=0015_user_sessions")
         print("MIGRATION_TABLES=OK")
     finally:
         engine.dispose()
