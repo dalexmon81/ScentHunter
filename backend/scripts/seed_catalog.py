@@ -392,8 +392,10 @@ def main() -> int:
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
                             gtin=(
-                            _collect_variant_identifiers(product, variant)[0]["value"]
-                            if len([item for item in _collect_variant_identifiers(product, variant) if item["identifier_type"] == "gtin"]) == 1
+                            [item["value"] for item in _collect_variant_identifiers(product, variant)
+                             if item["identifier_type"] == "gtin"][0]
+                            if len([item for item in _collect_variant_identifiers(product, variant)
+                                    if item["identifier_type"] == "gtin"]) == 1
                             else None
                         ),
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
