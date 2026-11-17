@@ -9,6 +9,13 @@ from .base import Base
 
 class Brand(Base):
     __tablename__ = "brands"
+    __table_args__ = (
+        Index(
+            "ix_brands_name_fts",
+            text("to_tsvector('simple', name)"),
+            postgresql_using="gin",
+        ).ddl_if(dialect="postgresql"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(220), nullable=False, unique=True)
@@ -17,7 +24,15 @@ class Brand(Base):
 
 class Fragrance(Base):
     __tablename__ = "fragrances"
-    __table_args__ = (UniqueConstraint("brand_id", "slug", name="uq_fragrances_brand_slug"), Index("ix_fragrances_name", "name"))
+    __table_args__ = (
+        UniqueConstraint("brand_id", "slug", name="uq_fragrances_brand_slug"),
+        Index("ix_fragrances_name", "name"),
+        Index(
+            "ix_fragrances_name_fts",
+            text("to_tsvector('simple', name)"),
+            postgresql_using="gin",
+        ).ddl_if(dialect="postgresql"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     brand_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(240), nullable=False)
