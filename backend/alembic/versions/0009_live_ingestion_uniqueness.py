@@ -15,6 +15,25 @@ PREDICATE = "external_product_id IS NOT NULL AND status IN ('pending','unmatched
 
 
 def upgrade():
+    bind = op.get_bind()
+    duplicates = bind.execute(sa.text(
+        """
+        SELECT store_id, external_product_id, COUNT(*)
+        FROM ingestion_raw
+        WHERE external_product_id IS NOT NULL
+          AND status IN ('pending', 'unmatched', 'matched')
+        GROUP BY store_id, external_product_id
+        HAVING COUNT(*) > 1
+        LIMIT 5
+        """
+    )).fetchall()
+    if duplicates:
+        raise RuntimeError(
+            "Cannot enforce live ingestion uniqueness: duplicate active "
+            "store/external_product_id rows exist. Quarantine or reconcile "
+            "the listed rows without deleting raw evidence: "
+            + repr(duplicates)
+        )
     op.create_index(
         "uq_ingestion_raw_live_store_external",
         "ingestion_raw",
