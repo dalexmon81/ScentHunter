@@ -90,10 +90,11 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     for token in tokens:
         if token == "ml":
             continue
-        if token.isdecimal():
-            if len(token) > 5 or int(token) > 10000:
+        if re.fullmatch(r"\\d+(?:[.,]\\d+)?", token):
+            amount = Decimal(token.replace(",", "."))
+            if amount <= 0 or amount > Decimal("10000"):
                 return {"query": query, "count": 0, "offer_count": 0, "results": [], "status": "completed", "completed": True}
-            statement = statement.where(ProductVariant.size_ml == int(token))
+            statement = statement.where(ProductVariant.size_ml == amount)
         elif token in {"edp", "edt"}:
             concentration = "eau de parfum" if token == "edp" else "eau de toilette"
             statement = statement.where(or_(
