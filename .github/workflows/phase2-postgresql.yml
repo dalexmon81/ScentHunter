@@ -65,6 +65,9 @@ jobs:
       - name: Confirm a second upgrade is a no-op
         working-directory: backend
         run: alembic upgrade head
+      - name: Verify ORM metadata matches the migrated PostgreSQL schema
+        working-directory: backend
+        run: alembic check
       - name: Import the complete checked-in canonical catalog into disposable PostgreSQL
         shell: bash
         run: |
