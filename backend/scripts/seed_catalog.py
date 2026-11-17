@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from decimal import Decimal, InvalidOperation
 import re
 import sys
 import unicodedata
@@ -100,6 +101,24 @@ def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Br
     return brand
 
 
+def _parse_size_ml(value) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError(f"invalid size_ml {value!r}") from exc
+    normalized = amount.normalize()
+    if (
+        not amount.is_finite()
+        or amount <= 0
+        or amount > Decimal("999999.9999")
+        or normalized.as_tuple().exponent < -4
+    ):
+        raise ValueError(f"invalid size_ml {value!r}")
+    return amount
+
+
 def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list[str]]:
     products = raw.get("products")
     variants = raw.get("variants")
@@ -144,14 +163,11 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
             continue
         variant_ids.add(source_id)
         size = row.get("size_ml")
-        if size not in (None, ""):
-            try:
-                numeric_size = int(size)
-                if numeric_size <= 0 or str(numeric_size) != str(size).strip():
-                    raise ValueError
-            except (TypeError, ValueError):
-                blocked.append(f"{source_id}: invalid size_ml {size!r}")
-                continue
+        try:
+            _parse_size_ml(size)
+        except ValueError:
+            blocked.append(f"{source_id}: invalid size_ml {size!r}")
+            continue
         by_product.setdefault(pid, []).append(row)
 
     return products, by_product, blocked
@@ -258,11 +274,12 @@ def main() -> int:
                     source_id = str(variant["variant_id"]).strip()
                     concentration = variant.get("concentration") or product.get("concentration")
                     size = variant.get("size_ml")
+                    numeric_size = _parse_size_ml(size)
                     key = "|".join((
                         normalize_brand(str(product["brand_name"])),
                         norm(name),
                         norm(str(concentration or "")),
-                        str(size or ""),
+                        format(numeric_size.normalize(), "f") if numeric_size is not None else "",
                         str(bool(variant.get("is_tester", False))),
                         str(bool(variant.get("is_refill", False))),
                         str(bool(variant.get("is_gift_set", False))),
@@ -275,7 +292,7 @@ def main() -> int:
                             id=variant_id,
                             fragrance_id=fragrance.id,
                             concentration=concentration,
-                            size_ml=int(size) if size not in (None, "") else None,
+                            size_ml=numeric_size,
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
