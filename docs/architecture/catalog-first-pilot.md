@@ -14,6 +14,12 @@ continue to use the existing search. Search for `French Avenue Liquid Brun
 EDP 100ml`; the 150 ml Limited Edition is a separate canonical variant.
 An identified variant can be shown without an offer.
 
+`GET /api/catalog/status` reports canonical product/variant counts, active
+stores, currently publishable offer counts by store, latest qualifying update,
+active offers excluded by the publication gate, and unresolved match reviews.
+Its definition of "published" uses the same freshness, stock, currency,
+provenance, matching, store, and URL checks as user search.
+
 Only active EUR offers with an explicit `in_stock` signal, a positive price, an
 HTTP(S) URL on the configured store domain, an explicitly sourced currency, a promoted raw record, a matching
 audit, and an active store are returned. The observation must be at most 24

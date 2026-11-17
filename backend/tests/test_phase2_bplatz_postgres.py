@@ -22,7 +22,7 @@ from app.models import (  # noqa: E402
 )
 from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
 from app.services.ingestion_persistence import PromotionRejected  # noqa: E402
-from app.search.catalog import search_catalog  # noqa: E402
+from app.search.catalog import catalog_status, search_catalog  # noqa: E402
 
 
 DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
@@ -120,6 +120,10 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
             assert results["count"] == 1
             assert results["results"][0]["catalog_id"] == str(first.product_variant_id)
             assert results["offer_count"] == (1 if offer.availability == "in_stock" else 0)
+            status = catalog_status(session)
+            assert status["active_stores"] == 1
+            assert status["published_offers"] == results["offer_count"]
+            assert status["offers_by_store"]["bplatz"] == results["offer_count"]
 
         # A later hydration updates the same retailer offer and appends an
         # auditable price observation; it must not create a duplicate Offer.

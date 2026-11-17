@@ -30,6 +30,42 @@ def _offer_url_valid(url: str, domain: str | None) -> bool:
         return False
 
 
+def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | None = None):
+    audit_exists = exists(select(MatchAudit.id).where(
+        MatchAudit.offer_id == Offer.id,
+        MatchAudit.product_variant_id == Offer.product_variant_id,
+    ))
+    statement = (
+        select(Offer, Store, IngestionRaw)
+        .join(Store, Offer.store_id == Store.id)
+        .join(IngestionRaw, Offer.ingestion_raw_id == IngestionRaw.id)
+        .where(
+            Offer.status == "active",
+            Store.status == "active",
+            IngestionRaw.status == "promoted",
+            IngestionRaw.product_variant_id == Offer.product_variant_id,
+            IngestionRaw.store_id == Offer.store_id,
+            Offer.availability == "in_stock",
+            Offer.price > 0,
+            Offer.currency == "EUR",
+            Offer.captured_at >= now - timedelta(hours=24),
+            Offer.captured_at <= now,
+            or_(Offer.valid_until.is_(None), Offer.valid_until > now),
+            audit_exists,
+        )
+    )
+    if variant_ids is not None:
+        if not variant_ids:
+            return []
+        statement = statement.where(Offer.product_variant_id.in_(variant_ids))
+    rows = session.execute(statement.order_by(Offer.price, Offer.id)).all()
+    return [
+        (offer, store, raw) for offer, store, raw in rows
+        if raw.raw_payload.get("currency_explicit") is True
+        and _offer_url_valid(offer.url, store.domain)
+    ]
+
+
 def search_catalog(session: Session, query: str, *, now: datetime | None = None) -> dict:
     """Search the database only; never contact a retailer or mutate catalog data."""
     now = _utc(now or datetime.now(timezone.utc))
@@ -69,43 +105,17 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     variant_ids = [variant.id for variant, _, _ in rows]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
     offers_by_variant: dict = {}
-    if variant_ids:
-        audit_exists = exists(select(MatchAudit.id).where(
-            MatchAudit.offer_id == Offer.id,
-            MatchAudit.product_variant_id == Offer.product_variant_id,
-        ))
-        offer_rows = session.execute(
-            select(Offer, Store, IngestionRaw).join(Store, Offer.store_id == Store.id)
-            .join(IngestionRaw, Offer.ingestion_raw_id == IngestionRaw.id)
-            .where(
-                Offer.product_variant_id.in_(variant_ids),
-                Offer.status == "active",
-                Store.status == "active",
-                IngestionRaw.status == "promoted",
-                IngestionRaw.product_variant_id == Offer.product_variant_id,
-                IngestionRaw.store_id == Offer.store_id,
-                Offer.availability == "in_stock",
-                Offer.price > 0,
-                Offer.currency == "EUR",
-                Offer.captured_at >= now - timedelta(hours=24),
-                Offer.captured_at <= now,
-                or_(Offer.valid_until.is_(None), Offer.valid_until > now),
-                audit_exists,
-            ).order_by(Offer.price, Offer.id)
-        ).all()
-        for offer, store, raw in offer_rows:
-            if raw.raw_payload.get("currency_explicit") is not True or not _offer_url_valid(offer.url, store.domain):
-                continue
-            offers_by_variant.setdefault(offer.product_variant_id, []).append({
-                "store": store.name,
-                "url": offer.url,
-                "price": str(offer.price),
-                "currency": offer.currency,
-                "availability": offer.availability,
-                "size_ml": sizes[offer.product_variant_id],
-                "captured_at": _utc(offer.captured_at).isoformat(),
-                "shipping_cost": str(offer.shipping_cost) if offer.shipping_cost is not None else None,
-            })
+    for offer, store, _raw in _eligible_offer_rows(session, now, variant_ids):
+        offers_by_variant.setdefault(offer.product_variant_id, []).append({
+            "store": store.name,
+            "url": offer.url,
+            "price": str(offer.price),
+            "currency": offer.currency,
+            "availability": offer.availability,
+            "size_ml": sizes[offer.product_variant_id],
+            "captured_at": _utc(offer.captured_at).isoformat(),
+            "shipping_cost": str(offer.shipping_cost) if offer.shipping_cost is not None else None,
+        })
 
     results = []
     for variant, fragrance, brand in rows:
@@ -127,4 +137,42 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
         "query": query, "count": len(results),
         "offer_count": sum(len(result["offers"]) for result in results),
         "results": results, "status": "completed", "completed": True,
+    }
+
+
+def catalog_status(session: Session, *, now: datetime | None = None) -> dict:
+    """Return read-only operational counts using the exact public-offer gate."""
+    now = _utc(now or datetime.now(timezone.utc))
+    stores = session.scalars(select(Store).order_by(Store.slug)).all()
+    active_stores = [store for store in stores if store.status == "active"]
+    eligible = _eligible_offer_rows(session, now)
+    offers_by_store = {store.slug: 0 for store in active_stores}
+    latest_by_store = {}
+    for offer, store, _raw in eligible:
+        offers_by_store[store.slug] = offers_by_store.get(store.slug, 0) + 1
+        captured_at = _utc(offer.captured_at)
+        previous = latest_by_store.get(store.slug)
+        if previous is None or captured_at > previous:
+            latest_by_store[store.slug] = captured_at
+    active_offer_count = session.scalar(
+        select(func.count()).select_from(Offer).where(Offer.status == "active")
+    ) or 0
+    unresolved_count = session.scalar(
+        select(func.count()).select_from(IngestionRaw).where(
+            IngestionRaw.status.in_(("pending", "unmatched"))
+        )
+    ) or 0
+    return {
+        "status": "ready",
+        "canonical_products": session.scalar(select(func.count()).select_from(Fragrance)) or 0,
+        "canonical_variants": session.scalar(select(func.count()).select_from(ProductVariant)) or 0,
+        "active_stores": len(active_stores),
+        "published_offers": len(eligible),
+        "offers_by_store": offers_by_store,
+        "latest_offer_update_by_store": {
+            slug: value.isoformat() for slug, value in latest_by_store.items()
+        },
+        "active_offers_not_currently_publishable": max(0, active_offer_count - len(eligible)),
+        "unresolved_match_reviews": unresolved_count,
+        "freshness_window_hours": 24,
     }

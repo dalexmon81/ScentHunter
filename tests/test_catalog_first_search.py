@@ -16,7 +16,7 @@ from test_bplatz_persistence_service import (
 import catalog_engine
 from app.api import catalog_search
 from app.models import IngestionRaw, MatchAudit, Offer, Store
-from app.search.catalog import search_catalog
+from app.search.catalog import catalog_status, search_catalog
 
 
 @pytest.fixture
@@ -60,6 +60,13 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert offer["url"].startswith("https://bplatz.de/products/")
         assert datetime.fromisoformat(offer["captured_at"]).tzinfo is not None
         assert offer["shipping_cost"] is None
+        status = client.get("/api/catalog/status").json()
+        assert status["status"] == "ready"
+        assert status["canonical_variants"] >= 1
+        assert status["published_offers"] == 1
+        assert status["offers_by_store"]["bplatz"] == 1
+        assert status["latest_offer_update_by_store"]["bplatz"] == offer["captured_at"]
+        assert status["freshness_window_hours"] == 24
 
         other = client.get("/api/catalog/search", params={"q": "Liquid Brun 150 ml"}).json()
         assert other["count"] == 1 and other["offer_count"] == 0
@@ -85,7 +92,9 @@ def test_missing_catalog_returns_503_without_creating_database(tmp_path, monkeyp
 def test_search_route_is_registered_on_production_app():
     import main
 
-    assert any(route.path == "/api/catalog/search" for route in main.app.routes)
+    paths = {route.path for route in main.app.routes}
+    assert "/api/catalog/search" in paths
+    assert "/api/catalog/status" in paths
 
 
 def test_publication_gate_and_freshness(pilot):
