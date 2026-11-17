@@ -189,12 +189,12 @@ class RateLimiter:
             raise ValueError("requests_per_second_must_be_positive")
         self.interval = 1.0 / requests_per_second
         self._lock = asyncio.Lock()
-        self._last_request = 0.0
+        self._last_request: float | None = None
 
     async def acquire(self, *, monotonic=__import__("time").monotonic, sleep=asyncio.sleep):
         async with self._lock:
             now = monotonic()
-            wait = max(0.0, self._last_request + self.interval - now)
+            wait = max(0.0, self._last_request + self.interval - now) if self._last_request is not None else 0.0
             if wait:
                 await sleep(wait)
                 now = monotonic()
