@@ -15,6 +15,10 @@ depends_on = None
 def upgrade():
     if op.get_bind().dialect.name == "sqlite":
         # SQLite cannot ALTER COLUMN TYPE; force Alembic's table-copy strategy.
+        # product_variants is referenced by offers, ingestion_raw and legacy
+        # ID maps. Defer FK checks until the replacement table has been renamed
+        # back to product_variants; otherwise DROP TABLE fails on live links.
+        op.execute("PRAGMA defer_foreign_keys=ON")
         with op.batch_alter_table("product_variants", recreate="always") as batch_op:
             batch_op.alter_column(
                 "size_ml",
@@ -35,6 +39,9 @@ def upgrade():
 
 def downgrade():
     if op.get_bind().dialect.name == "sqlite":
+        # Downgrade uses the same table-copy operation and must preserve the
+        # same inbound foreign-key relationships.
+        op.execute("PRAGMA defer_foreign_keys=ON")
         with op.batch_alter_table("product_variants", recreate="always") as batch_op:
             batch_op.alter_column(
                 "size_ml",
