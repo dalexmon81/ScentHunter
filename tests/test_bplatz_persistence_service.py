@@ -299,9 +299,13 @@ def test_offer_promotion_requires_current_explicit_store_authorization(tmp_path)
             session.execute(delete(StoreAuthorization).where(
                 StoreAuthorization.store_id == store_id
             ))
+            with pytest.raises(
+                PromotionRejected,
+                match="store_offer_collection_not_authorized",
+            ):
+                stage_raw_offer(session, store_id=store_id, raw_payload=record)
 
             invalid_authorizations = [
-                None,
                 {"status": "pending"},
                 {"scopes": ["shipping_data"]},
                 {"revoked_at": datetime.now(timezone.utc)},
@@ -314,9 +318,7 @@ def test_offer_promotion_requires_current_explicit_store_authorization(tmp_path)
                 session.execute(delete(StoreAuthorization).where(
                     StoreAuthorization.store_id == store_id
                 ))
-                if invalid is not None:
-                    _authorize_bplatz_offer_collection(session, store_id, **invalid)
-
+                _authorize_bplatz_offer_collection(session, store_id)
                 raw_id = stage_raw_offer(
                     session, store_id=store_id, raw_payload=record,
                 )
@@ -327,6 +329,13 @@ def test_offer_promotion_requires_current_explicit_store_authorization(tmp_path)
                     method="authorization_gate_test",
                 )
                 assert resolved is not None
+
+                # Simulate authorization expiry/revocation between staging
+                # and publication: the publication gate must re-check it.
+                session.execute(delete(StoreAuthorization).where(
+                    StoreAuthorization.store_id == store_id
+                ))
+                _authorize_bplatz_offer_collection(session, store_id, **invalid)
                 with pytest.raises(
                     PromotionRejected,
                     match="store_offer_collection_not_authorized",
@@ -339,6 +348,9 @@ def test_offer_promotion_requires_current_explicit_store_authorization(tmp_path)
                         source="authorization_gate_test",
                     )
 
+            session.execute(delete(StoreAuthorization).where(
+                StoreAuthorization.store_id == store_id
+            ))
             _authorize_bplatz_offer_collection(session, store_id)
             raw_id = stage_raw_offer(session, store_id=store_id, raw_payload=record)
             resolved = record_legacy_match(
