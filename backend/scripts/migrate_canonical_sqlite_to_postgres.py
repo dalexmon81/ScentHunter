@@ -27,14 +27,14 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.models import Base  # noqa: E402
 
 TABLE_ORDER = (
-    "brands", "fragrances", "product_variants", "stores",
+    "brands", "fragrances", "product_variants", "stores", "product_identifiers",
     "store_authorizations", "store_shipping_rates",
     "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
     "ingestion_runs", "ingestion_artifacts", "ingestion_dead_letters",
     "canonical_identity_reviews", "offers", "price_history", "match_audit",
     "user_accounts", "user_delivery_destinations", "user_sessions",
 )
-EXPECTED_REVISION = "0015_user_sessions"
+EXPECTED_REVISION = "0016_product_identifiers"
 
 
 def open_source_read_only(source_path: Path):
