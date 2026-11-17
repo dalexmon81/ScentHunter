@@ -30,7 +30,7 @@ Status: **review candidate only; not active runtime data; not merged to main.**
 - mainOnlyFamilies: []
 
 ## Known limitations / review gates
-- The 141 variant rows in the seed have no variant-level `source_url`; do not infer concentration or provenance beyond the product-level evidence.
+- Variant evidence is uneven: 53 of 141 rows have a `source_evidence_url`; 88 do not. Concentration is present on 127 of 141 rows; 14 remain blank. Do not infer missing concentration or variant provenance from the parent product URL.
 - The source seed labels 1,635 product names as `source_listed_name` and only 33 as `source_verified_name`. This is not equivalent to full product-detail-page verification.
 - The family registry intentionally includes some products in both a dedicated line family and the general brand family (e.g. Khadlaj Shiyaaka, Lattafa Asad, French Avenue Liquid Brun). Cross-family repetition is retained; only within-family canonical duplicates are rejected.
 - The current-main catalog JSON is empty, so this candidate preserves the PR #425 catalog and does not claim to recover commercial offers or current retailer data.
