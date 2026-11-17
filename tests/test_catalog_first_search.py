@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from test_bplatz_persistence_service import (
-    _migrated_database, _seed_real_catalog, ROOT,
+    _migrated_database, _seed_real_catalog, _create_bplatz_store, ROOT,
 )
 import catalog_engine
 from app.api import catalog_search
@@ -23,6 +23,9 @@ from app.search.catalog import _format_size_ml, catalog_status, search_catalog
 def pilot(tmp_path, monkeypatch):
     engine, url, _ = _migrated_database(tmp_path)
     _seed_real_catalog(url)
+    # This fixture explicitly represents operator-approved Bplatz collection.
+    with Session(engine) as session, session.begin():
+        _create_bplatz_store(session)
     fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
     meta = json.loads((fixture.parent / "liquid-brun-54015243419916.meta.json").read_text())
     item = catalog_engine.parse_product("bplatz", meta["url_final"], fixture.read_bytes())
