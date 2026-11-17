@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Reviewed GTIN-to-canonical-variant evidence. This registry is read-only runtime input; entries require an exact valid GTIN, target variant, size and source URLs.",
+  "description": "Merged recovery candidate: verified GTIN records from PR #425 plus any current-main records. Review artifact only; not active runtime data.",
   "records": [
     {
       "gtin": "3614272865235",
