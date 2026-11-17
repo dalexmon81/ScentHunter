@@ -77,6 +77,23 @@ class RecoveryCatalogIntegrityTests(unittest.TestCase):
                 self.assertNotIsInstance(variant["size_ml"], bool)
                 self.assertGreater(variant["size_ml"], 0)
 
+    def test_family_ids_and_names_are_unique_within_each_family(self):
+        family_ids = [family["family_id"] for family in self.families["families"]]
+        self.assertEqual(len(family_ids), len(set(family_ids)))
+        for family in self.families["families"]:
+            with self.subTest(family_id=family["family_id"]):
+                names = [normalized(product["canonical_name"]) for product in family.get("products", [])]
+                self.assertEqual(len(names), len(set(names)))
+
+    def test_every_catalog_family_id_exists_in_registry(self):
+        family_ids = {family["family_id"] for family in self.families["families"]}
+        missing = sorted({
+            product.get("family_id")
+            for product in self.products
+            if product.get("family_id") not in family_ids
+        })
+        self.assertEqual(missing, [])
+
     def test_family_registry_covers_every_canonical_product(self):
         family_keys = {
             (normalized(family.get("brand")), normalized(product.get("canonical_name")))
