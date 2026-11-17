@@ -34,6 +34,8 @@ BPLATZ_STORE = {
     "country": "DE",
     "currency": "EUR",
     "status": "active",
+    # Phase 2 publication freshness window; operators may adjust explicitly.
+    "offer_ttl_minutes": 1440,
 }
 
 
