@@ -192,15 +192,19 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
             artifact_raw_data = connection.execute(
                 select(IngestionArtifact.raw_data).where(IngestionArtifact.id == self.artifact_id)
             ).scalar_one()
-            authorization = connection.execute(
-                select(StoreAuthorization).where(StoreAuthorization.id == self.authorization_id)
+            authorization_reference = connection.execute(
+                select(StoreAuthorization.authorization_reference).where(
+                    StoreAuthorization.id == self.authorization_id
+                )
             ).scalar_one()
-            review = connection.execute(
-                select(CanonicalIdentityReview).where(CanonicalIdentityReview.id == self.review_id)
+            review_reason = connection.execute(
+                select(CanonicalIdentityReview.reason).where(
+                    CanonicalIdentityReview.id == self.review_id
+                )
             ).scalar_one()
         self.assertEqual(artifact_raw_data, b"<feed></feed>")
-        self.assertEqual(authorization.authorization_reference, "fixture-consent")
-        self.assertEqual(review.reason, "fixture_review")
+        self.assertEqual(authorization_reference, "fixture-consent")
+        self.assertEqual(review_reason, "fixture_review")
 
 
 if __name__ == "__main__":
