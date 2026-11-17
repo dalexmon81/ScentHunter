@@ -316,6 +316,7 @@ def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
 
 
 def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_path):
+    from datetime import datetime, timedelta, timezone
     from app.services.bplatz_phase2_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
@@ -330,6 +331,10 @@ def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_
                 session, store_id=store_id, raw_record=dict(record), matcher=matcher,
             )
             assert first.status == "promoted"
+        with Session(engine) as session, session.begin():
+            offer = session.get(Offer, first.offer_id)
+            assert offer is not None
+            offer.valid_until = datetime.now(timezone.utc) + timedelta(days=1)
         updated_record = dict(record)
         updated_record["price"] = record["price"] + 1
         with Session(engine) as session, session.begin():
@@ -361,6 +366,60 @@ def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_
             assert len(audits) == 3
             assert offers[0].price == Decimal(str(updated_record["price"]))
             assert offers[0].ingestion_raw_id == third.ingestion_raw_id
+            assert offers[0].valid_until is None
+    finally:
+        engine.dispose()
+
+
+def test_live_liquid_brun_persistence_makes_one_backed_up_offer_searchable(tmp_path):
+    from datetime import datetime, timezone
+
+    from catalog_engine import parse_product
+    from app.search.catalog import catalog_status, search_catalog
+    from scripts.check_bplatz_liquid_brun_live import build_report
+    from scripts.persist_bplatz_phase2_live_offer import persist_report
+    from scrapers.bplatz.scraper import parse_product_html
+
+    fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
+    meta = json.loads(
+        (ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.meta.json").read_text()
+    )
+    html = fixture.read_bytes()
+    parsed = parse_product_html(
+        html.decode("utf-8"), meta["url_final"], "French Avenue Liquid Brun",
+    )
+    worker_item = parse_product("bplatz", meta["url_final"], html)
+    assert parsed is not None and worker_item is not None
+    report = build_report(parsed, worker_item, datetime.now(timezone.utc))
+
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        persisted = persist_report(
+            report,
+            run_id="123456789",
+            backup_dir=tmp_path / "backups",
+            engine=engine,
+        )
+        assert persisted["status"] == "persisted"
+        assert persisted["backup_verified"] is True
+        assert Path(persisted["backup"]).is_file()
+        assert persisted["legacy_database_touched"] is False
+        assert persisted["persistent_feature_flag_changed"] is False
+        assert persisted["after_counts"]["offers"] == persisted["before_counts"]["offers"] + 1
+        assert persisted["after_counts"]["price_history"] == persisted["before_counts"]["price_history"] + 1
+        assert persisted["after_counts"]["match_audit"] == persisted["before_counts"]["match_audit"] + 1
+
+        with Session(engine) as session:
+            result = search_catalog(
+                session, "French Avenue Liquid Brun EDP 100ml",
+            )
+            status = catalog_status(session)
+            assert result["count"] == 1
+            assert result["offer_count"] == 1
+            assert result["results"][0]["offers"][0]["store"] == "Bplatz"
+            assert result["results"][0]["offers"][0]["price"] == persisted["offer"]["price"]
+            assert status["published_offers"] == 1
     finally:
         engine.dispose()
 

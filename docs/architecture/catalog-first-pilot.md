@@ -35,6 +35,13 @@ not a current offer. Actual offers depend on successful background hydration.
 to the pilot listing, validates price, currency, stock and canonical matching,
 and does not write to a database. The pilot-branch CI runs this check; a failed
 or unavailable listing must not be presented as a verified live offer.
+The one-time production pilot writer
+(`.github/workflows/persist-liquid-brun-pilot.yml`) is manually dispatched from
+`main` with its confirmation input enabled. It fetches and validates the current
+Bplatz listing, backs up and verifies the isolated Phase 2 SQLite database,
+persists only this one canonical variant, and verifies the public search/status
+API. It does not touch the legacy retailer database or enable ongoing Bplatz
+mirroring. The verified backup is retained under `/data/backups/`.
 The pilot does not provide typo tolerance, an index, calibrated ranking, or
 automated availability guarantees. Validate freshness, match precision,
 coverage, permissions, operational rollback, and real PostgreSQL deployment

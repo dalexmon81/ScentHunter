@@ -13,6 +13,7 @@ sys.path.insert(0, str(BACKEND))
 from catalog_engine import parse_product  # noqa: E402
 from scrapers.bplatz.scraper import parse_product_html  # noqa: E402
 from scripts.check_bplatz_liquid_brun_live import build_report  # noqa: E402
+from scripts.persist_bplatz_phase2_live_offer import _validate_report  # noqa: E402
 
 
 class BplatzLiveOfferCheckTests(unittest.TestCase):
@@ -47,6 +48,8 @@ class BplatzLiveOfferCheckTests(unittest.TestCase):
         self.assertEqual(report["canonical_product_id"], "SH-0030")
         self.assertEqual(report["canonical_variant_id"], "VAR-f87146c82d167f4c")
         self.assertEqual(report["captured_at"], self.captured_at.isoformat())
+        self.assertTrue(report["raw_record"]["currency_explicit"])
+        self.assertEqual(report["raw_record"]["product_url"], report["url"])
         self.assertFalse(report["database_written"])
 
     def test_out_of_stock_offer_fails_closed(self):
@@ -60,3 +63,14 @@ class BplatzLiveOfferCheckTests(unittest.TestCase):
         worker_item["currency_explicit"] = False
         with self.assertRaisesRegex(RuntimeError, "explicit currency"):
             build_report(page, worker_item, datetime.now(timezone.utc))
+
+    def test_persistence_rejects_stale_or_different_canonical_variant(self):
+        page, worker_item = self.parsed_fixture()
+        report = build_report(page, worker_item, datetime.now(timezone.utc))
+        stale = dict(report, captured_at="2026-01-01T00:00:00+00:00")
+        with self.assertRaisesRegex(ValueError, "one-hour"):
+            _validate_report(stale, now=datetime.now(timezone.utc))
+
+        wrong_variant = dict(report, canonical_variant_id="another-variant")
+        with self.assertRaisesRegex(ValueError, "authorized Liquid Brun pilot"):
+            _validate_report(wrong_variant, now=datetime.now(timezone.utc))

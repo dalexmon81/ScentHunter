@@ -203,6 +203,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.availability = availability
         existing.source = source
         existing.confidence = confidence if confidence is not None else row.match_confidence
+        existing.valid_until = None
         existing.status = "active"
         # Record every successfully captured observation, including an unchanged
         # price. This makes each normal hydration auditable without creating a

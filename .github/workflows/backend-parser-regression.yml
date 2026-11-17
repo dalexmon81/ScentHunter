@@ -51,6 +51,8 @@ jobs:
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
           backend/tests/test_seed_catalog_store_safety.py
+          backend/tests/test_bplatz_live_offer_check.py
+          tests/test_bplatz_persistence_service.py
 
       - name: Verify opt-in Notino persistence profiling including SQLite commit
         env:

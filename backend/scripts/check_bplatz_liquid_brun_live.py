@@ -92,28 +92,33 @@ def build_report(parsed: dict, worker_item: dict, captured_at: datetime) -> dict
         "captured_at": captured_at.astimezone(timezone.utc).isoformat(),
         "canonical_product_id": match.canonical_product_id,
         "canonical_variant_id": match.canonical_variant_id,
+        "raw_record": record,
         "database_written": False,
     }
 
 
+def fetch_live_offer() -> dict:
+    with requests.Session() as session:
+        response = session.get(PRODUCT_URL, headers=HEADERS, timeout=(5, 20))
+        response.raise_for_status()
+        html = response.content
+        final_url = response.url
+        response.close()
+
+    parsed = parse_product_html(
+        html.decode("utf-8", errors="replace"),
+        final_url,
+        "French Avenue Liquid Brun",
+    )
+    worker_item = parse_worker_product("bplatz", final_url, html)
+    if parsed is None or worker_item is None:
+        raise RuntimeError("Bplatz page could not be parsed as Liquid Brun")
+    return build_report(parsed, worker_item, datetime.now(timezone.utc))
+
+
 def main() -> int:
     try:
-        with requests.Session() as session:
-            response = session.get(PRODUCT_URL, headers=HEADERS, timeout=(5, 20))
-            response.raise_for_status()
-            html = response.content
-            final_url = response.url
-            response.close()
-
-        parsed = parse_product_html(
-            html.decode("utf-8", errors="replace"),
-            final_url,
-            "French Avenue Liquid Brun",
-        )
-        worker_item = parse_worker_product("bplatz", final_url, html)
-        if parsed is None or worker_item is None:
-            raise RuntimeError("Bplatz page could not be parsed as Liquid Brun")
-        report = build_report(parsed, worker_item, datetime.now(timezone.utc))
+        report = fetch_live_offer()
     except (requests.RequestException, RuntimeError, ValueError) as exc:
         print(json.dumps({
             "status": "failed",
