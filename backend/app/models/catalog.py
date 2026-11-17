@@ -64,6 +64,27 @@ class ProductVariant(Base):
     fragrance: Mapped[Fragrance] = relationship(back_populates="variants")
     offers: Mapped[list["Offer"]] = relationship(back_populates="product_variant")
 
+
+class ProductIdentifier(Base):
+    """A traceable identifier scoped to its real-world namespace."""
+    __tablename__ = "product_identifiers"
+    __table_args__ = (
+        CheckConstraint("identifier_type IN ('gtin', 'mpn', 'sku')", name="product_identifier_type"),
+        UniqueConstraint("identifier_type", "namespace", "normalized_value", name="uq_product_identifier_namespace_value"),
+        Index("ix_product_identifiers_variant", "product_variant_id"),
+        Index("ix_product_identifiers_store", "store_id"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    product_variant_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("product_variants.id", ondelete="CASCADE"), nullable=False)
+    identifier_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    # global for GTIN, brand:<slug> for MPN, store:<slug> for retailer SKU.
+    namespace: Mapped[str] = mapped_column(String(180), nullable=False)
+    value: Mapped[str] = mapped_column(String(240), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(240), nullable=False)
+    store_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="SET NULL"))
+    source_url: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
 class Store(Base):
     __tablename__ = "stores"
     __table_args__ = (
