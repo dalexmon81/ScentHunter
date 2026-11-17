@@ -7,6 +7,7 @@ Status: **isolated recovery candidate; not merged to main and not deployed.**
 - Current main also contains the opt-in PostgreSQL guard from PR #774, merge `defe49283754281c81f540fbdc3ef5588097c692`.
 - Canonical product/variant seed: PR #425, source commit `54d84edabd927f5c6a60616e176adc02a81b3af6`.
 - Cumulative discovery-family harvest: PR #639 head `2362eaa310e2e6a981978ab5a64501831170ce36`, branch `catalog/arabiyat-prestige-new-launch-verification-2026-11-10`, family registry blob `3ee094e336eee206d5b86ca682efba2b6d2dcb58`.
+- Verified family-format updates from PR #638 (four Velixir 35/100 ml format hints) and PR #639 (three Arabiyat 100 ml hints plus one 110 ml hint) are included.
 - Current-main family safety exclusions are included in the merged registry.
 
 ## Candidate runtime-path data on this isolated branch
