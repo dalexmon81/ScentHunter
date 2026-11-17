@@ -456,6 +456,10 @@ def main() -> int:
                                 f"Identifier {identifier['identifier_type']}:{identifier['namespace']}:{identifier['normalized_value']} "
                                 "is already assigned to another variant."
                             )
+                        elif existing_identifier.store_id is not None and store_id is not None and existing_identifier.store_id != store_id:
+                            raise RuntimeError(
+                                f"Identifier store conflict for {identifier['namespace']}:{identifier['normalized_value']}."
+                            )
                         elif (
                             existing_identifier.source_url
                             and identifier["source_url"]
@@ -466,6 +470,8 @@ def main() -> int:
                             )
                         elif existing_identifier.source_url is None and identifier["source_url"]:
                             existing_identifier.source_url = identifier["source_url"]
+                        if existing_identifier is not None and existing_identifier.store_id is None and store_id is not None:
+                            existing_identifier.store_id = store_id
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
