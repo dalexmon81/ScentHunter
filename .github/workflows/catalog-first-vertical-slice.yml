@@ -147,9 +147,20 @@ jobs:
         run: python backend/scripts/seed_catalog.py --apply
       - name: Rehearse PostgreSQL backup and restore on disposable CI database
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client
-          bash backend/scripts/verify_postgres_backup_restore.sh
+          # Match pg_dump/pg_restore to the PostgreSQL 16 service. ubuntu-latest
+          # now installs PostgreSQL 18 through the generic client metapackage,
+          # which emits SET transaction_timeout and cannot restore into PG16.
+          docker run --rm --network host --user root \
+            --entrypoint bash \
+            -e SCENTHUNTER_CATALOG_DATABASE_URL \
+            -e SCENTHUNTER_BACKUP_RESTORE_TARGET_URL \
+            -e SCENTHUNTER_BACKUP_RESTORE_CONFIRM \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            postgres:16 -lc '
+              apt-get update -qq
+              apt-get install -y --no-install-recommends python3
+              bash backend/scripts/verify_postgres_backup_restore.sh
+            '
 
       - name: Validate PostgreSQL policy, schema and migration compatibility
         run: >-
