@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from app.models.catalog import (
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
     IngestionRun, StoreAuthorization, StoreShippingRate, IngestionArtifact,
     IngestionDeadLetter, CanonicalIdentityReview,
+    UserAccount, UserDeliveryDestination, UserSession,
 )
 from scripts.migrate_canonical_sqlite_to_postgres import inspect_and_import
 
@@ -53,6 +55,9 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         cls.artifact_id = uuid.uuid4()
         cls.dead_letter_id = uuid.uuid4()
         cls.review_id = uuid.uuid4()
+        cls.user_id = uuid.uuid4()
+        cls.destination_id = uuid.uuid4()
+        cls.session_id = uuid.uuid4()
 
         with Session(cls.source) as session, session.begin():
             session.add(Brand(
@@ -140,6 +145,20 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 normalized_payload={"brand": "Fixture", "fragrance_name": "Product"},
                 reason="fixture_review",
             ))
+            session.add(UserAccount(
+                id=cls.user_id, email="importer-user@example.invalid",
+                password_hash="test-only-password-hash", residence_country_code="LU",
+            ))
+            session.flush()
+            session.add(UserDeliveryDestination(
+                id=cls.destination_id, user_id=cls.user_id, label="Home",
+                country_code="LU", postal_code="L-1234", is_default=True,
+            ))
+            session.add(UserSession(
+                id=cls.session_id, user_id=cls.user_id,
+                token_hash="c" * 64,
+                expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
+            ))
 
     @classmethod
     def tearDownClass(cls):
@@ -155,6 +174,9 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
         self.assertEqual(dry["tables"]["offers"]["would_insert"], 1)
         self.assertEqual(dry["tables"]["ingestion_artifacts"]["would_insert"], 1)
         self.assertEqual(dry["tables"]["canonical_identity_reviews"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["user_accounts"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["user_delivery_destinations"]["would_insert"], 1)
+        self.assertEqual(dry["tables"]["user_sessions"]["would_insert"], 1)
 
         with self.target.connect() as connection:
             before = connection.execute(
@@ -202,9 +224,23 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                     CanonicalIdentityReview.id == self.review_id
                 )
             ).scalar_one()
+            imported_email = connection.execute(
+                select(UserAccount.email).where(UserAccount.id == self.user_id)
+            ).scalar_one()
+            imported_destination = connection.execute(
+                select(UserDeliveryDestination.postal_code).where(
+                    UserDeliveryDestination.id == self.destination_id
+                )
+            ).scalar_one()
+            imported_session = connection.execute(
+                select(UserSession.token_hash).where(UserSession.id == self.session_id)
+            ).scalar_one()
         self.assertEqual(artifact_raw_data, b"<feed></feed>")
         self.assertEqual(authorization_reference, "fixture-consent")
         self.assertEqual(review_reason, "fixture_review")
+        self.assertEqual(imported_email, "importer-user@example.invalid")
+        self.assertEqual(imported_destination, "L-1234")
+        self.assertEqual(imported_session, "c" * 64)
 
 
 if __name__ == "__main__":
