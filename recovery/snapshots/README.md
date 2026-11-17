@@ -17,6 +17,10 @@ This file records exact source commits and blobs used by the isolated recovery c
 - `backend/family_registry.json` blob: `3ee094e336eee206d5b86ca682efba2b6d2dcb58`.
 - This source contains 34 families and 2,386 product references before reconciliation.
 
+## Verified family-format increments
+- PR #638, head `985010abae19e19934c08e860d2e4cb61935d47e`, family registry blob `f14ee71c7c197707860434968a21daf6b93256c5`: adds verified 35/100 ml format hints for Velixir Comus, Ether, Orpheus and Panacea; also removes two repeated alias strings.
+- PR #639, head `2362eaa310e2e6a981978ab5a64501831170ce36`, family registry blob `3ee094e336eee206d5b86ca682efba2b6d2dcb58`: adds 100 ml hints for Arabiyat Prestige Marwa, Aariz and Aariz L’Absolu, plus 110 ml for Asháa Oud Noir; also removes the same repeated alias strings.
+
 ## Current main safety exclusions
 - Current main commit at the time of reconciliation: `defe49283754281c81f540fbdc3ef5588097c692`.
 - `backend/family_registry.json` blob: `36b811dca50955bc5f630c19545b3fac1d46bfb5`.
