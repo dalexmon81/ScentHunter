@@ -31,6 +31,10 @@ records a match method but does not supply a calibrated confidence score.
 
 The saved Bplatz HTML fixture is historical and is used only in tests; it is
 not a current offer. Actual offers depend on successful background hydration.
+`backend/scripts/check_bplatz_liquid_brun_live.py` makes one read-only request
+to the pilot listing, validates price, currency, stock and canonical matching,
+and does not write to a database. The pilot-branch CI runs this check; a failed
+or unavailable listing must not be presented as a verified live offer.
 The pilot does not provide typo tolerance, an index, calibrated ranking, or
 automated availability guarantees. Validate freshness, match precision,
 coverage, permissions, operational rollback, and real PostgreSQL deployment

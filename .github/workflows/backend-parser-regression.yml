@@ -60,6 +60,14 @@ jobs:
           python -m pytest -q
           backend/tests/test_notino_affiliate_feed.py::NotinoAffiliateFeedTests::test_staging_publication_is_atomic_and_idempotent
 
+      - name: Verify live Bplatz Liquid Brun offer (read-only pilot)
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.ref == 'feat/catalog-first-liquid-brun'
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_bplatz_liquid_brun_live.py
 
   notino-live-parser-dry-run:
     if: github.event_name == 'pull_request'
