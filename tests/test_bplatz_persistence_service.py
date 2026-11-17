@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -16,7 +17,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from app.models import (
-    Store, IngestionRaw, Offer, PriceHistory, MatchAudit,
+    Store, StoreAuthorization, IngestionRaw, Offer, PriceHistory, MatchAudit,
     LegacyProductIdMap, LegacyVariantIdMap,
 )
 from app.services.ingestion_persistence import (
@@ -97,6 +98,24 @@ def _real_bplatz_components():
     return parsed, record, normalized, group
 
 
+def _authorize_bplatz_offer_collection(session, store_id, **overrides):
+    now = datetime.now(timezone.utc)
+    values = {
+        "status": "approved",
+        "collection_method": "affiliate_feed",
+        "scopes": ["offer_data"],
+        "authorization_reference": "fixture-explicit-approval",
+        "approved_by": "test-fixture",
+        "approved_at": now,
+        "valid_from": now - timedelta(minutes=1),
+        "expires_at": now + timedelta(days=1),
+        "terms": {"fixture": True},
+    }
+    values.update(overrides)
+    session.add(StoreAuthorization(store_id=store_id, **values))
+    session.flush()
+
+
 def _create_bplatz_store(session):
     store = session.scalar(select(Store).where(Store.slug == "bplatz"))
     if store is None:
@@ -106,6 +125,12 @@ def _create_bplatz_store(session):
         )
         session.add(store)
         session.flush()
+    existing_approval = session.scalar(select(StoreAuthorization.id).where(
+        StoreAuthorization.store_id == store.id,
+        StoreAuthorization.status == "approved",
+    ))
+    if existing_approval is None:
+        _authorize_bplatz_offer_collection(session, store.id)
     return store.id
 
 
@@ -263,6 +288,81 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
 
 
 
+
+def test_offer_promotion_requires_current_explicit_store_authorization(tmp_path):
+    _parsed, record, normalized, group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        with Session(engine) as session, session.begin():
+            store_id = _create_bplatz_store(session)
+            session.execute(delete(StoreAuthorization).where(
+                StoreAuthorization.store_id == store_id
+            ))
+
+            invalid_authorizations = [
+                None,
+                {"status": "pending"},
+                {"scopes": ["shipping_data"]},
+                {"revoked_at": datetime.now(timezone.utc)},
+                {"expires_at": datetime.now(timezone.utc) - timedelta(seconds=1)},
+                {"valid_from": datetime.now(timezone.utc) + timedelta(days=1)},
+                {"approved_by": None},
+                {"approved_at": None},
+            ]
+            for invalid in invalid_authorizations:
+                session.execute(delete(StoreAuthorization).where(
+                    StoreAuthorization.store_id == store_id
+                ))
+                if invalid is not None:
+                    _authorize_bplatz_offer_collection(session, store_id, **invalid)
+
+                raw_id = stage_raw_offer(
+                    session, store_id=store_id, raw_payload=record,
+                )
+                resolved = record_legacy_match(
+                    session, ingestion_raw_id=raw_id,
+                    legacy_product_id=group.canonical_product_id,
+                    legacy_variant_id=group.canonical_variant_id,
+                    method="authorization_gate_test",
+                )
+                assert resolved is not None
+                with pytest.raises(
+                    PromotionRejected,
+                    match="store_offer_collection_not_authorized",
+                ):
+                    promote_offer(
+                        session, ingestion_raw_id=raw_id,
+                        price=normalized.price, currency=normalized.currency,
+                        url=normalized.product_url,
+                        availability=normalized.availability,
+                        source="authorization_gate_test",
+                    )
+
+            _authorize_bplatz_offer_collection(session, store_id)
+            raw_id = stage_raw_offer(session, store_id=store_id, raw_payload=record)
+            resolved = record_legacy_match(
+                session, ingestion_raw_id=raw_id,
+                legacy_product_id=group.canonical_product_id,
+                legacy_variant_id=group.canonical_variant_id,
+                method="authorization_gate_test",
+            )
+            assert resolved is not None
+            offer_id = promote_offer(
+                session, ingestion_raw_id=raw_id, price=normalized.price,
+                currency=normalized.currency, url=normalized.product_url,
+                availability=normalized.availability,
+                source="authorization_gate_test",
+            )
+            assert offer_id is not None
+
+        with Session(engine) as session:
+            assert len(session.scalars(select(Offer)).all()) == 1
+    finally:
+        engine.dispose()
+
+
+
 def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
     from app.services.bplatz_phase2_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
@@ -396,6 +496,10 @@ def test_live_liquid_brun_persistence_makes_one_backed_up_offer_searchable(tmp_p
     engine, db_url, _ = _migrated_database(tmp_path)
     try:
         _seed_real_catalog(db_url)
+        # The live-pilot test uses an explicit fixture approval; the seed
+        # command itself must never invent retailer authorization.
+        with Session(engine) as session, session.begin():
+            _create_bplatz_store(session)
         persisted = persist_report(
             report,
             run_id="123456789",
