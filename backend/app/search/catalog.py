@@ -79,7 +79,7 @@ def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | No
 def search_catalog(session: Session, query: str, *, now: datetime | None = None) -> dict:
     """Search the database only; never contact a retailer or mutate catalog data."""
     now = _utc(now or datetime.now(timezone.utc))
-    tokens = re.findall(r"[^\W\d_]+|\d+", query.casefold(), flags=re.UNICODE)
+    tokens = re.findall(r"[^\W\d_]+|\d+(?:[.,]\d+)?", query.casefold(), flags=re.UNICODE)
     if not tokens or all(token == "ml" for token in tokens):
         return {"query": query, "count": 0, "offer_count": 0, "results": [], "status": "completed", "completed": True}
 
@@ -90,7 +90,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     for token in tokens:
         if token == "ml":
             continue
-        if re.fullmatch(r"\\d+(?:[.,]\\d+)?", token):
+        if re.fullmatch(r"\d+(?:[.,]\d+)?", token):
             amount = Decimal(token.replace(",", "."))
             if amount <= 0 or amount > Decimal("10000"):
                 return {"query": query, "count": 0, "offer_count": 0, "results": [], "status": "completed", "completed": True}
