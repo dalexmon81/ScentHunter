@@ -32,6 +32,7 @@ TABLE_ORDER = (
     "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
     "ingestion_runs", "ingestion_artifacts", "ingestion_dead_letters",
     "canonical_identity_reviews", "offers", "price_history", "match_audit",
+    "user_accounts", "user_delivery_destinations", "user_sessions",
 )
 EXPECTED_REVISION = "0015_user_sessions"
 
