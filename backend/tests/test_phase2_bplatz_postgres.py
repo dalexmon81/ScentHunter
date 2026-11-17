@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -17,7 +18,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from app.models import (  # noqa: E402
-    Base, Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap,
+    Base, Brand, Fragrance, ProductVariant, Store, StoreAuthorization, LegacyProductIdMap,
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
 )
 from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
@@ -26,6 +27,22 @@ from app.search.catalog import catalog_status, search_catalog  # noqa: E402
 
 
 DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
+
+def _authorize_bplatz_offer_collection(session, store_id):
+    now = datetime.now(timezone.utc)
+    session.add(StoreAuthorization(
+        store_id=store_id,
+        status="approved",
+        collection_method="affiliate_feed",
+        scopes=["offer_data"],
+        authorization_reference="fixture-explicit-approval",
+        approved_by="test-fixture",
+        approved_at=now,
+        valid_from=now - timedelta(minutes=1),
+        expires_at=now + timedelta(days=1),
+        terms={"fixture": True},
+    ))
+    session.flush()
 
 
 @unittest.skipUnless(DATABASE_URL, "requires disposable PostgreSQL service")
@@ -91,6 +108,7 @@ def test_real_bplatz_stage_match_promote_and_repeat_hydration_on_postgres():
             store = session.scalar(select(Store).where(Store.slug == "bplatz"))
             assert store is not None
             store_id = store.id
+            _authorize_bplatz_offer_collection(session, store_id)
             first = persist_bplatz_record(
                 session, store_id=store_id, raw_record=dict(record), matcher=matcher,
             )
@@ -202,6 +220,10 @@ def test_hydration_worker_persists_bplatz_offer_on_postgres(monkeypatch):
             cwd=ROOT, env=seed_env, text=True, capture_output=True, check=False,
         )
         assert seeded.returncode == 0, seeded.stdout + "\\n" + seeded.stderr
+        with Session(engine) as session, session.begin():
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            assert store is not None
+            _authorize_bplatz_offer_collection(session, store.id)
 
         fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
         meta = json.loads(
