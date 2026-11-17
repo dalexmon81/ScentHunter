@@ -193,6 +193,7 @@ class RateLimiter:
 
     async def acquire(self, *, monotonic=__import__("time").monotonic, sleep=asyncio.sleep):
         async with self._lock:
+            # The first request is immediate; only later calls are spaced.
             now = monotonic()
             wait = max(0.0, self._last_request + self.interval - now) if self._last_request is not None else 0.0
             if wait:
