@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
-from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from app.models import Brand, Fragrance, ProductVariant, ProductIdentifier, Store, LegacyProductIdMap, LegacyVariantIdMap
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -140,6 +140,63 @@ def _parse_size_ml(value) -> Decimal | None:
     return amount
 
 
+def _collect_variant_identifiers(product: dict, variant: dict) -> list[dict]:
+    """Return source identifiers with explicit namespaces; never guess a namespace."""
+    result: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+    brand_namespace = f"brand:{slugify(str(product.get('brand_name') or ''))}"
+
+    def add(kind: str, value, namespace: str, *, source_url: str | None = None):
+        if value in (None, ""):
+            return
+        if not isinstance(value, str):
+            raise ValueError(f"{kind} identifier must be a string")
+        original = value.strip()
+        if not original:
+            return
+        if kind == "gtin":
+            normalized = re.sub(r"[\\s-]", "", original)
+            if not normalized.isdigit() or len(normalized) not in {8, 12, 13, 14}:
+                raise ValueError(f"invalid GTIN {original!r}")
+        else:
+            normalized = re.sub(r"\\s+", "", original).upper()
+        key = (kind, namespace, normalized)
+        if key in seen:
+            return
+        seen.add(key)
+        result.append({
+            "identifier_type": kind,
+            "namespace": namespace,
+            "value": original,
+            "normalized_value": normalized,
+            "source_url": source_url,
+        })
+
+    gtins = variant.get("gtins", [])
+    mpns = variant.get("mpns", [])
+    mappings = variant.get("store_mappings", [])
+    if not isinstance(gtins, list) or not isinstance(mpns, list) or not isinstance(mappings, list):
+        raise ValueError("gtins, mpns, and store_mappings must be arrays")
+    if variant.get("gtin") not in (None, ""):
+        gtins = [*gtins, variant["gtin"]]
+    if variant.get("mpn") not in (None, ""):
+        mpns = [*mpns, variant["mpn"]]
+    for value in gtins:
+        add("gtin", value, "global")
+    for value in mpns:
+        add("mpn", value, brand_namespace)
+    for mapping in mappings:
+        if not isinstance(mapping, dict):
+            raise ValueError("store_mappings entries must be objects")
+        store_name = str(mapping.get("store") or "").strip()
+        sku = mapping.get("sku")
+        if not store_name or not isinstance(sku, str) or not sku.strip():
+            raise ValueError("store mapping requires a store name and non-empty string SKU")
+        store_slug = slugify(store_name)
+        add("sku", sku, f"store:{store_slug}", source_url=mapping.get("url"))
+    return result
+
+
 def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list[str]]:
     products = raw.get("products")
     variants = raw.get("variants")
@@ -150,6 +207,8 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
     product_ids: set[str] = set()
     by_product: dict[str, list[dict]] = {}
     variant_ids: set[str] = set()
+    product_by_id: dict[str, dict] = {}
+    identifier_owners: dict[tuple[str, str, str], str] = {}
 
     for index, row in enumerate(products):
         if not isinstance(row, dict):
@@ -162,6 +221,7 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
         if pid in product_ids:
             blocked.append(f"{pid}: duplicate product_id")
         product_ids.add(pid)
+        product_by_id[pid] = row
         if not str(row.get("brand_name") or "").strip():
             blocked.append(f"{pid}: missing brand_name")
         if not str(row.get("canonical_name") or "").strip():
@@ -186,9 +246,23 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
         size = row.get("size_ml")
         try:
             _parse_size_ml(size)
-        except ValueError:
-            blocked.append(f"{source_id}: invalid size_ml {size!r}")
+            identifiers = _collect_variant_identifiers(product_by_id[pid], row)
+        except ValueError as exc:
+            blocked.append(f"{source_id}: {exc}")
             continue
+        for identifier in identifiers:
+            identifier_key = (
+                identifier["identifier_type"],
+                identifier["namespace"],
+                identifier["normalized_value"],
+            )
+            owner = identifier_owners.get(identifier_key)
+            if owner is not None and owner != source_id:
+                blocked.append(
+                    f"{source_id}: identifier {identifier_key!r} is already assigned to {owner}"
+                )
+            else:
+                identifier_owners[identifier_key] = source_id
         by_product.setdefault(pid, []).append(row)
 
     return products, by_product, blocked
@@ -317,13 +391,62 @@ def main() -> int:
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
-                            gtin=variant.get("gtin"),
+                            gtin=(
+                            _collect_variant_identifiers(product, variant)[0]["value"]
+                            if len([item for item in _collect_variant_identifiers(product, variant) if item["identifier_type"] == "gtin"]) == 1
+                            else None
+                        ),
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
                         session.add(variant_row)
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+
+                    for identifier in _collect_variant_identifiers(product, variant):
+                        store_id = None
+                        if identifier["identifier_type"] == "sku":
+                            store_slug = identifier["namespace"].removeprefix("store:")
+                            store_row = session.scalar(select(Store).where(Store.slug == store_slug))
+                            store_id = store_row.id if store_row is not None else None
+                        existing_identifier = session.scalar(select(ProductIdentifier).where(
+                            ProductIdentifier.identifier_type == identifier["identifier_type"],
+                            ProductIdentifier.namespace == identifier["namespace"],
+                            ProductIdentifier.normalized_value == identifier["normalized_value"],
+                        ))
+                        if existing_identifier is None:
+                            session.add(ProductIdentifier(
+                                id=stable_id(
+                                    "product_identifier",
+                                    "|".join((
+                                        identifier["identifier_type"],
+                                        identifier["namespace"],
+                                        identifier["normalized_value"],
+                                    )),
+                                ),
+                                product_variant_id=variant_row.id,
+                                identifier_type=identifier["identifier_type"],
+                                namespace=identifier["namespace"],
+                                value=identifier["value"],
+                                normalized_value=identifier["normalized_value"],
+                                store_id=store_id,
+                                source_url=identifier["source_url"],
+                            ))
+                        elif existing_identifier.product_variant_id != variant_row.id:
+                            raise RuntimeError(
+                                f"Identifier {identifier['identifier_type']}:{identifier['namespace']}:{identifier['normalized_value']} "
+                                "is already assigned to another variant."
+                            )
+                        elif (
+                            existing_identifier.source_url
+                            and identifier["source_url"]
+                            and existing_identifier.source_url != identifier["source_url"]
+                        ):
+                            raise RuntimeError(
+                                f"Identifier source URL conflict for {identifier['namespace']}:{identifier['normalized_value']}."
+                            )
+                        elif existing_identifier.source_url is None and identifier["source_url"]:
+                            existing_identifier.source_url = identifier["source_url"]
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
@@ -344,7 +467,7 @@ def main() -> int:
         expected_tables = {
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
-            "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
+            "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map", "product_identifiers",
         }
         actual_tables = set(inspector.get_table_names())
         if not expected_tables.issubset(actual_tables):
