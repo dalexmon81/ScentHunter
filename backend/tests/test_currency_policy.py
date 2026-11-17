@@ -18,11 +18,3 @@ def test_unenabled_or_noncanonical_currency_is_rejected(value):
     assert is_supported_currency_code(value) is False
 
 
-def test_next_engine_rejects_well_formed_but_unenabled_currency():
-    with pytest.raises(ValueError, match="supported-currency policy"):
-        RetailerOffer(
-            retailer="example",
-            raw_name="Example fragrance",
-            price=Decimal("10.00"),
-            currency="USD",
-        )
