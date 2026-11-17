@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 import pytest
 
 from app.models import Base, Store
-from scripts.seed_catalog import _parse_size_ml, ensure_bplatz_store, validate_catalog
+from scripts.seed_catalog import _collect_variant_identifiers, _parse_size_ml, ensure_bplatz_store, validate_catalog
 
 
 def test_seed_size_parser_preserves_fractional_precision():
@@ -85,3 +85,60 @@ def test_bplatz_seed_preserves_existing_operator_ttl_and_fills_missing_value():
             assert seeded_again.offer_ttl_minutes == 1440
     finally:
         engine.dispose()
+
+
+
+def test_variant_identifier_collection_preserves_gtin_mpn_and_store_sku_namespaces():
+    product = {"brand_name": "Lancôme"}
+    variant = {
+        "variant_id": "variant-1",
+        "gtins": ["4006381333931"],
+        "mpns": ["abc-123"],
+        "store_mappings": [{
+            "store": "Deloox",
+            "sku": "sku-009",
+            "url": "https://www.deloox.com/product/sku-009",
+        }],
+    }
+
+    identifiers = _collect_variant_identifiers(product, variant)
+    by_type = {item["identifier_type"]: item for item in identifiers}
+
+    assert by_type["gtin"]["namespace"] == "global"
+    assert by_type["gtin"]["normalized_value"] == "4006381333931"
+    assert by_type["mpn"]["namespace"] == "brand:lancome"
+    assert by_type["mpn"]["normalized_value"] == "ABC-123"
+    assert by_type["sku"]["namespace"] == "store:deloox"
+    assert by_type["sku"]["normalized_value"] == "SKU-009"
+    assert by_type["sku"]["source_url"] == "https://www.deloox.com/product/sku-009"
+
+
+def test_variant_identifier_collection_deduplicates_same_normalized_identifier():
+    identifiers = _collect_variant_identifiers(
+        {"brand_name": "Test"},
+        {"gtins": ["4006381333931", "4006-3813-33931"]},
+    )
+    assert len(identifiers) == 1
+
+
+@pytest.mark.parametrize("value", ["123", "ABCDEFGHIJKLM", "4006381333931X"])
+def test_variant_identifier_collection_rejects_invalid_gtin(value):
+    with pytest.raises(ValueError, match="invalid GTIN"):
+        _collect_variant_identifiers({"brand_name": "Test"}, {"gtins": [value]})
+
+
+def test_catalog_validation_rejects_identifier_collision_across_variants():
+    products = [{
+        "product_id": "product-1",
+        "brand_name": "Test Brand",
+        "canonical_name": "Test Fragrance",
+    }]
+    variants = [
+        {"variant_id": "variant-1", "product_id": "product-1", "size_ml": "50", "gtins": ["4006381333931"]},
+        {"variant_id": "variant-2", "product_id": "product-1", "size_ml": "100", "gtins": ["4006381333931"]},
+    ]
+    _products, _by_product, blocked = validate_catalog({
+        "products": products,
+        "variants": variants,
+    })
+    assert any("already assigned to variant-1" in item for item in blocked)
