@@ -761,8 +761,8 @@ def _persist_staged_offers(stage, count, started_at, deadline):
                    SELECT ?,url,MIN(slug),NULL,?,1 FROM notino_stage.offers
                    WHERE 1 GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
-                     slug=excluded.slug,discovered_at=excluded.discovered_at,active=1
-                   WHERE store_urls.slug IS NOT excluded.slug OR store_urls.active != 1""",
+                     active=1
+                   WHERE store_urls.active != 1""",
                 (STORE_KEY, now),
             )
 
@@ -878,20 +878,26 @@ def _import_stream(source, started_at, deadline=None):
                     concentration TEXT, affiliate_url TEXT, legacy_variant_key TEXT, slug TEXT,
                     PRIMARY KEY(url, variant_key)) WITHOUT ROWID""")
             with _profile_phase("feed_parse_and_stage_insert"):
+                insert_sql = """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                batch = []
                 with _xml_stream(source, deadline) as stream:
                     for offer in _parsed_offers(stream, stats):
                         if deadline is not None and time.monotonic() >= deadline:
                             raise FeedImportError("notino_feed_import_timeout")
-                        stage.execute(
-                            """INSERT OR REPLACE INTO offers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                            (offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
-                             offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
-                             offer.currency, offer.availability, offer.image, offer.concentration,
-                             offer.affiliate_url, _legacy_variant_key({
-                                 "size_ml": offer.size_ml, "gtin": offer.gtin,
-                                 "sku": offer.sku, "external_id": offer.external_id,
-                             }), _slug(offer.url)),
-                        )
+                        batch.append((
+                            offer.url, _stable_variant_key(offer), offer.external_id, offer.title,
+                            offer.brand, offer.gtin, offer.sku, offer.mpn, offer.size_ml, offer.price,
+                            offer.currency, offer.availability, offer.image, offer.concentration,
+                            offer.affiliate_url, _legacy_variant_key({
+                                "size_ml": offer.size_ml, "gtin": offer.gtin,
+                                "sku": offer.sku, "external_id": offer.external_id,
+                            }), _slug(offer.url),
+                        ))
+                        if len(batch) >= 500:
+                            stage.executemany(insert_sql, batch)
+                            batch.clear()
+                if batch:
+                    stage.executemany(insert_sql, batch)
                 stage.commit()
             staged_count = stage.execute("SELECT COUNT(*) FROM offers").fetchone()[0]
             LOGGER.warning(
