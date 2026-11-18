@@ -1,0 +1,29 @@
+name: Retailer connector contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/app/connectors/**"
+      - "backend/tests/test_store_connector_contract.py"
+      - ".github/workflows/retailer-connector-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  connector-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile connector package
+        run: python -m compileall -q backend/app/connectors
+      - name: Run connector contract tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p "test_store_connector_contract.py" -v
