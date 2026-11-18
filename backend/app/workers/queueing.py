@@ -27,7 +27,7 @@ class QueueNotConfigured(RuntimeError):
 
 
 def _backend() -> str:
-    value = os.environ.get("SCENTHUNTER_QUEUE_BACKEND", "sqlite").strip().lower()
+    value = os.environ.get("SCENTHUNTER_QUEUE_BACKEND", "redis").strip().lower()
     if value not in {"sqlite", "redis"}:
         raise RuntimeError("SCENTHUNTER_QUEUE_BACKEND must be sqlite or redis")
     return value
