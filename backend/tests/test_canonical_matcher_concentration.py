@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scenthunter_next_engine.catalog_repository import CatalogRepository
-from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
-from scenthunter_next_engine.models import MatchStatus, RetailerOffer
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from backend.scenthunter_next_engine.models import MatchStatus, RetailerOffer
 
 
 class CanonicalMatcherConcentrationTests(unittest.TestCase):
