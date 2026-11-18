@@ -5,8 +5,10 @@ on:
     branches: [refactor/catalog-first-architecture]
     paths:
       - "backend/app/workers/**"
+      - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/requirements.txt"
+      - "backend/app/workers/README.md"
       - ".github/workflows/catalog-worker-queue.yml"
 
 permissions:
@@ -40,3 +42,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Verify explicit Notino discovery kickoff CLI
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python scripts/enqueue_notino_discovery.py --help
