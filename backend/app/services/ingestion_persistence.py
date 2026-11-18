@@ -205,18 +205,13 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.confidence = confidence if confidence is not None else row.match_confidence
         existing.valid_until = None
         existing.status = "active"
-        # A redelivered identical feed record must not manufacture a second
-        # price-history point. Record history only when the commercial state
-        # (price, currency or stock) actually changes.
-        if (
-            existing.price != price
-            or existing.currency != currency
-            or existing.availability != availability
-        ):
-            session.add(PriceHistory(
-                offer_id=existing.id, price=price,
-                currency=currency, availability=availability,
-            ))
+        # Keep one current Offer row per store/product, but preserve every
+        # successful refresh observation in price history. Identical prices at
+        # different capture times are still useful evidence of price stability.
+        session.add(PriceHistory(
+            offer_id=existing.id, price=price,
+            currency=currency, availability=availability,
+        ))
         offer_id = existing.id
         session.flush()
 
