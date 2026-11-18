@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flyctl logs --app "$FLY_APP" --no-tail --since 30m || true
+          flyctl logs --app "$FLY_APP" --no-tail || true
           machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
           printf '%s\\n' "$machine_json"
           machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["id"] if rows else "")')"
@@ -68,6 +68,9 @@ jobs:
           set -eu
           echo "SEED_EXIT=$(cat /data/catalog/catalog_seed.exit 2>/dev/null || echo NOT_FINISHED)"
           ls -lh /data/catalog
+          echo "=== ACTIVE MIGRATION/SEED PROCESSES ==="
+          ps -ef | grep -E 'seed_catalog|alembic' | grep -v grep || true
+          echo "=== SEED LOG ==="
           tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
           /app/.venv/bin/python - <<'PY'
           import os, sqlite3
