@@ -35,3 +35,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_catalog_ingestion_run.py' -v
+      - name: Run Notino worker runtime tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
