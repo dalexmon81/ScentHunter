@@ -15,15 +15,19 @@ worker-loss rejection, prefetch=1 and bounded exponential retry with jitter.
 This is queue infrastructure, not a claim that a live worker is already running.
 Before enabling it in the isolated pilot:
 
-1. Provision a dedicated Redis instance and set SCENTHUNTER_REDIS_URL only on
+1. Move the pilot catalog from its machine-local SQLite volume to shared
+   PostgreSQL. A separate Fly machine cannot share the app machine's SQLite
+   volume; do not start a second worker against a separate local DB.
+2. Provision a dedicated Redis instance and set SCENTHUNTER_REDIS_URL only on
    the pilot app and worker.
-2. Add a separate worker process/deployment; do not run ingestion inside FastAPI.
-3. Register stage handlers using the canonical DB session factory, connector
+3. Add a separate worker process/deployment; do not run ingestion inside FastAPI.
+4. Register stage handlers using the canonical DB session factory, connector
    registry and persist_connector_record. The Notino discovery and fetch
    handlers are now wired; other retailers remain unregistered.
-4. Persist ingestion-run counters, connector failure streaks and quarantine
-   state before enabling recurring schedules.
-5. Verify idempotency and recovery using a disposable DB and a real Redis broker.
+5. Persist connector failure streaks and quarantine state before enabling
+   recurring schedules.
+6. Verify idempotency and recovery using a disposable PostgreSQL DB and a real
+   Redis broker.
 
 No Redis connection is attempted at import time. Queue submission fails closed
 when no explicit Redis URL exists. The production app and legacy refresh worker
@@ -56,5 +60,5 @@ product fetch has a durable `IngestionRun` record. Unmatched products remain in
 staging and are not published.
 
 The pilot catalog must explicitly seed the `notino-fr` store with
-`seed_catalog.py --apply --seed-notino-store`. A Redis broker and separate
-Celery worker are still required before these handlers can execute.
+`seed_catalog.py --apply --seed-notino-store`. A Redis broker, shared PostgreSQL catalog, and separate Celery worker are
+still required before these handlers can execute.
