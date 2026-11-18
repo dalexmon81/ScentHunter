@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.connectors.base import StoreConnector
 from app.models import IngestionRaw
+from app.services.canonical_matching import resolve_canonical_variant
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
@@ -84,6 +85,54 @@ def persist_connector_record(
             reason=reason, unresolved_status="pending",
         )
         return ConnectorIngestionResult(raw_id, "pending", reason=reason)
+
+    # Prefer database-native canonical identity. The legacy matcher remains a
+    # transitional fallback only when the new matcher cannot establish a safe
+    # match; it is never allowed to override a successful canonical resolution.
+    canonical = resolve_canonical_variant(
+        session, store_id=store_id,
+        external_product_id=str(external_id) if external_id else None,
+        record=parsed,
+    )
+    if canonical.match is not None:
+        resolved_variant_id = canonical.match.product_variant_id
+        record_match(
+            session, ingestion_raw_id=raw_id,
+            product_variant_id=resolved_variant_id,
+            method=canonical.match.method,
+            confidence=canonical.match.confidence,
+            reason=canonical.match.reason,
+        )
+        validation = connector.validate_offer(parsed)
+        if not validation.valid:
+            return ConnectorIngestionResult(
+                raw_id, "matched", product_variant_id=resolved_variant_id,
+                reason=";".join(validation.errors),
+            )
+        if not raw_payload["currency_explicit"]:
+            return ConnectorIngestionResult(
+                raw_id, "matched", product_variant_id=resolved_variant_id,
+                reason="currency_not_explicit_in_source",
+            )
+        if (
+            not isinstance(normalized.price, Decimal)
+            or not normalized.price.is_finite() or normalized.price <= 0
+        ):
+            return ConnectorIngestionResult(
+                raw_id, "matched", product_variant_id=resolved_variant_id,
+                reason="missing_or_invalid_price",
+            )
+        offer_id = promote_offer(
+            session, ingestion_raw_id=raw_id, price=normalized.price,
+            currency=normalized.currency, url=normalized.product_url or "",
+            availability=normalized.availability or "",
+            source=str(parsed.get("source") or f"{connector.store_key}_connector"),
+            confidence=canonical.match.confidence,
+        )
+        return ConnectorIngestionResult(
+            raw_id, "promoted", offer_id=offer_id,
+            product_variant_id=resolved_variant_id,
+        )
 
     aggregation = matcher.process_offers([normalized])
     if (
