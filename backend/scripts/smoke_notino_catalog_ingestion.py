@@ -1,8 +1,4 @@
-"""Bounded real Notino CJ feed-to-canonical-offer smoke test.
-
-Downloads the authorized feed to a temporary file, parses it incrementally,
-and persists only the first uniquely matched 100 ml target offer.
-"""
+"""Stream the authorized Notino CJ feed and persist the first safe canonical match."""
 from __future__ import annotations
 
 import os
@@ -25,26 +21,28 @@ from scenthunter_next_engine.offer_normalizer import normalize_offer
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "product_catalog.json"
 
 
-def _target_record(record: dict) -> bool:
-    title = str(record.get("title") or "").lower()
-    brand = str(record.get("brand") or "").lower()
+def _eligible(record: dict) -> bool:
     try:
-        size = float(record.get("size_ml") or 0)
+        size = Decimal(str(record.get("size_ml") or "0"))
         price = Decimal(str(record.get("price") or "0"))
     except Exception:
         return False
-    if size != 100 or price <= 0:
-        return False
-    if record.get("currency_explicit") is not True:
-        return False
-    if record.get("availability") not in {"in_stock", "out_of_stock"}:
-        return False
-    liquid_brun = "liquid brun" in title and "french avenue" in brand
-    sauvage = "sauvage" in title and "dior" in brand and "eau de parfum" in title
-    return liquid_brun or sauvage
+    return (
+        size > 0
+        and price > 0
+        and bool(record.get("brand"))
+        and bool(record.get("title"))
+        and record.get("currency_explicit") is True
+        and record.get("availability") in {"in_stock", "out_of_stock"}
+        and bool(record.get("product_url") or record.get("url"))
+        and not bool(record.get("is_tester"))
+        and not bool(record.get("is_refill"))
+        and not bool(record.get("is_gift_set"))
+    )
 
 
 def main() -> int:
+    print("NOTINO_SMOKE_START=1", flush=True)
     required = ("NOTINO_CJ_FEED_USERNAME", "NOTINO_CJ_FEED_PASSWORD")
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
@@ -53,7 +51,9 @@ def main() -> int:
         raise SystemExit("CANONICAL_MATCHER_CATALOG_MISSING")
 
     connector = NotinoAffiliateFeedConnector(cache_ttl_seconds=900)
+    print("NOTINO_CONNECTOR_READY=1", flush=True)
     matcher = NextEngineService.from_catalog_file(CATALOG_PATH)
+    print("NOTINO_MATCHER_READY=1", flush=True)
     engine = make_engine()
     try:
         with Session(engine) as session:
@@ -61,9 +61,11 @@ def main() -> int:
             if store is None or store.status != "active":
                 raise SystemExit("NOTINO_CANONICAL_STORE_NOT_ACTIVE")
             store_id = store.id
+        print("NOTINO_STORE_READY=1", flush=True)
 
         downloaded_bytes = 0
         scanned = 0
+        eligible = 0
         stats: dict = {}
         print("NOTINO_CJ_FEED_DOWNLOAD_STARTED=1", flush=True)
         with tempfile.TemporaryFile(mode="w+b") as payload:
@@ -74,11 +76,9 @@ def main() -> int:
                 for feed_offer in affiliate_feed._parsed_offers(stream, stats):
                     scanned += 1
                     record = connector._to_record(feed_offer)
-                    if not _target_record(record):
-                        if scanned % 10000 == 0:
-                            print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
+                    if not _eligible(record):
                         continue
-
+                    eligible += 1
                     parsed = connector.parse_raw(record)
                     normalized = normalize_offer(parsed, retailer=connector.store_key)
                     aggregation = matcher.process_offers([normalized])
@@ -87,6 +87,7 @@ def main() -> int:
                         or aggregation.matched_offer_count != 1
                         or len(aggregation.groups) != 1
                         or len(aggregation.groups[0].offers) != 1
+                        or not getattr(aggregation.groups[0], "canonical_variant_id", None)
                     ):
                         continue
 
@@ -104,7 +105,6 @@ def main() -> int:
                         )
                         session.add(run)
                         session.flush()
-
                         result = persist_connector_record(
                             session,
                             connector=connector,
@@ -137,6 +137,7 @@ def main() -> int:
 
                         print("NOTINO_CJ_FEED_DOWNLOAD=PASS", flush=True)
                         print("NOTINO_CJ_FEED_RECORDS_SCANNED=" + str(scanned), flush=True)
+                        print("NOTINO_CJ_FEED_ELIGIBLE_RECORDS=" + str(eligible), flush=True)
                         print("NOTINO_CANONICAL_MATCH=PASS", flush=True)
                         print("NOTINO_OFFER_PERSISTENCE=PASS", flush=True)
                         print("NOTINO_OFFER_ID=" + str(offer.id), flush=True)
@@ -146,12 +147,18 @@ def main() -> int:
                         print("NOTINO_OFFER_STATUS=" + str(offer.status), flush=True)
                         return 0
 
+                    if scanned % 5000 == 0:
+                        print(
+                            "NOTINO_CJ_FEED_SCANNED=" + str(scanned)
+                            + " ELIGIBLE=" + str(eligible),
+                            flush=True,
+                        )
+
         raise SystemExit(
-            "NOTINO_CJ_FEED_DOWNLOADED_BYTES="
-            + str(downloaded_bytes)
-            + "; RECORDS_SCANNED="
-            + str(scanned)
-            + "; NO_SAFE_CANONICAL_100ML_TARGET_OFFER_PROMOTED"
+            "NOTINO_CJ_FEED_DOWNLOADED_BYTES=" + str(downloaded_bytes)
+            + "; RECORDS_SCANNED=" + str(scanned)
+            + "; ELIGIBLE_RECORDS=" + str(eligible)
+            + "; NO_UNIQUE_CANONICAL_VARIANT_PROMOTED"
         )
     finally:
         engine.dispose()
