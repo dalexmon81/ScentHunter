@@ -31,6 +31,11 @@ _GENERIC_TITLE_SUFFIXES = (
     "eau de parfum",
     "eau de toilette",
     "eau de cologne",
+    # Retailer feeds often abbreviate concentration at the end of the title.
+    # These tokens describe concentration, not a distinct fragrance identity.
+    "edp",
+    "edt",
+    "edc",
     "parfum",
     "perfume",
     "for men",
