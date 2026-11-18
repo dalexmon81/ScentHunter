@@ -1,0 +1,30 @@
+# Isolated ScentHunter pilot configuration.
+# Never use this file for production; it targets a dedicated app and volume.
+app = "scenthunter-pilot-20261030"
+primary_region = "ams"
+
+[build]
+
+[env]
+  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"
+  SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"
+  SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[mounts]
+  source = "scenthunter_pilot_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
