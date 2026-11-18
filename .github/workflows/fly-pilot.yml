@@ -25,7 +25,7 @@ jobs:
     name: Deploy isolated pilot (not production)
     if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_deploy == 'deploy') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[pilot-deploy]')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pilot-20261030
@@ -177,7 +177,7 @@ jobs:
           encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
           flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
 
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 240); do
             poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/catalog_seed.exit ]; then echo SEED_EXIT_CODE=\$(cat /data/catalog/catalog_seed.exit); else echo SEED_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
               echo "Seed status poll failed ($attempt/60): $poll"
               sleep 5
@@ -192,8 +192,8 @@ jobs:
               flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
               exit 1
             fi
-            if [ "$attempt" -eq 60 ]; then
-              echo "Catalog migration/seed did not finish within 5 minutes." >&2
+            if [ "$attempt" -eq 240 ]; then
+              echo "Catalog migration/seed did not finish within 20 minutes." >&2
               flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
               exit 1
             fi
