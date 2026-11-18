@@ -62,3 +62,15 @@ staging and are not published.
 The pilot catalog must explicitly seed the `notino-fr` store with
 `seed_catalog.py --apply --seed-notino-store`. A Redis broker, shared PostgreSQL catalog, and separate Celery worker are
 still required before these handlers can execute.
+
+
+After the shared PostgreSQL catalog, Redis broker, and worker are ready, the
+first Notino run is an explicit operator action:
+
+```bash
+cd backend
+python scripts/enqueue_notino_discovery.py --limit 100
+```
+
+The command only enqueues a discovery task. It fails closed if Redis is not
+configured or the active `notino-fr` store has not been seeded.
