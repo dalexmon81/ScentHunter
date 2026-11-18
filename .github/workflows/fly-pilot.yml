@@ -208,6 +208,12 @@ jobs:
               raise SystemExit("Pilot smoke test failed: " + str(last_error))
           PY
 
+      - name: Set up Python for API.SH smoke
+        if: ${{ env.APISH_API_KEY != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Verify API.SH Notino provider (one bounded search)
         if: ${{ env.APISH_API_KEY != '' }}
         shell: bash
