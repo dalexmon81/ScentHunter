@@ -55,6 +55,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         connector = NotinoAffiliateFeedConnector(feed_loader=lambda: DIOR_FEED)
         raw = await connector.fetch_product("SAUVAGE100")
         self.assertIsNotNone(raw)
+        self.assertIn("<g:id>SAUVAGE100</g:id>", raw["raw_xml"])
         normalized = connector.parse_raw(raw)
         validation = connector.validate_offer(normalized)
         self.assertTrue(validation.valid, validation.errors)
