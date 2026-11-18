@@ -42,6 +42,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Run canonical database matching tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
       - name: Verify explicit Notino discovery kickoff CLI
         working-directory: backend
         env:
