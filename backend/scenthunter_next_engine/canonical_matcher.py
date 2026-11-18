@@ -40,6 +40,12 @@ _GENERIC_TITLE_SUFFIXES = (
     "perfume",
     "for men",
     "for women",
+    # French retailer feeds append these gender descriptors to otherwise
+    # exact fragrance titles (e.g. "Liquid Brun Eau de Parfum pour homme").
+    "pour homme",
+    "pour femme",
+    "pour les hommes",
+    "pour les femmes",
     "unisex",
 )
 
