@@ -23,7 +23,7 @@ For local tests:
 
 ```bash
 cd backend
-PYTHONPATH=. pytest -q tests/test_sqlite_ingestion_queue.py tests/test_catalog_worker_queue.py tests/test_notino_worker_runtime.py
+PYTHONPATH=. python -m unittest discover -s tests -p 'test_sqlite_ingestion_queue.py' -v\nPYTHONPATH=. python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v\nPYTHONPATH=. python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
 ```
 
 Redis/Celery remains available as an optional future backend by setting
