@@ -265,6 +265,13 @@ jobs:
               raise SystemExit("Pilot smoke test failed: " + str(last_error))
           PY
 
+      - name: Verify one real Notino CJ feed offer through canonical persistence
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app "$FLY_APP" --select=false -C "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_notino_catalog_ingestion.py'"
+
       - name: Verify API.SH Notino provider inside the isolated Fly app
         if: ${{ env.APISH_API_KEY != '' }}
         shell: bash
