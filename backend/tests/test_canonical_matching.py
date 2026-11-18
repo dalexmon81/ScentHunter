@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models import Base, Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
 from decimal import Decimal
 from app.services.ingestion_persistence import promote_offer, record_match, stage_raw_offer
-from app.services.canonical_matching import resolve_canonical_variant
+from app.services.canonical_matching import _gtin, resolve_canonical_variant
 
 
 class CanonicalMatchingTests(unittest.TestCase):
@@ -111,6 +111,16 @@ class CanonicalMatchingTests(unittest.TestCase):
         )
         self.assertEqual(result.match.product_variant_id, self.variant.id)
         self.assertEqual(result.match.method, "gtin_exact")
+
+    def test_gtin_checksum_validation_supports_all_gs1_lengths(self):
+        for value in (
+            "00000000",
+            "000000000000",
+            "0000000000000",
+            "00000000000000",
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(_gtin(value), value)
 
     def test_invalid_gtin_check_digit_is_rejected(self):
         result = resolve_canonical_variant(
