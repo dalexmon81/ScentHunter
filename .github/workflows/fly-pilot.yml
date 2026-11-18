@@ -33,6 +33,8 @@ jobs:
       FLY_VOLUME: scenthunter_pilot_data
       PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
       APISH_API_KEY: ${{ secrets.APISH_API_KEY }}
+      CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+      CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
     steps:
       - name: Checkout the architecture branch only
         uses: actions/checkout@v4
@@ -116,6 +118,20 @@ jobs:
           fi
 
       # APISH_API_KEY is provisioned once as a Fly secret; do not reset it on every deploy.
+      - name: Stage authorized Notino CJ feed credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$CJ_HTTP_USERNAME" || -z "$CJ_HTTP_PASSWORD" ]]; then
+            echo "::error::Missing CJ_HTTP_USERNAME or CJ_HTTP_PASSWORD Actions secret; Notino feed cannot be configured."
+            exit 1
+          fi
+          flyctl secrets set --stage \
+            "NOTINO_CJ_FEED_URL=https://datatransfer.cj.com/datatransfer/files/8115142/outgoing/productcatalog/324587/NOTINO_fr-NotinoFR_google_all-shopping.xml.zip" \
+            "NOTINO_CJ_FEED_USERNAME=$CJ_HTTP_USERNAME" \
+            "NOTINO_CJ_FEED_PASSWORD=$CJ_HTTP_PASSWORD" \
+            --app "$FLY_APP"
+
       - name: Deploy pilot app
         timeout-minutes: 15
         shell: bash
