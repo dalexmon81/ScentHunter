@@ -76,11 +76,26 @@ jobs:
           tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
           echo "=== MEMORY (live ingestion follow-up) ==="
           cat /proc/meminfo | head -n 12 || true
-          echo "=== ACTIVE PYTHON PROCESSES ==="
-          for proc in /proc/[0-9]*/cmdline; do
-            command="$(tr '\\000' ' ' < "$proc" 2>/dev/null || true)"
-            case "$command" in *python*|*uvicorn*) echo "$proc $command" ;; esac
-          done
+          echo "=== ACTIVE PYTHON PROCESS DETAILS ==="
+          /app/.venv/bin/python - <<'PY'
+          import glob, os
+          for path in glob.glob("/proc/[0-9]*/cmdline"):
+              try:
+                  pid = int(path.split("/")[2])
+                  cmd = open(path, "rb").read().replace(b"\\0", b" ").decode("utf-8", "replace")
+                  if "smoke_notino_catalog_ingestion.py" not in cmd:
+                      continue
+                  status = open(f"/proc/{pid}/status").read()
+                  selected = [line for line in status.splitlines() if line.startswith(("State:", "VmRSS:", "VmSize:", "Threads:"))]
+                  stat = open(f"/proc/{pid}/stat").read().split()
+                  print("NOTINO_PID=" + str(pid), "UTIME=" + stat[13], "STIME=" + stat[14], " ".join(selected), flush=True)
+                  try:
+                      print("WCHAN=" + open(f"/proc/{pid}/wchan").read().strip(), flush=True)
+                  except OSError:
+                      pass
+              except (OSError, ValueError, IndexError):
+                  pass
+          PY
           echo "=== SEED LOG ==="
           tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
           /app/.venv/bin/python - <<'PY'
