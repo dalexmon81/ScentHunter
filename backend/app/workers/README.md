@@ -30,3 +30,15 @@ remain unchanged.
 
 Run focused tests from backend with:
 python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v
+
+
+## Durable ingestion run tracking
+
+`app.workers.ingestion_run` provides transaction-scoped helpers for creating,
+updating, and closing `IngestionRun` rows. A worker should record progress in
+small transactions, retain bounded error messages, and close each run as
+`completed`, `partial`, or `failed`. The helpers never commit on behalf of
+the caller.
+
+This is persistence infrastructure only. It does not register retailer handlers,
+start Celery workers, provision Redis, or activate ingestion.
