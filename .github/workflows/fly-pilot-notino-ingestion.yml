@@ -14,13 +14,16 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[pilot-notino-ingestion]') }}
     concurrency:
       group: scent-hunter-notino-pilot-ingestion
-      cancel-in-progress: false
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pilot-20261030
     steps:
+      - name: Checkout current pilot code
+        uses: actions/checkout@v4
+
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -45,9 +48,11 @@ jobs:
           machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=json.load(sys.stdin); started=[r for r in rows if r.get("state")=="started"]; print(started[0]["id"] if started else "")')"
           test -n "$machine_id" || { echo "No started pilot machine." >&2; exit 1; }
 
-          remote_script="$(cat <<'REMOTE'
+          script_b64="$(base64 -w0 backend/scripts/smoke_notino_catalog_ingestion.py)"
+          remote_script="$(cat <<REMOTE
           set -eu
           mkdir -p /data/catalog
+          printf '%s' '$script_b64' | base64 -d > /app/backend/scripts/smoke_notino_catalog_ingestion.py
           /app/.venv/bin/python - <<'PY'
           import glob, os, signal
           for path in glob.glob("/proc/[0-9]*/cmdline"):
