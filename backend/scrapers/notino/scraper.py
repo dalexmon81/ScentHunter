@@ -1106,7 +1106,7 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if _allow_variants:
         variant_urls = _extract_product_variant_urls(text, candidate["url"])
         sibling_results: List[Dict[str, Any]] = []
-        for variant_url in variant_urls:
+        for variant_url in variant_urls[:2]:
             if variant_url.rstrip("/").casefold() == candidate["url"].rstrip("/").casefold():
                 continue
             variant_candidate = dict(candidate)
@@ -1646,13 +1646,13 @@ def _search_public(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         finally:
             session.close()
 
-        candidates = candidates[:4]
+        candidates = candidates[:2]
         diagnostics["candidate_count"] = len(candidates)
         if not candidates:
             return [], diagnostics
 
         results: List[Dict[str, Any]] = []
-        with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as executor:
+        with ThreadPoolExecutor(max_workers=min(2, len(candidates))) as executor:
             futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
             for future in as_completed(futures):
                 try:
@@ -1665,7 +1665,7 @@ def _search_public(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
                 elif isinstance(item, dict):
                     results.append(item)
 
-        return _dedupe_results(results)[:4], diagnostics
+        return _dedupe_results(results)[:2], diagnostics
     finally:
         TIMEOUT, READER_TIMEOUT, RETRY_COUNT = previous_limits
 
