@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - "backend/app/connectors/**"
-      - "backend/tests/test_store_connector_contract.py"
+      - "backend/scrapers/notino/affiliate_feed.py"
+      - "backend/tests/test_*connector*.py"
       - ".github/workflows/retailer-connector-contract.yml"
 
 permissions:
@@ -26,4 +27,4 @@ jobs:
         working-directory: backend
         env:
           PYTHONPATH: .
-        run: python -m unittest discover -s tests -p "test_store_connector_contract.py" -v
+        run: python -m unittest discover -s tests -p "test_*connector*.py" -v
