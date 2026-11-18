@@ -208,30 +208,12 @@ jobs:
               raise SystemExit("Pilot smoke test failed: " + str(last_error))
           PY
 
-      - name: Set up Python for API.SH smoke
-        if: ${{ env.APISH_API_KEY != '' }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Verify API.SH Notino provider (one bounded search)
+      - name: Verify API.SH Notino provider inside the isolated Fly app
         if: ${{ env.APISH_API_KEY != '' }}
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --quiet requests beautifulsoup4
-          PYTHONPATH=backend python - <<'PY'
-          import json
-          from scrapers.notino.scraper import _search_apish
-
-          rows, diagnostics = _search_apish("French Avenue Liquid Brun 100 ml")
-          safe = {key: value for key, value in diagnostics.items() if key not in {"api_key", "token"}}
-          print("APISH_DIAGNOSTICS=" + json.dumps(safe, ensure_ascii=False))
-          print("APISH_VERIFIED_OFFERS=" + str(len(rows)))
-          if diagnostics.get("error"):
-              raise SystemExit("API.SH provider request failed: " + str(diagnostics["error"]))
-          print("APISH_PROVIDER_REQUEST=PASS")
-          PY
+          flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_apish_notino.py'"
 
       - name: Print pilot URL
         if: success()
