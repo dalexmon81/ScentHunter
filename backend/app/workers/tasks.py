@@ -48,3 +48,11 @@ def quarantine_failed_connector(self, payload: dict):
 @celery_app.task(bind=True, base=RetryableCatalogTask, name="app.workers.tasks.reprocess_failed_offers")
 def reprocess_failed_offers(self, payload: dict):
     return _execute("reprocess", payload)
+
+
+# Importing the task module is the worker bootstrap boundary. Registration is
+# local-only: it constructs no DB engine, downloads no feed, and opens no Redis
+# connection until a task is actually executed.
+from app.workers.notino_runtime import register_notino_handlers
+
+register_notino_handlers()
