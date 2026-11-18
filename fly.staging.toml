@@ -6,11 +6,9 @@ primary_region = "ams"
 [build]
 
 [env]
-  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
-  SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"
-  SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"
-  SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"
+  BPLATZ_PHASE2_PERSISTENCE = "1"
 
 [http_service]
   internal_port = 8080
