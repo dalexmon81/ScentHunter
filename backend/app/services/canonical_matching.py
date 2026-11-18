@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Brand, Fragrance, Offer, ProductVariant
 from app.models.normalization import (
-    build_identity, normalize_brand, normalize_fragrance_name, normalize_text,
+    build_identity, extract_concentration, normalize_brand, normalize_fragrance_name, normalize_text,
 )
 
 
@@ -114,7 +114,7 @@ def resolve_canonical_variant(
             continue
         if normalize_fragrance_name(fragrance.name) != identity.fragrance:
             continue
-        if normalize_text(variant.concentration) != normalize_text(identity.concentration):
+        if extract_concentration(variant.concentration) != identity.concentration:
             continue
         if (
             variant.size_ml == identity.size_ml
