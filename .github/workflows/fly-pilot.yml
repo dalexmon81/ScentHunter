@@ -310,7 +310,7 @@ jobs:
           PY
 
 # Detached Notino ingestion verification is polled through the persistent volume exit marker.
-      # Re-run this isolated pilot workflow after shell-level smoke-test fixes.
+      # Worker process verification uses /proc so minimal runtime images need no ps package.
       - name: Verify one real Notino CJ feed offer through canonical persistence
         timeout-minutes: 20
         shell: bash
