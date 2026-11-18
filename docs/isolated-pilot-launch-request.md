@@ -8,3 +8,5 @@ Database: dedicated SQLite file on `scenthunter_pilot_data`
 Production app and production volume are not targets.
 
 This file is an execution marker only; it contains no credentials.
+
+Retry after correcting Fly token newline handling.
