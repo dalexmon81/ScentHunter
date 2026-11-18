@@ -29,18 +29,19 @@ jobs:
       FLY_ORG: personal
       FLY_VOLUME: scenthunter_pilot_data
       PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+      APISH_API_KEY: ${{ secrets.APISH_API_KEY }}
     steps:
       - name: Checkout the architecture branch only
         uses: actions/checkout@v4
         with:
-          ref: architecture/offer-engine-v1
+          ref: refactor/catalog-first-architecture
 
       - name: Validate isolated target and Fly token
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = "architecture/offer-engine-v1" || {
-            echo "Run this workflow from architecture/offer-engine-v1 only." >&2
+          test "$GITHUB_REF_NAME" = "refactor/catalog-first-architecture" || {
+            echo "Run this workflow from refactor/catalog-first-architecture only." >&2
             exit 1
           }
           test -n "$FLY_API_TOKEN" || {
@@ -110,6 +111,13 @@ jobs:
               --count 1 \
               --yes
           fi
+
+      - name: Configure optional API.SH provider key
+        if: ${{ env.APISH_API_KEY != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl secrets set APISH_API_KEY="$APISH_API_KEY" --app "$FLY_APP"
 
       - name: Deploy pilot app
         shell: bash
