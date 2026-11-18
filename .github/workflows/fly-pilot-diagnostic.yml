@@ -1,0 +1,77 @@
+name: Diagnose isolated ScentHunter pilot
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-pilot-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[pilot-diagnostic]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+      PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate pilot access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          flyctl status --app "$FLY_APP"
+
+      - name: Inspect machine, migration log and SQLite catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine list --app "$FLY_APP" --json
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=json.load(sys.stdin); started=[r for r in rows if r.get("state")=="started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine." >&2; exit 1; }
+          flyctl machine exec "$machine_id" "sh -lc 'echo SEED_EXIT=$(cat /data/catalog/catalog_seed.exit 2>/dev/null || echo NOT_FINISHED); ls -lh /data/catalog; tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true; /app/.venv/bin/python - <<"PY"
+          import os, sqlite3
+          p="/data/catalog/catalog.sqlite3"
+          print("DB_EXISTS=" + str(os.path.exists(p)))
+          if os.path.exists(p):
+              db=sqlite3.connect(p)
+              tables={r[0] for r in db.execute("select name from sqlite_master where type='table'")}
+              print("TABLES=" + ",".join(sorted(tables)))
+              for t in ("brands","fragrances","product_variants","stores","offers","ingestion_raw","ingestion_runs"):
+                  if t in tables:
+                      print("COUNT_"+t.upper()+"="+str(db.execute("select count(*) from "+t).fetchone()[0]))
+              if "alembic_version" in tables:
+                  print("ALEMBIC_VERSION="+str(db.execute("select version_num from alembic_version").fetchone()))
+          PY' " --app "$FLY_APP" --timeout 30
+
+      - name: Check public health and catalog endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request, urllib.error
+          base = "https://scenthunter-pilot-20261030.fly.dev"
+          for path in ("/health", "/api/catalog/status", "/api/catalog/search?q=French%20Avenue%20Liquid%20Brun%20EDP%20100ml"):
+              try:
+                  req=urllib.request.Request(base+path, headers={"Accept":"application/json","User-Agent":"ScentHunter-Pilot-Diagnostic/1.0"})
+                  with urllib.request.urlopen(req, timeout=20) as r:
+                      print(path, "HTTP", r.status, r.read(4000).decode("utf-8","replace"))
+              except Exception as e:
+                  print(path, type(e).__name__, str(e))
+          PY
