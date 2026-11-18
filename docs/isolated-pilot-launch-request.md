@@ -14,3 +14,5 @@ Retry after correcting Fly token newline handling.
 Retry after replacing FLY_API_TOKEN with the new Fly Org Deploy Token.
 
 Retry after Fly app was successfully created; tolerate formatted app list output.
+
+Retry catalog initialization using direct Fly Machine Exec (avoids SSH shell wait issue).
