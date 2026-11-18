@@ -115,13 +115,7 @@ jobs:
               --yes
           fi
 
-      - name: Configure optional API.SH provider key
-        if: ${{ env.APISH_API_KEY != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          flyctl secrets set APISH_API_KEY="$APISH_API_KEY" --app "$FLY_APP"
-
+      # APISH_API_KEY is provisioned once as a Fly secret; do not reset it on every deploy.
       - name: Deploy pilot app
         timeout-minutes: 15
         shell: bash
