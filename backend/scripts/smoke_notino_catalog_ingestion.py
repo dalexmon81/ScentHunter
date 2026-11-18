@@ -1,15 +1,15 @@
-"""Verify one real authorized Notino CJ feed item through canonical persistence.
+"""Bounded real Notino CJ feed-to-canonical-offer smoke test.
 
-This is an explicit, bounded pilot smoke test. It never imports the whole feed
-into the legacy catalog and only writes an offer after the canonical matcher
-resolves a single existing product variant.
+Downloads the authorized feed to a temporary file, parses it incrementally,
+and persists only the first uniquely matched 100 ml target offer.
 """
 from __future__ import annotations
 
-import asyncio
+import os
+import tempfile
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.models import IngestionRaw, IngestionRun, Offer, Store
 from app.services.connector_ingestion import persist_connector_record
+from scrapers.notino import affiliate_feed
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
@@ -44,11 +45,7 @@ def _target_record(record: dict) -> bool:
 
 
 def main() -> int:
-    required = (
-        "NOTINO_CJ_FEED_USERNAME",
-        "NOTINO_CJ_FEED_PASSWORD",
-    )
-    import os
+    required = ("NOTINO_CJ_FEED_USERNAME", "NOTINO_CJ_FEED_PASSWORD")
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
         raise SystemExit("NOTINO_CJ_FEED_CREDENTIALS_MISSING=" + ",".join(missing))
@@ -56,15 +53,6 @@ def main() -> int:
         raise SystemExit("CANONICAL_MATCHER_CATALOG_MISSING")
 
     connector = NotinoAffiliateFeedConnector(cache_ttl_seconds=900)
-    count = asyncio.run(connector.refresh_snapshot())
-    snapshot = asyncio.run(connector._get_snapshot())
-    candidates = [row for row in snapshot if _target_record(row)]
-    if not candidates:
-        raise SystemExit(
-            f"NOTINO_CJ_FEED_DOWNLOADED={count}; "
-            "NO_IN_STOCK_OR_VALID_100ML_LIQUID_BRUN_OR_DIOR_SAUVAGE_CANDIDATE"
-        )
-
     matcher = NextEngineService.from_catalog_file(CATALOG_PATH)
     engine = make_engine()
     try:
@@ -74,78 +62,96 @@ def main() -> int:
                 raise SystemExit("NOTINO_CANONICAL_STORE_NOT_ACTIVE")
             store_id = store.id
 
-        last_reason = None
-        for record in candidates:
-            parsed = connector.parse_raw(record)
-            normalized = normalize_offer(parsed, retailer=connector.store_key)
-            aggregation = matcher.process_offers([normalized])
-            if (
-                aggregation.input_count != 1
-                or aggregation.matched_offer_count != 1
-                or len(aggregation.groups) != 1
-                or len(aggregation.groups[0].offers) != 1
-            ):
-                last_reason = "canonical_match_not_unique"
-                continue
+        downloaded_bytes = 0
+        scanned = 0
+        stats: dict = {}
+        print("NOTINO_CJ_FEED_DOWNLOAD_STARTED=1", flush=True)
+        with tempfile.TemporaryFile(mode="w+b") as payload:
+            downloaded_bytes = affiliate_feed._download_feed(payload)
+            print("NOTINO_CJ_FEED_BYTES=" + str(downloaded_bytes), flush=True)
+            payload.seek(0)
+            with affiliate_feed._xml_stream(payload) as stream:
+                for feed_offer in affiliate_feed._parsed_offers(stream, stats):
+                    scanned += 1
+                    record = connector._to_record(feed_offer)
+                    if not _target_record(record):
+                        if scanned % 10000 == 0:
+                            print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
+                        continue
 
-            with Session(engine) as session, session.begin():
-                store = session.get(Store, store_id)
-                existing = session.scalar(
-                    select(Offer.id).where(
-                        Offer.store_id == store_id,
-                        Offer.external_product_id == str(record["external_product_id"]),
-                    ).limit(1)
-                )
-                run = IngestionRun(store_id=store_id, status="running", products_discovered=1)
-                session.add(run)
-                session.flush()
-                result = persist_connector_record(
-                    session,
-                    connector=connector,
-                    store_id=store_id,
-                    raw_record=dict(record),
-                    matcher=matcher,
-                )
-                if result.status != "promoted" or result.offer_id is None:
-                    run.offers_rejected = 1
-                    run.errors = [str(result.reason or result.status)]
-                    run.status = "partial"
-                    run.finished_at = datetime.now(timezone.utc)
-                    last_reason = result.reason or result.status
-                    continue
+                    parsed = connector.parse_raw(record)
+                    normalized = normalize_offer(parsed, retailer=connector.store_key)
+                    aggregation = matcher.process_offers([normalized])
+                    if (
+                        aggregation.input_count != 1
+                        or aggregation.matched_offer_count != 1
+                        or len(aggregation.groups) != 1
+                        or len(aggregation.groups[0].offers) != 1
+                    ):
+                        continue
 
-                offer = session.get(Offer, result.offer_id)
-                raw = session.get(IngestionRaw, result.ingestion_raw_id)
-                if (
-                    offer is None
-                    or raw is None
-                    or raw.status != "promoted"
-                    or offer.status != "active"
-                    or offer.product_variant_id != result.product_variant_id
-                ):
-                    raise RuntimeError("NOTINO_PERSISTED_OFFER_VERIFICATION_FAILED")
+                    with Session(engine) as session, session.begin():
+                        existing = session.scalar(
+                            select(Offer.id).where(
+                                Offer.store_id == store_id,
+                                Offer.external_product_id == str(record["external_product_id"]),
+                            ).limit(1)
+                        )
+                        run = IngestionRun(
+                            store_id=store_id,
+                            status="running",
+                            products_discovered=1,
+                        )
+                        session.add(run)
+                        session.flush()
 
-                run.offers_created = 0 if existing else 1
-                run.offers_updated = 1 if existing else 0
-                run.status = "completed"
-                run.finished_at = datetime.now(timezone.utc)
+                        result = persist_connector_record(
+                            session,
+                            connector=connector,
+                            store_id=store_id,
+                            raw_record=dict(record),
+                            matcher=matcher,
+                        )
+                        if result.status != "promoted" or result.offer_id is None:
+                            run.offers_rejected = 1
+                            run.errors = [str(result.reason or result.status)]
+                            run.status = "partial"
+                            run.finished_at = datetime.now(timezone.utc)
+                            continue
 
-                print("NOTINO_CJ_FEED_DOWNLOAD=PASS")
-                print("NOTINO_CJ_FEED_RECORDS=" + str(count))
-                print("NOTINO_CANONICAL_MATCH=PASS")
-                print("NOTINO_OFFER_PERSISTENCE=PASS")
-                print("NOTINO_OFFER_ID=" + str(offer.id))
-                print("NOTINO_VARIANT_ID=" + str(offer.product_variant_id))
-                print("NOTINO_PRICE=" + str(offer.price) + " " + offer.currency)
-                print("NOTINO_AVAILABILITY=" + str(offer.availability))
-                print("NOTINO_OFFER_STATUS=" + str(offer.status))
-                return 0
+                        offer = session.get(Offer, result.offer_id)
+                        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+                        if (
+                            offer is None
+                            or raw is None
+                            or raw.status != "promoted"
+                            or offer.status != "active"
+                            or offer.product_variant_id != result.product_variant_id
+                        ):
+                            raise RuntimeError("NOTINO_PERSISTED_OFFER_VERIFICATION_FAILED")
+
+                        run.offers_created = 0 if existing else 1
+                        run.offers_updated = 1 if existing else 0
+                        run.status = "completed"
+                        run.finished_at = datetime.now(timezone.utc)
+
+                        print("NOTINO_CJ_FEED_DOWNLOAD=PASS", flush=True)
+                        print("NOTINO_CJ_FEED_RECORDS_SCANNED=" + str(scanned), flush=True)
+                        print("NOTINO_CANONICAL_MATCH=PASS", flush=True)
+                        print("NOTINO_OFFER_PERSISTENCE=PASS", flush=True)
+                        print("NOTINO_OFFER_ID=" + str(offer.id), flush=True)
+                        print("NOTINO_VARIANT_ID=" + str(offer.product_variant_id), flush=True)
+                        print("NOTINO_PRICE=" + str(offer.price) + " " + offer.currency, flush=True)
+                        print("NOTINO_AVAILABILITY=" + str(offer.availability), flush=True)
+                        print("NOTINO_OFFER_STATUS=" + str(offer.status), flush=True)
+                        return 0
 
         raise SystemExit(
-            "NOTINO_CJ_FEED_DOWNLOADED="
-            + str(count)
-            + "; NO_SAFE_CANONICAL_OFFER_PROMOTED; reason="
-            + str(last_reason or "no_unique_match")
+            "NOTINO_CJ_FEED_DOWNLOADED_BYTES="
+            + str(downloaded_bytes)
+            + "; RECORDS_SCANNED="
+            + str(scanned)
+            + "; NO_SAFE_CANONICAL_100ML_TARGET_OFFER_PROMOTED"
         )
     finally:
         engine.dispose()
