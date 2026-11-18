@@ -1,6 +1,9 @@
 name: Deploy isolated Offer Engine pilot
 
 on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
   workflow_dispatch:
     inputs:
       confirm_deploy:
@@ -20,7 +23,7 @@ concurrency:
 jobs:
   deploy-pilot:
     name: Deploy isolated pilot (not production)
-    if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_deploy == 'deploy') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[pilot-deploy]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
