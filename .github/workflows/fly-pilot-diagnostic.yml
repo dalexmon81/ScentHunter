@@ -71,29 +71,9 @@ jobs:
           echo "SEED_LOG_TAIL:"
           tail -n 120 /data/catalog/catalog_seed.log 2>/dev/null || true
           ls -lh /data/catalog
-          echo "=== CLEAN UP STALE DUPLICATE NOTINO SMOKE PROCESS ==="
-          /app/.venv/bin/python - <<'PY'
-          import glob, os, signal
-          matches = []
-          for path in glob.glob("/proc/[0-9]*/cmdline"):
-              try:
-                  pid = int(path.split("/")[2])
-                  cmd = open(path, "rb").read().replace(b"\\0", b" ").decode("utf-8", "replace")
-                  if "smoke_notino_catalog_ingestion.py" not in cmd or "/app/.venv/bin/python" not in cmd:
-                      continue
-                  fields = open(f"/proc/{pid}/stat").read().split()
-                  matches.append((int(fields[21]), pid, cmd))
-              except (OSError, ValueError, IndexError):
-                  continue
-          matches.sort()
-          print("NOTINO_SMOKE_PROCESS_COUNT=" + str(len(matches)))
-          for _, pid, cmd in matches:
-              print("TERMINATING_NOTINO_SMOKE_PID=" + str(pid))
-              try:
-                  os.kill(pid, signal.SIGTERM)
-              except ProcessLookupError:
-                  pass
-          PY
+          echo "=== NOTINO SMOKE STATUS ==="
+          echo "NOTINO_SMOKE_EXIT=$(cat /data/catalog/notino_smoke.exit 2>/dev/null || echo RUNNING)"
+          tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
           echo "=== MEMORY (live ingestion follow-up) ==="
           cat /proc/meminfo | head -n 12 || true
           echo "=== ACTIVE PYTHON PROCESSES ==="
