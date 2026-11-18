@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+    paths-ignore:
+      - ".github/workflows/fly-pilot-diagnostic.yml"
   workflow_dispatch:
     inputs:
       confirm_deploy:
@@ -18,7 +20,7 @@ permissions:
 
 concurrency:
   group: scent-hunter-offer-engine-pilot
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy-pilot:
