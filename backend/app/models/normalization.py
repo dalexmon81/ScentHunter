@@ -149,8 +149,10 @@ def build_identity(
 ) -> CanonicalIdentity:
     """Build a canonical identity without losing variant attributes."""
     full_title = title or fragrance_name or ""
-    has_title = bool(full_title)
-    flags = extract_format_flags(full_title)
+    # Only an explicitly supplied retailer/product title can establish that a
+    # format marker is absent. A bare canonical name must remain unknown.
+    title_is_authoritative = bool(title and str(title).strip())
+    flags = extract_format_flags(title if title_is_authoritative else None)
     resolved_concentration = extract_concentration(concentration) or extract_concentration(full_title)
     resolved_size = extract_size_ml(size_ml)
     if resolved_size is None:
@@ -160,8 +162,8 @@ def build_identity(
         fragrance=normalize_fragrance_name(fragrance_name or full_title),
         concentration=resolved_concentration,
         size_ml=resolved_size,
-        is_tester=flags["is_tester"] if is_tester is None and has_title else is_tester,
-        is_refill=flags["is_refill"] if is_refill is None and has_title else is_refill,
-        is_gift_set=flags["is_gift_set"] if is_gift_set is None and has_title else is_gift_set,
-        is_mini=flags["is_mini"] if is_mini is None and has_title else is_mini,
+        is_tester=flags["is_tester"] if is_tester is None and title_is_authoritative else is_tester,
+        is_refill=flags["is_refill"] if is_refill is None and title_is_authoritative else is_refill,
+        is_gift_set=flags["is_gift_set"] if is_gift_set is None and title_is_authoritative else is_gift_set,
+        is_mini=flags["is_mini"] if is_mini is None and title_is_authoritative else is_mini,
     )
