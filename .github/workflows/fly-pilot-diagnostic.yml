@@ -74,7 +74,7 @@ jobs:
           echo "=== NOTINO SMOKE STATUS ==="
           echo "NOTINO_SMOKE_EXIT=$(cat /data/catalog/notino_smoke.exit 2>/dev/null || echo RUNNING)"
           tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
-          echo "=== MEMORY (live ingestion follow-up) ==="
+          echo "=== MEMORY (live ingestion CPU follow-up) ==="
           cat /proc/meminfo | head -n 12 || true
           echo "=== ACTIVE PYTHON PROCESS DETAILS ==="
           /app/.venv/bin/python - <<'PY'
