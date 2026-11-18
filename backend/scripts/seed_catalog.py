@@ -25,8 +25,8 @@ from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdM
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
-# Deliberately seed only Bplatz while its Phase 2 adapter is being validated.
-# Other retailer stores remain operator-managed and are never touched here.
+# Retailer activation remains explicit. The pilot may opt into Bplatz and/or
+# Notino; no other retailer is touched by this seed script.
 BPLATZ_STORE = {
     "name": "Bplatz",
     "slug": "bplatz",
@@ -168,6 +168,11 @@ def main() -> int:
         action="store_true",
         help="explicitly create or activate the Bplatz store row for the dedicated Bplatz integration test",
     )
+    parser.add_argument(
+        "--seed-notino-store",
+        action="store_true",
+        help="explicitly create or activate the Notino.fr store row for the authorized feed connector",
+    )
     args = parser.parse_args()
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
@@ -207,7 +212,10 @@ def main() -> int:
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
-        "stores_to_seed": [BPLATZ_STORE.copy()] if args.seed_bplatz_store else [],
+        "stores_to_seed": (
+            ([BPLATZ_STORE.copy()] if args.seed_bplatz_store else [])
+            + ([NOTINO_STORE.copy()] if args.seed_notino_store else [])
+        ),
         "database_written": False,
         "source_modified": False,
     }
@@ -296,14 +304,22 @@ def main() -> int:
 
         # Retailer activation is opt-in. Canonical catalog seeding must not
         # silently activate Bplatz (or any other store) in staging.
+        stores_to_seed = []
         if args.seed_bplatz_store:
+            stores_to_seed.append(BPLATZ_STORE)
+        if args.seed_notino_store:
+            stores_to_seed.append(NOTINO_STORE)
+        if stores_to_seed:
             with Session(engine) as session, session.begin():
-                store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
-                if store is None:
-                    session.add(Store(**BPLATZ_STORE))
-                else:
-                    for field, value in BPLATZ_STORE.items():
-                        setattr(store, field, value)
+                for store_config in stores_to_seed:
+                    store = session.scalar(
+                        select(Store).where(Store.slug == store_config["slug"])
+                    )
+                    if store is None:
+                        session.add(Store(**store_config))
+                    else:
+                        for field, value in store_config.items():
+                            setattr(store, field, value)
 
         inspector = inspect(engine)
         expected_tables = {
@@ -335,7 +351,7 @@ def main() -> int:
             "database_counts": counts,
             "invalid_active_offers": invalid_active_offers,
             "database_written": True,
-            "stores_seeded": [BPLATZ_STORE["slug"]] if args.seed_bplatz_store else [],
+            "stores_seeded": [store["slug"] for store in stores_to_seed],
         })
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
