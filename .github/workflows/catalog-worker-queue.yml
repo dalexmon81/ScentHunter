@@ -2,7 +2,7 @@ name: Catalog worker queue foundation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [refactor/catalog-first-architecture]
     paths:
       - "backend/app/workers/**"
       - "backend/tests/test_catalog_worker_queue.py"
