@@ -2,7 +2,6 @@ Isolated Fly.io catalog pilot deployment requested.
 Target: scenthunter-pilot-20261030 (ams).
 Production app and production fly.toml must remain untouched.
 
-The pilot build includes the canonical matcher correction:
-- recognize EDP/EDT/EDC suffix abbreviations without fuzzy matching;
-- reject an explicit concentration conflict even when only one product candidate exists.
-The Notino smoke test must verify a real offer is matched to the declared canonical variant and persisted.
+Deploy the tested canonical matcher fix for the actual Notino.fr feed title:
+"French Avenue Liquid Brun Eau de Parfum pour homme 100 ml".
+The smoke test must confirm exact canonical variant resolution and persisted active offer.
