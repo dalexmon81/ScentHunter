@@ -87,8 +87,8 @@ jobs:
                   continue
           matches.sort()
           print("NOTINO_SMOKE_PROCESS_COUNT=" + str(len(matches)))
-          for _, pid, cmd in matches[:-1]:
-              print("TERMINATING_STALE_NOTINO_SMOKE_PID=" + str(pid))
+          for _, pid, cmd in matches:
+              print("TERMINATING_NOTINO_SMOKE_PID=" + str(pid))
               try:
                   os.kill(pid, signal.SIGTERM)
               except ProcessLookupError:
