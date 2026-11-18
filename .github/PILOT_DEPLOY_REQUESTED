@@ -1,0 +1,3 @@
+Isolated Fly.io catalog pilot deployment requested.
+Target: scenthunter-pilot-20261030 (ams).
+Production app and production fly.toml must remain untouched.
