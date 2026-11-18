@@ -79,13 +79,29 @@ def main() -> int:
                     scanned += 1
                     if scanned % 5000 == 0:
                         print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
-                    record = connector._to_record(feed_offer)
-                    title_lower = str(record.get("title") or "").casefold()
-                    gtin = str(record.get("gtin") or "").strip()
+
+                    # This smoke test verifies one known canonical identity, not
+                    # the whole 49k-record feed. Running the full catalog matcher
+                    # for every eligible retailer row made the test quadratic in
+                    # practice and exhausted the GitHub Actions 20-minute limit.
+                    # Filter the streamed feed to the exact known target first.
+                    title_lower = str(feed_offer.title or "").casefold()
+                    brand_lower = str(feed_offer.brand or "").casefold().strip()
+                    try:
+                        feed_size = Decimal(str(feed_offer.size_ml or "0"))
+                    except Exception:
+                        continue
                     if (
-                        ("liquid brun" in title_lower or gtin == "6298042001831")
-                        and len(match_diagnostics) < 20
+                        brand_lower != "french avenue"
+                        or "liquid brun" not in title_lower
+                        or feed_size != Decimal("100")
+                        or str(feed_offer.concentration or "").casefold() != "eau de parfum"
                     ):
+                        continue
+
+                    record = connector._to_record(feed_offer)
+                    gtin = str(record.get("gtin") or "").strip()
+                    if len(match_diagnostics) < 20:
                         diagnostic_parsed = connector.parse_raw(record)
                         diagnostic_offer = normalize_offer(
                             diagnostic_parsed, retailer=connector.store_key
