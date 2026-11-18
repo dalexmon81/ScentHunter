@@ -13,3 +13,6 @@ No Managed PostgreSQL, Redis, Upstash, extra Fly app, extra volume, or extra mac
 
 ## Safety boundary
 Production `main`, production `fly.toml`, and the production `scenthunter` app are not deployment targets.
+
+
+Deployment trigger: the isolated pilot deploy workflow must run from this architecture branch only. No paid services are part of this release.
