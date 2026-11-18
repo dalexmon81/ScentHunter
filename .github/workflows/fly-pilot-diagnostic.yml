@@ -71,7 +71,7 @@ jobs:
           echo "SEED_LOG_TAIL:"
           tail -n 120 /data/catalog/catalog_seed.log 2>/dev/null || true
           ls -lh /data/catalog
-          echo "=== NOTINO SMOKE STATUS (broad matcher sample) ==="
+          echo "=== NOTINO SMOKE STATUS (transfer validation) ==="
           echo "NOTINO_SMOKE_EXIT=$(cat /data/catalog/notino_smoke.exit 2>/dev/null || echo RUNNING)"
           tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
           echo "=== MEMORY (live ingestion CPU follow-up) ==="
