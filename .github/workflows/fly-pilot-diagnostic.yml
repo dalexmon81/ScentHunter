@@ -71,8 +71,13 @@ jobs:
           echo "SEED_LOG_TAIL:"
           tail -n 120 /data/catalog/catalog_seed.log 2>/dev/null || true
           ls -lh /data/catalog
-          echo "=== ACTIVE MIGRATION/SEED PROCESSES ==="
-          ps -ef | grep -E 'seed_catalog|alembic' | grep -v grep || true
+          echo "=== MEMORY ==="
+          cat /proc/meminfo | head -n 12 || true
+          echo "=== ACTIVE PYTHON PROCESSES ==="
+          for proc in /proc/[0-9]*/cmdline; do
+            command="$(tr '\\000' ' ' < "$proc" 2>/dev/null || true)"
+            case "$command" in *python*|*uvicorn*) echo "$proc $command" ;; esac
+          done
           echo "=== SEED LOG ==="
           tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
           /app/.venv/bin/python - <<'PY'
