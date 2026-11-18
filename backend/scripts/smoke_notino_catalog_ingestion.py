@@ -75,6 +75,8 @@ def main() -> int:
             with affiliate_feed._xml_stream(payload) as stream:
                 for feed_offer in affiliate_feed._parsed_offers(stream, stats):
                     scanned += 1
+                    if scanned % 5000 == 0:
+                        print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
                     record = connector._to_record(feed_offer)
                     if not _eligible(record):
                         continue
@@ -147,12 +149,6 @@ def main() -> int:
                         print("NOTINO_OFFER_STATUS=" + str(offer.status), flush=True)
                         return 0
 
-                    if scanned % 5000 == 0:
-                        print(
-                            "NOTINO_CJ_FEED_SCANNED=" + str(scanned)
-                            + " ELIGIBLE=" + str(eligible),
-                            flush=True,
-                        )
 
         raise SystemExit(
             "NOTINO_CJ_FEED_DOWNLOADED_BYTES=" + str(downloaded_bytes)
