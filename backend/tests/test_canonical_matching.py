@@ -73,7 +73,7 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.assertIsNone(result.match)
         self.assertIn("incomplete", result.reason)
 
-    def test_duplicate_delivery_does_not_duplicate_price_history(self):
+    def test_repeated_observation_keeps_one_offer_and_appends_price_history(self):
         first_raw_id = stage_raw_offer(
             self.session, store_id=self.store.id, raw_payload={},
             external_product_id="REDELIVERED-1",
@@ -99,7 +99,7 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.assertEqual(first_offer_id, second_offer_id)
         self.assertEqual(
             self.session.query(PriceHistory).filter_by(offer_id=first_offer_id).count(),
-            1,
+            2,
         )
 
     def test_valid_gtin_accepts_standard_spacing_and_hyphen_formatting(self):
