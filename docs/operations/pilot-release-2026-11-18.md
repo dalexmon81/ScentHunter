@@ -16,3 +16,6 @@ Production `main`, production `fly.toml`, and the production `scenthunter` app a
 
 
 Deployment trigger: the isolated pilot deploy workflow must run from this architecture branch only. No paid services are part of this release.
+
+
+Final matching regression fix: concentration is derived from explicit retailer title text when the feed omits the dedicated field. Strict identity and ambiguity checks remain enabled.
