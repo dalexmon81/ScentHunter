@@ -1360,7 +1360,13 @@ def _dedupe_results(results: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return list(by_key.values())
 
 
-def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def _discover(
+    query: str,
+    session: requests.Session,
+    *,
+    query_limit: int = 3,
+    allow_sitemap: bool = True,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     raw_query = _clean(query)
     identity_query = " ".join(_query_identity_tokens(raw_query))
     compact_query = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", _norm(raw_query))
@@ -1405,7 +1411,7 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             return [seed], diagnostics
 
     # Direct HTTP requests are allowed to fail; the reader is the recovery path.
-    for search_query in queries[:2]:
+    for search_query in queries[:max(1, int(query_limit))]:
         for url in _search_urls(search_query):
             try:
                 response = _request(session, url)
@@ -1422,7 +1428,7 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
                     "error": f"{type(exc).__name__}: {exc}",
                 })
 
-    for search_query in queries[:3]:
+    for search_query in queries[:max(1, int(query_limit))]:
         for url in _search_urls(search_query):
             text, error = _reader_search(session, url)
             if text is None:
@@ -1441,7 +1447,7 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
                 if old is None or item["score"] > old["score"]:
                     candidates[item["url"]] = item
 
-    if not candidates:
+    if not candidates and allow_sitemap:
         diagnostics["sitemap_used"] = True
         try:
             response = _request(session, SITEMAP_URL)
@@ -1621,8 +1627,99 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     }
 
 
+def _search_public(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Run a bounded, read-only search against Notino.fr when the feed has no match.
+
+    The normal search worker is already isolated in a subprocess. Tight request
+    limits here keep this fallback from occupying a search lane indefinitely.
+    """
+    global TIMEOUT, READER_TIMEOUT, RETRY_COUNT
+
+    previous_limits = (TIMEOUT, READER_TIMEOUT, RETRY_COUNT)
+    TIMEOUT, READER_TIMEOUT, RETRY_COUNT = 4, 6, 0
+    session = _new_session()
+    try:
+        candidates, diagnostics = _discover(
+            query, session, query_limit=1, allow_sitemap=False
+        )
+    finally:
+        session.close()
+
+    candidates = candidates[:4]
+    if not candidates:
+        return [], diagnostics
+
+    results: List[Dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as executor:
+        futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
+        for future in as_completed(futures):
+            try:
+                item = future.result()
+            except Exception as exc:
+                diagnostics.setdefault("enrichment_errors", []).append(type(exc).__name__)
+                continue
+            if isinstance(item, list):
+                results.extend(row for row in item if isinstance(row, dict))
+            elif isinstance(item, dict):
+                results.append(item)
+
+    TIMEOUT, READER_TIMEOUT, RETRY_COUNT = previous_limits
+    return _dedupe_results(results)[:4], diagnostics
+
+
+def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
+    """Accept only a priced Notino.fr product page returned by the public adapter."""
+    raw_url = str(item.get("url") or item.get("product_url") or "").strip()
+    safe_url = _allowed_url(raw_url, BASE_URL)
+    if not safe_url:
+        return None
+
+    name = _clean(item.get("name") or item.get("title") or "")
+    brand = _clean(item.get("brand") or "")
+    if not name or not _query_matches_name(f"{brand} {name}".strip(), query):
+        return None
+
+    price_num = _price(item.get("price_num") or item.get("price"))
+    if price_num is None or not _price_is_plausible(price_num, item.get("size_ml") or item.get("sizeml")):
+        return None
+
+    availability = str(item.get("availability") or "").strip().lower()
+    available = item.get("available")
+    if available is True:
+        availability = "in_stock"
+    elif available is False:
+        availability = "out_of_stock"
+    elif availability in {"in stock", "instock", "available"}:
+        availability = "in_stock"
+    elif availability in {"out of stock", "outofstock", "unavailable"}:
+        availability = "out_of_stock"
+    else:
+        availability = "unknown"
+
+    size_ml = item.get("size_ml")
+    if size_ml is None:
+        size_ml = item.get("sizeml") or item.get("size")
+
+    return {
+        **item,
+        "shop": STORE,
+        "store": "notino",
+        "name": name,
+        "brand": brand,
+        "url": safe_url,
+        "product_url": safe_url,
+        "price": f"{price_num:.2f} €",
+        "price_num": price_num,
+        "currency": "EUR",
+        "size_ml": size_ml,
+        "availability": availability,
+        "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
+        "offer_source": "notino_public_storefront",
+    }
+
+
 def search(query: str) -> Dict[str, Any]:
-    """Search the persistent authorized-feed catalog without live requests."""
+    """Prefer fresh CJ offers; use Notino.fr public product pages as a fallback."""
     query = _clean(query)
     if not query:
         return {
@@ -1631,7 +1728,77 @@ def search(query: str) -> Dict[str, Any]:
         }
 
     from . import affiliate_feed
-    return affiliate_feed.search_feed(query)
+    feed_report = affiliate_feed.search_feed(query)
+    feed_results = feed_report.get("results") if isinstance(feed_report, dict) else None
+    if isinstance(feed_results, list) and feed_results:
+        return {
+            **feed_report,
+            "details": {
+                **(feed_report.get("details") or {}),
+                "source": "cj_viv_authorized_xml",
+                "public_fallback_attempted": False,
+            },
+        }
+
+    feed_details = feed_report.get("details") if isinstance(feed_report, dict) else {}
+    feed_status = feed_report.get("status") if isinstance(feed_report, dict) else "error"
+    feed_error = feed_report.get("error") if isinstance(feed_report, dict) else "invalid_feed_report"
+    try:
+        public_rows, diagnostics = _search_public(query)
+        public_results = [
+            prepared for row in public_rows
+            if isinstance(row, dict)
+            for prepared in [_normalise_public_offer(row, query)]
+            if prepared is not None
+        ]
+    except Exception as exc:
+        return {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "error": f"notino_public_fallback_{type(exc).__name__.lower()}",
+            "details": {
+                "source": "notino_public_storefront",
+                "public_fallback_attempted": True,
+                "feed_status": feed_status,
+                "feed_error": feed_error,
+                "public_error": type(exc).__name__,
+            },
+        }
+
+    if public_results:
+        return {
+            "status": "success",
+            "verified": True,
+            "results": public_results,
+            "error": None,
+            "details": {
+                "source": "notino_public_storefront",
+                "public_fallback_attempted": True,
+                "feed_status": feed_status,
+                "feed_error": feed_error,
+                "feed_details": feed_details or {},
+                "candidate_count": len(diagnostics.get("direct", [])) + len(diagnostics.get("reader", [])),
+                "discovery": diagnostics,
+            },
+        }
+
+    # An empty response from a protected retailer is not proof that the product
+    # does not exist. Keep it unverified so the API never reports a false NOT_FOUND.
+    return {
+        "status": "unavailable",
+        "verified": False,
+        "results": [],
+        "error": "notino_public_fallback_no_verified_offers",
+        "details": {
+            "source": "notino_public_storefront",
+            "public_fallback_attempted": True,
+            "feed_status": feed_status,
+            "feed_error": feed_error,
+            "feed_details": feed_details or {},
+            "discovery": diagnostics,
+        },
+    }
 
 
 def scrape(query: str) -> List[Dict[str, Any]]:
