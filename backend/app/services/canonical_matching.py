@@ -72,7 +72,13 @@ def resolve_canonical_variant(
 
     title = record.get("title") or record.get("raw_name")
     brand_value = record.get("brand") or record.get("brand_raw")
-    fragrance_value = record.get("fragrance") or title
+    fragrance_value = record.get("fragrance")
+    if not fragrance_value and title:
+        normalized_title = normalize_text(str(title))
+        normalized_brand = normalize_brand(str(brand_value or ""))
+        if normalized_title.startswith(normalized_brand + " "):
+            normalized_title = normalized_title[len(normalized_brand) + 1:]
+        fragrance_value = normalized_title
     concentration = record.get("concentration")
     size_ml = record.get("size_ml")
     if not all((brand_value, fragrance_value, concentration, size_ml, title)):
@@ -93,21 +99,6 @@ def resolve_canonical_variant(
     )):
         return CanonicalMatchResult(None, "unknown_sellable_format")
 
-    statement = (
-        select(ProductVariant)
-        .join(Fragrance, ProductVariant.fragrance_id == Fragrance.id)
-        .join(Brand, Fragrance.brand_id == Brand.id)
-        .where(
-            Brand.normalized_name == normalize_brand(str(brand_value)),
-            Fragrance.slug == normalize_fragrance_name(str(fragrance_value)).replace(" ", "-"),
-            ProductVariant.size_ml == identity.size_ml,
-            ProductVariant.is_tester == identity.is_tester,
-            ProductVariant.is_refill == identity.is_refill,
-            ProductVariant.is_gift_set == identity.is_gift_set,
-            ProductVariant.is_mini == identity.is_mini,
-            normalize_text(identity.concentration) == normalize_text(concentration),
-        )
-    )
     # Fragrance slugs are not guaranteed to use the same tokenizer. Filter
     # normalized names in Python after narrowing by the exact normalized brand.
     candidates = session.scalars(
