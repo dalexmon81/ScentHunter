@@ -224,7 +224,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         offer_id=offer_id, product_variant_id=row.product_variant_id,
         method=row.match_method or "unspecified",
         confidence=confidence if confidence is not None else row.match_confidence,
-        reason="promoted_from_resolved_legacy_catalog_ids",
+        reason="promoted_from_resolved_canonical_variant_match",
     ))
     row.status = "promoted"
     session.flush()
