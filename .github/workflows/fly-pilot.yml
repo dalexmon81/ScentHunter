@@ -269,11 +269,54 @@ jobs:
           PY
 
       - name: Verify one real Notino CJ feed offer through canonical persistence
-        timeout-minutes: 10
+        timeout-minutes: 20
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app "$FLY_APP" --select=false -C "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_notino_catalog_ingestion.py'"
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for Notino ingestion." >&2; exit 1; }
+
+          # Run the feed download/persistence smoke test detached from SSH so a
+          # long CJ transfer cannot hold an interactive SSH session open.
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/notino_smoke.exit /data/catalog/notino_smoke.log
+          nohup /bin/sh -c '
+            cd /app/backend
+            /app/.venv/bin/python scripts/smoke_notino_catalog_ingestion.py
+            result=$?
+            echo "$result" > /data/catalog/notino_smoke.exit
+          ' </dev/null >/data/catalog/notino_smoke.log 2>&1 &
+          echo NOTINO_SMOKE_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          for attempt in $(seq 1 120); do
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/notino_smoke.exit ]; then echo NOTINO_SMOKE_EXIT=\$(cat /data/catalog/notino_smoke.exit); else echo NOTINO_SMOKE_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Notino smoke status poll failed ($attempt/120): $poll"
+              sleep 10
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'NOTINO_SMOKE_EXIT=0'; then
+              flyctl machine exec "$machine_id" "tail -n 80 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30
+              echo "NOTINO_CANONICAL_PERSISTENCE=PASS"
+              break
+            fi
+            if printf '%s\\n' "$poll" | grep -Eq 'NOTINO_SMOKE_EXIT=[1-9]'; then
+              flyctl machine exec "$machine_id" "tail -n 160 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            if [ "$attempt" -eq 120 ]; then
+              echo "Notino feed ingestion did not finish within 20 minutes." >&2
+              flyctl machine exec "$machine_id" "tail -n 160 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            sleep 10
+          done"
 
       - name: Verify API.SH Notino provider inside the isolated Fly app
         if: ${{ env.APISH_API_KEY != '' }}
