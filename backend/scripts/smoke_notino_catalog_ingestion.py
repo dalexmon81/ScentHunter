@@ -1,6 +1,7 @@
 """Stream the authorized Notino CJ feed and persist the first safe canonical match."""
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -67,6 +68,7 @@ def main() -> int:
         scanned = 0
         eligible = 0
         stats: dict = {}
+        match_diagnostics: list[dict] = []
         print("NOTINO_CJ_FEED_DOWNLOAD_STARTED=1", flush=True)
         with tempfile.TemporaryFile(mode="w+b") as payload:
             downloaded_bytes = affiliate_feed._download_feed(payload)
@@ -78,6 +80,45 @@ def main() -> int:
                     if scanned % 5000 == 0:
                         print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
                     record = connector._to_record(feed_offer)
+                    title_lower = str(record.get("title") or "").casefold()
+                    gtin = str(record.get("gtin") or "").strip()
+                    if (
+                        ("liquid brun" in title_lower or gtin == "6298042001831")
+                        and len(match_diagnostics) < 20
+                    ):
+                        diagnostic_parsed = connector.parse_raw(record)
+                        diagnostic_offer = normalize_offer(
+                            diagnostic_parsed, retailer=connector.store_key
+                        )
+                        diagnostic_result = matcher.process_offers([diagnostic_offer])
+                        match_diagnostics.append({
+                            "title": record.get("title"),
+                            "brand": record.get("brand"),
+                            "size_ml": record.get("size_ml"),
+                            "gtin": gtin or None,
+                            "concentration": record.get("concentration"),
+                            "price": record.get("price"),
+                            "currency": record.get("currency"),
+                            "availability": record.get("availability"),
+                            "eligible": _eligible(record),
+                            "normalized_gtin": diagnostic_offer.raw_payload.get("gtin"),
+                            "matched": diagnostic_result.matched_offer_count,
+                            "groups": [
+                                {
+                                    "product_id": group.canonical_product_id,
+                                    "variant_id": group.canonical_variant_id,
+                                }
+                                for group in diagnostic_result.groups
+                            ],
+                            "unresolved": [
+                                item.reason or item.status.value
+                                for item in diagnostic_result.unresolved
+                            ],
+                            "ambiguous": [
+                                item.reason or item.status.value
+                                for item in diagnostic_result.ambiguous
+                            ],
+                        })
                     if not _eligible(record):
                         continue
                     eligible += 1
@@ -150,6 +191,7 @@ def main() -> int:
                         return 0
 
 
+        print("NOTINO_MATCH_DIAGNOSTICS=" + json.dumps(match_diagnostics, ensure_ascii=False), flush=True)
         raise SystemExit(
             "NOTINO_CJ_FEED_DOWNLOADED_BYTES=" + str(downloaded_bytes)
             + "; RECORDS_SCANNED=" + str(scanned)
