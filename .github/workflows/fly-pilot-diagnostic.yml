@@ -94,7 +94,7 @@ jobs:
               except ProcessLookupError:
                   pass
           PY
-          echo "=== MEMORY ==="
+          echo "=== MEMORY (live ingestion follow-up) ==="
           cat /proc/meminfo | head -n 12 || true
           echo "=== ACTIVE PYTHON PROCESSES ==="
           for proc in /proc/[0-9]*/cmdline; do
