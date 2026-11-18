@@ -36,8 +36,17 @@ BPLATZ_STORE = {
     "status": "active",
 }
 
+NOTINO_STORE = {
+    "name": "Notino.fr",
+    "slug": "notino-fr",
+    "domain": "notino.fr",
+    "country": "FR",
+    "currency": "EUR",
+    "status": "active",
+}
 
-def norm(value: str) -> str:
+
+def norm(value: str):
     value = unicodedata.normalize("NFKD", value)
     value = "".join(ch for ch in value if not unicodedata.combining(ch)).lower()
     return re.sub(r"[^a-z0-9]+", " ", value).strip()
