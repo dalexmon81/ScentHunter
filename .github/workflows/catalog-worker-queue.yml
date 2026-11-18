@@ -30,3 +30,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v
+      - name: Run ingestion run lifecycle tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_catalog_ingestion_run.py' -v
