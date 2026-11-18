@@ -1,12 +1,7 @@
-"""Notino feed handlers for the catalog-first Celery worker runtime.
-
-Handlers are synchronous Celery entry points. Connector I/O remains async and
-runs only in the background worker; HTTP search never invokes this module.
-"""
+"""Notino feed handlers for the catalog-first background worker."""
 from __future__ import annotations
 
 import asyncio
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
@@ -26,6 +21,7 @@ from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
+from scenthunter_next_engine.offer_normalizer import normalize_offer
 
 _CATALOG_PATH = Path(__file__).resolve().parents[2] / "product_catalog.json"
 _SESSION_FACTORY = None
@@ -70,9 +66,35 @@ def _active_notino_store(session, store_id: UUID) -> Store:
     return store
 
 
+def _is_unique_canonical_candidate(
+    connector: NotinoAffiliateFeedConnector,
+    matcher: NextEngineService,
+    raw_record: Mapping[str, Any],
+) -> bool:
+    """Only enqueue eligible offers with one unambiguous canonical variant match."""
+    try:
+        parsed = connector.parse_raw(raw_record)
+        validation = connector.validate_offer(parsed)
+        if not validation.valid or parsed.get("currency_explicit") is not True:
+            return False
+        normalized = normalize_offer(parsed, retailer=connector.store_key)
+        aggregation = matcher.process_offers([normalized])
+    except (TypeError, ValueError, ArithmeticError):
+        return False
+    if (
+        aggregation.input_count != 1
+        or aggregation.matched_offer_count != 1
+        or len(aggregation.groups) != 1
+        or len(aggregation.groups[0].offers) != 1
+        or not getattr(aggregation.groups[0], "canonical_variant_id", None)
+    ):
+        return False
+    return True
+
+
 def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
     store_id = _store_id(payload)
-    limit = int(payload.get("limit", 100))
+    limit = int(payload.get("limit", 500))
     if limit < 1 or limit > 1000:
         raise ValueError("limit must be between 1 and 1000")
     cursor = payload.get("cursor")
@@ -84,15 +106,23 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         run_id = start_ingestion_run(session, store_id=store_id)
 
     try:
+        connector = _connector()
+        matcher = _matcher()
         products = asyncio.run(
-            _connector().discover_products(
+            connector.discover_products(
                 cursor=str(cursor) if cursor is not None else None,
                 limit=limit,
             )
         )
         queued = 0
+        eligible_candidates = 0
+        skipped_candidates = 0
         errors: list[str] = []
         for product in products:
+            if not _is_unique_canonical_candidate(connector, matcher, product.raw_payload):
+                skipped_candidates += 1
+                continue
+            eligible_candidates += 1
             try:
                 enqueue_offer_fetch(store_id, product.external_product_id)
                 queued += 1
@@ -125,6 +155,8 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
             "status": "partial" if errors else "completed",
             "run_id": str(run_id),
             "products_discovered": len(products),
+            "canonical_candidates": eligible_candidates,
+            "canonical_candidates_skipped": skipped_candidates,
             "fetch_jobs_queued": queued,
             "next_cursor": next_cursor,
             "errors": errors,
