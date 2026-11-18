@@ -94,6 +94,16 @@ def persist_connector_record(
         external_product_id=str(external_id) if external_id else None,
         record=parsed,
     )
+    if canonical.match is None and canonical.reason != "no_canonical_variant_match":
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="canonical_database_matcher",
+            reason=canonical.reason, unresolved_status="pending",
+        )
+        return ConnectorIngestionResult(
+            raw_id, "pending", reason=canonical.reason,
+        )
+
     if canonical.match is not None:
         resolved_variant_id = canonical.match.product_variant_id
         record_match(
