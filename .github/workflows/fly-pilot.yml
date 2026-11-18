@@ -134,6 +134,7 @@ jobs:
             "NOTINO_CJ_FEED_PASSWORD=$CJ_HTTP_PASSWORD" \
             --app "$FLY_APP"
 
+      # Rebuild the isolated image so the streaming Notino smoke script is available on the machine.
       - name: Deploy pilot app
         timeout-minutes: 15
         shell: bash
