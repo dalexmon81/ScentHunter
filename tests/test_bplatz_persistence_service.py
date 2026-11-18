@@ -670,3 +670,102 @@ def test_normal_bplatz_hydration_worker_logs_only_after_phase2_persistence(
     assert "timestamp=" in output
     assert "offer_id=" in output
     assert "ingestion_raw_id=" in output
+
+
+def test_notino_connector_record_uses_shared_phase2_persistence_and_search(tmp_path):
+    from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+    from app.search.catalog import search_catalog
+    from app.services.connector_ingestion import persist_connector_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, bplatz_record, normalized, _group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        connector = NotinoAffiliateFeedConnector(feed_loader=lambda: b"<rss/>")
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        raw = {
+            "external_product_id": "notino-liquid-brun-fixture-001",
+            "title": bplatz_record["raw_name"],
+            "brand": bplatz_record["brand_raw"],
+            "gtin": bplatz_record["gtin"],
+            "sku": bplatz_record["sku"],
+            "size_ml": bplatz_record["size_ml"],
+            "price": str(normalized.price),
+            "currency": "EUR",
+            "currency_explicit": True,
+            "availability": "in_stock",
+            "product_url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            "source": "authorized_cj_viv_xml_feed",
+            "raw_xml": "<item><title>French Avenue Liquid Brun</title></item>",
+        }
+
+        with Session(engine) as session, session.begin():
+            store = Store(
+                name="Notino", slug="notino", domain="www.notino.fr",
+                country="FR", currency="EUR", status="active",
+            )
+            session.add(store)
+            session.flush()
+            result = persist_connector_record(
+                session, connector=connector, store_id=store.id,
+                raw_record=raw, matcher=matcher,
+            )
+            assert result.status == "promoted"
+            assert result.offer_id is not None
+            assert result.product_variant_id is not None
+
+        with Session(engine) as session:
+            results = search_catalog(session, "French Avenue Liquid Brun EDP 100 ml")
+            assert results["offer_count"] == 1
+            offer = results["results"][0]["offers"][0]
+            assert offer["store"] == "Notino"
+            assert offer["url"] == raw["product_url"]
+            assert offer["currency"] == "EUR"
+    finally:
+        engine.dispose()
+
+
+def test_connector_persistence_does_not_publish_defaulted_currency(tmp_path):
+    from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+    from app.services.connector_ingestion import persist_connector_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, bplatz_record, normalized, _group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        connector = NotinoAffiliateFeedConnector(feed_loader=lambda: b"<rss/>")
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        raw = {
+            "external_product_id": "notino-currency-unknown-001",
+            "title": bplatz_record["raw_name"],
+            "brand": bplatz_record["brand_raw"],
+            "gtin": bplatz_record["gtin"],
+            "sku": bplatz_record["sku"],
+            "size_ml": bplatz_record["size_ml"],
+            "price": str(normalized.price),
+            "currency": "EUR",
+            "currency_explicit": False,
+            "availability": "in_stock",
+            "product_url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            "source": "authorized_cj_viv_xml_feed",
+        }
+        with Session(engine) as session, session.begin():
+            store = Store(
+                name="Notino", slug="notino", domain="www.notino.fr",
+                country="FR", currency="EUR", status="active",
+            )
+            session.add(store)
+            session.flush()
+            result = persist_connector_record(
+                session, connector=connector, store_id=store.id,
+                raw_record=raw, matcher=matcher,
+            )
+            assert result.status == "matched"
+            assert result.offer_id is None
+            assert result.reason == "currency_not_explicit_in_source"
+    finally:
+        engine.dispose()
