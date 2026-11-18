@@ -47,6 +47,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "price": str(offer.price),
             "currency": offer.currency,
             "availability": offer.availability,
+            "currency_explicit": bool(offer.currency),
             "product_url": offer.url,
             "url": offer.affiliate_url or offer.url,
             "affiliate_url": offer.affiliate_url,

@@ -64,6 +64,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(normalized["size_ml"], 100)
         self.assertEqual(normalized["concentration"], "Eau de Parfum")
         self.assertEqual(normalized["currency"], "EUR")
+        self.assertIs(normalized["currency_explicit"], True)
 
     async def test_out_of_stock_is_valid_but_unknown_stock_is_not(self) -> None:
         connector = NotinoAffiliateFeedConnector(feed_loader=lambda: DIOR_FEED)
