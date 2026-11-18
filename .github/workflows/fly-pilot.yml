@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: scent-hunter-offer-engine-pilot
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy-pilot:
@@ -123,10 +123,11 @@ jobs:
           flyctl secrets set APISH_API_KEY="$APISH_API_KEY" --app "$FLY_APP"
 
       - name: Deploy pilot app
+        timeout-minutes: 15
         shell: bash
         run: |
           set -euo pipefail
-          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
+          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes --wait-timeout 600 --verbose
 
       - name: Wait for isolated pilot to boot
         shell: bash
@@ -179,7 +180,7 @@ jobs:
 
           for attempt in $(seq 1 240); do
             poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/catalog_seed.exit ]; then echo SEED_EXIT_CODE=\$(cat /data/catalog/catalog_seed.exit); else echo SEED_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
-              echo "Seed status poll failed ($attempt/60): $poll"
+              echo "Seed status poll failed ($attempt/240): $poll"
               sleep 5
               continue
             }
