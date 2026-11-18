@@ -43,6 +43,7 @@ class ProductVariant(Base):
     is_tester: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_refill: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_gift_set: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    is_mini: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gtin: Mapped[str | None] = mapped_column(String(14))
     canonical_key: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     fragrance: Mapped[Fragrance] = relationship(back_populates="variants")

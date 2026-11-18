@@ -90,11 +90,12 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
                 func.lower(ProductVariant.concentration).contains(concentration, autoescape=True),
                 func.lower(ProductVariant.concentration) == token,
             ))
-        elif token in {"tester", "refill", "gift", "set"}:
+        elif token in {"tester", "refill", "gift", "set", "mini", "miniature"}:
             flag = (
                 ProductVariant.is_tester if token == "tester" else
                 ProductVariant.is_refill if token == "refill" else
-                ProductVariant.is_gift_set
+                ProductVariant.is_gift_set if token in {"gift", "set"} else
+                ProductVariant.is_mini
             )
             statement = statement.where(flag.is_(True))
         else:
@@ -125,6 +126,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             "Tester" if variant.is_tester else None,
             "Refill" if variant.is_refill else None,
             "Gift set" if variant.is_gift_set else None,
+            "Mini" if variant.is_mini else None,
         )))
         results.append({
             "catalog_id": str(variant.id),
