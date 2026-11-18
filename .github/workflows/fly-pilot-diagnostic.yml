@@ -38,6 +38,7 @@ jobs:
           echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$GITHUB_ENV"
           flyctl status --app "$FLY_APP"
 
+      # Read-only inspection while the deploy pipeline is running.
       - name: Inspect machine, logs and SQLite catalog
         shell: bash
         run: |
