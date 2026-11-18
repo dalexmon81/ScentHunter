@@ -38,11 +38,12 @@ class StoreConnectorContractTests(unittest.TestCase):
         self.connector = FakeConnector()
 
     def test_subclass_must_implement_all_io_methods(self) -> None:
-        with self.assertRaises(TypeError):
-            class IncompleteConnector(StoreConnector):
-                store_key = "incomplete"
+        class IncompleteConnector(StoreConnector):
+            store_key = "incomplete"
 
         # The abstract class cannot be instantiated without all six methods.
+        with self.assertRaises(TypeError):
+            IncompleteConnector()
         self.assertEqual(self.connector.store_key, "fixture-store")
 
     def test_discovered_product_requires_stable_id_and_http_url(self) -> None:
