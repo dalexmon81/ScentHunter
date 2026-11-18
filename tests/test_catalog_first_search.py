@@ -149,3 +149,15 @@ def test_missing_structured_currency_is_not_explicit():
     item = catalog_engine.parse_product("bplatz", "https://bplatz.de/products/example", html)
     assert item["currency"] == "EUR"
     assert item["currency_explicit"] is False
+
+
+def test_browser_demo_route_is_registered_and_uses_catalog_api():
+    app = FastAPI()
+    app.include_router(catalog_search.router)
+    with TestClient(app) as client:
+        response = client.get("/catalog-demo")
+        assert response.status_code == 200
+        assert "ScentHunter" in response.text
+        assert "/api/catalog/status" in response.text
+        assert "/api/catalog/search?q=" in response.text
+        assert "Nessuno store viene interrogato durante la ricerca" in response.text
