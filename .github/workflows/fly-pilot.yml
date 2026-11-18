@@ -157,10 +157,48 @@ jobs:
           set -euo pipefail
           machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
           test -n "$machine_id" || { echo "No started pilot machine found." >&2; exit 1; }
-          # fly machine exec accepts the command as one positional string.
-          # Keep the shell invocation quoted as a single argument; do not use --
-          # here because that splits /bin/sh, -c and the script into extra args.
-          flyctl machine exec "$machine_id" "/bin/sh -c 'cd /app/backend && /app/.venv/bin/python -m alembic -c alembic.ini upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store'" --app "$FLY_APP" --timeout 600
+
+          # The Fly Machine Exec API can return 408 for long foreground commands.
+          # Launch migrations/seed in the background and poll a durable exit file.
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/catalog_seed.exit /data/catalog/catalog_seed.log
+          nohup /bin/sh -c '
+            cd /app/backend
+            /app/.venv/bin/python -m alembic -c alembic.ini upgrade head &&
+            /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store
+            result=$?
+            echo "$result" > /data/catalog/catalog_seed.exit
+          ' </dev/null >/data/catalog/catalog_seed.log 2>&1 &
+          echo SEED_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          for attempt in $(seq 1 60); do
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/catalog_seed.exit ]; then echo SEED_EXIT_CODE=\$(cat /data/catalog/catalog_seed.exit); else echo SEED_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Seed status poll failed ($attempt/60): $poll"
+              sleep 5
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'SEED_EXIT_CODE=0'; then
+              echo "PILOT_CATALOG_MIGRATION_AND_SEED=PASS"
+              break
+            fi
+            if printf '%s\\n' "$poll" | grep -Eq 'SEED_EXIT_CODE=[1-9]'; then
+              flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "Catalog migration/seed did not finish within 5 minutes." >&2
+              flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            sleep 5
+          done
 
       - name: Verify pilot health, canonical status and catalog search
         shell: bash
