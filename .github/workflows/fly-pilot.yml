@@ -221,8 +221,17 @@ jobs:
           test -n "$machine_id" || { echo "No started pilot machine found for worker verification." >&2; exit 1; }
 
           for attempt in $(seq 1 36); do
-            result="$(flyctl machine exec "$machine_id" "sh -lc 'set -eu; ps -eo args | grep -F \"python -m app.workers.sqlite_worker\" | grep -v grep >/dev/null; test -f /data/catalog/ingestion_queue.sqlite3; /app/.venv/bin/python - <<\"PY\"
-          import sqlite3
+            result="$(flyctl machine exec "$machine_id" "sh -lc 'set -eu; test -f /data/catalog/ingestion_queue.sqlite3; /app/.venv/bin/python - <<\"PY\"
+          import glob, os, sqlite3
+          worker_pids=[]
+          for path in glob.glob(\"/proc/[0-9]*/cmdline\"):
+              try:
+                  pid=int(path.split(\"/\")[2])
+                  if pid != os.getpid() and b\"python -m app.workers.sqlite_worker\" in open(path,\"rb\").read():
+                      worker_pids.append(pid)
+              except (OSError, ValueError):
+                  pass
+          assert worker_pids, \"SQLite worker process is not running\"
           db=sqlite3.connect(\"/data/catalog/ingestion_queue.sqlite3\")
           tables={r[0] for r in db.execute(\"select name from sqlite_master where type=?\",(\"table\",))}
           assert {\"ingestion_queue_jobs\",\"ingestion_queue_meta\"} <= tables, tables
