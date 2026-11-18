@@ -163,6 +163,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "mpn": raw.get("mpn"),
             "image_url": raw.get("image_url"),
             "source": raw.get("source", "authorized_cj_viv_xml_feed"),
+            "currency_explicit": raw.get("currency_explicit") is True,
             "raw_payload": {
                 "raw_xml": raw.get("raw_xml"),
                 "affiliate_url": raw.get("affiliate_url"),
