@@ -102,6 +102,48 @@ class CanonicalMatchingTests(unittest.TestCase):
             1,
         )
 
+    def test_invalid_gtin_check_digit_is_rejected(self):
+        result = resolve_canonical_variant(
+            self.session, store_id=self.store.id, external_product_id="SKU-BAD-GTIN",
+            record={"gtin": "3348901486393"},
+        )
+        self.assertIsNone(result.match)
+        self.assertEqual(result.reason, "invalid_gtin_or_check_digit")
+
+    def test_valid_gtin_does_not_override_conflicting_brand_or_fragrance(self):
+        self.variant.gtin = "3348901486392"
+        self.session.commit()
+        result = resolve_canonical_variant(
+            self.session, store_id=self.store.id, external_product_id="SKU-CONFLICT",
+            record={
+                "gtin": "3348901486392",
+                "brand_raw": "Chanel",
+                "raw_name": "Chanel Bleu de Chanel Eau de Parfum 100 ml",
+                "concentration": "Eau de Parfum",
+                "size_ml": 100,
+            },
+        )
+        self.assertIsNone(result.match)
+        self.assertIn("brand", result.reason)
+        self.assertIn("fragrance", result.reason)
+
+    def test_valid_gtin_does_not_override_concentration_or_size_conflict(self):
+        self.variant.gtin = "3348901486392"
+        self.session.commit()
+        result = resolve_canonical_variant(
+            self.session, store_id=self.store.id, external_product_id="SKU-WRONG-VARIANT",
+            record={
+                "gtin": "3348901486392",
+                "brand_raw": "Dior",
+                "raw_name": "Dior Sauvage Eau de Toilette 60 ml",
+                "concentration": "Eau de Toilette",
+                "size_ml": 60,
+            },
+        )
+        self.assertIsNone(result.match)
+        self.assertIn("concentration", result.reason)
+        self.assertIn("size_ml", result.reason)
+
     def test_known_store_external_id_reuses_existing_canonical_association(self):
         offer = Offer(
             id=uuid4(), store_id=self.store.id, product_variant_id=self.variant.id,
