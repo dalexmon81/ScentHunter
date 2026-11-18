@@ -57,13 +57,15 @@ async def run_ingestion(*, connector, matcher, engine=None, apply=False, max_pro
         "discovered": 0, "matched": 0, "unmatched": 0,
         "rejected": 0, "promoted": 0,
     }
-    store_id = _ensure_notino_store(engine) if apply else None
+    store_id = None
     cursor = None
     while counts["discovered"] < max_products:
         page_limit = min(1000, max_products - counts["discovered"])
         page = await connector.discover_products(cursor=cursor, limit=page_limit)
         if not page:
             break
+        if apply and store_id is None:
+            store_id = _ensure_notino_store(engine)
         for product in page:
             raw = dict(product.raw_payload)
             counts["discovered"] += 1
@@ -103,7 +105,10 @@ async def run_ingestion(*, connector, matcher, engine=None, apply=False, max_pro
             break
         cursor = str(int(cursor or "0") + len(page))
 
-    counts["truncated"] = counts["discovered"] >= max_products
+    counts["truncated"] = bool(
+        counts["discovered"] >= max_products
+        and await connector.discover_products(cursor=cursor or str(counts["discovered"]), limit=1)
+    )
     counts["mode"] = "apply" if apply else "dry_run"
     return counts
 
