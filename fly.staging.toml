@@ -4,6 +4,7 @@ app = "scenthunter-pilot-20261030"
 primary_region = "ams"
 
 [build]
+  dockerfile = "Dockerfile.pilot"
 
 [env]
   SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
