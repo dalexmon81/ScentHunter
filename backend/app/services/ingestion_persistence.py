@@ -205,13 +205,18 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.confidence = confidence if confidence is not None else row.match_confidence
         existing.valid_until = None
         existing.status = "active"
-        # Record every successfully captured observation, including an unchanged
-        # price. This makes each normal hydration auditable without creating a
-        # second Offer row for the same retailer product.
-        session.add(PriceHistory(
-            offer_id=existing.id, price=price,
-            currency=currency, availability=availability,
-        ))
+        # A redelivered identical feed record must not manufacture a second
+        # price-history point. Record history only when the commercial state
+        # (price, currency or stock) actually changes.
+        if (
+            existing.price != price
+            or existing.currency != currency
+            or existing.availability != availability
+        ):
+            session.add(PriceHistory(
+                offer_id=existing.id, price=price,
+                currency=currency, availability=availability,
+            ))
         offer_id = existing.id
         session.flush()
 
