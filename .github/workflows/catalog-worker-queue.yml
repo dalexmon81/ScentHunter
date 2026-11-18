@@ -1,0 +1,57 @@
+name: Catalog worker queue foundation
+
+on:
+  pull_request:
+    branches: [refactor/catalog-first-architecture]
+    paths:
+      - "backend/app/workers/**"
+      - "backend/app/services/canonical_matching.py"
+      - "backend/app/services/connector_ingestion.py"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/scripts/enqueue_notino_discovery.py"
+      - "backend/tests/test_catalog_worker_queue.py"
+      - "backend/requirements.txt"
+      - "backend/app/workers/README.md"
+      - ".github/workflows/catalog-worker-queue.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  queue-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend requirements
+        run: python -m pip install -r backend/requirements.txt
+      - name: Run Celery queue contract tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v
+      - name: Run ingestion run lifecycle tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_catalog_ingestion_run.py' -v
+      - name: Run Notino worker runtime tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Run canonical database matching tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
+      - name: Verify explicit Notino discovery kickoff CLI
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python scripts/enqueue_notino_discovery.py --help
