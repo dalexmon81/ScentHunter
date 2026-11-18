@@ -1720,6 +1720,174 @@ def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[s
     }
 
 
+
+def _apish_price(value: Any) -> Tuple[Optional[float], str]:
+    if isinstance(value, dict):
+        currency = str(value.get("currency") or "").upper()
+        amount = value.get("value")
+    else:
+        currency = ""
+        amount = value
+    try:
+        numeric = float(amount)
+    except (TypeError, ValueError):
+        return None, currency
+    if numeric <= 0:
+        return None, currency
+    return numeric, currency
+
+
+def _search_apish(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Search Notino through API.SH when APISH_API_KEY is configured."""
+    import os
+
+    api_key = str(os.environ.get("APISH_API_KEY") or "").strip()
+    if not api_key:
+        return [], {"provider": "api_sh", "configured": False, "reason": "missing_api_key"}
+
+    base = "https://api.api.sh/notino/v1"
+    headers = {"x-api-key": api_key, "Accept": "application/json"}
+    diagnostics: Dict[str, Any] = {
+        "provider": "api_sh", "configured": True, "country": "fr",
+        "search_calls": 0, "product_calls": 0, "credits_used_reported": 0,
+        "candidate_count": 0,
+    }
+    try:
+        response = requests.get(
+            base + "/search",
+            params={"q": query, "country": "fr", "sort": "relevance", "page": 1},
+            headers=headers, timeout=15,
+        )
+        diagnostics["search_calls"] = 1
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict) or payload.get("success") is False:
+            diagnostics["error"] = "invalid_search_response"
+            return [], diagnostics
+        diagnostics["credits_used_reported"] += int(payload.get("credits_used") or 0)
+        items = payload.get("items")
+        if not isinstance(items, list):
+            diagnostics["error"] = "missing_items"
+            return [], diagnostics
+
+        candidates = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            brand = _clean(item.get("brand") or "")
+            name = _clean(item.get("name") or "")
+            annotation = _clean(item.get("annotation") or item.get("sub_name") or "")
+            if not name or not _query_matches_name(f"{brand} {name} {annotation}".strip(), query):
+                continue
+            if _has_non_perfume_marker(f"{name} {annotation}"):
+                continue
+            product_id = str(item.get("id") or "").strip()
+            if not product_id.isdigit():
+                match = PRODUCT_RE.search(str(item.get("url") or ""))
+                product_id = match.group(1) if match else ""
+            if product_id:
+                candidates.append((item, product_id))
+        diagnostics["candidate_count"] = len(candidates)
+
+        offers: List[Dict[str, Any]] = []
+        for item, product_id in candidates[:3]:
+            detail_response = requests.get(
+                base + "/product", params={"id": product_id, "country": "fr"},
+                headers=headers, timeout=15,
+            )
+            diagnostics["product_calls"] += 1
+            detail_response.raise_for_status()
+            detail = detail_response.json()
+            if not isinstance(detail, dict) or detail.get("success") is False:
+                continue
+            diagnostics["credits_used_reported"] += int(detail.get("credits_used") or 0)
+            if detail.get("is_perfume") is False:
+                continue
+
+            detail_name = _clean(detail.get("name") or item.get("name") or "")
+            brand = _clean(detail.get("brand") or item.get("brand") or "")
+            annotation = _clean(detail.get("annotation") or item.get("annotation") or "")
+            if not detail_name or not _query_matches_name(
+                f"{brand} {detail_name} {annotation}".strip(), query
+            ):
+                continue
+            if _has_non_perfume_marker(f"{detail_name} {annotation}"):
+                continue
+
+            variants = detail.get("variants")
+            if not isinstance(variants, list) or not variants:
+                variants = [{
+                    "url": detail.get("url") or item.get("url"),
+                    "size": annotation,
+                    "price": detail.get("price"),
+                    "in_stock": detail.get("in_stock"),
+                }]
+
+            requested_ml = [
+                _size_to_ml(number, unit) for number, unit in _requested_sizes(query)
+            ]
+            eligible = []
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                size_text = _clean(variant.get("size") or "")
+                size_ml = _extract_size(size_text or annotation)
+                if requested_ml and (
+                    size_ml is None
+                    or not any(abs(size_ml - wanted) <= 0.01 for wanted in requested_ml)
+                ):
+                    continue
+                price_num, currency = _apish_price(variant.get("price"))
+                if price_num is None and not variant.get("price"):
+                    price_num, currency = _apish_price(detail.get("price"))
+                if price_num is None or currency != "EUR":
+                    continue
+                variant_url = _allowed_url(
+                    variant.get("url") or detail.get("url") or item.get("url"), BASE_URL
+                )
+                if not variant_url:
+                    continue
+                stock_value = variant.get("in_stock")
+                if stock_value is None:
+                    stock_value = detail.get("in_stock")
+                availability = "in_stock" if stock_value is True else (
+                    "out_of_stock" if stock_value is False else "unknown"
+                )
+                images = variant.get("images")
+                image_url = images[0] if isinstance(images, list) and images else item.get("image")
+                eligible.append({
+                    "shop": STORE, "store": "notino", "name": detail_name, "brand": brand,
+                    "price": f"{price_num:.2f} €", "price_num": price_num, "currency": "EUR",
+                    "availability": availability,
+                    "available": True if stock_value is True else False if stock_value is False else None,
+                    "image": image_url, "size_ml": size_ml, "url": variant_url,
+                    "product_url": variant_url, "gtin": variant.get("ean"),
+                    "sku": variant.get("product_code") or item.get("product_code"),
+                    "offer_source": "api_sh_notino",
+                })
+            if eligible:
+                if requested_ml:
+                    offers.extend(eligible)
+                else:
+                    offers.append(min(eligible, key=lambda row: row["price_num"]))
+
+        offers = [
+            row for row in offers
+            if _price_is_plausible(row.get("price_num"), row.get("size_ml"))
+        ]
+        deduped: Dict[Tuple[str, float], Dict[str, Any]] = {}
+        for row in offers:
+            deduped[(row["url"], float(row.get("price_num") or 0))] = row
+        diagnostics["offers_count"] = len(deduped)
+        return list(deduped.values())[:5], diagnostics
+    except requests.RequestException as exc:
+        diagnostics["error"] = type(exc).__name__
+        return [], diagnostics
+    except (ValueError, TypeError, KeyError):
+        diagnostics["error"] = "invalid_provider_response"
+        return [], diagnostics
+
+
 def search(query: str) -> Dict[str, Any]:
     """Prefer fresh CJ offers; use Notino.fr public product pages as a fallback."""
     query = _clean(query)
@@ -1745,6 +1913,27 @@ def search(query: str) -> Dict[str, Any]:
     feed_details = feed_report.get("details") if isinstance(feed_report, dict) else {}
     feed_status = feed_report.get("status") if isinstance(feed_report, dict) else "error"
     feed_error = feed_report.get("error") if isinstance(feed_report, dict) else "invalid_feed_report"
+    apish_rows, apish_diagnostics = _search_apish(query)
+    apish_results = [
+        prepared for row in apish_rows
+        if isinstance(row, dict)
+        for prepared in [_normalise_public_offer(row, query)]
+        if prepared is not None
+    ]
+    if apish_results:
+        for row in apish_results:
+            row["offer_source"] = "api_sh_notino"
+        return {
+            "status": "success", "verified": True, "results": apish_results,
+            "error": None,
+            "details": {
+                "source": "api_sh_notino", "provider": "api_sh",
+                "public_fallback_attempted": True,
+                "feed_status": feed_status, "feed_error": feed_error,
+                "provider_diagnostics": apish_diagnostics,
+            },
+        }
+
     try:
         public_rows, diagnostics = _search_public(query)
         public_results = [
@@ -1780,6 +1969,7 @@ def search(query: str) -> Dict[str, Any]:
                 "feed_status": feed_status,
                 "feed_error": feed_error,
                 "feed_details": feed_details or {},
+                "api_sh": apish_diagnostics,
                 "candidate_count": int(diagnostics.get("candidate_count") or 0),
                 "discovery": diagnostics,
             },
@@ -1798,6 +1988,7 @@ def search(query: str) -> Dict[str, Any]:
             "feed_status": feed_status,
             "feed_error": feed_error,
             "feed_details": feed_details or {},
+            "api_sh": apish_diagnostics,
             "discovery": diagnostics,
         },
     }

@@ -306,3 +306,95 @@ def test_product_parser_does_not_borrow_related_product_price_or_size():
         html,
         "Dior Sauvage",
     ) is None
+
+
+def test_apish_search_skips_without_key(monkeypatch):
+    monkeypatch.delenv("APISH_API_KEY", raising=False)
+    rows, diagnostics = scraper._search_apish("Dior Sauvage")
+    assert rows == []
+    assert diagnostics["configured"] is False
+    assert diagnostics["reason"] == "missing_api_key"
+
+
+def test_apish_search_uses_search_and_product_detail_and_maps_eur_variant(monkeypatch):
+    monkeypatch.setenv("APISH_API_KEY", "test-secret")
+    calls = []
+
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
+        def raise_for_status(self):
+            return None
+        def json(self):
+            return self.payload
+
+    def fake_get(url, params, headers, timeout):
+        calls.append((url, params, headers, timeout))
+        assert headers["x-api-key"] == "test-secret"
+        if url.endswith("/search"):
+            return Response({"credits_used": 1, "items": [{
+                "id": "15676518", "brand": "DIOR", "name": "Sauvage",
+                "annotation": "Eau de Parfum pour hommes",
+                "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-15676518/",
+            }]})
+        return Response({
+            "credits_used": 1, "is_perfume": True, "brand": "DIOR",
+            "name": "Sauvage", "annotation": "Eau de Parfum pour hommes",
+            "variants": [{
+                "id": "15676518", "size": "100 ml",
+                "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-15676518/",
+                "price": {"value": 89.9, "currency": "EUR"},
+                "in_stock": True, "ean": "3348901368247",
+            }],
+        })
+
+    monkeypatch.setattr(scraper.requests, "get", fake_get)
+    rows, diagnostics = scraper._search_apish("Dior Sauvage Eau de Parfum 100 ml")
+    assert len(calls) == 2
+    assert diagnostics["credits_used_reported"] == 2
+    assert len(rows) == 1
+    assert rows[0]["price_num"] == 89.9
+    assert rows[0]["size_ml"] == 100
+    assert rows[0]["currency"] == "EUR"
+    assert rows[0]["available"] is True
+    assert rows[0]["offer_source"] == "api_sh_notino"
+
+
+def test_apish_search_rejects_non_perfume_results(monkeypatch):
+    monkeypatch.setenv("APISH_API_KEY", "test-secret")
+
+    class Response:
+        def raise_for_status(self):
+            return None
+        def json(self):
+            return {"items": [{
+                "id": "123456", "brand": "DIOR", "name": "Sauvage Shampoo",
+                "annotation": "Hydrating Shampoo 250 ml",
+                "url": "https://www.notino.fr/dior/sauvage-shampoo/p-123456/",
+            }]}
+
+    monkeypatch.setattr(scraper.requests, "get", lambda *args, **kwargs: Response())
+    rows, diagnostics = scraper._search_apish("Dior Sauvage")
+    assert rows == []
+    assert diagnostics["product_calls"] == 0
+
+
+def test_search_prefers_apish_before_direct_public_scraper_when_feed_empty(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed
+    raw_offer = {
+        "name": "Dior Sauvage Eau de Parfum 100 ml", "brand": "Dior",
+        "price": "89.90 €", "price_num": 89.9, "currency": "EUR",
+        "size_ml": 100, "availability": "in_stock", "available": True,
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-15676518/",
+    }
+    monkeypatch.setattr(affiliate_feed, "search_feed", lambda query: {
+        "status": "success", "verified": True, "results": [], "error": None, "details": {},
+    })
+    monkeypatch.setattr(scraper, "_search_apish", lambda query: ([raw_offer], {"provider": "api_sh"}))
+    monkeypatch.setattr(scraper, "_search_public", lambda query: (_ for _ in ()).throw(
+        AssertionError("direct scraper should not run")
+    ))
+    report = scraper.search("Dior Sauvage Eau de Parfum 100 ml")
+    assert report["status"] == "success"
+    assert report["details"]["source"] == "api_sh_notino"
+    assert report["results"][0]["offer_source"] == "api_sh_notino"
