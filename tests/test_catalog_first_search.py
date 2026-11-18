@@ -76,6 +76,7 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert client.get("/api/catalog/search", params={"q": "Liquid Brun tester"}).json()["count"] == 0
         assert client.get("/api/catalog/search", params={"q": "Liquid Brun refill"}).json()["count"] == 0
         assert client.get("/api/catalog/search", params={"q": "Liquid Brun gift set"}).json()["count"] == 0
+        assert client.get("/api/catalog/search", params={"q": "Liquid Brun mini"}).json()["count"] == 0
 
 
 def test_missing_catalog_returns_503_without_creating_database(tmp_path, monkeypatch):
