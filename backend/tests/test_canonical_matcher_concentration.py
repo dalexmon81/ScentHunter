@@ -53,6 +53,20 @@ class CanonicalMatcherConcentrationTests(unittest.TestCase):
             result.canonical_variant_id, "VAR-f87146c82d167f4c"
         )
 
+    def test_notino_french_gender_suffix_matches_exact_canonical_variant(self) -> None:
+        offer = RetailerOffer(
+            retailer="notino-fr",
+            raw_name="French Avenue Liquid Brun Eau de Parfum pour homme 100 ml",
+            brand_raw="French Avenue",
+            size_ml=100,
+        )
+        result = self.matcher.match(offer)
+        self.assertIs(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "SH-0030")
+        self.assertEqual(
+            result.canonical_variant_id, "VAR-f87146c82d167f4c"
+        )
+
     def test_conflicting_edt_is_not_promoted_as_edp(self) -> None:
         offer = RetailerOffer(
             retailer="notino",
