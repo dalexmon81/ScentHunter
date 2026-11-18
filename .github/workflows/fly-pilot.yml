@@ -157,6 +157,7 @@ jobs:
           set -euo pipefail
           machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
           test -n "$machine_id" || { echo "No started pilot machine found." >&2; exit 1; }
+          # Use -- to stop flyctl parsing shell flags such as -c as its own flags.
           flyctl machine exec "$machine_id" --app "$FLY_APP" --timeout 600 -- /bin/sh -c 'cd /app/backend && /app/.venv/bin/python -m alembic -c alembic.ini upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store'
 
       - name: Verify pilot health, canonical status and catalog search
