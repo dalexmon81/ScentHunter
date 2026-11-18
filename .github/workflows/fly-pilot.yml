@@ -85,7 +85,7 @@ jobs:
             exit 1
           }
           printf '%s\n' "$app_names"
-          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
+          printf '%s\n' "$app_names" | grep -Fq "$FLY_APP" || {
             echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
             exit 1
           }
