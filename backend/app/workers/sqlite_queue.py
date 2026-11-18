@@ -1,18 +1,14 @@
-"""Durable single-machine SQLite queue for the isolated Fly pilot.
-
-Queue state lives in its own file on the existing persistent volume so queue
-writes do not contend with the canonical catalog's SQLite writer.
-"""
+"""Durable single-machine SQLite queue for the isolated Fly pilot."""
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 DEFAULT_DB = "/data/catalog/ingestion_queue.sqlite3"
 MAX_ATTEMPTS = 5
@@ -34,8 +30,18 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def db_connection() -> Iterator[sqlite3.Connection]:
+    conn = connect()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
 def ensure_schema() -> None:
-    with connect() as conn:
+    with db_connection() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS ingestion_queue_jobs (
             id TEXT PRIMARY KEY,
@@ -61,38 +67,29 @@ def ensure_schema() -> None:
         """)
 
 
-def _dedupe_key(stage: str, payload: Mapping[str, Any]) -> str:
-    body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
-    return f"{stage}:{digest}"
-
-
 def enqueue(stage: str, payload: Mapping[str, Any]) -> str:
     if not stage or not isinstance(payload, Mapping):
         raise ValueError("stage and JSON-object payload are required")
     ensure_schema()
     now = time.time()
     job_id = uuid.uuid4().hex
-    dedupe = _dedupe_key(stage, payload)
-    with connect() as conn:
+    payload_json = json.dumps(dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    with db_connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
         existing = conn.execute(
             """SELECT id FROM ingestion_queue_jobs
-               WHERE stage=? AND status IN ('queued','running')
-                 AND json_extract(payload_json, '$') = json_extract(?, '$')
+               WHERE stage=? AND status IN ('queued','running') AND payload_json=?
                ORDER BY created_at LIMIT 1""",
-            (stage, json.dumps(dict(payload), sort_keys=True, separators=(",", ":"))),
+            (stage, payload_json),
         ).fetchone()
         if existing:
-            conn.commit()
             return str(existing["id"])
         conn.execute(
             """INSERT INTO ingestion_queue_jobs
                (id,stage,payload_json,status,attempts,available_at,created_at)
                VALUES(?,?,?,'queued',0,?,?)""",
-            (job_id, stage, json.dumps(dict(payload), ensure_ascii=False, sort_keys=True), now, now),
+            (job_id, stage, payload_json, now, now),
         )
-        conn.commit()
     return job_id
 
 
@@ -101,33 +98,32 @@ def enqueue_daily_once(schedule_key: str, stage: str, payload: Mapping[str, Any]
     ensure_schema()
     now = time.time()
     job_id = uuid.uuid4().hex
-    with connect() as conn:
+    payload_json = json.dumps(dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    with db_connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
             "SELECT value FROM ingestion_queue_meta WHERE key=?", (schedule_key,)
         ).fetchone()
         if row and row["value"] == day:
-            conn.commit()
             return None
         conn.execute(
             """INSERT INTO ingestion_queue_jobs
                (id,stage,payload_json,status,attempts,available_at,created_at)
                VALUES(?,?,?,'queued',0,?,?)""",
-            (job_id, stage, json.dumps(dict(payload), ensure_ascii=False, sort_keys=True), now, now),
+            (job_id, stage, payload_json, now, now),
         )
         conn.execute(
             """INSERT INTO ingestion_queue_meta(key,value) VALUES(?,?)
                ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
             (schedule_key, day),
         )
-        conn.commit()
     return job_id
 
 
 def claim_next(worker_id: str) -> dict[str, Any] | None:
     ensure_schema()
     now = time.time()
-    with connect() as conn:
+    with db_connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
             """SELECT * FROM ingestion_queue_jobs
@@ -136,7 +132,6 @@ def claim_next(worker_id: str) -> dict[str, Any] | None:
             (now,),
         ).fetchone()
         if row is None:
-            conn.commit()
             return None
         cur = conn.execute(
             """UPDATE ingestion_queue_jobs
@@ -145,7 +140,6 @@ def claim_next(worker_id: str) -> dict[str, Any] | None:
                WHERE id=? AND status='queued'""",
             (now, worker_id, row["id"]),
         )
-        conn.commit()
         if cur.rowcount != 1:
             return None
         result = dict(row)
@@ -155,7 +149,7 @@ def claim_next(worker_id: str) -> dict[str, Any] | None:
 
 
 def finish(job_id: str) -> None:
-    with connect() as conn:
+    with db_connection() as conn:
         conn.execute(
             """UPDATE ingestion_queue_jobs SET status='completed',finished_at=?
                WHERE id=? AND status='running'""",
@@ -169,7 +163,7 @@ def fail_or_retry(job_id: str, attempts: int, error: str) -> str:
         status, available = "failed", now
     else:
         status, available = "queued", now + min(900, 2 ** attempts * 15)
-    with connect() as conn:
+    with db_connection() as conn:
         conn.execute(
             """UPDATE ingestion_queue_jobs
                SET status=?,available_at=?,finished_at=?,last_error=?
@@ -182,8 +176,7 @@ def fail_or_retry(job_id: str, attempts: int, error: str) -> str:
 def recover_stale() -> int:
     now = time.time()
     cutoff = now - STALE_AFTER_SECONDS
-    with connect() as conn:
-        conn.execute("BEGIN IMMEDIATE")
+    with db_connection() as conn:
         cur = conn.execute(
             """UPDATE ingestion_queue_jobs
                SET status=CASE WHEN attempts>=? THEN 'failed' ELSE 'queued' END,
@@ -193,5 +186,4 @@ def recover_stale() -> int:
                WHERE status='running' AND started_at<?""",
             (MAX_ATTEMPTS, now, MAX_ATTEMPTS, now, cutoff),
         )
-        conn.commit()
         return cur.rowcount
