@@ -1,10 +1,11 @@
 """Celery configuration for catalog-first background jobs."""
 from __future__ import annotations
 import os
+from urllib.parse import urlparse
 from celery import Celery
 from kombu import Queue
 
-BROKER_URL = os.environ.get("SCENTHUNTER_REDIS_URL", "redis://localhost:6379/0")
+BROKER_URL = os.environ.get("SCENTHUNTER_REDIS_URL", "").strip() or None
 RESULT_BACKEND = os.environ.get("SCENTHUNTER_CELERY_RESULT_BACKEND") or None
 QUEUES = (
     Queue("discovery", routing_key="discovery"),
@@ -40,4 +41,30 @@ celery_app.conf.update(
 def queue_is_configured(environ=None) -> bool:
     env = os.environ if environ is None else environ
     value = str(env.get("SCENTHUNTER_REDIS_URL", "")).strip()
-    return value.startswith(("redis://", "rediss://"))
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in {"redis", "rediss"} and bool(parsed.hostname) and parsed.port != 0
+    except ValueError:
+        return False
+
+
+def require_worker_broker(environ=None) -> str:
+    """Fail worker startup unless an explicit Redis endpoint is configured."""
+    env = os.environ if environ is None else environ
+    value = str(env.get("SCENTHUNTER_REDIS_URL", "")).strip()
+    if not queue_is_configured(env):
+        raise RuntimeError(
+            "SCENTHUNTER_REDIS_URL must be an explicit redis:// or rediss:// URL "
+            "with a hostname before the catalog worker can start"
+        )
+    return value
+
+
+# Celery may otherwise apply its own localhost broker default. Guard the
+# worker lifecycle rather than opening a Redis connection at module import.
+from celery.signals import worker_init
+
+
+@worker_init.connect
+def _require_explicit_worker_broker(**_kwargs):
+    require_worker_broker()
