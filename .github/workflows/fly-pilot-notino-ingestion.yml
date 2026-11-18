@@ -52,6 +52,10 @@ jobs:
           remote_script="$(cat <<'REMOTE'
           set -eu
           mkdir -p /data/catalog
+          if [ -f /data/catalog/notino_smoke.exit ] && [ "$(cat /data/catalog/notino_smoke.exit)" = "0" ] && grep -q "NOTINO_OFFER_PERSISTENCE=PASS" /data/catalog/notino_smoke.log 2>/dev/null; then
+            echo NOTINO_SMOKE_ALREADY_PASSED
+            exit 0
+          fi
           __SCRIPT_B64__
                     /app/.venv/bin/python - <<'PY'
           import glob, os, signal
@@ -81,7 +85,7 @@ jobs:
           flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
 
           for attempt in $(seq 1 240); do
-            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/notino_smoke.exit ]; then echo NOTINO_SMOKE_EXIT=\\$(cat /data/catalog/notino_smoke.exit); else echo NOTINO_SMOKE_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/notino_smoke.exit ]; then echo NOTINO_SMOKE_EXIT=\$(cat /data/catalog/notino_smoke.exit); else echo NOTINO_SMOKE_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
               echo "Notino smoke status poll failed ($attempt/240): $poll"
               sleep 5
               continue
