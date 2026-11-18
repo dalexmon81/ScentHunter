@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured, require_worker_broker
@@ -39,8 +40,20 @@ class CatalogWorkerQueueTests(unittest.TestCase):
             require_worker_broker({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}),
             "rediss://redis.example/0",
         )
-    def test_enqueue_fails_closed_without_broker(self):
-        with patch.dict(os.environ, {}, clear=True):
+    def test_default_pilot_backend_enqueues_durably_without_redis(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.dict(os.environ, {
+                "SCENTHUNTER_QUEUE_BACKEND": "sqlite",
+                "SCENTHUNTER_SQLITE_QUEUE_DB": os.path.join(temp, "queue.sqlite3"),
+            }, clear=True):
+                job_id = enqueue_discovery("store-1")
+                self.assertTrue(job_id)
+                from app.workers.sqlite_queue import claim_next
+                job = claim_next("test-worker")
+                self.assertEqual(job["id"], job_id)
+                self.assertEqual(job["stage"], "discover")
+    def test_redis_backend_fails_closed_without_broker(self):
+        with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "redis"}, clear=True):
             with self.assertRaises(QueueNotConfigured):
                 enqueue_discovery("store-1")
     def test_discovery_page_limit_is_bounded(self):
