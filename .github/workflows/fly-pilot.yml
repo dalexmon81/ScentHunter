@@ -213,8 +213,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd backend
-          PYTHONPATH=. /app/.venv/bin/python - <<'PY'
+          python -m pip install --quiet requests beautifulsoup4
+          PYTHONPATH=backend python - <<'PY'
           import json
           from scrapers.notino.scraper import _search_apish
 
