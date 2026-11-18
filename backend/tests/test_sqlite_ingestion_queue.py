@@ -53,6 +53,8 @@ class SQLiteQueueTests(unittest.TestCase):
         with sqlite_queue.connect() as conn:
             conn.execute("UPDATE ingestion_queue_jobs SET available_at=0 WHERE id=?", (job_id,))
         for attempt in range(2, sqlite_queue.MAX_ATTEMPTS + 1):
+            with sqlite_queue.db_connection() as conn:
+                conn.execute("UPDATE ingestion_queue_jobs SET available_at=0 WHERE id=?", (job_id,))
             job = sqlite_queue.claim_next("worker-a")
             self.assertEqual(job["attempts"], attempt)
             status = sqlite_queue.fail_or_retry(job_id, job["attempts"], "failure")
