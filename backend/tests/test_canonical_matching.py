@@ -6,7 +6,9 @@ from uuid import uuid4
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.models import Base, Brand, Fragrance, Offer, ProductVariant, Store
+from app.models import Base, Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
+from decimal import Decimal
+from app.services.ingestion_persistence import promote_offer, record_match, stage_raw_offer
 from app.services.canonical_matching import resolve_canonical_variant
 
 
@@ -70,6 +72,35 @@ class CanonicalMatchingTests(unittest.TestCase):
         )
         self.assertIsNone(result.match)
         self.assertIn("incomplete", result.reason)
+
+    def test_duplicate_delivery_does_not_duplicate_price_history(self):
+        first_raw_id = stage_raw_offer(
+            self.session, store_id=self.store.id, raw_payload={},
+            external_product_id="REDELIVERED-1",
+        )
+        record_match(self.session, ingestion_raw_id=first_raw_id,
+                     product_variant_id=self.variant.id, method="gtin_exact")
+        first_offer_id = promote_offer(
+            self.session, ingestion_raw_id=first_raw_id, price=Decimal("89.90"),
+            currency="EUR", url="https://notino.fr/p/duplicate",
+            availability="in_stock", source="fixture",
+        )
+        second_raw_id = stage_raw_offer(
+            self.session, store_id=self.store.id, raw_payload={},
+            external_product_id="REDELIVERED-1",
+        )
+        record_match(self.session, ingestion_raw_id=second_raw_id,
+                     product_variant_id=self.variant.id, method="gtin_exact")
+        second_offer_id = promote_offer(
+            self.session, ingestion_raw_id=second_raw_id, price=Decimal("89.90"),
+            currency="EUR", url="https://notino.fr/p/duplicate",
+            availability="in_stock", source="fixture",
+        )
+        self.assertEqual(first_offer_id, second_offer_id)
+        self.assertEqual(
+            self.session.query(PriceHistory).filter_by(offer_id=first_offer_id).count(),
+            1,
+        )
 
     def test_known_store_external_id_reuses_existing_canonical_association(self):
         offer = Offer(
