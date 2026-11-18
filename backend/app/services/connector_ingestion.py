@@ -13,6 +13,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.connectors.base import StoreConnector
+from app.models import IngestionRaw
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
@@ -41,22 +42,37 @@ def persist_connector_record(
     if not isinstance(raw_record, dict):
         raise TypeError("raw_record must be a dict")
 
-    parsed = connector.parse_raw(raw_record)
-    if not isinstance(parsed, dict):
-        parsed = dict(parsed)
     external_id = (
-        parsed.get("external_product_id") or raw_record.get("external_product_id")
-        or raw_record.get("sku") or raw_record.get("gtin")
+        raw_record.get("external_product_id")
+        or raw_record.get("sku")
+        or raw_record.get("gtin")
     )
     raw_payload = dict(raw_record)
-    raw_payload["currency_explicit"] = bool(
-        parsed.get("currency_explicit", raw_record.get("currency_explicit", False))
-    )
+    raw_payload["currency_explicit"] = bool(raw_record.get("currency_explicit", False))
     raw_payload["connector_store_key"] = connector.store_key
     raw_id = stage_raw_offer(
         session, store_id=store_id, raw_payload=raw_payload,
         external_product_id=str(external_id) if external_id else None,
     )
+
+    try:
+        parsed = connector.parse_raw(raw_record)
+        if not isinstance(parsed, dict):
+            parsed = dict(parsed)
+    except (TypeError, ValueError) as exc:
+        reason = f"connector_parse_failed:{type(exc).__name__}:{exc}"
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method=f"{connector.store_key}_connector_parser",
+            reason=reason, unresolved_status="pending",
+        )
+        return ConnectorIngestionResult(raw_id, "pending", reason=reason)
+
+    raw_payload["currency_explicit"] = bool(
+        parsed.get("currency_explicit", raw_payload["currency_explicit"])
+    )
+    staged = session.get(IngestionRaw, raw_id)
+    staged.raw_payload = raw_payload
 
     try:
         normalized = normalize_offer(parsed, retailer=connector.store_key)
