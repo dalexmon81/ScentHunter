@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import unittest
 from unittest.mock import patch
-from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured
+from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured, require_worker_broker
 from app.workers.queueing import QueueNotConfigured, enqueue_discovery
 from app.workers.runtime import clear_handlers, register_handler
 from app.workers.tasks import HandlerNotConfigured, _execute
@@ -28,7 +28,17 @@ class CatalogWorkerQueueTests(unittest.TestCase):
     def test_queue_requires_explicit_redis_url(self):
         self.assertFalse(queue_is_configured({}))
         self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "sqlite:///x"}))
+        self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://"}))
+        self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://:6379/0"}))
+        self.assertTrue(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://redis.example:6379/0"}))
         self.assertTrue(queue_is_configured({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}))
+    def test_worker_startup_requires_explicit_broker(self):
+        with self.assertRaisesRegex(RuntimeError, "SCENTHUNTER_REDIS_URL"):
+            require_worker_broker({})
+        self.assertEqual(
+            require_worker_broker({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}),
+            "rediss://redis.example/0",
+        )
     def test_enqueue_fails_closed_without_broker(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(QueueNotConfigured):
