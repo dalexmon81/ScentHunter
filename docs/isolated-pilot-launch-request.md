@@ -10,3 +10,5 @@ Production app and production volume are not targets.
 This file is an execution marker only; it contains no credentials.
 
 Retry after correcting Fly token newline handling.
+
+Retry after replacing FLY_API_TOKEN with the new Fly Org Deploy Token.
