@@ -1,0 +1,23 @@
+FROM python:3.12.14 AS builder
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+RUN python -m venv .venv
+COPY requirements.txt ./
+RUN .venv/bin/pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.12.14-slim-bookworm
+
+WORKDIR /app
+COPY --from=builder /app/.venv .venv/
+COPY . .
+
+# Keep the isolated catalog pilot lean: do not start the legacy family-coverage
+# and Phase 0 background daemons used by the production image.
+RUN /app/.venv/bin/playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
+ENV PYTHONPATH=/app/backend
+ENV PYTHONUNBUFFERED=1
+CMD ["/app/.venv/bin/uvicorn", "main:app", "--app-dir", "/app/backend", "--host", "0.0.0.0", "--port", "8080"]
