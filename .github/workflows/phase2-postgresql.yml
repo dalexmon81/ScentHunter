@@ -2,7 +2,7 @@ name: Phase 2 PostgreSQL compatibility
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, refactor/catalog-first-architecture]
     paths:
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
@@ -15,6 +15,14 @@ on:
       - "backend/tests/test_phase2_database_backends.py"
       - "backend/tests/test_phase2_postgres_schema.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
+      - "backend/app/services/canonical_matching.py"
+      - "backend/app/services/connector_ingestion.py"
+      - "backend/app/services/ingestion_persistence.py"
+      - "backend/app/workers/**"
+      - "backend/tests/test_canonical_matching.py"
+      - "backend/tests/test_catalog_worker_queue.py"
+      - "backend/tests/test_catalog_ingestion_run.py"
+      - "backend/tests/test_notino_worker_runtime.py"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
