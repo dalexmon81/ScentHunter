@@ -9,19 +9,15 @@ from __future__ import annotations
 import asyncio
 from decimal import Decimal
 from pathlib import Path
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.db import make_engine
-from app.models import IngestionRaw, Offer, Store
+from app.models import IngestionRaw, IngestionRun, Offer, Store
 from app.services.connector_ingestion import persist_connector_record
-from app.workers.ingestion_run import (
-    finish_ingestion_run,
-    record_ingestion_progress,
-    start_ingestion_run,
-)
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
@@ -100,7 +96,9 @@ def main() -> int:
                         Offer.external_product_id == str(record["external_product_id"]),
                     ).limit(1)
                 )
-                run_id = start_ingestion_run(session, store_id=store_id)
+                run = IngestionRun(store_id=store_id, status="running", products_discovered=1)
+                session.add(run)
+                session.flush()
                 result = persist_connector_record(
                     session,
                     connector=connector,
@@ -109,14 +107,10 @@ def main() -> int:
                     matcher=matcher,
                 )
                 if result.status != "promoted" or result.offer_id is None:
-                    record_ingestion_progress(
-                        session,
-                        run_id=run_id,
-                        products_discovered=1,
-                        offers_rejected=1,
-                        error=result.reason or result.status,
-                    )
-                    finish_ingestion_run(session, run_id=run_id, status="partial")
+                    run.offers_rejected = 1
+                    run.errors = [str(result.reason or result.status)]
+                    run.status = "partial"
+                    run.finished_at = datetime.now(timezone.utc)
                     last_reason = result.reason or result.status
                     continue
 
@@ -131,14 +125,10 @@ def main() -> int:
                 ):
                     raise RuntimeError("NOTINO_PERSISTED_OFFER_VERIFICATION_FAILED")
 
-                record_ingestion_progress(
-                    session,
-                    run_id=run_id,
-                    products_discovered=1,
-                    offers_created=0 if existing else 1,
-                    offers_updated=1 if existing else 0,
-                )
-                finish_ingestion_run(session, run_id=run_id, status="completed")
+                run.offers_created = 0 if existing else 1
+                run.offers_updated = 1 if existing else 0
+                run.status = "completed"
+                run.finished_at = datetime.now(timezone.utc)
 
                 print("NOTINO_CJ_FEED_DOWNLOAD=PASS")
                 print("NOTINO_CJ_FEED_RECORDS=" + str(count))
