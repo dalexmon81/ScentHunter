@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "backend/app/connectors/**"
+      - "backend/app/services/connector_ingestion.py"
+      - "backend/scripts/ingest_notino_catalog.py"
       - "backend/scrapers/notino/affiliate_feed.py"
       - "backend/tests/test_*connector*.py"
       - ".github/workflows/retailer-connector-contract.yml"
