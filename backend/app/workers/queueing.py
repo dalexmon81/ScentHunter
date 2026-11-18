@@ -1,8 +1,14 @@
-"""Typed producer helpers for catalog-first tasks."""
+"""Typed producer helpers for catalog-first tasks.
+
+The isolated single-machine pilot uses a durable SQLite queue on its existing
+Fly volume. Redis/Celery remains an optional backend for later multi-machine
+deployments; no broker is required for the pilot.
+"""
 from __future__ import annotations
+
+import os
 from typing import Any, Mapping
 from uuid import UUID
-from app.workers.celery_app import celery_app, queue_is_configured
 
 TASKS = {
     "discover": "app.workers.tasks.discover_store_products",
@@ -14,27 +20,44 @@ TASKS = {
     "quarantine": "app.workers.tasks.quarantine_failed_connector",
     "reprocess": "app.workers.tasks.reprocess_failed_offers",
 }
+
+
 class QueueNotConfigured(RuntimeError):
     pass
+
+
+def _backend() -> str:
+    value = os.environ.get("SCENTHUNTER_QUEUE_BACKEND", "sqlite").strip().lower()
+    if value not in {"sqlite", "redis"}:
+        raise RuntimeError("SCENTHUNTER_QUEUE_BACKEND must be sqlite or redis")
+    return value
+
 
 def _enqueue(stage: str, payload: Mapping[str, Any]):
     if stage not in TASKS:
         raise ValueError(f"unsupported ingestion stage: {stage}")
-    if not queue_is_configured():
-        raise QueueNotConfigured("SCENTHUNTER_REDIS_URL is not configured; background ingestion is disabled")
     import json
     safe_payload = json.loads(json.dumps(dict(payload), allow_nan=False))
+    if _backend() == "sqlite":
+        from app.workers.sqlite_queue import enqueue
+        return enqueue(stage, safe_payload)
+    from app.workers.celery_app import celery_app, queue_is_configured
+    if not queue_is_configured():
+        raise QueueNotConfigured("SCENTHUNTER_REDIS_URL is not configured")
     return celery_app.send_task(TASKS[stage], kwargs={"payload": safe_payload})
+
 
 def enqueue_discovery(store_id: UUID | str, *, cursor: str | None = None, limit: int = 100):
     if limit < 1 or limit > 1000:
         raise ValueError("limit must be between 1 and 1000")
     return _enqueue("discover", {"store_id": str(store_id), "cursor": cursor, "limit": limit})
 
+
 def enqueue_offer_fetch(store_id: UUID | str, external_product_id: str):
     if not str(external_product_id).strip():
         raise ValueError("external_product_id is required")
     return _enqueue("fetch", {"store_id": str(store_id), "external_product_id": str(external_product_id)})
+
 
 def enqueue_stage(stage: str, *, ingestion_raw_id: UUID | str, extra: Mapping[str, Any] | None = None):
     if stage not in {"normalize", "match", "validate", "refresh", "quarantine", "reprocess"}:
