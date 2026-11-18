@@ -59,9 +59,9 @@ jobs:
           printf 'FLY_API_TOKEN=%s\\n' "$normalized_token" >> "$GITHUB_ENV"
           grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
           grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"' fly.staging.toml
+          grep -Fq 'BPLATZ_PHASE2_PERSISTENCE = "1"' fly.staging.toml
+          grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
           echo "Production fly.toml is not used by this workflow."
 
       - name: Install Fly CLI
@@ -125,7 +125,36 @@ jobs:
           set -euo pipefail
           flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
 
-      - name: Verify pilot health, read API and user search path
+      - name: Wait for isolated pilot to boot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import time
+          import urllib.request
+
+          url = "https://scenthunter-pilot-20261030.fly.dev/health"
+          for attempt in range(1, 25):
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as response:
+                      if response.status == 200:
+                          print("PILOT_BOOT=PASS")
+                          break
+              except Exception as exc:
+                  print(f"Attempt {attempt}/24: {type(exc).__name__}")
+              if attempt < 24:
+                  time.sleep(5)
+          else:
+              raise SystemExit("Pilot did not become healthy.")
+          PY
+
+      - name: Migrate and seed the isolated canonical catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && /app/.venv/bin/python -m alembic -c alembic.ini upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store'"
+
+      - name: Verify pilot health, canonical status and catalog search
         shell: bash
         run: |
           set -euo pipefail
@@ -155,16 +184,19 @@ jobs:
                   health = get("/health")
                   if health.get("status") != "healthy":
                       raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                      raise RuntimeError("Read API did not return the expected contract: " + json.dumps(offer_api))
-                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(ui_search, dict):
-                      raise RuntimeError("User search endpoint returned a non-object response.")
+                  catalog_status = get("/api/catalog/status")
+                  if catalog_status.get("status") != "ready":
+                      raise RuntimeError("Canonical catalog is not ready: " + json.dumps(catalog_status))
+                  catalog_search = get("/api/catalog/search?q=" + urllib.parse.quote("French Avenue Liquid Brun EDP 100ml"))
+                  if catalog_search.get("status") != "completed" or not isinstance(catalog_search.get("results"), list):
+                      raise RuntimeError("Canonical catalog search returned an invalid contract: " + json.dumps(catalog_search))
                   print("PILOT_HEALTH=PASS")
-                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
+                  print("PILOT_CATALOG_STATUS=PASS")
+                  print("PILOT_CATALOG_SEARCH=PASS")
+                  print("PILOT_CANONICAL_PRODUCTS=" + str(catalog_status.get("canonical_products", 0)))
+                  print("PILOT_CANONICAL_VARIANTS=" + str(catalog_status.get("canonical_variants", 0)))
+                  print("PILOT_PUBLISHED_OFFERS=" + str(catalog_status.get("published_offers", 0)))
+                  print("PILOT_SEARCH_RESULTS=" + str(catalog_search.get("count", 0)))
                   print("PILOT_URL=" + base)
                   break
               except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
@@ -174,6 +206,25 @@ jobs:
                       time.sleep(5)
           else:
               raise SystemExit("Pilot smoke test failed: " + str(last_error))
+          PY
+
+      - name: Verify API.SH Notino provider (one bounded search)
+        if: ${{ env.APISH_API_KEY != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          PYTHONPATH=. /app/.venv/bin/python - <<'PY'
+          import json
+          from scrapers.notino.scraper import _search_apish
+
+          rows, diagnostics = _search_apish("French Avenue Liquid Brun 100 ml")
+          safe = {key: value for key, value in diagnostics.items() if key not in {"api_key", "token"}}
+          print("APISH_DIAGNOSTICS=" + json.dumps(safe, ensure_ascii=False))
+          print("APISH_VERIFIED_OFFERS=" + str(len(rows)))
+          if diagnostics.get("error"):
+              raise SystemExit("API.SH provider request failed: " + str(diagnostics["error"]))
+          print("APISH_PROVIDER_REQUEST=PASS")
           PY
 
       - name: Print pilot URL
