@@ -213,6 +213,39 @@ jobs:
             sleep 5
           done
 
+      - name: Verify durable SQLite worker is running on the pilot machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for worker verification." >&2; exit 1; }
+
+          for attempt in $(seq 1 36); do
+            result="$(flyctl machine exec "$machine_id" "sh -lc 'set -eu; ps -eo args | grep -F \"python -m app.workers.sqlite_worker\" | grep -v grep >/dev/null; test -f /data/catalog/ingestion_queue.sqlite3; /app/.venv/bin/python - <<\"PY\"
+          import sqlite3
+          db=sqlite3.connect(\"/data/catalog/ingestion_queue.sqlite3\")
+          tables={r[0] for r in db.execute(\"select name from sqlite_master where type=\\\"table\\\"\")}
+          assert {\"ingestion_queue_jobs\",\"ingestion_queue_meta\"} <= tables, tables
+          row=db.execute(\"select value from ingestion_queue_meta where key=?\",(\"schedule:notino-fr:daily-discovery\",)).fetchone()
+          print(\"NOTINO_DAILY_SCHEDULE=\" + (row[0] if row else \"PENDING\"))
+          print(\"SQLITE_QUEUE_TABLES=PASS\")
+          PY' " --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Worker verification pending ($attempt/36): $result"
+              sleep 5
+              continue
+            }
+            printf '%s\\n' "$result"
+            if printf '%s\\n' "$result" | grep -q 'SQLITE_QUEUE_TABLES=PASS' && ! printf '%s\\n' "$result" | grep -q 'NOTINO_DAILY_SCHEDULE=PENDING'; then
+              echo "PILOT_SQLITE_WORKER=PASS"
+              break
+            fi
+            if [ "$attempt" -eq 36 ]; then
+              echo "SQLite worker did not initialize and schedule Notino discovery." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
       - name: Verify pilot health, canonical status and catalog search
         shell: bash
         run: |
