@@ -60,7 +60,7 @@ jobs:
               try:
                   pid = int(path.split("/")[2])
                   cmd = open(path, "rb").read()
-                  if cmd.startswith(b"/app/.venv/bin/python\\0scripts/smoke_notino_catalog_ingestion.py"):
+                  if cmd.startswith(b"/app/.venv/bin/python\0scripts/smoke_notino_catalog_ingestion.py"):
                       print("STOPPING_PREVIOUS_NOTINO_SMOKE_PID=" + str(pid), flush=True)
                       os.kill(pid, signal.SIGTERM)
               except (OSError, ValueError, IndexError):
