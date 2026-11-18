@@ -65,6 +65,9 @@ class NotinoOffer:
     concentration: str | None
     # Keep CJ attribution while catalog identity remains the canonical URL.
     affiliate_url: str | None = None
+    # Preserve the original feed item so the canonical ingestion layer can audit
+    # and reprocess retailer evidence without downloading the feed again.
+    raw_xml: str | None = None
 
 
 def _local(tag: str) -> str:
@@ -360,6 +363,7 @@ def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) ->
         image=_image_url(image),
         concentration=_concentration(title, raw_size),
         affiliate_url=affiliate_url,
+        raw_xml=ET.tostring(item, encoding="unicode"),
     )
 
 
