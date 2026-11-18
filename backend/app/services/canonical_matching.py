@@ -36,10 +36,68 @@ class CanonicalMatchResult:
 
 
 def _gtin(value: Any) -> str | None:
+    """Normalize and validate GTIN length and GS1 check digit."""
     if value is None:
         return None
-    digits = re.sub(r"[^0-9]", "", str(value))
-    return digits if len(digits) in {8, 12, 13, 14} else None
+    raw = str(value).strip()
+    if not re.fullmatch(r"[0-9\\s-]+", raw):
+        return None
+    digits = re.sub(r"[\\s-]", "", raw)
+    if len(digits) not in {8, 12, 13, 14}:
+        return None
+    body = [int(char) for char in digits[:-1]]
+    weighted_sum = sum(
+        digit * (3 if offset % 2 == 0 else 1)
+        for offset, digit in enumerate(reversed(body))
+    )
+    expected = (10 - weighted_sum % 10) % 10
+    return digits if expected == int(digits[-1]) else None
+
+
+def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: dict) -> list[str]:
+    """Reject a valid GTIN when supplied product metadata contradicts its variant."""
+    fragrance = session.get(Fragrance, variant.fragrance_id)
+    brand = session.get(Brand, fragrance.brand_id) if fragrance is not None else None
+    if fragrance is None or brand is None:
+        return ["canonical_identity_missing"]
+
+    title = record.get("title") or record.get("raw_name")
+    brand_value = record.get("brand") or record.get("brand_raw")
+    fragrance_value = record.get("fragrance")
+    if not fragrance_value and title:
+        normalized_title = normalize_text(str(title))
+        normalized_brand = normalize_brand(str(brand_value or ""))
+        if normalized_brand and normalized_title.startswith(normalized_brand + " "):
+            normalized_title = normalized_title[len(normalized_brand) + 1:]
+        fragrance_value = normalized_title
+
+    identity = build_identity(
+        brand=str(brand_value) if brand_value else None,
+        fragrance_name=str(fragrance_value) if fragrance_value else None,
+        title=str(title) if title else None,
+        concentration=str(record.get("concentration")) if record.get("concentration") else None,
+        size_ml=record.get("size_ml"),
+        is_tester=record.get("is_tester"),
+        is_refill=record.get("is_refill"),
+        is_gift_set=record.get("is_gift_set"),
+        is_mini=record.get("is_mini"),
+    )
+    conflicts: list[str] = []
+    if identity.brand and identity.brand != normalize_brand(brand.name):
+        conflicts.append("brand")
+    if identity.fragrance and identity.fragrance != normalize_fragrance_name(fragrance.name):
+        conflicts.append("fragrance")
+    canonical_concentration = extract_concentration(variant.concentration)
+    if identity.concentration and identity.concentration != canonical_concentration:
+        conflicts.append("concentration")
+    if identity.size_ml is not None and identity.size_ml != variant.size_ml:
+        conflicts.append("size_ml")
+    for field_name in ("is_tester", "is_refill", "is_gift_set", "is_mini"):
+        source_value = getattr(identity, field_name)
+        canonical_value = getattr(variant, field_name)
+        if source_value is not None and canonical_value is not None and source_value is not canonical_value:
+            conflicts.append(field_name)
+    return conflicts
 
 
 def resolve_canonical_variant(
@@ -47,15 +105,23 @@ def resolve_canonical_variant(
     record: dict,
 ) -> CanonicalMatchResult:
     """Resolve one product using database identities only; never consult legacy IDs."""
-    gtin = _gtin(record.get("gtin") or record.get("ean"))
+    raw_gtin = record.get("gtin") or record.get("ean")
+    gtin = _gtin(raw_gtin)
+    if raw_gtin not in (None, "") and gtin is None:
+        return CanonicalMatchResult(None, "invalid_gtin_or_check_digit")
     if gtin:
         rows = session.scalars(select(ProductVariant).where(ProductVariant.gtin == gtin)).all()
+        if len(rows) > 1:
+            return CanonicalMatchResult(None, "ambiguous_gtin")
         if len(rows) == 1:
+            conflicts = _gtin_metadata_conflicts(session, rows[0], record)
+            if conflicts:
+                return CanonicalMatchResult(
+                    None, "gtin_metadata_conflict:" + ",".join(conflicts)
+                )
             return CanonicalMatchResult(CanonicalMatch(
                 rows[0].id, "gtin_exact", Decimal("1.000"), "exact_gtin_match"
             ), "matched")
-        if len(rows) > 1:
-            return CanonicalMatchResult(None, "ambiguous_gtin")
 
     external_id = str(external_product_id or record.get("external_product_id") or "").strip()
     if external_id:
