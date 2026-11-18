@@ -2,5 +2,5 @@ Isolated Fly.io catalog pilot deployment requested.
 Target: scenthunter-pilot-20261030 (ams).
 Production app and production fly.toml must remain untouched.
 
-Retry after correcting the Notino ingestion shell block.
-Diagnostic pass: capture real Notino Liquid Brun candidate identity and canonical match outcome.
+Retry after fixing smoke-test complexity: filter the streamed CJ feed to the known French Avenue Liquid Brun EDP 100ml target before invoking canonical matching.
+The diagnostic pass must report the real candidate identity, match outcome, and persistence result.
