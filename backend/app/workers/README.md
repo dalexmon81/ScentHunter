@@ -19,7 +19,8 @@ Before enabling it in the isolated pilot:
    the pilot app and worker.
 2. Add a separate worker process/deployment; do not run ingestion inside FastAPI.
 3. Register stage handlers using the canonical DB session factory, connector
-   registry and persist_connector_record.
+   registry and persist_connector_record. The Notino discovery and fetch
+   handlers are now wired; other retailers remain unregistered.
 4. Persist ingestion-run counters, connector failure streaks and quarantine
    state before enabling recurring schedules.
 5. Verify idempotency and recovery using a disposable DB and a real Redis broker.
@@ -42,3 +43,18 @@ the caller.
 
 This is persistence infrastructure only. It does not register retailer handlers,
 start Celery workers, provision Redis, or activate ingestion.
+
+
+## Notino pilot runtime
+
+The worker bootstrap registers Notino's discovery and fetch handlers. Discovery
+reads one page from the authorized CJ/VIV feed snapshot and queues one fetch task
+per retailer product. Fetch stages the original record, normalizes it, resolves
+only existing legacy-to-canonical UUID mappings, validates explicit price,
+currency, URL and stock, and promotes only safe matches. Each discovery page and
+product fetch has a durable `IngestionRun` record. Unmatched products remain in
+staging and are not published.
+
+The pilot catalog must explicitly seed the `notino-fr` store with
+`seed_catalog.py --apply --seed-notino-store`. A Redis broker and separate
+Celery worker are still required before these handlers can execute.
