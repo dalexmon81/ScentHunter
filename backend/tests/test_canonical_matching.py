@@ -102,6 +102,16 @@ class CanonicalMatchingTests(unittest.TestCase):
             1,
         )
 
+    def test_valid_gtin_accepts_standard_spacing_and_hyphen_formatting(self):
+        self.variant.gtin = "3348901486392"
+        self.session.commit()
+        result = resolve_canonical_variant(
+            self.session, store_id=self.store.id, external_product_id="SKU-FORMATTED-GTIN",
+            record={"gtin": "334 890 148 639-2"},
+        )
+        self.assertEqual(result.match.product_variant_id, self.variant.id)
+        self.assertEqual(result.match.method, "gtin_exact")
+
     def test_invalid_gtin_check_digit_is_rejected(self):
         result = resolve_canonical_variant(
             self.session, store_id=self.store.id, external_product_id="SKU-BAD-GTIN",
