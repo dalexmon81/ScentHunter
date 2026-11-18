@@ -67,7 +67,6 @@ def main() -> int:
         downloaded_bytes = 0
         scanned = 0
         eligible = 0
-        stats: dict = {}
         match_diagnostics: list[dict] = []
         print("NOTINO_CJ_FEED_DOWNLOAD_STARTED=1", flush=True)
         with tempfile.TemporaryFile(mode="w+b") as payload:
@@ -75,26 +74,33 @@ def main() -> int:
             print("NOTINO_CJ_FEED_BYTES=" + str(downloaded_bytes), flush=True)
             payload.seek(0)
             with affiliate_feed._xml_stream(payload) as stream:
-                for feed_offer in affiliate_feed._parsed_offers(stream, stats):
+                # The generic parser normalizes every feed row before yielding.
+                # This targeted smoke test needs one known identity only: inspect
+                # brand/title first and fully parse just matching XML entries.
+                for node in affiliate_feed._feed_items(stream):
                     scanned += 1
-                    if scanned % 5000 == 0:
+                    if scanned % 10000 == 0:
                         print("NOTINO_CJ_FEED_SCANNED=" + str(scanned), flush=True)
-
-                    # This smoke test verifies one known canonical identity, not
-                    # the whole 49k-record feed. Running the full catalog matcher
-                    # for every eligible retailer row made the test quadratic in
-                    # practice and exhausted the GitHub Actions 20-minute limit.
-                    # Filter the streamed feed to the exact known target first.
-                    title_lower = str(feed_offer.title or "").casefold()
-                    brand_lower = str(feed_offer.brand or "").casefold().strip()
+                    fields = affiliate_feed._field_map(node)
+                    brand_lower = affiliate_feed._first(
+                        node, "brand", "manufacturer", "vendor", fields=fields
+                    ).casefold().strip()
+                    if brand_lower != "french avenue":
+                        continue
+                    title = affiliate_feed._first(
+                        node, "title", "name", "productname", fields=fields
+                    )
+                    if "liquid brun" not in title.casefold():
+                        continue
+                    feed_offer = affiliate_feed._parse_item(node, fields)
+                    if feed_offer is None:
+                        continue
                     try:
                         feed_size = Decimal(str(feed_offer.size_ml or "0"))
                     except Exception:
                         continue
                     if (
-                        brand_lower != "french avenue"
-                        or "liquid brun" not in title_lower
-                        or feed_size != Decimal("100")
+                        feed_size != Decimal("100")
                         or str(feed_offer.concentration or "").casefold() != "eau de parfum"
                     ):
                         continue
