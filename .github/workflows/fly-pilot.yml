@@ -160,7 +160,7 @@ jobs:
           # fly machine exec accepts the command as one positional string.
           # Keep the shell invocation quoted as a single argument; do not use --
           # here because that splits /bin/sh, -c and the script into extra args.
-          flyctl machine exec "$machine_id" "/bin/sh -c 'cd /app/backend && /app/.venv/bin/python -m alembic -c alembic.ini upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store'" --app "$FLY_APP" --timeout 600
+          flyctl machine exec "$machine_id" "/bin/sh -c 'cd /app/backend && /app/.venv/bin/python -m alembic -c alembic.ini upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store'" --app "$FLY_APP" --timeout 600
 
       - name: Verify pilot health, canonical status and catalog search
         shell: bash
