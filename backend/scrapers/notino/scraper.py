@@ -1636,36 +1636,38 @@ def _search_public(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     global TIMEOUT, READER_TIMEOUT, RETRY_COUNT
 
     previous_limits = (TIMEOUT, READER_TIMEOUT, RETRY_COUNT)
-    TIMEOUT, READER_TIMEOUT, RETRY_COUNT = 4, 6, 0
-    session = _new_session()
     try:
-        candidates, diagnostics = _discover(
-            query, session, query_limit=1, allow_sitemap=False
-        )
+        TIMEOUT, READER_TIMEOUT, RETRY_COUNT = 4, 6, 0
+        session = _new_session()
+        try:
+            candidates, diagnostics = _discover(
+                query, session, query_limit=1, allow_sitemap=False
+            )
+        finally:
+            session.close()
+
+        candidates = candidates[:4]
+        diagnostics["candidate_count"] = len(candidates)
+        if not candidates:
+            return [], diagnostics
+
+        results: List[Dict[str, Any]] = []
+        with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as executor:
+            futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
+            for future in as_completed(futures):
+                try:
+                    item = future.result()
+                except Exception as exc:
+                    diagnostics.setdefault("enrichment_errors", []).append(type(exc).__name__)
+                    continue
+                if isinstance(item, list):
+                    results.extend(row for row in item if isinstance(row, dict))
+                elif isinstance(item, dict):
+                    results.append(item)
+
+        return _dedupe_results(results)[:4], diagnostics
     finally:
-        session.close()
-
-    candidates = candidates[:4]
-    if not candidates:
-        return [], diagnostics
-
-    results: List[Dict[str, Any]] = []
-    with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as executor:
-        futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
-        for future in as_completed(futures):
-            try:
-                item = future.result()
-            except Exception as exc:
-                diagnostics.setdefault("enrichment_errors", []).append(type(exc).__name__)
-                continue
-            if isinstance(item, list):
-                results.extend(row for row in item if isinstance(row, dict))
-            elif isinstance(item, dict):
-                results.append(item)
-
-    TIMEOUT, READER_TIMEOUT, RETRY_COUNT = previous_limits
-    return _dedupe_results(results)[:4], diagnostics
-
+        TIMEOUT, READER_TIMEOUT, RETRY_COUNT = previous_limits
 
 def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     """Accept only a priced Notino.fr product page returned by the public adapter."""
@@ -1778,7 +1780,7 @@ def search(query: str) -> Dict[str, Any]:
                 "feed_status": feed_status,
                 "feed_error": feed_error,
                 "feed_details": feed_details or {},
-                "candidate_count": len(diagnostics.get("direct", [])) + len(diagnostics.get("reader", [])),
+                "candidate_count": int(diagnostics.get("candidate_count") or 0),
                 "discovery": diagnostics,
             },
         }
