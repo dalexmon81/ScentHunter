@@ -224,7 +224,7 @@ jobs:
             result="$(flyctl machine exec "$machine_id" "sh -lc 'set -eu; ps -eo args | grep -F \"python -m app.workers.sqlite_worker\" | grep -v grep >/dev/null; test -f /data/catalog/ingestion_queue.sqlite3; /app/.venv/bin/python - <<\"PY\"
           import sqlite3
           db=sqlite3.connect(\"/data/catalog/ingestion_queue.sqlite3\")
-          tables={r[0] for r in db.execute(\"select name from sqlite_master where type=\\\"table\\\"\")}
+          tables={r[0] for r in db.execute(\"select name from sqlite_master where type=?\",(\"table\",))}
           assert {\"ingestion_queue_jobs\",\"ingestion_queue_meta\"} <= tables, tables
           row=db.execute(\"select value from ingestion_queue_meta where key=?\",(\"schedule:notino-fr:daily-discovery\",)).fetchone()
           print(\"NOTINO_DAILY_SCHEDULE=\" + (row[0] if row else \"PENDING\"))
