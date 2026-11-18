@@ -145,7 +145,13 @@ def resolve_canonical_variant(
         if normalized_title.startswith(normalized_brand + " "):
             normalized_title = normalized_title[len(normalized_brand) + 1:]
         fragrance_value = normalized_title
-    concentration = record.get("concentration")
+    # Some retailer feeds expose concentration only in the product title
+    # (for example "... Eau de Parfum") rather than a dedicated field.
+    # Derive it from that explicit source text before declaring the identity
+    # incomplete; this keeps the deterministic database match strict.
+    concentration = record.get("concentration") or (
+        extract_concentration(str(title)) if title else None
+    )
     size_ml = record.get("size_ml")
     if not all((brand_value, fragrance_value, concentration, size_ml, title)):
         return CanonicalMatchResult(None, "incomplete_variant_identity")
