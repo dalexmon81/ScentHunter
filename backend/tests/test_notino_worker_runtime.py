@@ -71,19 +71,34 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
         self.engine.dispose()
 
     def test_discovery_queues_products_and_records_run(self):
-        with patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
+        with patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True), \
+             patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
             result = notino_runtime.handle_notino_discovery({
                 "store_id": str(self.store_id),
                 "limit": 10,
             })
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["products_discovered"], 1)
+        self.assertEqual(result["canonical_candidates"], 1)
+        self.assertEqual(result["canonical_candidates_skipped"], 0)
         self.assertEqual(result["fetch_jobs_queued"], 1)
         enqueue_fetch.assert_called_once_with(self.store_id, "CJ-123")
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
             self.assertEqual(run.status, "completed")
             self.assertEqual(run.products_discovered, 1)
+
+    def test_discovery_skips_noncanonical_candidates(self):
+        with patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=False), \
+             patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
+            result = notino_runtime.handle_notino_discovery({
+                "store_id": str(self.store_id),
+                "limit": 10,
+            })
+        self.assertEqual(result["canonical_candidates"], 0)
+        self.assertEqual(result["canonical_candidates_skipped"], 1)
+        self.assertEqual(result["fetch_jobs_queued"], 0)
+        enqueue_fetch.assert_not_called()
 
     def test_fetch_persists_result_and_tracks_created_offer(self):
         fake_result = ConnectorIngestionResult(
