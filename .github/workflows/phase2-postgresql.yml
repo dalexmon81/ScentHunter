@@ -94,7 +94,7 @@ jobs:
           assert seed["status"] == "seeded" and seed["database_written"] is True
           assert dry["status"] == "dry_run" and dry["destination_written"] is False
           assert applied["status"] == "applied" and applied["destination_written"] is True
-          assert applied["source_alembic_revision"] == "0003_store_domain"
+          assert applied["source_alembic_revision"] == "0004_variant_mini"
           assert all(row["checksums_match_after_import"] for row in applied["tables"].values())
           assert all(row["would_insert"] == 0 for row in repeated["tables"].values())
           print("Full checked-in catalog import, checksums and idempotent repeat: PASS")
