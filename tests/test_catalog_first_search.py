@@ -189,3 +189,42 @@ def test_notino_catalog_link_preserves_only_exact_validated_cj_destination():
         "affiliate_url": "https://evil.example/click?url=" + quote(product_url, safe="")
     }
     assert _display_offer_url(offer, store, raw) == product_url
+
+
+
+def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypatch):
+    engine, result = pilot
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+    click_url = (
+        "https://anrdoezrs.net/click-123-456?url="
+        + quote(product_url, safe="")
+    )
+    with Session(engine) as session:
+        offer = session.get(Offer, result.offer_id)
+        store = session.get(Store, offer.store_id)
+        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+        store.slug = "notino"
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        offer.url = product_url
+        raw.raw_payload = {
+            **dict(raw.raw_payload),
+            "currency_explicit": True,
+            "affiliate_url": click_url,
+        }
+        session.commit()
+
+    monkeypatch.setattr(catalog_search, "_engine", lambda: engine)
+    app = FastAPI()
+    app.include_router(catalog_search.router)
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/catalog/search",
+            params={"q": "French Avenue Liquid Brun EDP 100ml"},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["offer_count"] == 1
+    returned_offer = data["results"][0]["offers"][0]
+    assert returned_offer["url"] == click_url
+    assert returned_offer["product_url"] == product_url
