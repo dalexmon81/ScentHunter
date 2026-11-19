@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db import make_engine
 from app.models import Offer, Store
+from app.connectors.base import ConnectorUnavailable
 from app.workers.ingestion_run import (
     finish_ingestion_run,
     record_ingestion_progress,
@@ -20,6 +21,7 @@ from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
+from app.services.connector_health import record_connector_failure, record_connector_success
 from app.services.offer_refresh import refresh_offer_observation
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
@@ -115,6 +117,8 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
                 limit=limit,
             )
         )
+        with _sessions()() as session, session.begin():
+            record_connector_success(session, store_id=store_id)
         queued = 0
         eligible_candidates = 0
         skipped_candidates = 0
@@ -164,6 +168,8 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         }
     except Exception as exc:
         with _sessions()() as session, session.begin():
+            if isinstance(exc, ConnectorUnavailable):
+                record_connector_failure(session, store_id=store_id, error=str(exc))
             record_ingestion_progress(
                 session, run_id=run_id,
                 error=f"{type(exc).__name__}:{exc}",
@@ -184,6 +190,8 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     try:
         raw_record = asyncio.run(_connector().fetch_product(external_id))
+        with _sessions()() as session, session.begin():
+            record_connector_success(session, store_id=store_id)
         if raw_record is None:
             with _sessions()() as session, session.begin():
                 record_ingestion_progress(
@@ -233,6 +241,8 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
         }
     except Exception as exc:
         with _sessions()() as session, session.begin():
+            if isinstance(exc, ConnectorUnavailable):
+                record_connector_failure(session, store_id=store_id, error=str(exc))
             record_ingestion_progress(
                 session, run_id=run_id,
                 offers_rejected=1, error=f"{type(exc).__name__}:{exc}",
@@ -263,6 +273,8 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     try:
         observation = asyncio.run(_connector().fetch_price_and_stock(external_id))
+        with _sessions()() as session, session.begin():
+            record_connector_success(session, store_id=store_id)
         if not isinstance(observation, Mapping):
             raise ValueError("Notino refresh returned no structured observation")
         parsed = _connector().parse_raw(observation)
@@ -288,6 +300,8 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         return {"status": "refreshed", "run_id": str(run_id), "offer_id": str(refreshed_id)}
     except Exception as exc:
         with _sessions()() as session, session.begin():
+            if isinstance(exc, ConnectorUnavailable):
+                record_connector_failure(session, store_id=store_id, error=str(exc))
             record_ingestion_progress(
                 session, run_id=run_id, offers_rejected=1,
                 error=f"{type(exc).__name__}:{exc}",
