@@ -61,9 +61,14 @@ currency, URL and stock, and promotes only safe matches. Each discovery page and
 product fetch has a durable `IngestionRun` record. Unmatched products remain in
 staging and are not published.
 
-The pilot catalog must explicitly seed the `notino-fr` store with
-`seed_catalog.py --apply --seed-notino-store`. A Redis broker, shared PostgreSQL catalog, and separate Celery worker are
-still required before these handlers can execute.
+The pilot catalog must explicitly seed the `notino-fr` store before discovery. To add only the missing store row (without re-importing canonical identities), run:
+
+```bash
+cd backend
+python scripts/seed_notino_store.py --confirm
+```
+
+The command is idempotent, refuses to reactivate an inactive or quarantined row, and does not contact the CJ feed. The broader catalog seed remains available as `seed_catalog.py --apply --seed-notino-store`. A Redis broker, shared PostgreSQL catalog, and separate Celery worker are still required before these handlers can execute.
 
 
 After the shared PostgreSQL catalog, Redis broker, and worker are ready, the
