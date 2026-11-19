@@ -46,7 +46,7 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
                 observation={"price": "79.90", "currency": "EUR",
                              "availability": "out_of_stock",
                              "product_url": "https://www.notino.fr/p/123"},
-                source="authorized_cj_feed",
+                source="authorized_cj_feed", currency_explicit=True,
             )
             self.assertEqual(result, self.offer_id)
         with self.sessions() as session:
@@ -62,6 +62,17 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
             self.assertEqual(len(history), 1)
             self.assertEqual(history[0].price, Decimal("79.90"))
             self.assertEqual(raw.status, "promoted")
+            self.assertIs(raw.raw_payload["currency_explicit"], True)
+
+    def test_refresh_rejects_currency_not_explicit_in_source(self):
+        with self.sessions() as session, session.begin():
+            with self.assertRaisesRegex(ValueError, "currency must be explicit"):
+                refresh_offer_observation(
+                    session, offer_id=self.offer_id,
+                    observation={"price": "79.90", "currency": "EUR",
+                                 "availability": "in_stock"},
+                    source="authorized_cj_feed", currency_explicit=False,
+                )
 
     def test_refresh_rejects_missing_or_ambiguous_stock(self):
         with self.sessions() as session, session.begin():
@@ -70,7 +81,7 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
                     session, offer_id=self.offer_id,
                     observation={"price": "79.90", "currency": "EUR",
                                  "availability": "unknown"},
-                    source="authorized_cj_feed",
+                    source="authorized_cj_feed", currency_explicit=True,
                 )
 
     def test_refresh_rejects_currency_change_for_manual_review(self):
@@ -80,7 +91,7 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
                     session, offer_id=self.offer_id,
                     observation={"price": "79.90", "currency": "USD",
                                  "availability": "in_stock"},
-                    source="authorized_cj_feed",
+                    source="authorized_cj_feed", currency_explicit=True,
                 )
 
 
