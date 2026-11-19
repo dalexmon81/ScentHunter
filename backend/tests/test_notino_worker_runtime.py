@@ -110,8 +110,8 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
                 connector, self.store_id, {"external_product_id": "CJ-404"}
             ))
 
-    def test_discovery_queues_products_and_records_run(self):
-        with patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True), \
+    def test_discovery_queues_all_products_for_conservative_matching(self):
+        with patch.object(notino_runtime, "_is_unique_canonical_candidate", side_effect=AssertionError("pre-filter must not run")), \
              patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
             result = notino_runtime.handle_notino_discovery({
                 "store_id": str(self.store_id),
@@ -119,26 +119,24 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
             })
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["products_discovered"], 1)
-        self.assertEqual(result["canonical_candidates"], 1)
-        self.assertEqual(result["canonical_candidates_skipped"], 0)
         self.assertEqual(result["fetch_jobs_queued"], 1)
+        self.assertEqual(result["products_not_queued"], 0)
         enqueue_fetch.assert_called_once_with(self.store_id, "CJ-123")
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
             self.assertEqual(run.status, "completed")
             self.assertEqual(run.products_discovered, 1)
 
-    def test_discovery_skips_noncanonical_candidates(self):
-        with patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=False), \
-             patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
+    def test_discovery_reports_products_that_failed_to_queue(self):
+        with patch.object(notino_runtime, "enqueue_offer_fetch", side_effect=RuntimeError("queue unavailable")):
             result = notino_runtime.handle_notino_discovery({
                 "store_id": str(self.store_id),
                 "limit": 10,
             })
-        self.assertEqual(result["canonical_candidates"], 0)
-        self.assertEqual(result["canonical_candidates_skipped"], 1)
+        self.assertEqual(result["status"], "partial")
         self.assertEqual(result["fetch_jobs_queued"], 0)
-        enqueue_fetch.assert_not_called()
+        self.assertEqual(result["products_not_queued"], 1)
+        self.assertIn("queue unavailable", result["errors"][0])
 
     def test_fetch_persists_result_and_tracks_created_offer(self):
         fake_result = ConnectorIngestionResult(
