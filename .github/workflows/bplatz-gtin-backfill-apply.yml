@@ -56,14 +56,19 @@ jobs:
           expected = {
               "mode": "dry_run",
               "database_written": False,
-              "verified_gtin_candidates": 13,
-              "unique_gtin_candidates": 13,
-              "in_stock_candidates": 13,
+              "verified_gtin_candidates": 14,
+              "unique_gtin_candidates": 14,
+              "in_stock_candidates": 14,
               "out_of_stock_candidates": 0,
           }
           for key, value in expected.items():
               if data.get(key) != value:
                   raise SystemExit(f"Refusing apply: {key}={data.get(key)!r}, expected {value!r}")
+          reasons = data.get("skipped_reasons", {})
+          if reasons.get("missing_gtin") != 5 or reasons.get("no_exact_canonical_name_and_brand_match") != 48:
+              raise SystemExit(f"Refusing apply: unexpected skipped reasons {reasons!r}")
+          if data.get("duplicate_rows_suppressed") != 37:
+              raise SystemExit(f"Refusing apply: duplicate count changed: {data.get('duplicate_rows_suppressed')!r}")
           print("BPLATZ_APPLY_GUARD=PASS")
           PY
 
