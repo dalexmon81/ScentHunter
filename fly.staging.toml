@@ -11,6 +11,7 @@ primary_region = "ams"
   SCENTHUNTER_QUEUE_BACKEND = "sqlite"
   SCENTHUNTER_SQLITE_QUEUE_DB = "/data/catalog/ingestion_queue.sqlite3"
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED = "0"
   BPLATZ_PHASE2_PERSISTENCE = "1"
 
 [http_service]
