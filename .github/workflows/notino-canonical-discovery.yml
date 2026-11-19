@@ -4,18 +4,24 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+      - work/ingestion-coverage-report-20261119-rebased
     paths:
       - "backend/app/workers/notino_runtime.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/app/services/canonical_matching.py"
+      - "backend/scripts/ingestion_coverage_report.py"
+      - "backend/tests/test_ingestion_coverage_report.py"
       - ".github/workflows/notino-canonical-discovery.yml"
   pull_request:
     branches:
       - main
+      - refactor/catalog-first-architecture
     paths:
       - "backend/app/workers/notino_runtime.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/app/services/canonical_matching.py"
+      - "backend/scripts/ingestion_coverage_report.py"
+      - "backend/tests/test_ingestion_coverage_report.py"
       - ".github/workflows/notino-canonical-discovery.yml"
 
 permissions:
