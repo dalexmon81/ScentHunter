@@ -301,3 +301,46 @@ def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency():
     assert item["sku"] == "6290360375694"
     assert item["gtin"] == "6290360375694"
     assert item["availability"] == "in_stock"
+
+
+def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants():
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    matcher = NextEngineService.from_catalog_file(ROOT / "backend/product_catalog.json")
+    cases = [
+        {
+            "raw_name": "Lattafa Parfum Mayar Natural Intense Eau de Parfum 100ml",
+            "brand_raw": "Lattafa", "size_ml": 100, "gtin": "6290360598970",
+            "price": 24.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-mayar",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Niche Emarati Perfume Lujain Eau de Parfum 100ml",
+            "brand_raw": "Niche Emarati", "size_ml": 100, "gtin": "6290360592169",
+            "price": 33.19, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-lujain",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Maison Alhambra Pink Velvet Eau de Parfum 80 ML (XL)",
+            "brand_raw": "Maison Alhambra", "size_ml": 80, "gtin": "6291108735749",
+            "price": 17.68, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-pink-velvet",
+            "availability": "in_stock",
+        },
+    ]
+    result = matcher.process_records(
+        cases, retailer="Bplatz", currency_default="EUR",
+    ).aggregation
+    assert result.matched_offer_count == 3
+    assert {group.canonical_product_id for group in result.groups} == {
+        "SH-BPLATZ-6290360598970",
+        "SH-BPLATZ-6290360592169",
+        "SH-BPLATZ-6291108735749",
+    }
+    assert {group.canonical_variant_id for group in result.groups} == {
+        "VAR-BPLATZ-6290360598970",
+        "VAR-BPLATZ-6290360592169",
+        "VAR-BPLATZ-6291108735749",
+    }
