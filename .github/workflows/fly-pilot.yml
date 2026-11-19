@@ -363,10 +363,11 @@ jobs:
 
       - name: Verify API.SH Notino provider inside the isolated Fly app
         if: ${{ env.APISH_API_KEY != '' }}
+        timeout-minutes: 3
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_apish_notino.py'"
+          timeout 120s flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && timeout 90s /app/.venv/bin/python scripts/smoke_apish_notino.py'"
 
       - name: Print pilot URL
         if: success()
