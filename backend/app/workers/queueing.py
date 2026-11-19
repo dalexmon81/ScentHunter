@@ -66,7 +66,7 @@ def enqueue_offer_refresh(store_id: UUID | str, external_product_id: str):
 
 
 def enqueue_stage(stage: str, *, ingestion_raw_id: UUID | str, extra: Mapping[str, Any] | None = None):
-    if stage not in {"normalize", "match", "validate", "refresh", "quarantine", "reprocess"}:
+    if stage not in {"normalize", "match", "validate", "quarantine", "reprocess"}:
         raise ValueError(f"unsupported downstream stage: {stage}")
     payload = {"ingestion_raw_id": str(ingestion_raw_id)}
     if extra:
