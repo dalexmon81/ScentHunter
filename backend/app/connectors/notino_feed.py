@@ -138,6 +138,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "url": row["url"],
             "price": row["price"],
             "currency": row["currency"],
+            "currency_explicit": bool(row.get("currency_explicit")),
             "availability": row["availability"],
             "captured_at": time.time(),
             "source": row["source"],
