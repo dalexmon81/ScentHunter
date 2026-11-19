@@ -42,7 +42,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
             "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX": "Dior Sauvage;Chanel No 5"
         }):
             products = await self.connector.discover_products(limit=10)
-        self.assertEqual(len(products), 2)  # both seed searches are deduplicated by URL
+        self.assertEqual(len(products), 1)  # duplicate product URLs across seed queries collapse
         self.assertEqual(products[0].external_product_id, "https://shop.example/product/123")
         self.assertEqual(products[0].product_url, products[0].external_product_id)
 
