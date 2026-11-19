@@ -1,4 +1,5 @@
 name: Deploy isolated Offer Engine pilot
+# Isolated pilot recovery deploy: preserve offer currency evidence.
 
 on:
   push:
