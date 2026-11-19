@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from app.workers import sqlite_queue
+from app.workers.queueing import enqueue_offer_refresh
 
 
 class SQLiteQueueTests(unittest.TestCase):
@@ -59,6 +60,14 @@ class SQLiteQueueTests(unittest.TestCase):
             self.assertEqual(job["attempts"], attempt)
             status = sqlite_queue.fail_or_retry(job_id, job["attempts"], "failure")
         self.assertEqual(status, "failed")
+
+    def test_offer_refresh_helper_queues_store_and_external_identity(self):
+        with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "sqlite"}):
+            job_id = enqueue_offer_refresh("store-1", "CJ-123")
+        job = sqlite_queue.claim_next("worker-a")
+        self.assertEqual(job["id"], job_id)
+        self.assertEqual(job["stage"], "refresh")
+        self.assertEqual(job["payload"], {"store_id": "store-1", "external_product_id": "CJ-123"})
 
     def test_daily_scheduler_enqueues_only_once_per_day(self):
         payload = {"store_id": "store-1", "cursor": None, "limit": 100}
