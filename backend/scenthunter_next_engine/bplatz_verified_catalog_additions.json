@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "description": "Reviewed Bplatz-derived canonical products with externally corroborated GTIN, brand, title and size. The base product_catalog.json remains unchanged.",
+  "products": [
+    {
+      "product_id": "SH-BPLATZ-6294021906593",
+      "brand_name": "Milestone",
+      "canonical_name": "1849 Matador Green Valley",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6290360592169",
+      "brand_name": "Niche Emarati",
+      "canonical_name": "Lujain",
+      "aliases": [
+        "Perfume Lujain"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6290360598970",
+      "brand_name": "Lattafa",
+      "canonical_name": "Mayar Natural Intense",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291107459363",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Salvo",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291108735749",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Pink Velvet",
+      "aliases": [
+        "Pink Velvet XL"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291108529171",
+      "brand_name": "Emper",
+      "canonical_name": "Shelton Ilang 62",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291108529188",
+      "brand_name": "Emper",
+      "canonical_name": "Shelton Velvetier 42",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291108529164",
+      "brand_name": "Emper",
+      "canonical_name": "Shelton Noir 92",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906241",
+      "brand_name": "Al Fares",
+      "canonical_name": "Asrar Al Layl",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906784",
+      "brand_name": "Milestone",
+      "canonical_name": "Coastal Waves Pistacia",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906777",
+      "brand_name": "Milestone",
+      "canonical_name": "Coastal Waves Rose Couture",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021907026",
+      "brand_name": "Milestone",
+      "canonical_name": "Blast Night Version",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021904759",
+      "brand_name": "Milestone",
+      "canonical_name": "Hayati Lychee",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    }
+  ],
+  "variants": [
+    {
+      "variant_id": "VAR-BPLATZ-6294021906593",
+      "product_id": "SH-BPLATZ-6294021906593",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6290360592169",
+      "product_id": "SH-BPLATZ-6290360592169",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6290360598970",
+      "product_id": "SH-BPLATZ-6290360598970",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291107459363",
+      "product_id": "SH-BPLATZ-6291107459363",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291108735749",
+      "product_id": "SH-BPLATZ-6291108735749",
+      "size_ml": 80,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291108529171",
+      "product_id": "SH-BPLATZ-6291108529171",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291108529188",
+      "product_id": "SH-BPLATZ-6291108529188",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291108529164",
+      "product_id": "SH-BPLATZ-6291108529164",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906241",
+      "product_id": "SH-BPLATZ-6294021906241",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906784",
+      "product_id": "SH-BPLATZ-6294021906784",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906777",
+      "product_id": "SH-BPLATZ-6294021906777",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021907026",
+      "product_id": "SH-BPLATZ-6294021907026",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021904759",
+      "product_id": "SH-BPLATZ-6294021904759",
+      "size_ml": 100,
+      "aliases": []
+    }
+  ]
+}
