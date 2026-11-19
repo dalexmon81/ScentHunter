@@ -7,6 +7,7 @@ on:
       - "backend/app/workers/**"
       - "backend/app/services/canonical_matching.py"
       - "backend/app/services/connector_ingestion.py"
+      - "backend/app/services/offer_refresh.py"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/tests/test_catalog_worker_queue.py"
