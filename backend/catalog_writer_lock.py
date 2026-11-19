@@ -65,7 +65,7 @@ def _needs_writer_lock(sql):
         return False
     if re.match(
         r"^PRAGMA\s+(?:table_info|table_xinfo|index_list|index_info|"
-        r"foreign_key_list|foreign_key_check|database_list|compile_options|"
+        r"foreign_key_list|foreign_key_check|database_list|compile_options|busy_timeout|"
         r"integrity_check|quick_check)\b",
         statement,
         re.IGNORECASE,
