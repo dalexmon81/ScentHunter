@@ -15,7 +15,7 @@ from app.db import make_session_factory
 from app.models import Offer, Store
 from app.workers import tasks as _registered_tasks  # registers the validated Notino handlers
 from app.workers.runtime import get_handler
-from app.workers.queueing import enqueue_discovery, enqueue_offer_refresh
+from app.workers.queueing import enqueue_offer_refresh
 from app.connectors.legacy_scrapers import STORE_SLUGS
 from app.workers.sqlite_queue import (
     claim_next, enqueue_daily_once, ensure_schema, fail_or_retry, finish, recover_stale,
@@ -80,7 +80,7 @@ def _schedule_daily_legacy_discovery(session_factory) -> None:
 
 
 def _schedule_active_offer_refresh(session_factory) -> None:
-    """Queue refreshes for current Notino offers; active jobs are deduplicated."""
+    """Queue refreshes for active Notino and configured legacy retailer offers."""
     try:
         with session_factory() as session:
             rows = session.execute(
