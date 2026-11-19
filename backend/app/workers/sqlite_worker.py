@@ -120,6 +120,7 @@ def main() -> None:
                 status = fail_or_retry(
                     job["id"], int(job["attempts"]),
                     f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+                    retryable=not isinstance(exc, (ValueError, TypeError, LookupError)),
                 )
                 log.exception("Ingestion job=%s stage=%s status=%s",
                               job["id"], job["stage"], status)
