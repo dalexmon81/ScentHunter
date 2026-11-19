@@ -22,8 +22,8 @@ Before enabling it in the isolated pilot:
    the pilot app and worker.
 3. Add a separate worker process/deployment; do not run ingestion inside FastAPI.
 4. Register stage handlers using the canonical DB session factory, connector
-   registry and persist_connector_record. The Notino discovery and fetch
-   handlers are now wired; other retailers remain unregistered.
+   registry and persist_connector_record. Notino and the four legacy scraper
+   adapters now share the discovery/fetch/refresh dispatch boundary.
 5. Connector-wide feed failures are persisted on the store. Five consecutive
    feed-wide failures quarantine that store; successful feed access resets the
    streak only while the store remains active. Re-enabling a quarantined store
@@ -117,3 +117,45 @@ python scripts/reinstate_store_connector.py --store-slug notino-fr --confirm
 
 The command resets the failure streak and returns that store to `active`.
 It does not start discovery or refresh by itself.
+
+
+## Legacy retailer scraper adapters
+
+Deloox, Sabina, Easycosmetic and Parfum-Zentrum now have thin async adapters
+around their existing scraper modules. The existing retailer parsers remain
+the authority for page extraction; the adapters only normalize their output,
+retain raw evidence, require explicit JSON-LD currency provenance, and pass
+records through the same canonical matching and publication service as Notino.
+
+The stores are not silently activated. Seed only the retailer rows that have
+been reviewed and approved:
+
+```bash
+cd backend
+python scripts/seed_catalog.py --apply --seed-deloox-store
+python scripts/seed_catalog.py --apply --seed-sabina-store
+python scripts/seed_catalog.py --apply --seed-easycosmetic-store
+python scripts/seed_catalog.py --apply --seed-parfumzentrum-store
+```
+
+Each command is opt-in and creates/activates only the named store row. Before
+discovery can be scheduled, configure a semicolon-separated set of operator
+approved seed queries for each retailer, for example:
+
+```bash
+SCENTHUNTER_DISCOVERY_QUERIES_DELOOX="Dior Sauvage;Chanel No 5"
+SCENTHUNTER_DISCOVERY_QUERIES_SABINA="Dior Sauvage;Chanel No 5"
+SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC="Dior Sauvage;Chanel No 5"
+SCENTHUNTER_DISCOVERY_QUERIES_PARFUMZENTRUM="Dior Sauvage;Chanel No 5"
+```
+
+The single-machine worker schedules daily discovery only for explicitly
+seeded stores that also have query seeds configured. It uses the existing
+SQLite queue and shared catalog persistence gate. User-facing catalog search
+does not call these scrapers. Offers without unambiguous canonical matches,
+explicit stock, valid price/URL, or source-backed currency remain in staging
+and are not published.
+
+Refresh scheduling includes active offers from these retailers. Each refresh
+re-fetches the known product URL and updates only the existing offer identity;
+it never rematches or changes the canonical variant.
