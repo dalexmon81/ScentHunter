@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
 
@@ -21,15 +20,12 @@ from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
+from app.services.canonical_matching import resolve_canonical_variant
 from app.services.connector_health import record_connector_failure, record_connector_success
 from app.services.offer_refresh import refresh_offer_observation
-from scenthunter_next_engine.next_engine_service import NextEngineService
-from scenthunter_next_engine.offer_normalizer import normalize_offer
 
-_CATALOG_PATH = Path(__file__).resolve().parents[2] / "product_catalog.json"
 _SESSION_FACTORY = None
 _CONNECTOR: NotinoAffiliateFeedConnector | None = None
-_MATCHER: NextEngineService | None = None
 
 
 def _sessions():
@@ -44,15 +40,6 @@ def _connector() -> NotinoAffiliateFeedConnector:
     if _CONNECTOR is None:
         _CONNECTOR = NotinoAffiliateFeedConnector()
     return _CONNECTOR
-
-
-def _matcher() -> NextEngineService:
-    global _MATCHER
-    if _MATCHER is None:
-        if not _CATALOG_PATH.is_file():
-            raise RuntimeError("canonical matcher catalog file is missing")
-        _MATCHER = NextEngineService.from_catalog_file(_CATALOG_PATH)
-    return _MATCHER
 
 
 def _store_id(payload: Mapping[str, Any]) -> UUID:
@@ -71,28 +58,34 @@ def _active_notino_store(session, store_id: UUID) -> Store:
 
 def _is_unique_canonical_candidate(
     connector: NotinoAffiliateFeedConnector,
-    matcher: NextEngineService,
+    store_id: UUID,
     raw_record: Mapping[str, Any],
 ) -> bool:
-    """Only enqueue eligible offers with one unambiguous canonical variant match."""
+    """Pre-filter with the same canonical database matcher used at persistence.
+
+    The legacy JSON matcher must not decide whether a record reaches the
+    canonical ingestion pipeline: it can exclude products already present in
+    the canonical database. Ambiguous and incomplete records remain excluded
+    here and are never published; eligible records are re-matched at persistence.
+    """
     try:
         parsed = connector.parse_raw(raw_record)
         validation = connector.validate_offer(parsed)
         if not validation.valid or parsed.get("currency_explicit") is not True:
             return False
-        normalized = normalize_offer(parsed, retailer=connector.store_key)
-        aggregation = matcher.process_offers([normalized])
+        external_id = str(
+            parsed.get("external_product_id") or raw_record.get("external_product_id") or ""
+        ).strip() or None
+        with _sessions()() as session:
+            result = resolve_canonical_variant(
+                session,
+                store_id=store_id,
+                external_product_id=external_id,
+                record=dict(parsed),
+            )
+        return result.match is not None
     except (TypeError, ValueError, ArithmeticError):
         return False
-    if (
-        aggregation.input_count != 1
-        or aggregation.matched_offer_count != 1
-        or len(aggregation.groups) != 1
-        or len(aggregation.groups[0].offers) != 1
-        or not getattr(aggregation.groups[0], "canonical_variant_id", None)
-    ):
-        return False
-    return True
 
 
 def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -110,7 +103,6 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     try:
         connector = _connector()
-        matcher = _matcher()
         products = asyncio.run(
             connector.discover_products(
                 cursor=str(cursor) if cursor is not None else None,
@@ -124,7 +116,7 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         skipped_candidates = 0
         errors: list[str] = []
         for product in products:
-            if not _is_unique_canonical_candidate(connector, matcher, product.raw_payload):
+            if not _is_unique_canonical_candidate(connector, store_id, product.raw_payload):
                 skipped_candidates += 1
                 continue
             eligible_candidates += 1
