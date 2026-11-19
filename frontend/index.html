@@ -746,6 +746,27 @@ function shPrice(o){
   if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
   return "Prezzo non disponibile";
 }
+function hasValidOfferPrice(o){
+  const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
+  const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
+  return Number.isFinite(parsed)&&parsed>0;
+}
+function storeKey(o){return String(o?.store||o?.shop||"").normalize("NFKC").trim().toLocaleLowerCase("it");}
+function dedupeStoreOffers(offers){
+  const byStore=new Map();
+  (Array.isArray(offers)?offers:[]).forEach(offer=>{
+    const key=storeKey(offer);if(!key)return;
+    const previous=byStore.get(key);
+    if(!previous){byStore.set(key,offer);return;}
+    const score=item=>[hasValidOfferPrice(item)&&!isOfferOutOfStock(item)?0:hasValidOfferPrice(item)?1:2,shNum(item),-(Date.parse(item?.captured_at||"")||0)];
+    const a=score(offer),b=score(previous);
+    if(a[0]<b[0]||(a[0]===b[0]&&(a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))))byStore.set(key,offer);
+  });
+  return [...byStore.values()].sort((a,b)=>{
+    const aa=!hasValidOfferPrice(a)||isOfferOutOfStock(a),bb=!hasValidOfferPrice(b)||isOfferOutOfStock(b);
+    if(aa!==bb)return aa?1:-1;return shNum(a)-shNum(b);
+  });
+}
 function shNum(o){
   const n=Number(o&&o.price_num);
   if(Number.isFinite(n)&&n>0)return n;
@@ -762,7 +783,7 @@ function shNum(o){
 function shGroupData(data){
   const groups=Array.isArray(data?.results)?data.results:[];
   return groups.map(group=>{
-    const offers=(Array.isArray(group.offers)?group.offers:[]).map(offer=>({
+    const offers=dedupeStoreOffers((Array.isArray(group.offers)?group.offers:[]).map(offer=>({
       ...offer,
       catalog_id:offer.catalog_id||group.catalog_id||"",
       brand:offer.canonical_brand||offer.brand||group.canonical_brand||group.brand||"",
@@ -772,7 +793,7 @@ function shGroupData(data){
       family:offer.family||group.family||"",
       variant:offer.variant||group.variant||"",
       size_ml:offer.size_ml??offer.format_ml??""
-    }));
+    })));
     /*
      * IMAGE PRESENTATION FALLBACK
      * group.image remains the canonical image when the backend provides one.
@@ -884,7 +905,7 @@ function getSizeGroups(g){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     }),
-    best:offers.find(o=>!isOfferOutOfStock(o))||null
+    best:offers.find(o=>!isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null
   })).sort((a,b)=>{
     if(!a.size)return 1;
     if(!b.size)return -1;
@@ -909,7 +930,7 @@ function showProducts(groups){
   clearOpenProduct();
   statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
-    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
+    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
