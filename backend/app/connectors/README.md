@@ -38,3 +38,24 @@ python -m unittest discover -s tests -p 'test_store_connector_contract.py' -v
 
 Every retailer adapter must add fixture tests for product parsing, variants,
 out-of-stock, missing price/URL/stock, and a changed retailer response.
+
+
+## Existing scraper adapters
+
+`legacy_scrapers.py` wraps the existing Deloox, Sabina, Easycosmetic and
+Parfum-Zentrum parsers. It uses operator-provided discovery queries from
+`SCENTHUNTER_DISCOVERY_QUERIES_DELOOX`,
+`SCENTHUNTER_DISCOVERY_QUERIES_SABINA`,
+`SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC`, and
+`SCENTHUNTER_DISCOVERY_QUERIES_PARFUMZENTRUM` respectively. Values are
+semicolon-separated query seeds. A missing seed list fails closed and the
+scheduler will not enqueue discovery for that store.
+
+The adapters use each product URL as the stable external product identifier,
+re-fetch known product URLs in background fetch/refresh jobs, and retain the
+legacy parser output as raw evidence. A parser's default EUR fallback is not
+treated as source evidence: publication requires an explicit `priceCurrency`
+field in the retained JSON-LD (or an explicit provenance field from a source).
+Unknown availability remains unknown and is rejected by the shared validation
+gate. Canonical matching and persistence stay in
+`app.services.connector_ingestion`.
