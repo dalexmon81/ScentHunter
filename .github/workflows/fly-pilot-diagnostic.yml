@@ -152,7 +152,7 @@ jobs:
           from app.db import make_engine
           from app.models import IngestionRaw, Store
           from scenthunter_next_engine.catalog_repository import CatalogRepository
-          from scenthunter_next_engine.canonical_matcher import CanonicalMatcher, normalize_brand_text, normalize_identity_text, _retailer_title_core
+          from scenthunter_next_engine.canonical_matcher import CanonicalMatcher, normalize_brand_text, normalize_identity_text, _retailer_title_core, _offer_name_forms, _catalog_forms
           from scenthunter_next_engine.offer_normalizer import normalize_offer
 
           engine = make_engine()
@@ -229,6 +229,50 @@ jobs:
           print("BPLATZ_PENDING_ROWS=" + str(len(rows_out)))
           print("BPLATZ_REASON_COUNTS=" + json.dumps(reason_counts, ensure_ascii=False, sort_keys=True))
           print("BPLATZ_BRAND_COUNTS=" + json.dumps(brand_counts, ensure_ascii=False, sort_keys=True))
+          canonical_products = catalog.all_products()
+          canonical_brand_counts = Counter(normalize_brand_text(product.brand) for product in canonical_products)
+          incoming_brands = sorted({normalize_brand_text(row.get("brand")) for row in rows_out if row.get("brand")})
+          print("BPLATZ_CANONICAL_BRAND_COVERAGE=" + json.dumps({
+              brand: {"canonical_product_count": canonical_brand_counts.get(brand, 0)}
+              for brand in incoming_brands
+          }, ensure_ascii=False, sort_keys=True))
+          exact_form_index = {}
+          for product in canonical_products:
+              for form in _catalog_forms([product.name, *product.aliases], product.brand):
+                  exact_form_index.setdefault(form, []).append(product)
+          incoming_products = {}
+          for row in rows_out:
+              if row.get("brand") and row.get("raw_name"):
+                  key = (row["brand"], row["raw_name"])
+                  incoming_products[key] = incoming_products.get(key, 0) + 1
+          cross_brand_exact = []
+          for (brand, name), duplicate_count in sorted(incoming_products.items()):
+              offer_forms = _offer_name_forms(name, brand)
+              candidates = {}
+              for form in offer_forms:
+                  for product in exact_form_index.get(form, []):
+                      if normalize_brand_text(product.brand) != normalize_brand_text(brand):
+                          candidates[product.product_id] = product
+              if candidates:
+                  cross_brand_exact.append({
+                      "incoming_brand": brand, "incoming_name": name,
+                      "duplicate_rows": duplicate_count,
+                      "exact_name_candidates_other_brand": [
+                          {"product_id": product.product_id, "canonical_brand": product.brand,
+                           "canonical_name": product.name,
+                           "sizes_ml": sorted({v.size_ml for v in product.variants if v.size_ml})}
+                          for product in sorted(candidates.values(), key=lambda p: p.product_id)
+                      ],
+                      "review_only_not_auto_matches": True,
+                  })
+          print("BPLATZ_CROSS_BRAND_EXACT_NAME_CANDIDATES=" + json.dumps(cross_brand_exact, ensure_ascii=False, sort_keys=True))
+          known_gtins = set(matcher._gtin_registry)
+          incoming_gtins = {str(row.get("gtin")) for row in rows_out if row.get("gtin")}
+          print("BPLATZ_VERIFIED_GTIN_REGISTRY=" + json.dumps({
+              "registry_entries": len(known_gtins),
+              "incoming_unique_gtins": len(incoming_gtins),
+              "incoming_gtins_with_reviewed_mapping": len(incoming_gtins & known_gtins),
+          }, sort_keys=True))
           print("BPLATZ_ROWS_READ_ONLY=" + json.dumps(rows_out, ensure_ascii=False, sort_keys=True))
           engine.dispose()
           PY
