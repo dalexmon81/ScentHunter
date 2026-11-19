@@ -329,6 +329,76 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
             "product_url": "https://en.bplatz.de/products/example-pink-velvet",
             "availability": "in_stock",
         },
+        {
+            "raw_name": "Milestone 1849 Matador Green Valley Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021906593",
+            "price": 11.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-green-valley",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Maison Alhambra Salvo Eau de Parfum 100ml",
+            "brand_raw": "Maison Alhambra", "size_ml": 100, "gtin": "6291107459363",
+            "price": 17.68, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-salvo",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Emper Shelton Ilang 62 Eau de Parfum 100ml",
+            "brand_raw": "Emper", "size_ml": 100, "gtin": "6291108529171",
+            "price": 15.99, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-ilang",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Emper Shelton Velvetier 42 Eau de Parfum 100ml",
+            "brand_raw": "Emper", "size_ml": 100, "gtin": "6291108529188",
+            "price": 8.65, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-velvetier",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Emper Shelton Noir 92 Eau de Parfum 100ml",
+            "brand_raw": "Emper", "size_ml": 100, "gtin": "6291108529164",
+            "price": 8.65, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-noir",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Al Fares Asrar Al Layl Eau de Parfum 100 ml",
+            "brand_raw": "Al Fares", "size_ml": 100, "gtin": "6294021906241",
+            "price": 19.89, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-asrar",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Coastal Waves Pistacia Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021906784",
+            "price": 9.98, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-pistacia",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Coastal Waves Rose Couture Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021906777",
+            "price": 11.48, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-rose-couture",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Blast Night Version Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021907026",
+            "price": 11.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-blast-night",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Hayati Lychee Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021904759",
+            "price": 11.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/example-hayati-lychee",
+            "availability": "in_stock",
+        },
     ]
     assert "6290360598970" in matcher._matcher._gtin_registry
     from scenthunter_next_engine.canonical_matcher import _offer_gtin
@@ -340,14 +410,17 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
     result = matcher.process_records(
         cases, retailer="Bplatz", currency_default="EUR",
     ).aggregation
-    assert result.matched_offer_count == 3
+    assert result.matched_offer_count == 13
+    expected_gtins = {
+        "6290360598970", "6290360592169", "6291108735749",
+        "6294021906593", "6291107459363", "6291108529171",
+        "6291108529188", "6291108529164", "6294021906241",
+        "6294021906784", "6294021906777", "6294021907026",
+        "6294021904759",
+    }
     assert {group.canonical_product_id for group in result.groups} == {
-        "SH-BPLATZ-6290360598970",
-        "SH-BPLATZ-6290360592169",
-        "SH-BPLATZ-6291108735749",
+        "SH-BPLATZ-" + gtin for gtin in expected_gtins
     }
     assert {group.canonical_variant_id for group in result.groups} == {
-        "VAR-BPLATZ-6290360598970",
-        "VAR-BPLATZ-6290360592169",
-        "VAR-BPLATZ-6291108735749",
+        "VAR-BPLATZ-" + gtin for gtin in expected_gtins
     }
