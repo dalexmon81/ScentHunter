@@ -1248,9 +1248,12 @@ async function searchPerfume(){
     // store snapshots while searching, but do not redraw the product list for
     // each partial poll; render the final, deduplicated payload once all stores
     // have finished so results do not flicker in progressively.
-    const catalogPilot=new URLSearchParams(window.location.search).get("catalog_first")==="1";
-    const data=catalogPilot
-      ? await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),15000)
+    // Catalog-first is the default on the pilot and for the new search flow.
+    // Keep the legacy progressive path available only as an explicit diagnostic opt-out.
+    const searchParams=new URLSearchParams(window.location.search);
+    const catalogFirst=searchParams.get("catalog_first")!=="0";
+    const data=catalogFirst
+      ? await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000)
       : await searchStoresProgressive(q,()=>{});
     renderData(data,true);
   } catch (e) {
