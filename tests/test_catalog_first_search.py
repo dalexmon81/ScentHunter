@@ -330,6 +330,13 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
             "availability": "in_stock",
         },
     ]
+    assert "6290360598970" in matcher._matcher._gtin_registry
+    from scenthunter_next_engine.canonical_matcher import _offer_gtin
+    from scenthunter_next_engine.offer_normalizer import normalize_offer
+    probe = normalize_offer(cases[0], retailer="Bplatz", currency_default="EUR")
+    assert _offer_gtin(probe.raw_payload) == "6290360598970"
+    assert matcher._matcher._match_verified_gtin(probe).reason == "verified_gtin_exact_variant"
+
     result = matcher.process_records(
         cases, retailer="Bplatz", currency_default="EUR",
     ).aggregation
