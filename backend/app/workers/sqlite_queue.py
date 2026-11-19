@@ -157,9 +157,11 @@ def finish(job_id: str) -> None:
         )
 
 
-def fail_or_retry(job_id: str, attempts: int, error: str) -> str:
+def fail_or_retry(
+    job_id: str, attempts: int, error: str, *, retryable: bool = True
+) -> str:
     now = time.time()
-    if attempts >= MAX_ATTEMPTS:
+    if not retryable or attempts >= MAX_ATTEMPTS:
         status, available = "failed", now
     else:
         status, available = "queued", now + min(900, 2 ** attempts * 15)
