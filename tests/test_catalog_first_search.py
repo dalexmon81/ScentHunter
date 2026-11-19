@@ -160,6 +160,24 @@ def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration()
     assert item["concentration"] == "Eau de Parfum"
 
 
+def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency_evidence():
+    fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
+    meta = json.loads(
+        (fixture.parent / "liquid-brun-54015243419916.meta.json").read_text()
+    )
+    item = catalog_engine._secondary_store_parser(
+        "bplatz", meta["url_final"], meta["url_final"],
+        html_data=fixture.read_bytes(),
+    )
+    assert item is not None
+    assert item["size_ml"] == 100
+    assert item["currency"] == "EUR"
+    assert item["currency_explicit"] is True
+    assert item["sku"] == "6290360375694"
+    assert item["gtin"] == "6290360375694"
+    assert item["availability"] == "in_stock"
+
+
 def test_missing_structured_currency_is_not_explicit():
     html = b'''<h1>French Avenue Liquid Brun 100 ml</h1>
     <script type="application/ld+json">{"@type":"Product",
