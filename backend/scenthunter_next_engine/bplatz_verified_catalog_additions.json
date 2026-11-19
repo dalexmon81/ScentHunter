@@ -98,6 +98,68 @@
       "canonical_name": "Hayati Lychee",
       "aliases": [],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6435074242867",
+      "brand_name": "Ard Al Zaafaran",
+      "canonical_name": "Thara Al Oud",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6290360590707",
+      "brand_name": "Maison Alhambra",
+      "canonical_name": "Chic Velvet Vert Secret",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021907668",
+      "brand_name": "Al Fares",
+      "canonical_name": "Hajes Flame",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6290360599090",
+      "brand_name": "Lattafa",
+      "canonical_name": "Sehr",
+      "aliases": [
+        "Very"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021904742",
+      "brand_name": "Milestone",
+      "canonical_name": "Hayati Marshmallow",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906661",
+      "brand_name": "Milestone",
+      "canonical_name": "Alvina Desira",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021907019",
+      "brand_name": "Milestone",
+      "canonical_name": "Perfume Blast Infrared",
+      "aliases": [
+        "Blast Infrared"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021907002",
+      "brand_name": "Milestone",
+      "canonical_name": "Perfume Blast Confident",
+      "aliases": [
+        "Blast Confident"
+      ],
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -176,6 +238,54 @@
     {
       "variant_id": "VAR-BPLATZ-6294021904759",
       "product_id": "SH-BPLATZ-6294021904759",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6435074242867",
+      "product_id": "SH-BPLATZ-6435074242867",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6290360590707",
+      "product_id": "SH-BPLATZ-6290360590707",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021907668",
+      "product_id": "SH-BPLATZ-6294021907668",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6290360599090",
+      "product_id": "SH-BPLATZ-6290360599090",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021904742",
+      "product_id": "SH-BPLATZ-6294021904742",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906661",
+      "product_id": "SH-BPLATZ-6294021906661",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021907019",
+      "product_id": "SH-BPLATZ-6294021907019",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021907002",
+      "product_id": "SH-BPLATZ-6294021907002",
       "size_ml": 100,
       "aliases": []
     }
