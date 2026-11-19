@@ -1,6 +1,11 @@
 name: Deploy isolated Offer Engine pilot
 
 on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths-ignore:
+      - ".github/workflows/fly-pilot-diagnostic.yml"
   workflow_dispatch:
     inputs:
       confirm_deploy:
@@ -13,34 +18,36 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: scent-hunter-offer-engine-pilot
-  cancel-in-progress: false
-
 jobs:
   deploy-pilot:
     name: Deploy isolated pilot (not production)
-    if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_deploy == 'deploy') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[pilot-deploy]')) }}
+    concurrency:
+      group: scent-hunter-offer-engine-pilot
+      cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pilot-20261030
       FLY_ORG: personal
       FLY_VOLUME: scenthunter_pilot_data
       PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+      APISH_API_KEY: ${{ secrets.APISH_API_KEY }}
+      CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+      CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
     steps:
       - name: Checkout the architecture branch only
         uses: actions/checkout@v4
         with:
-          ref: architecture/offer-engine-v1
+          ref: refactor/catalog-first-architecture
 
       - name: Validate isolated target and Fly token
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = "architecture/offer-engine-v1" || {
-            echo "Run this workflow from architecture/offer-engine-v1 only." >&2
+          test "$GITHUB_REF_NAME" = "refactor/catalog-first-architecture" || {
+            echo "Run this workflow from refactor/catalog-first-architecture only." >&2
             exit 1
           }
           test -n "$FLY_API_TOKEN" || {
@@ -55,128 +62,12 @@ jobs:
             fm2_*) normalized_token="FlyV1 $normalized_token" ;;
           esac
           echo "::add-mask::$normalized_token"
-          printf 'FLY_API_TOKEN=%s\\n' "$normalized_token" >> "$GITHUB_ENV"
+          printf 'FLY_API_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
           grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
           grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
-          echo "Production fly.toml is not used by this workflow."
-
-      - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Create or verify isolated Fly app
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Explicitly target the personal organization. Scoped tokens should
-          # not rely on flyctl's implicit organization selection.
-          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
-            echo "App creation returned non-zero; checking whether it already exists."
-          fi
-          app_names="$(flyctl apps list --org "$FLY_ORG" --quiet 2>&1)" || {
-            printf '%s\n' "$app_names" >&2
-            echo "Cannot list apps in the target organization; refusing volume/deploy." >&2
-            exit 1
-          }
-          printf '%s\n' "$app_names"
-          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
-            echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
-            exit 1
-          }
-
-      - name: Create or verify dedicated persistent volume
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Allow the newly-created app a short time to become visible to the
-          # volumes API before attempting volume creation.
-          volume_list=""
-          for attempt in $(seq 1 6); do
-            if volume_list="$(flyctl volumes list --app "$FLY_APP" 2>&1)"; then
-              break
-            fi
-            echo "Waiting for Fly app/volume API propagation ($attempt/6): $volume_list"
-            sleep 5
-          done
-          if printf '%s\n' "$volume_list" | grep -Fq "$FLY_VOLUME"; then
-            echo "Dedicated pilot volume already exists."
-          else
-            flyctl volumes create "$FLY_VOLUME" \
-              --app "$FLY_APP" \
-              --region ams \
-              --size 1 \
-              --count 1 \
-              --yes
-          fi
-
-      - name: Deploy pilot app
-        shell: bash
-        run: |
-          set -euo pipefail
-          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
-
-      - name: Verify pilot health, read API and user search path
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import time
-          import urllib.error
-          import urllib.parse
-          import urllib.request
-
-          base = "https://scenthunter-pilot-20261030.fly.dev"
-          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml", "market": "LU"})
-          last_error = None
-
-          for attempt in range(1, 25):
-              try:
-                  def get(path):
-                      request = urllib.request.Request(
-                          base + path,
-                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
-                      )
-                      with urllib.request.urlopen(request, timeout=15) as response:
-                          if response.status != 200:
-                              raise RuntimeError(f"{path}: HTTP {response.status}")
-                          return json.loads(response.read().decode("utf-8"))
-
-                  health = get("/health")
-                  if health.get("status") != "healthy":
-                      raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                      raise RuntimeError("Read API did not return the expected contract: " + json.dumps(offer_api))
-                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(ui_search, dict):
-                      raise RuntimeError("User search endpoint returned a non-object response.")
-                  print("PILOT_HEALTH=PASS")
-                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
-                  print("PILOT_URL=" + base)
-                  break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = f"{type(exc).__name__}: {exc}"
-                  print(f"Attempt {attempt}/24: {last_error}", flush=True)
-                  if attempt < 24:
-                      time.sleep(5)
-          else:
-              raise SystemExit("Pilot smoke test failed: " + str(last_error))
-          PY
-
-      - name: Print pilot URL
-        if: success()
-        run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
-\\r'/}"
-          normalized_token="${normalized_token//          grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"' fly.staging.toml
+          grep -Fq 'BPLATZ_PHASE2_PERSISTENCE = "1"' fly.staging.toml
           grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
           echo "Production fly.toml is not used by this workflow."
 
       - name: Install Fly CLI
@@ -197,7 +88,7 @@ jobs:
             exit 1
           }
           printf '%s\n' "$app_names"
-          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
+          printf '%s\n' "$app_names" | grep -Fq "$FLY_APP" || {
             echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
             exit 1
           }
@@ -227,134 +118,144 @@ jobs:
               --yes
           fi
 
-      - name: Deploy pilot app
+      # APISH_API_KEY is provisioned once as a Fly secret; do not reset it on every deploy.
+      - name: Stage authorized Notino CJ feed credentials
         shell: bash
         run: |
           set -euo pipefail
-          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
+          if [[ -z "$CJ_HTTP_USERNAME" || -z "$CJ_HTTP_PASSWORD" ]]; then
+            echo "::error::Missing CJ_HTTP_USERNAME or CJ_HTTP_PASSWORD Actions secret; Notino feed cannot be configured."
+            exit 1
+          fi
+          flyctl secrets set --stage \
+            "NOTINO_CJ_FEED_URL=https://datatransfer.cj.com/datatransfer/files/8115142/outgoing/productcatalog/324587/NOTINO_fr-NotinoFR_google_all-shopping.xml.zip" \
+            "NOTINO_CJ_FEED_USERNAME=$CJ_HTTP_USERNAME" \
+            "NOTINO_CJ_FEED_PASSWORD=$CJ_HTTP_PASSWORD" \
+            --app "$FLY_APP"
 
-      - name: Verify pilot health, read API and user search path
+      # Rebuild the isolated image so the streaming Notino smoke script is available on the machine.
+      - name: Deploy pilot app
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes --wait-timeout 600 --verbose
+
+      - name: Wait for isolated pilot to boot
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
           import time
-          import urllib.error
-          import urllib.parse
           import urllib.request
 
-          base = "https://scenthunter-pilot-20261030.fly.dev"
-          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml", "market": "LU"})
-          last_error = None
-
+          url = "https://scenthunter-pilot-20261030.fly.dev/health"
           for attempt in range(1, 25):
               try:
-                  def get(path):
-                      request = urllib.request.Request(
-                          base + path,
-                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
-                      )
-                      with urllib.request.urlopen(request, timeout=15) as response:
-                          if response.status != 200:
-                              raise RuntimeError(f"{path}: HTTP {response.status}")
-                          return json.loads(response.read().decode("utf-8"))
-
-                  health = get("/health")
-                  if health.get("status") != "healthy":
-                      raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                      raise RuntimeError("Read API did not return the expected contract: " + json.dumps(offer_api))
-                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(ui_search, dict):
-                      raise RuntimeError("User search endpoint returned a non-object response.")
-                  print("PILOT_HEALTH=PASS")
-                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
-                  print("PILOT_URL=" + base)
-                  break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = f"{type(exc).__name__}: {exc}"
-                  print(f"Attempt {attempt}/24: {last_error}", flush=True)
-                  if attempt < 24:
-                      time.sleep(5)
+                  with urllib.request.urlopen(url, timeout=15) as response:
+                      if response.status == 200:
+                          print("PILOT_BOOT=PASS")
+                          break
+              except Exception as exc:
+                  print(f"Attempt {attempt}/24: {type(exc).__name__}")
+              if attempt < 24:
+                  time.sleep(5)
           else:
-              raise SystemExit("Pilot smoke test failed: " + str(last_error))
+              raise SystemExit("Pilot did not become healthy.")
           PY
 
-      - name: Print pilot URL
-        if: success()
-        run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
-\\n'/}"
-          if [[ "$normalized_token" == fm2_* ]]; then
-            normalized_token="FlyV1 $normalized_token"
-          fi
-          echo "::add-mask::$normalized_token"
-          printf 'FLY_API_TOKEN=%s\\n' "$normalized_token" >> "$GITHUB_ENV"
-          grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
-          grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
-          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
-          echo "Production fly.toml is not used by this workflow."
-
-      - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Create or verify isolated Fly app
+      - name: Migrate and seed the isolated canonical catalog
         shell: bash
         run: |
           set -euo pipefail
-          # Explicitly target the personal organization. Scoped tokens should
-          # not rely on flyctl's implicit organization selection.
-          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
-            echo "App creation returned non-zero; checking whether it already exists."
-          fi
-          app_names="$(flyctl apps list --org "$FLY_ORG" --quiet 2>&1)" || {
-            printf '%s\n' "$app_names" >&2
-            echo "Cannot list apps in the target organization; refusing volume/deploy." >&2
-            exit 1
-          }
-          printf '%s\n' "$app_names"
-          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
-            echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
-            exit 1
-          }
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found." >&2; exit 1; }
 
-      - name: Create or verify dedicated persistent volume
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Allow the newly-created app a short time to become visible to the
-          # volumes API before attempting volume creation.
-          volume_list=""
-          for attempt in $(seq 1 6); do
-            if volume_list="$(flyctl volumes list --app "$FLY_APP" 2>&1)"; then
+          # The Fly Machine Exec API can return 408 for long foreground commands.
+          # Launch migrations/seed in the background and poll a durable exit file.
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/catalog_seed.exit /data/catalog/catalog_seed.log
+          nohup /bin/sh -c '
+            cd /app/backend
+            /app/.venv/bin/python -m alembic -c alembic.ini upgrade head &&
+            /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store
+            result=$?
+            echo "$result" > /data/catalog/catalog_seed.exit
+          ' </dev/null >/data/catalog/catalog_seed.log 2>&1 &
+          echo SEED_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          for attempt in $(seq 1 240); do
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/catalog_seed.exit ]; then echo SEED_EXIT_CODE=\$(cat /data/catalog/catalog_seed.exit); else echo SEED_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Seed status poll failed ($attempt/240): $poll"
+              sleep 5
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'SEED_EXIT_CODE=0'; then
+              echo "PILOT_CATALOG_MIGRATION_AND_SEED=PASS"
               break
             fi
-            echo "Waiting for Fly app/volume API propagation ($attempt/6): $volume_list"
+            if printf '%s\\n' "$poll" | grep -Eq 'SEED_EXIT_CODE=[1-9]'; then
+              flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            if [ "$attempt" -eq 240 ]; then
+              echo "Catalog migration/seed did not finish within 20 minutes." >&2
+              flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/catalog_seed.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
             sleep 5
           done
-          if printf '%s\n' "$volume_list" | grep -Fq "$FLY_VOLUME"; then
-            echo "Dedicated pilot volume already exists."
-          else
-            flyctl volumes create "$FLY_VOLUME" \
-              --app "$FLY_APP" \
-              --region ams \
-              --size 1 \
-              --count 1 \
-              --yes
-          fi
 
-      - name: Deploy pilot app
+      - name: Verify durable SQLite worker is running on the pilot machine
         shell: bash
         run: |
           set -euo pipefail
-          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for worker verification." >&2; exit 1; }
 
-      - name: Verify pilot health, read API and user search path
+          for attempt in $(seq 1 36); do
+            result="$(flyctl machine exec "$machine_id" "sh -lc 'set -eu; test -f /data/catalog/ingestion_queue.sqlite3; /app/.venv/bin/python - <<\"PY\"
+          import glob, os, sqlite3
+          worker_pids=[]
+          for path in glob.glob(\"/proc/[0-9]*/cmdline\"):
+              try:
+                  pid=int(path.split(\"/\")[2])
+                  if pid != os.getpid() and b\"python -m app.workers.sqlite_worker\" in open(path,\"rb\").read():
+                      worker_pids.append(pid)
+              except (OSError, ValueError):
+                  pass
+          assert worker_pids, \"SQLite worker process is not running\"
+          db=sqlite3.connect(\"/data/catalog/ingestion_queue.sqlite3\")
+          tables={r[0] for r in db.execute(\"select name from sqlite_master where type=?\",(\"table\",))}
+          assert {\"ingestion_queue_jobs\",\"ingestion_queue_meta\"} <= tables, tables
+          row=db.execute(\"select value from ingestion_queue_meta where key=?\",(\"schedule:notino-fr:daily-discovery\",)).fetchone()
+          print(\"NOTINO_DAILY_SCHEDULE=\" + (row[0] if row else \"PENDING\"))
+          print(\"SQLITE_QUEUE_TABLES=PASS\")
+          PY' " --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Worker verification pending ($attempt/36): $result"
+              sleep 5
+              continue
+            }
+            printf '%s\\n' "$result"
+            if printf '%s\\n' "$result" | grep -q 'SQLITE_QUEUE_TABLES=PASS' && ! printf '%s\\n' "$result" | grep -q 'NOTINO_DAILY_SCHEDULE=PENDING'; then
+              echo "PILOT_SQLITE_WORKER=PASS"
+              break
+            fi
+            if [ "$attempt" -eq 36 ]; then
+              echo "SQLite worker did not initialize and schedule Notino discovery." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Verify pilot health, canonical status and catalog search
         shell: bash
         run: |
           set -euo pipefail
@@ -384,16 +285,19 @@ jobs:
                   health = get("/health")
                   if health.get("status") != "healthy":
                       raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                      raise RuntimeError("Read API did not return the expected contract: " + json.dumps(offer_api))
-                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(ui_search, dict):
-                      raise RuntimeError("User search endpoint returned a non-object response.")
+                  catalog_status = get("/api/catalog/status")
+                  if catalog_status.get("status") != "ready":
+                      raise RuntimeError("Canonical catalog is not ready: " + json.dumps(catalog_status))
+                  catalog_search = get("/api/catalog/search?q=" + urllib.parse.quote("French Avenue Liquid Brun EDP 100ml"))
+                  if catalog_search.get("status") != "completed" or not isinstance(catalog_search.get("results"), list):
+                      raise RuntimeError("Canonical catalog search returned an invalid contract: " + json.dumps(catalog_search))
                   print("PILOT_HEALTH=PASS")
-                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
+                  print("PILOT_CATALOG_STATUS=PASS")
+                  print("PILOT_CATALOG_SEARCH=PASS")
+                  print("PILOT_CANONICAL_PRODUCTS=" + str(catalog_status.get("canonical_products", 0)))
+                  print("PILOT_CANONICAL_VARIANTS=" + str(catalog_status.get("canonical_variants", 0)))
+                  print("PILOT_PUBLISHED_OFFERS=" + str(catalog_status.get("published_offers", 0)))
+                  print("PILOT_SEARCH_RESULTS=" + str(catalog_search.get("count", 0)))
                   print("PILOT_URL=" + base)
                   break
               except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
@@ -404,6 +308,65 @@ jobs:
           else:
               raise SystemExit("Pilot smoke test failed: " + str(last_error))
           PY
+
+# Detached Notino ingestion verification is polled through the persistent volume exit marker.
+      # Worker process verification uses /proc so minimal runtime images need no ps package.
+      - name: Verify one real Notino CJ feed offer through canonical persistence
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for Notino ingestion." >&2; exit 1; }
+
+          # Run the feed download/persistence smoke test detached from SSH so a
+          # long CJ transfer cannot hold an interactive SSH session open.
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/notino_smoke.exit /data/catalog/notino_smoke.log
+          nohup /bin/sh -c '
+            cd /app/backend
+            /app/.venv/bin/python scripts/smoke_notino_catalog_ingestion.py
+            result=$?
+            echo "$result" > /data/catalog/notino_smoke.exit
+          ' </dev/null >/data/catalog/notino_smoke.log 2>&1 &
+          echo NOTINO_SMOKE_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          for attempt in $(seq 1 120); do
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/notino_smoke.exit ]; then echo NOTINO_SMOKE_EXIT=\$(cat /data/catalog/notino_smoke.exit); else echo NOTINO_SMOKE_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Notino smoke status poll failed ($attempt/120): $poll"
+              sleep 10
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'NOTINO_SMOKE_EXIT=0'; then
+              flyctl machine exec "$machine_id" "tail -n 80 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30
+              echo "NOTINO_CANONICAL_PERSISTENCE=PASS"
+              break
+            fi
+            if printf '%s\\n' "$poll" | grep -Eq 'NOTINO_SMOKE_EXIT=[1-9]'; then
+              flyctl machine exec "$machine_id" "tail -n 160 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            if [ "$attempt" -eq 120 ]; then
+              echo "Notino feed ingestion did not finish within 20 minutes." >&2
+              flyctl machine exec "$machine_id" "tail -n 160 /data/catalog/notino_smoke.log" --app "$FLY_APP" --timeout 30 || true
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Verify API.SH Notino provider inside the isolated Fly app
+        if: ${{ env.APISH_API_KEY != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_apish_notino.py'"
 
       - name: Print pilot URL
         if: success()
