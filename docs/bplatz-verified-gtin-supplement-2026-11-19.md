@@ -13,6 +13,14 @@ This supplement adds eight Bplatz product identities to the isolated catalog. Ea
 | Milestone Perfume Blast Infrared | 6294021907019 | Shure Cosmetics |
 | Milestone Perfume Blast Confident | 6294021907002 | Shure Cosmetics |
 
+| Milestone 1849 Matador Velarus | 6294021906586 | Qogita |
+| Milestone 1849 Matador Linton | 6294021906579 | Qogita |
+| Milestone Coastal Waves Aqua Marine | 6294021906760 | ScentArabia; Kiwiku; Allegro |
+| Al Fares Ward Al Qamr | 6294021906234 | ScentArabia; Nalda |
+| Ard Al Zaafaran Al Sayaad | 6423080615355 | Jomashop; Sham Perfume; Noon |
+| Al Fares Layaali | 6291108522431 | Qogita; Lolitka |
+| Milestone Obsession Cherry Overdose | 6294021905442 | ScentArabia; Kiwiku; Qogita |
+
 ## Matching safeguards
 
 - Each GTIN has a check-digit-valid GTIN-13 mapping to one canonical product and one 100 ml variant.
@@ -23,4 +31,4 @@ This supplement adds eight Bplatz product identities to the isolated catalog. Ea
 
 ## Validation
 
-The regression suite verifies all 21 reviewed Bplatz GTIN mappings (13 previous entries plus these eight). The canonical catalog seed dry-run validates the base catalog and supplement without writing to the database.
+The regression suite verifies all 28 reviewed Bplatz GTIN mappings (13 initial entries plus eight second-batch entries and seven third-batch entries). The canonical catalog seed dry-run validates the base catalog and supplement without writing to the database.
