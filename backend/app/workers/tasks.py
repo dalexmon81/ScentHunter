@@ -54,5 +54,7 @@ def reprocess_failed_offers(self, payload: dict):
 # local-only: it constructs no DB engine, downloads no feed, and opens no Redis
 # connection until a task is actually executed.
 from app.workers.notino_runtime import register_notino_handlers
+from app.workers.legacy_runtime import register_catalog_handlers
 
 register_notino_handlers()
+register_catalog_handlers()
