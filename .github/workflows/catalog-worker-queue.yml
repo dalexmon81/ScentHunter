@@ -12,6 +12,7 @@ on:
       - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_sqlite_ingestion_queue.py"
+      - "backend/tests/test_offer_refresh_persistence.py"
       - "backend/requirements.txt"
       - "backend/app/workers/README.md"
       - "Dockerfile.pilot"
