@@ -45,6 +45,25 @@ NOTINO_STORE = {
     "status": "active",
 }
 
+LEGACY_RETAILER_STORES = {
+    "deloox": {
+        "name": "Deloox.be", "slug": "deloox-be", "domain": "www.deloox.be",
+        "country": "BE", "currency": "EUR", "status": "active",
+    },
+    "sabina": {
+        "name": "Sabina", "slug": "sabina-es", "domain": "www.sabina.com",
+        "country": "ES", "currency": "EUR", "status": "active",
+    },
+    "easycosmetic": {
+        "name": "Easycosmetic.de", "slug": "easycosmetic-de", "domain": "www.easycosmetic.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    },
+    "parfumzentrum": {
+        "name": "Parfum-Zentrum.de", "slug": "parfumzentrum-de", "domain": "www.parfum-zentrum.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    },
+}
+
 
 def norm(value: str):
     value = unicodedata.normalize("NFKD", value)
@@ -182,6 +201,10 @@ def main() -> int:
         action="store_true",
         help="explicitly create or activate the Notino.fr store row for the authorized feed connector",
     )
+    parser.add_argument("--seed-deloox-store", action="store_true", help="explicitly seed Deloox.be for catalog-first ingestion")
+    parser.add_argument("--seed-sabina-store", action="store_true", help="explicitly seed Sabina for catalog-first ingestion")
+    parser.add_argument("--seed-easycosmetic-store", action="store_true", help="explicitly seed Easycosmetic.de for catalog-first ingestion")
+    parser.add_argument("--seed-parfumzentrum-store", action="store_true", help="explicitly seed Parfum-Zentrum.de for catalog-first ingestion")
     args = parser.parse_args()
 
     with Path(args.catalog).open(encoding="utf-8") as handle:
@@ -224,6 +247,10 @@ def main() -> int:
         "stores_to_seed": (
             ([BPLATZ_STORE.copy()] if args.seed_bplatz_store else [])
             + ([NOTINO_STORE.copy()] if args.seed_notino_store else [])
+            + ([LEGACY_RETAILER_STORES["deloox"].copy()] if args.seed_deloox_store else [])
+            + ([LEGACY_RETAILER_STORES["sabina"].copy()] if args.seed_sabina_store else [])
+            + ([LEGACY_RETAILER_STORES["easycosmetic"].copy()] if args.seed_easycosmetic_store else [])
+            + ([LEGACY_RETAILER_STORES["parfumzentrum"].copy()] if args.seed_parfumzentrum_store else [])
         ),
         "database_written": False,
         "source_modified": False,
@@ -318,6 +345,14 @@ def main() -> int:
             stores_to_seed.append(BPLATZ_STORE)
         if args.seed_notino_store:
             stores_to_seed.append(NOTINO_STORE)
+        if args.seed_deloox_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["deloox"])
+        if args.seed_sabina_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["sabina"])
+        if args.seed_easycosmetic_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["easycosmetic"])
+        if args.seed_parfumzentrum_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["parfumzentrum"])
         if stores_to_seed:
             with Session(engine) as session, session.begin():
                 for store_config in stores_to_seed:
