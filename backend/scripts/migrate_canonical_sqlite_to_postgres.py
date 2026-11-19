@@ -30,7 +30,7 @@ TABLE_ORDER = (
     "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
     "offers", "price_history", "match_audit", "ingestion_runs",
 )
-EXPECTED_REVISION = "0004_variant_mini"
+EXPECTED_REVISION = "0005_connector_quarantine"
 
 
 def open_source_read_only(source_path: Path):
