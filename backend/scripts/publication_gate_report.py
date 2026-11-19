@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -46,7 +46,7 @@ def main() -> int:
                 if offer.currency != "EUR":
                     failures.append("currency_not_eur")
                 captured = _utc(offer.captured_at)
-                if captured < now.replace(microsecond=0) - __import__("datetime").timedelta(hours=24):
+                if captured < now - timedelta(hours=24):
                     failures.append("older_than_24h")
                 if captured > now:
                     failures.append("captured_in_future")
