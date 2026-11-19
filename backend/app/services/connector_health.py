@@ -48,3 +48,23 @@ def record_connector_success(session: Session, *, store_id: UUID) -> bool:
     store.last_successful_sync_at = datetime.now(timezone.utc)
     session.flush()
     return True
+
+
+
+def reinstate_connector(
+    session: Session, *, store_id: UUID, confirmed: bool,
+) -> bool:
+    """Explicit operator recovery; never invoke from a scheduled worker."""
+    if confirmed is not True:
+        raise ValueError("explicit confirmation is required to reinstate a connector")
+    store = session.scalar(select(Store).where(Store.id == store_id).with_for_update())
+    if store is None:
+        raise ValueError("unknown store_id")
+    if store.status != "quarantined":
+        return False
+    store.status = "active"
+    store.consecutive_failures = 0
+    store.last_connector_error = None
+    store.quarantined_at = None
+    session.flush()
+    return True
