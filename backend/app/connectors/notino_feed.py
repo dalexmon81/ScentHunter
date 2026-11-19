@@ -12,7 +12,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from app.connectors.base import DiscoveredProduct, StoreConnector
+from app.connectors.base import ConnectorUnavailable, DiscoveredProduct, StoreConnector
 from scrapers.notino import affiliate_feed
 
 
@@ -75,9 +75,12 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             ):
                 return self._snapshot
 
-            payload = await asyncio.to_thread(self._feed_loader)
-            offers = await asyncio.to_thread(affiliate_feed.parse_feed, payload)
-            snapshot = tuple(self._to_record(item) for item in offers)
+            try:
+                payload = await asyncio.to_thread(self._feed_loader)
+                offers = await asyncio.to_thread(affiliate_feed.parse_feed, payload)
+                snapshot = tuple(self._to_record(item) for item in offers)
+            except Exception as exc:
+                raise ConnectorUnavailable(f"Notino affiliate feed unavailable or invalid: {type(exc).__name__}: {exc}") from exc
             self._snapshot = snapshot
             self._cached_at = time.monotonic()
             return snapshot
