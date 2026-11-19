@@ -15,6 +15,10 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
 
+class ConnectorUnavailable(RuntimeError):
+    """The retailer feed or endpoint is unavailable at the connector level."""
+
+
 @dataclass(frozen=True, slots=True)
 class DiscoveredProduct:
     """A retailer product reference returned by background discovery."""
