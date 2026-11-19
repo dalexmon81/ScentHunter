@@ -59,6 +59,12 @@ def enqueue_offer_fetch(store_id: UUID | str, external_product_id: str):
     return _enqueue("fetch", {"store_id": str(store_id), "external_product_id": str(external_product_id)})
 
 
+def enqueue_offer_refresh(store_id: UUID | str, external_product_id: str):
+    if not str(external_product_id).strip():
+        raise ValueError("external_product_id is required")
+    return _enqueue("refresh", {"store_id": str(store_id), "external_product_id": str(external_product_id)})
+
+
 def enqueue_stage(stage: str, *, ingestion_raw_id: UUID | str, extra: Mapping[str, Any] | None = None):
     if stage not in {"normalize", "match", "validate", "refresh", "quarantine", "reprocess"}:
         raise ValueError(f"unsupported downstream stage: {stage}")
