@@ -174,7 +174,9 @@ class LegacyScraperConnector(StoreConnector):
                 return self._snapshot
             try:
                 snapshot = await asyncio.to_thread(self._search_snapshot)
-            except ConnectorUnavailable:
+            except (ConnectorUnavailable, ValueError):
+                # Missing operator-approved seed queries are configuration errors,
+                # not retailer outages. Do not count them toward connector quarantine.
                 raise
             except Exception as exc:
                 raise ConnectorUnavailable(f"{self.store_key} discovery failed: {type(exc).__name__}: {exc}") from exc
