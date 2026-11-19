@@ -2,6 +2,7 @@
 from __future__ import annotations
 from celery import Task
 from app.workers.celery_app import celery_app
+from app.connectors.base import ConnectorUnavailable
 
 class HandlerNotConfigured(RuntimeError):
     pass
@@ -16,7 +17,7 @@ def _execute(stage: str, payload: dict):
     return handler(payload)
 
 class RetryableCatalogTask(Task):
-    autoretry_for = (TimeoutError, ConnectionError)
+    autoretry_for = (TimeoutError, ConnectionError, ConnectorUnavailable)
     retry_backoff = True
     retry_backoff_max = 900
     retry_jitter = True
