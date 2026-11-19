@@ -222,6 +222,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                     "raw_record": dict(raw_record) if isinstance(raw_record, Mapping) else dict(observation),
                 },
                 source=str(parsed.get("source") or f"{connector.store_key}_legacy_scraper"),
+                currency_explicit=parsed.get("currency_explicit") is True,
             )
             record_ingestion_progress(session, run_id=run_id, offers_updated=1)
             finish_ingestion_run(session, run_id=run_id, status="completed")
