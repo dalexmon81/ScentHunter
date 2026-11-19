@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base, Brand, Fragrance, IngestionRun, ProductVariant, Store
+from app.models import Base, IngestionRun, Store
 from app.connectors.base import ConnectorUnavailable, DiscoveredProduct
 from app.services.connector_ingestion import ConnectorIngestionResult
 from app.workers import notino_runtime
@@ -93,6 +93,7 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
         resolve.assert_called_once()
         self.assertEqual(resolve.call_args.kwargs["store_id"], self.store_id)
         self.assertEqual(resolve.call_args.kwargs["external_product_id"], "CJ-123")
+        self.assertEqual(resolve.call_args.kwargs["record"]["brand_raw"], "Dior")
 
     def test_candidate_filter_rejects_unmatched_canonical_record(self):
         connector = FakeNotinoConnector()
