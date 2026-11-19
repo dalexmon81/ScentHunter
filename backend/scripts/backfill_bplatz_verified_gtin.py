@@ -24,7 +24,7 @@ from scenthunter_next_engine.catalog_repository import CatalogRepository
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
 
-_SIZE_RE = re.compile(r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl|dl|l)\\b", re.I)
+_SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", re.I)
 
 
 def _explicit_title_size(title: str) -> int | None:
@@ -65,6 +65,7 @@ def main() -> int:
             ).all()
 
             latest_by_gtin = {}
+            seen_gtins = set()
             skipped = Counter()
             duplicate_rows = 0
             for row in rows:
@@ -73,9 +74,10 @@ def main() -> int:
                 if not gtin:
                     skipped["missing_gtin"] += 1
                     continue
-                if gtin in latest_by_gtin:
+                if gtin in seen_gtins:
                     duplicate_rows += 1
                     continue
+                seen_gtins.add(gtin)
 
                 title = str(payload.get("raw_name") or payload.get("name") or "")
                 match_payload = dict(payload)
@@ -189,6 +191,7 @@ def main() -> int:
                             confidence=matched.confidence,
                         )
                         promoted += 1
+                session.commit()
                 summary["promoted_unique_gtins"] = promoted
                 summary["database_written"] = True
 
