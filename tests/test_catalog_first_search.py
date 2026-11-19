@@ -399,6 +399,62 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
             "product_url": "https://en.bplatz.de/products/example-hayati-lychee",
             "availability": "in_stock",
         },
+        {
+            "raw_name": "Milestone Hayati Marshmallow Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021904742",
+            "price": 11.49, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-hayati-marshmallow",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Al Fares Hajes Flame Eau de Parfum 100 ml",
+            "brand_raw": "Al Fares", "size_ml": 100, "gtin": "6294021907668",
+            "price": 17.89, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-hajes-flame",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Perfume Blast Infrared Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021907019",
+            "price": 11.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-blast-infrared",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Perfume Blast Confident Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021907002",
+            "price": 8.50, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-blast-confident",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Milestone Alvina Desira Eau de Parfum 100 ml",
+            "brand_raw": "Milestone", "size_ml": 100, "gtin": "6294021906661",
+            "price": 14.49, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-alvina-desira",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Ard Al Zaafaran Perfume Thara Al Oud Eau de Parfum 100ml",
+            "brand_raw": "Ard Al Zaafaran", "size_ml": 100, "gtin": "6435074242867",
+            "price": 14.18, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-thara-al-oud",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Chic Velvet Vert Secret Eau de Parfum 100ml",
+            "brand_raw": "Maison Alhambra", "size_ml": 100, "gtin": "6290360590707",
+            "price": 17.68, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-chic-velvet",
+            "availability": "in_stock",
+        },
+        {
+            "raw_name": "Lattafa Perfume Very Eau de Parfum 100ml",
+            "brand_raw": "Lattafa", "size_ml": 100, "gtin": "6290360599090",
+            "price": 27.80, "currency": "EUR", "currency_explicit": True,
+            "product_url": "https://en.bplatz.de/products/test-lattafa-sehr",
+            "availability": "in_stock",
+        },
     ]
     assert "6290360598970" in matcher._matcher._gtin_registry
     from scenthunter_next_engine.canonical_matcher import _offer_gtin
@@ -410,13 +466,15 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
     result = matcher.process_records(
         cases, retailer="Bplatz", currency_default="EUR",
     ).aggregation
-    assert result.matched_offer_count == 13
+    assert result.matched_offer_count == 21
     expected_gtins = {
         "6290360598970", "6290360592169", "6291108735749",
         "6294021906593", "6291107459363", "6291108529171",
         "6291108529188", "6291108529164", "6294021906241",
         "6294021906784", "6294021906777", "6294021907026",
-        "6294021904759",
+        "6294021904759", "6294021904742", "6294021907668",
+        "6294021907019", "6294021907002", "6294021906661",
+        "6435074242867", "6290360590707", "6290360599090",
     }
     assert {group.canonical_product_id for group in result.groups} == {
         "SH-BPLATZ-" + gtin for gtin in expected_gtins
