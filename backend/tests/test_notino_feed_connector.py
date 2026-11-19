@@ -4,6 +4,7 @@ import asyncio
 import unittest
 
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+from app.connectors.base import ConnectorUnavailable
 
 
 DIOR_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -82,6 +83,15 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await connector.fetch_product("NOT-IN-FEED"))
         with self.assertRaises(LookupError):
             await connector.fetch_price_and_stock("NOT-IN-FEED")
+
+    async def test_feed_loader_outage_is_classified_as_connector_unavailable(self) -> None:
+        def broken_loader() -> bytes:
+            raise TimeoutError("upstream timeout")
+
+        connector = NotinoAffiliateFeedConnector(feed_loader=broken_loader)
+        with self.assertRaises(ConnectorUnavailable):
+            await connector.discover_products()
+
 
     async def test_snapshot_can_be_forced_to_refresh(self) -> None:
         calls = 0
