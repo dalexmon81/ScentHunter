@@ -64,6 +64,9 @@ class Store(Base):
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="active", server_default="active")
     reliability_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_connector_error: Mapped[str | None] = mapped_column(Text)
+    quarantined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class LegacyProductIdMap(Base):
