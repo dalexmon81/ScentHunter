@@ -105,3 +105,15 @@ the discovery and refresh schedulers select active stores only, so no new
 scheduled work is added for that store. A successful feed access resets the
 streak only while the store is still active. Quarantine is deliberately not
 cleared automatically.
+
+
+A quarantined connector can only be reinstated after an operator has checked
+the retailer feed and credentials. Apply migrations first, then run:
+
+```bash
+cd backend
+python scripts/reinstate_store_connector.py --store-slug notino-fr --confirm
+```
+
+The command resets the failure streak and returns that store to `active`.
+It does not start discovery or refresh by itself.
