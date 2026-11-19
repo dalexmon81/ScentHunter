@@ -361,6 +361,14 @@ jobs:
             sleep 10
           done
 
+      - name: Report retailer ingestion coverage (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for coverage report." >&2; exit 1; }
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 60
+
       - name: Verify API.SH Notino provider inside the isolated Fly app
         if: ${{ env.APISH_API_KEY != '' }}
         timeout-minutes: 3
