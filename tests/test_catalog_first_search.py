@@ -144,6 +144,22 @@ def test_publication_gate_and_freshness(pilot):
         assert count() == 1
 
 
+def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():
+    html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
+    <script type="application/ld+json">{"@type":"Product",
+      "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
+      "brand":{"@type":"Brand","name":"French Avenue"},
+      "offers":{"@type":"Offer","price":"25","priceCurrency":"EUR",
+      "availability":"https://schema.org/InStock"}}
+    </script>'''
+    item = catalog_engine.parse_product(
+        "bplatz", "https://en.bplatz.de/products/liquid-brun", html
+    )
+    assert item is not None
+    assert item["size_ml"] == 100
+    assert item["concentration"] == "Eau de Parfum"
+
+
 def test_missing_structured_currency_is_not_explicit():
     html = b'''<h1>French Avenue Liquid Brun 100 ml</h1>
     <script type="application/ld+json">{"@type":"Product",
