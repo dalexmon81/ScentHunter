@@ -244,3 +244,21 @@ def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypa
     returned_offer = data["results"][0]["offers"][0]
     assert returned_offer["url"] == click_url
     assert returned_offer["product_url"] == product_url
+
+
+def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency():
+    fixture = ROOT / "tests/fixtures/bplatz/liquid-brun-54015243419916.raw.html"
+    meta = json.loads(
+        (fixture.parent / "liquid-brun-54015243419916.meta.json").read_text()
+    )
+    html = fixture.read_bytes()
+    item = catalog_engine._secondary_store_parser(
+        "bplatz", meta["url_final"], meta["url_final"], html_data=html,
+    )
+    assert item is not None
+    assert item["size_ml"] == 100
+    assert item["currency"] == "EUR"
+    assert item["currency_explicit"] is True
+    assert item["sku"] == "6290360375694"
+    assert item["gtin"] == "6290360375694"
+    assert item["availability"] == "in_stock"
