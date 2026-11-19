@@ -214,6 +214,21 @@ jobs:
             sleep 5
           done
 
+      - name: Dry-run reviewed Bplatz GTIN backfill (no writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine for Bplatz GTIN dry-run." >&2; exit 1; }
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          cd /app/backend
+          /app/.venv/bin/python scripts/backfill_bplatz_verified_gtin.py
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 120
+
       - name: Verify durable SQLite worker is running on the pilot machine
         shell: bash
         run: |
