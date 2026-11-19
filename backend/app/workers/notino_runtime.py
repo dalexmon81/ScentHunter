@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
 
@@ -20,12 +21,14 @@ from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
+from scenthunter_next_engine.next_engine_service import NextEngineService
 from app.services.canonical_matching import resolve_canonical_variant
 from app.services.connector_health import record_connector_failure, record_connector_success
 from app.services.offer_refresh import refresh_offer_observation
 
 _SESSION_FACTORY = None
 _CONNECTOR: NotinoAffiliateFeedConnector | None = None
+_MATCHER: NextEngineService | None = None
 
 
 def _sessions():
@@ -40,6 +43,17 @@ def _connector() -> NotinoAffiliateFeedConnector:
     if _CONNECTOR is None:
         _CONNECTOR = NotinoAffiliateFeedConnector()
     return _CONNECTOR
+
+
+def _matcher() -> NextEngineService:
+    """Load the read-only legacy catalog used only as a conservative fallback matcher."""
+    global _MATCHER
+    if _MATCHER is None:
+        catalog_path = Path(__file__).resolve().parents[2] / "product_catalog.json"
+        if not catalog_path.is_file():
+            raise RuntimeError(f"Notino fallback matcher catalog is missing: {catalog_path}")
+        _MATCHER = NextEngineService.from_catalog_file(catalog_path)
+    return _MATCHER
 
 
 def _store_id(payload: Mapping[str, Any]) -> UUID:
@@ -206,6 +220,7 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
                 connector=_connector(),
                 store_id=store.id,
                 raw_record=dict(raw_record),
+                matcher=_matcher(),
             )
             promoted = result.status == "promoted"
             record_ingestion_progress(
