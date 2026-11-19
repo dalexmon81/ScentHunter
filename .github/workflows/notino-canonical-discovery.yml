@@ -7,6 +7,9 @@ on:
       - work/ingestion-coverage-report-20261119-rebased
     paths:
       - "backend/app/workers/notino_runtime.py"
+      - "backend/app/workers/legacy_runtime.py"
+      - "backend/app/services/offer_refresh.py"
+      - "backend/tests/test_offer_refresh_persistence.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/app/services/canonical_matching.py"
       - "backend/scripts/ingestion_coverage_report.py"
@@ -18,6 +21,9 @@ on:
       - refactor/catalog-first-architecture
     paths:
       - "backend/app/workers/notino_runtime.py"
+      - "backend/app/workers/legacy_runtime.py"
+      - "backend/app/services/offer_refresh.py"
+      - "backend/tests/test_offer_refresh_persistence.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/app/services/canonical_matching.py"
       - "backend/scripts/ingestion_coverage_report.py"
@@ -45,6 +51,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Test explicit currency evidence on offer refresh
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_offer_refresh_persistence.py' -v
       - name: Test canonical variant matching
         working-directory: backend
         env:
