@@ -4093,6 +4093,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
+        'currency_explicit': parsed.get('currency_explicit') is True or offer.get('currency_explicit') is True,
         'availability': availability,
         'available': available,
         'variants': parsed.get('variants') if store == 'sabina' and isinstance(parsed.get('variants'), list) else [],
