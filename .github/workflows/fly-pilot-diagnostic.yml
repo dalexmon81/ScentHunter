@@ -183,7 +183,7 @@ jobs:
                           match_payload.get("raw_name") or match_payload.get("name") or ""
                       )
                       explicit_size = re.search(
-                          r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl|dl|l)\\b",
+                          r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b",
                           title_for_size, re.I,
                       )
                       if not match_payload.get("size_ml") and explicit_size:
