@@ -241,7 +241,63 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
         raise
 
 
+
+def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Refresh one existing Notino offer without changing its canonical identity."""
+    store_id = _store_id(payload)
+    external_id = str(payload.get("external_product_id") or "").strip()
+    if not external_id:
+        raise ValueError("external_product_id is required")
+
+    with _sessions()() as session, session.begin():
+        store = _active_notino_store(session, store_id)
+        offer = session.scalar(select(Offer).where(
+            Offer.store_id == store.id,
+            Offer.external_product_id == external_id,
+            Offer.status == "active",
+        ).limit(1))
+        if offer is None:
+            raise ValueError("active Notino offer not found for refresh")
+        offer_id = offer.id
+        run_id = start_ingestion_run(session, store_id=store.id)
+
+    try:
+        observation = asyncio.run(_connector().fetch_price_and_stock(external_id))
+        if not isinstance(observation, Mapping):
+            raise ValueError("Notino refresh returned no structured observation")
+        parsed = _connector().parse_raw(observation)
+        validation = _connector().validate_offer(parsed)
+        if not validation.valid or parsed.get("currency_explicit") is not True:
+            errors = validation.errors or ("currency_not_explicit",)
+            raise ValueError("Notino refresh rejected: " + ";".join(errors))
+        with _sessions()() as session, session.begin():
+            _active_notino_store(session, store_id)
+            refreshed_id = refresh_offer_observation(
+                session, offer_id=offer_id, observation={
+                    "price": parsed.get("price"),
+                    "currency": parsed.get("currency"),
+                    "availability": parsed.get("availability"),
+                    "product_url": parsed.get("product_url"),
+                    "url": parsed.get("url"),
+                    "captured_at": observation.get("captured_at"),
+                    "raw_xml": observation.get("raw_xml"),
+                }, source=str(parsed.get("source") or "notino_authorized_cj_viv_xml_feed"),
+            )
+            record_ingestion_progress(session, run_id=run_id, offers_updated=1)
+            finish_ingestion_run(session, run_id=run_id, status="completed")
+        return {"status": "refreshed", "run_id": str(run_id), "offer_id": str(refreshed_id)}
+    except Exception as exc:
+        with _sessions()() as session, session.begin():
+            record_ingestion_progress(
+                session, run_id=run_id, offers_rejected=1,
+                error=f"{type(exc).__name__}:{exc}",
+            )
+            finish_ingestion_run(session, run_id=run_id, status="partial")
+        raise
+
+
 def register_notino_handlers() -> None:
-    """Register only the two Notino stages implemented and validated here."""
+    """Register the validated Notino discovery, fetch and refresh stages."""
     register_handler("discover", handle_notino_discovery)
     register_handler("fetch", handle_notino_fetch)
+    register_handler("refresh", handle_notino_refresh)
