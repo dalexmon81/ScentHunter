@@ -78,6 +78,8 @@ jobs:
           tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
           echo "=== MEMORY (live ingestion CPU follow-up) ==="
           cat /proc/meminfo | head -n 12 || true
+          echo "=== ALL PYTHON PROCESSES ==="
+          ps -eo pid,ppid,stat,etime,rss,args | grep -E '[p]ython|[s]h -c' || true
           echo "=== ACTIVE PYTHON PROCESS DETAILS ==="
           /app/.venv/bin/python - <<'PY'
           import glob, os
