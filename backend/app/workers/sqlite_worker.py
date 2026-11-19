@@ -15,7 +15,8 @@ from app.db import make_session_factory
 from app.models import Offer, Store
 from app.workers import tasks as _registered_tasks  # registers the validated Notino handlers
 from app.workers.runtime import get_handler
-from app.workers.queueing import enqueue_offer_refresh
+from app.workers.queueing import enqueue_discovery, enqueue_offer_refresh
+from app.connectors.legacy_scrapers import STORE_SLUGS
 from app.workers.sqlite_queue import (
     claim_next, enqueue_daily_once, ensure_schema, fail_or_retry, finish, recover_stale,
 )
@@ -53,25 +54,50 @@ def _schedule_daily_notino_discovery(session_factory) -> None:
 
 
 
-def _schedule_notino_offer_refresh(session_factory) -> None:
+def _schedule_daily_legacy_discovery(session_factory) -> None:
+    """Schedule only explicitly seeded stores with operator-approved query seeds."""
+    day = datetime.now(timezone.utc).date().isoformat()
+    try:
+        with session_factory() as session:
+            stores = session.execute(
+                select(Store.id, Store.slug).where(
+                    Store.status == "active", Store.slug.in_(tuple(STORE_SLUGS))
+                )
+            ).all()
+        for store_id, slug in stores:
+            connector_key = STORE_SLUGS[slug]
+            env_key = "SCENTHUNTER_DISCOVERY_QUERIES_" + connector_key.upper()
+            if not os.environ.get(env_key, "").strip():
+                continue
+            job_id = enqueue_daily_once(
+                "schedule:" + slug + ":daily-discovery", "discover",
+                {"store_id": str(store_id), "cursor": None, "limit": 100}, day,
+            )
+            if job_id:
+                log.info("Queued daily legacy discovery store=%s job=%s", slug, job_id)
+    except Exception:
+        log.exception("Unable to schedule legacy retailer discovery")
+
+
+def _schedule_active_offer_refresh(session_factory) -> None:
     """Queue refreshes for current Notino offers; active jobs are deduplicated."""
     try:
         with session_factory() as session:
             rows = session.execute(
                 select(Offer.store_id, Offer.external_product_id).join(Store)
-                .where(Store.slug == "notino-fr", Store.status == "active",
+                .where(Store.slug.in_(("notino-fr", *tuple(STORE_SLUGS))), Store.status == "active",
                        Offer.status == "active", Offer.external_product_id.is_not(None))
                 .order_by(Offer.captured_at.asc())
-                .limit(500)
+                .limit(1000)
             ).all()
         queued = 0
         for store_id, external_product_id in rows:
             enqueue_offer_refresh(store_id, external_product_id)
             queued += 1
         if queued:
-            log.info("Queued Notino offer refresh candidates=%s", queued)
+            log.info("Queued active retailer offer refresh candidates=%s", queued)
     except Exception:
-        log.exception("Unable to schedule Notino offer refresh")
+        log.exception("Unable to schedule active retailer offer refresh")
 
 
 
@@ -96,9 +122,10 @@ def main() -> None:
             last_recovery = now
         if now - last_schedule >= 60:
             _schedule_daily_notino_discovery(session_factory)
+            _schedule_daily_legacy_discovery(session_factory)
             last_schedule = now
         if now - last_refresh_schedule >= 1800:
-            _schedule_notino_offer_refresh(session_factory)
+            _schedule_active_offer_refresh(session_factory)
             last_refresh_schedule = now
         job = None
         try:
