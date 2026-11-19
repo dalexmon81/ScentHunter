@@ -206,7 +206,6 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
                 connector=_connector(),
                 store_id=store.id,
                 raw_record=dict(raw_record),
-                matcher=_matcher(),
             )
             promoted = result.status == "promoted"
             record_ingestion_progress(
