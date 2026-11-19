@@ -27,6 +27,7 @@ This supplement adds eight Bplatz product identities to the isolated catalog. Ea
 - The Bplatz display title “Very” is retained as an alias for canonical Lattafa Sehr; the GTIN and independent product sources identify the canonical name as Sehr.
 - Matching requires the verified GTIN, brand, size and concentration checks to agree.
 - The supplement does not create an offer by itself. Pending Bplatz observations are promoted only by the separate guarded backfill workflow.
+- The backfill skips GTINs that already have an active in-stock Bplatz offer, avoiding duplicate price-history updates on repeat runs.
 - No fuzzy or cross-brand matching is enabled.
 
 ## Validation
