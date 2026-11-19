@@ -103,7 +103,9 @@
       "product_id": "SH-BPLATZ-6435074242867",
       "brand_name": "Ard Al Zaafaran",
       "canonical_name": "Thara Al Oud",
-      "aliases": [],
+      "aliases": [
+        "Perfume Thara Al Oud"
+      ],
       "concentration": "Eau de Parfum"
     },
     {
@@ -125,7 +127,9 @@
       "brand_name": "Lattafa",
       "canonical_name": "Sehr",
       "aliases": [
-        "Very"
+        "Very",
+        "Perfume Very",
+        "Lattafa Perfume Very"
       ],
       "concentration": "Eau de Parfum"
     },
