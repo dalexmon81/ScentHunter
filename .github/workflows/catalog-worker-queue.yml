@@ -20,6 +20,8 @@ on:
       - "backend/app/services/ingestion_persistence.py"
       - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/scripts/reinstate_store_connector.py"
+      - "backend/scripts/seed_notino_store.py"
+      - "backend/tests/test_notino_store_provisioning.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_sqlite_ingestion_queue.py"
       - "backend/tests/test_offer_refresh_persistence.py"
@@ -86,6 +88,12 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_connector_health.py' -v
           python -m unittest discover -s tests -p 'test_notino_feed_connector.py' -v
+
+      - name: Run explicit Notino store provisioning tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_notino_store_provisioning.py' -v
 
       - name: Run explicit retailer store seeding tests
         working-directory: backend
