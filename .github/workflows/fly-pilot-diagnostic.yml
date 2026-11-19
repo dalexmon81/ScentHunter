@@ -144,6 +144,7 @@ jobs:
           cd /app/backend
           /app/.venv/bin/python - <<'PY'
           import json
+          import re
           from collections import Counter
           from difflib import SequenceMatcher
           from pathlib import Path
@@ -174,7 +175,24 @@ jobs:
               for row in rows:
                   payload = row.raw_payload if isinstance(row.raw_payload, dict) else {}
                   try:
-                      offer = normalize_offer(payload, retailer="Bplatz", currency_default="EUR")
+                      # The pending legacy rows were captured by the generic parser,
+                      # which omitted size_ml. Recover volume only from an explicit
+                      # unit-bearing title token; this is a read-only matching probe.
+                      match_payload = dict(payload)
+                      title_for_size = str(
+                          match_payload.get("raw_name") or match_payload.get("name") or ""
+                      )
+                      explicit_size = re.search(
+                          r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl|dl|l)\\b",
+                          title_for_size, re.I,
+                      )
+                      if not match_payload.get("size_ml") and explicit_size:
+                          amount = float(explicit_size.group(1).replace(",", "."))
+                          unit = explicit_size.group(2).lower()
+                          amount *= {"ml": 1, "cl": 10, "dl": 100, "l": 1000}[unit]
+                          if amount > 0 and amount.is_integer() and amount <= 10000:
+                              match_payload["size_ml"] = int(amount)
+                      offer = normalize_offer(match_payload, retailer="Bplatz", currency_default="EUR")
                       match = matcher.match(offer)
                       reason = match.reason or match.status.value
                       brand = offer.brand_raw
