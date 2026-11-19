@@ -177,6 +177,27 @@ def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency_eviden
     assert item["gtin"] == "6290360375694"
     assert item["availability"] == "in_stock"
 
+    record = {
+        "raw_name": item["name"],
+        "brand_raw": item["brand"],
+        "size_ml": item["size_ml"],
+        "price": item["price_num"],
+        "currency": item["currency"],
+        "currency_explicit": item["currency_explicit"],
+        "product_url": item["url"],
+        "availability": item["availability"],
+        "sku": item["sku"],
+        "gtin": item["gtin"],
+    }
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+    matcher = NextEngineService.from_catalog_file(ROOT / "backend/product_catalog.json")
+    matched = matcher.process_records(
+        [record], retailer="Bplatz", currency_default="EUR",
+    ).aggregation
+    assert matched.matched_offer_count == 1
+    assert matched.groups[0].canonical_product_id == "SH-0030"
+    assert matched.groups[0].canonical_variant_id == "VAR-f87146c82d167f4c"
+
 
 def test_missing_structured_currency_is_not_explicit():
     html = b'''<h1>French Avenue Liquid Brun 100 ml</h1>
