@@ -15,6 +15,7 @@ on:
       - "backend/app/services/connector_health.py"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/scripts/enqueue_notino_discovery.py"
+      - "backend/scripts/reinstate_store_connector.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_sqlite_ingestion_queue.py"
       - "backend/tests/test_offer_refresh_persistence.py"
@@ -83,3 +84,4 @@ jobs:
         env:
           PYTHONPATH: .
         run: python scripts/enqueue_notino_discovery.py --help
+          python scripts/reinstate_store_connector.py --help
