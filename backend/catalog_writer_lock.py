@@ -63,6 +63,7 @@ def _needs_writer_lock(sql):
         return False
     if re.match(r"^EXPLAIN\s+(?:QUERY\s+PLAN\s+)?SELECT\b", statement, re.IGNORECASE):
         return False
+    # busy_timeout is connection-local configuration, not a catalog write.
     if re.match(
         r"^PRAGMA\s+(?:table_info|table_xinfo|index_list|index_info|"
         r"foreign_key_list|foreign_key_check|database_list|compile_options|busy_timeout|"
