@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 from uuid import uuid4
 
 from sqlalchemy import create_engine
@@ -59,7 +60,6 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
         self.patches = [
             patch.object(notino_runtime, "_sessions", return_value=self.sessions),
             patch.object(notino_runtime, "_connector", return_value=FakeNotinoConnector()),
-            patch.object(notino_runtime, "_matcher", return_value=object()),
         ]
         for item in self.patches:
             item.start()
@@ -69,6 +69,46 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
             item.stop()
         clear_handlers()
         self.engine.dispose()
+
+    def test_candidate_filter_uses_canonical_database_matcher(self):
+        connector = FakeNotinoConnector()
+        parsed = {
+            "external_product_id": "CJ-123",
+            "raw_name": "Dior Sauvage Eau de Parfum 100 ml",
+            "brand_raw": "Dior",
+            "size_ml": 100,
+            "concentration": "Eau de Parfum",
+            "currency_explicit": True,
+        }
+        connector.parse_raw = lambda raw: parsed
+        connector.validate_offer = lambda raw: SimpleNamespace(valid=True, errors=())
+        match = SimpleNamespace(product_variant_id=uuid4())
+        with patch.object(
+            notino_runtime, "resolve_canonical_variant",
+            return_value=SimpleNamespace(match=match, reason="matched"),
+        ) as resolve:
+            self.assertTrue(notino_runtime._is_unique_canonical_candidate(
+                connector, self.store_id, {"external_product_id": "CJ-123"}
+            ))
+        resolve.assert_called_once()
+        self.assertEqual(resolve.call_args.kwargs["store_id"], self.store_id)
+        self.assertEqual(resolve.call_args.kwargs["external_product_id"], "CJ-123")
+        self.assertEqual(resolve.call_args.kwargs["record"]["brand_raw"], "Dior")
+
+    def test_candidate_filter_rejects_unmatched_canonical_record(self):
+        connector = FakeNotinoConnector()
+        connector.parse_raw = lambda raw: {
+            "external_product_id": "CJ-404",
+            "currency_explicit": True,
+        }
+        connector.validate_offer = lambda raw: SimpleNamespace(valid=True, errors=())
+        with patch.object(
+            notino_runtime, "resolve_canonical_variant",
+            return_value=SimpleNamespace(match=None, reason="no_canonical_variant_match"),
+        ):
+            self.assertFalse(notino_runtime._is_unique_canonical_candidate(
+                connector, self.store_id, {"external_product_id": "CJ-404"}
+            ))
 
     def test_discovery_queues_products_and_records_run(self):
         with patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True), \

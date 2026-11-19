@@ -19,6 +19,8 @@ on:
       - "backend/app/services/connector_ingestion.py"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/app/workers/**"
+      - "backend/scripts/ingestion_coverage_report.py"
+      - "backend/tests/test_ingestion_coverage_report.py"
       - "backend/tests/test_canonical_matching.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_catalog_ingestion_run.py"
