@@ -3884,6 +3884,40 @@ def parse_product(store, url, data):
                     availability = 'out_of_stock'
             except Exception:
                 pass
+    elif store == 'bplatz':
+        # Bplatz JSON-LD commonly exposes the bottle size only in the product
+        # title (for example "Liquid Brun Eau de Parfum 100 ml"). Preserve
+        # that explicit page-title evidence for canonical variant matching.
+        size_sources = (
+            p.get('size'), p.get('size_ml'), p.get('description'),
+            name, h1text,
+        )
+        for source_value in size_sources:
+            match = re.search(
+                r'(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b',
+                str(source_value or ''), re.I,
+            )
+            if not match:
+                continue
+            try:
+                amount = float(match.group(1).replace(',', '.'))
+            except ValueError:
+                continue
+            size_ml = amount * {
+                'ml': 1, 'cl': 10, 'dl': 100, 'l': 1000,
+            }[match.group(2).lower()]
+            if 0 < size_ml <= 10000:
+                break
+            size_ml = None
+        concentration_source = ' '.join(
+            str(value or '') for value in (name, h1text, p.get('description'))
+        )
+        concentration_match = re.search(
+            r'eau\s+de\s+(?:parfum|toilette|cologne)|extrait(?:\s+de\s+parfum)?|\bedp\b|\bedt\b|\bedc\b',
+            concentration_source, re.I,
+        )
+        if concentration_match:
+            concentration = concentration_match.group(0)
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
