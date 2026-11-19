@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from types import SimpleNamespace
+from urllib.parse import quote
 
 import pytest
 import requests
@@ -16,7 +17,8 @@ from test_bplatz_persistence_service import (
 import catalog_engine
 from app.api import catalog_search
 from app.models import IngestionRaw, MatchAudit, Offer, Store
-from app.search.catalog import catalog_status, search_catalog
+from app.search.catalog import catalog_status, search_catalog, _display_offer_url
+from scrapers.notino.affiliate_feed import validated_cj_offer_url
 
 
 @pytest.fixture
@@ -58,6 +60,7 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert offer["currency"] == "EUR"
         assert Decimal(offer["price"]) > 0
         assert offer["url"].startswith("https://bplatz.de/products/")
+        assert offer["product_url"] == offer["url"]
         assert datetime.fromisoformat(offer["captured_at"]).tzinfo is not None
         assert offer["shipping_cost"] is None
         status = client.get("/api/catalog/status").json()
@@ -162,3 +165,27 @@ def test_browser_demo_route_is_registered_and_uses_catalog_api():
         assert "/api/catalog/status" in response.text
         assert "/api/catalog/search?q=" in response.text
         assert "Nessuno store viene interrogato durante la ricerca" in response.text
+
+
+
+def test_notino_catalog_link_preserves_only_exact_validated_cj_destination():
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+    click_url = (
+        "https://anrdoezrs.net/click-123-456?url="
+        + quote(product_url, safe="")
+    )
+    assert validated_cj_offer_url(click_url, product_url) == click_url
+
+    offer = SimpleNamespace(url=product_url)
+    store = SimpleNamespace(slug="notino")
+    raw = SimpleNamespace(raw_payload={"affiliate_url": click_url})
+    assert _display_offer_url(offer, store, raw) == click_url
+
+    wrong_destination = click_url.replace("liquid-brun", "other-product")
+    raw.raw_payload = {"affiliate_url": wrong_destination}
+    assert _display_offer_url(offer, store, raw) == product_url
+
+    raw.raw_payload = {
+        "affiliate_url": "https://evil.example/click?url=" + quote(product_url, safe="")
+    }
+    assert _display_offer_url(offer, store, raw) == product_url
