@@ -5,14 +5,21 @@ on:
     branches: [main]
     paths:
       - "backend/app/workers/**"
+      - "backend/app/connectors/base.py"
+      - "backend/app/connectors/notino_feed.py"
+      - "backend/app/models/catalog.py"
+      - "backend/alembic/versions/**"
       - "backend/app/services/canonical_matching.py"
       - "backend/app/services/connector_ingestion.py"
       - "backend/app/services/offer_refresh.py"
+      - "backend/app/services/connector_health.py"
       - "backend/app/services/ingestion_persistence.py"
       - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_sqlite_ingestion_queue.py"
       - "backend/tests/test_offer_refresh_persistence.py"
+      - "backend/tests/test_connector_health.py"
+      - "backend/tests/test_notino_feed_connector.py"
       - "backend/requirements.txt"
       - "backend/app/workers/README.md"
       - "Dockerfile.pilot"
@@ -62,6 +69,14 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_offer_refresh_persistence.py' -v
+
+      - name: Run connector quarantine health tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m unittest discover -s tests -p 'test_connector_health.py' -v
+          python -m unittest discover -s tests -p 'test_notino_feed_connector.py' -v
 
       - name: Verify explicit Notino discovery kickoff CLI
         working-directory: backend
