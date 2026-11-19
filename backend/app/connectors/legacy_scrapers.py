@@ -151,6 +151,8 @@ class LegacyScraperConnector(StoreConnector):
                 parsed = urlparse(url)
                 if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                     continue
+                if len(url) > 240:
+                    continue
                 if url in seen:
                     continue
                 seen.add(url)
