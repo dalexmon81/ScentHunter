@@ -24,8 +24,10 @@ Before enabling it in the isolated pilot:
 4. Register stage handlers using the canonical DB session factory, connector
    registry and persist_connector_record. The Notino discovery and fetch
    handlers are now wired; other retailers remain unregistered.
-5. Persist connector failure streaks and quarantine state before enabling
-   recurring schedules.
+5. Connector-wide feed failures are persisted on the store. Five consecutive
+   feed-wide failures quarantine that store; successful feed access resets the
+   streak only while the store remains active. Re-enabling a quarantined store
+   is an explicit operator action, never an automatic recovery.
 6. Verify idempotency and recovery using a disposable PostgreSQL DB and a real
    Redis broker.
 
@@ -90,3 +92,16 @@ manual review; they do not overwrite the current published offer.
 
 This schedule is limited to the Notino pilot. It does not yet enable refresh for
 other retailers or claim a 15-minute freshness guarantee.
+
+
+## Connector quarantine protection
+
+The Notino adapter classifies a feed download or feed parse outage as a
+connector-wide failure. Individual missing products and offer validation
+problems do not count toward this failure streak. The health service records
+the latest error and consecutive failure count on the store. At five
+consecutive connector-wide failures, the store status becomes `quarantined`;
+the discovery and refresh schedulers select active stores only, so no new
+scheduled work is added for that store. A successful feed access resets the
+streak only while the store is still active. Quarantine is deliberately not
+cleared automatically.
