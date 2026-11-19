@@ -6,7 +6,8 @@ from unittest.mock import patch
 from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured, require_worker_broker
 from app.workers.queueing import QueueNotConfigured, enqueue_discovery
 from app.workers.runtime import clear_handlers, register_handler
-from app.workers.tasks import HandlerNotConfigured, _execute
+from app.workers.tasks import HandlerNotConfigured, RetryableCatalogTask, _execute
+from app.connectors.base import ConnectorUnavailable
 
 class CatalogWorkerQueueTests(unittest.TestCase):
     def tearDown(self):
@@ -26,6 +27,10 @@ class CatalogWorkerQueueTests(unittest.TestCase):
         self.assertEqual(celery_app.conf.worker_prefetch_multiplier, 1)
         self.assertEqual(celery_app.conf.task_default_delivery_mode, "persistent")
         self.assertEqual(celery_app.conf.task_annotations["*"]["max_retries"], 5)
+    def test_transient_connector_outage_is_retryable(self):
+        self.assertIn(ConnectorUnavailable, RetryableCatalogTask.autoretry_for)
+        self.assertIn(TimeoutError, RetryableCatalogTask.autoretry_for)
+        self.assertIn(ConnectionError, RetryableCatalogTask.autoretry_for)
     def test_queue_requires_explicit_redis_url(self):
         self.assertFalse(queue_is_configured({}))
         self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "sqlite:///x"}))
