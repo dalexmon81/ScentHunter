@@ -131,6 +131,7 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
         notino_runtime.register_notino_handlers()
         self.assertIs(get_handler("discover"), notino_runtime.handle_notino_discovery)
         self.assertIs(get_handler("fetch"), notino_runtime.handle_notino_fetch)
+        self.assertIs(get_handler("refresh"), notino_runtime.handle_notino_refresh)
 
 
 if __name__ == "__main__":
