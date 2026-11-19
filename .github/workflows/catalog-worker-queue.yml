@@ -7,6 +7,7 @@ on:
       - "backend/app/workers/**"
       - "backend/app/connectors/base.py"
       - "backend/app/connectors/notino_feed.py"
+      - "backend/app/connectors/legacy_scrapers.py"
       - "backend/app/models/catalog.py"
       - "backend/alembic/versions/**"
       - "backend/app/services/canonical_matching.py"
@@ -21,6 +22,8 @@ on:
       - "backend/tests/test_offer_refresh_persistence.py"
       - "backend/tests/test_connector_health.py"
       - "backend/tests/test_notino_feed_connector.py"
+      - "backend/tests/test_legacy_scraper_connectors.py"
+      - "backend/scrapers/easycosmetic/scraper.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/requirements.txt"
       - "backend/app/workers/README.md"
@@ -80,9 +83,16 @@ jobs:
           python -m unittest discover -s tests -p 'test_connector_health.py' -v
           python -m unittest discover -s tests -p 'test_notino_feed_connector.py' -v
 
+      - name: Run legacy retailer connector adapter tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_legacy_scraper_connectors.py' -v
+
       - name: Verify explicit Notino discovery kickoff CLI
         working-directory: backend
         env:
           PYTHONPATH: .
-        run: python scripts/enqueue_notino_discovery.py --help
+        run: |
+          python scripts/enqueue_notino_discovery.py --help
           python scripts/reinstate_store_connector.py --help
