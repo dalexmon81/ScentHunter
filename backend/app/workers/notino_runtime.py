@@ -126,14 +126,12 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
         queued = 0
-        eligible_candidates = 0
-        skipped_candidates = 0
         errors: list[str] = []
+        # Queue every discovered retailer product. Do not pre-filter against the
+        # canonical DB here: persist_connector_record performs canonical matching
+        # first and the conservative legacy matcher fallback second, while keeping
+        # unmatched/ambiguous rows staged for review instead of publishing them.
         for product in products:
-            if not _is_unique_canonical_candidate(connector, store_id, product.raw_payload):
-                skipped_candidates += 1
-                continue
-            eligible_candidates += 1
             try:
                 enqueue_offer_fetch(store_id, product.external_product_id)
                 queued += 1
@@ -166,9 +164,8 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
             "status": "partial" if errors else "completed",
             "run_id": str(run_id),
             "products_discovered": len(products),
-            "canonical_candidates": eligible_candidates,
-            "canonical_candidates_skipped": skipped_candidates,
             "fetch_jobs_queued": queued,
+            "products_not_queued": len(products) - queued,
             "next_cursor": next_cursor,
             "errors": errors,
         }
