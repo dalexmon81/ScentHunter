@@ -80,20 +80,22 @@ def _schedule_daily_legacy_discovery(session_factory) -> None:
 
 
 def _schedule_active_offer_refresh(session_factory) -> None:
-    """Queue refreshes for active Notino and configured legacy retailer offers."""
+    """Queue at most 200 oldest active offers per enabled retailer."""
     try:
-        with session_factory() as session:
-            rows = session.execute(
-                select(Offer.store_id, Offer.external_product_id).join(Store)
-                .where(Store.slug.in_(("notino-fr", *tuple(STORE_SLUGS))), Store.status == "active",
-                       Offer.status == "active", Offer.external_product_id.is_not(None))
-                .order_by(Offer.captured_at.asc())
-                .limit(1000)
-            ).all()
         queued = 0
-        for store_id, external_product_id in rows:
-            enqueue_offer_refresh(store_id, external_product_id)
-            queued += 1
+        store_slugs = ("notino-fr", *tuple(STORE_SLUGS))
+        with session_factory() as session:
+            for slug in store_slugs:
+                rows = session.execute(
+                    select(Offer.store_id, Offer.external_product_id).join(Store)
+                    .where(Store.slug == slug, Store.status == "active",
+                           Offer.status == "active", Offer.external_product_id.is_not(None))
+                    .order_by(Offer.captured_at.asc())
+                    .limit(200)
+                ).all()
+                for store_id, external_product_id in rows:
+                    enqueue_offer_refresh(store_id, external_product_id)
+                    queued += 1
         if queued:
             log.info("Queued active retailer offer refresh candidates=%s", queued)
     except Exception:
