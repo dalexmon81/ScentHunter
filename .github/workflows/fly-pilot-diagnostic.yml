@@ -1,3 +1,4 @@
+# Re-run the Bplatz pending-row probe after the isolated parser deployment.
 name: Diagnose isolated ScentHunter pilot
 
 on:
