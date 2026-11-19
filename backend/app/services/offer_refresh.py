@@ -13,7 +13,7 @@ from app.models import IngestionRaw, Offer, PriceHistory, Store
 
 def refresh_offer_observation(
     session: Session, *, offer_id: UUID, observation: dict,
-    source: str,
+    source: str, currency_explicit: bool,
 ) -> UUID:
     """Update one existing offer and append price history after strict validation.
 
@@ -43,12 +43,15 @@ def refresh_offer_observation(
         raise ValueError("refresh URL must be absolute HTTP(S)")
     if currency != offer.currency:
         raise ValueError("refresh currency changed; manual review required")
+    if currency_explicit is not True:
+        raise ValueError("refresh currency must be explicit in retailer source")
 
     captured_at = datetime.now(timezone.utc)
     raw = IngestionRaw(
         store_id=offer.store_id,
         external_product_id=offer.external_product_id,
-        raw_payload={"refresh_observation": observation, "source": source},
+        raw_payload={"refresh_observation": observation, "source": source,
+                     "currency_explicit": True},
         status="promoted",
         product_variant_id=offer.product_variant_id,
         match_method="existing_offer_identity_refresh",

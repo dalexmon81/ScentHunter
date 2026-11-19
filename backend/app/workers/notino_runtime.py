@@ -297,6 +297,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                     "captured_at": observation.get("captured_at"),
                     "raw_xml": observation.get("raw_xml"),
                 }, source=str(parsed.get("source") or "notino_authorized_cj_viv_xml_feed"),
+                currency_explicit=parsed.get("currency_explicit") is True,
             )
             record_ingestion_progress(session, run_id=run_id, offers_updated=1)
             finish_ingestion_run(session, run_id=run_id, status="completed")
