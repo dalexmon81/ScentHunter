@@ -74,3 +74,19 @@ python scripts/enqueue_notino_discovery.py --limit 100
 
 The command only enqueues a discovery task. It fails closed if Redis is not
 configured or the active `notino-fr` store has not been seeded.
+
+
+## Notino offer refresh stage
+
+The isolated SQLite pilot now registers the Notino `refresh` handler. Every
+30 minutes the single-machine worker queues up to 500 oldest active Notino
+offers with a stable external product ID. Active duplicate jobs are coalesced
+by the durable queue. Refresh reads the latest authorized feed snapshot,
+requires explicit price, currency provenance, URL and stock, and updates the
+existing offer without changing its canonical variant. A successful observation
+is retained in `price_history` and the raw refresh evidence is staged in
+`ingestion_raw`. Currency changes and incomplete observations fail closed for
+manual review; they do not overwrite the current published offer.
+
+This schedule is limited to the Notino pilot. It does not yet enable refresh for
+other retailers or claim a 15-minute freshness guarantee.
