@@ -165,3 +165,5 @@ and are not published.
 Refresh scheduling includes active offers from these retailers. Each refresh
 re-fetches the known product URL and updates only the existing offer identity;
 it never rematches or changes the canonical variant.
+
+Pilot deployment note (isolated only): the catalog-first architecture branch deploys to `scenthunter-pilot-20261030` via the dedicated Fly staging workflow. This is separate from production; production deployment requires a separate explicit approval.
