@@ -132,3 +132,107 @@ jobs:
               except Exception as exc:
                   print(path, type(exc).__name__, str(exc))
           PY
+
+      - name: Inspect unresolved Bplatz rows and safe canonical candidates (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=[m for m in json.load(sys.stdin) if m.get("state") == "started"]; print(rows[0]["id"] if rows else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine for Bplatz read-only report." >&2; exit 1; }
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          cd /app/backend
+          /app/.venv/bin/python - <<'PY'
+          import json
+          from collections import Counter
+          from difflib import SequenceMatcher
+          from pathlib import Path
+          from sqlalchemy import select
+          from sqlalchemy.orm import Session
+          from app.db import make_engine
+          from app.models import IngestionRaw, Store
+          from scenthunter_next_engine.catalog_repository import CatalogRepository
+          from scenthunter_next_engine.canonical_matcher import CanonicalMatcher, normalize_brand_text, normalize_identity_text, _retailer_title_core
+          from scenthunter_next_engine.offer_normalizer import normalize_offer
+
+          engine = make_engine()
+          catalog = CatalogRepository.from_file(Path("/app/backend/product_catalog.json"))
+          matcher = CanonicalMatcher(catalog)
+          reason_counts = Counter()
+          brand_counts = Counter()
+          rows_out = []
+          with Session(engine) as session:
+              store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+              if store is None:
+                  raise SystemExit("BPLATZ_STORE_NOT_FOUND")
+              rows = session.scalars(
+                  select(IngestionRaw)
+                  .where(IngestionRaw.store_id == store.id, IngestionRaw.status.in_(("pending", "unmatched")))
+                  .order_by(IngestionRaw.created_at.desc())
+                  .limit(300)
+              ).all()
+              for row in rows:
+                  payload = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+                  try:
+                      offer = normalize_offer(payload, retailer="Bplatz", currency_default="EUR")
+                      match = matcher.match(offer)
+                      reason = match.reason or match.status.value
+                      brand = offer.brand_raw
+                      name = offer.raw_name
+                      size = offer.size_ml
+                      gtin = payload.get("gtin") or payload.get("ean") or payload.get("gtin13") or payload.get("gtin14")
+                      sku = payload.get("sku") or payload.get("retailer_product_id") or row.external_product_id
+                      suggestions = []
+                      offer_core = _retailer_title_core(name)
+                      brand_key = normalize_brand_text(brand) if brand else ""
+                      if match.status.value != "matched":
+                          candidates = []
+                          for product in catalog.all_products():
+                              if brand_key and normalize_brand_text(product.brand) != brand_key:
+                                  continue
+                              score = SequenceMatcher(None, offer_core, _retailer_title_core(product.name)).ratio()
+                              if score >= 0.45:
+                                  candidates.append((score, product))
+                          candidates.sort(key=lambda item: (-item[0], item[1].product_id))
+                          suggestions = [
+                              {"score": round(score, 3), "product_id": product.product_id,
+                               "brand": product.brand, "canonical_name": product.name,
+                               "sizes_ml": sorted({v.size_ml for v in product.variants if v.size_ml})}
+                              for score, product in candidates[:3]
+                          ]
+                      reason_counts[reason] += 1
+                      brand_counts[brand or "(missing brand)"] += 1
+                      rows_out.append({
+                          "raw_id": str(row.id),
+                          "created_at": row.created_at.isoformat() if row.created_at else None,
+                          "status": row.status,
+                          "reason": reason,
+                          "brand": brand,
+                          "raw_name": name,
+                          "size_ml": size,
+                          "concentration": payload.get("concentration"),
+                          "gtin": gtin,
+                          "sku": sku,
+                          "price": str(offer.price) if offer.price is not None else None,
+                          "currency": offer.currency,
+                          "availability": offer.availability,
+                          "url_host": __import__("urllib.parse", fromlist=["urlparse"]).urlparse(offer.product_url or "").hostname,
+                          "candidate_product_ids": list(match.candidate_product_ids),
+                          "review_suggestions_not_auto_matches": suggestions,
+                          "payload_keys": sorted(payload.keys()),
+                      })
+                  except Exception as exc:
+                      reason_counts["normalization_error"] += 1
+                      rows_out.append({"raw_id": str(row.id), "status": row.status,
+                                       "reason": "normalization_error", "error": str(exc),
+                                       "payload_keys": sorted(payload.keys())})
+          print("BPLATZ_PENDING_ROWS=" + str(len(rows_out)))
+          print("BPLATZ_REASON_COUNTS=" + json.dumps(reason_counts, ensure_ascii=False, sort_keys=True))
+          print("BPLATZ_BRAND_COUNTS=" + json.dumps(brand_counts, ensure_ascii=False, sort_keys=True))
+          print("BPLATZ_ROWS_READ_ONLY=" + json.dumps(rows_out, ensure_ascii=False, sort_keys=True))
+          engine.dispose()
+          PY
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 90
