@@ -80,7 +80,11 @@ def _schedule_daily_legacy_discovery(session_factory) -> None:
 
 
 def _schedule_active_offer_refresh(session_factory) -> None:
-    """Queue at most 200 oldest active offers per enabled retailer."""
+    """Queue active offer refreshes only when explicitly enabled."""
+    enabled = os.environ.get("SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED", "1").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        log.info("Active offer refresh scheduling is disabled by configuration")
+        return
     try:
         queued = 0
         store_slugs = ("notino-fr", *tuple(STORE_SLUGS))
