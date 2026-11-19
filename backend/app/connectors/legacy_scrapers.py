@@ -278,7 +278,7 @@ class LegacyScraperConnector(StoreConnector):
         raw_data = raw.get("raw_data") if isinstance(raw.get("raw_data"), Mapping) else {}
         jsonld = raw_data.get("jsonld") or raw_data.get("jsonld_product") or {}
         currency = str(offer.get("currency") or raw.get("currency") or "EUR").strip().upper()
-        explicit_currency = _jsonld_has_currency(jsonld)
+        explicit_currency = raw.get("currency_explicit") is True or _jsonld_has_currency(jsonld)
         price = _price_decimal(offer.get("price") if offer.get("price") is not None else raw.get("price_num"))
         if price is None:
             price = _price_decimal(raw.get("price"))
