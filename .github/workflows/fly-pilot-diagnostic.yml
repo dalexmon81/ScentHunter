@@ -1,4 +1,5 @@
 # Re-run the Bplatz pending-row probe after the isolated parser deployment.
+# Inspect pilot state after the read-only cross-retailer GTIN probe attempt.
 name: Diagnose isolated ScentHunter pilot
 
 on:
