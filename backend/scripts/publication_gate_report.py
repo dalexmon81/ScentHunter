@@ -1,4 +1,7 @@
-"""Read-only breakdown of active offers rejected by the public catalog gate."""
+"""Read-only breakdown of active offers rejected by the public catalog gate.
+
+Used by the isolated pilot workflow; never changes offer or catalog state.
+"""
 from __future__ import annotations
 
 from collections import Counter
