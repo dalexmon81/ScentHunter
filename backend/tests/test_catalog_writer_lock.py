@@ -118,6 +118,32 @@ class CatalogWriterLockTests(unittest.TestCase):
         self.assertFalse(_needs_writer_lock("PRAGMA table_info(writes)"))
         self.assertTrue(_needs_writer_lock("WITH rows AS (SELECT 1) SELECT * FROM rows"))
 
+    def test_busy_timeout_pragma_does_not_wait_for_catalog_writer_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = str(Path(directory) / "catalog.sqlite3")
+            setup = sqlite3.connect(database)
+            setup.execute("CREATE TABLE writes(value INTEGER NOT NULL)")
+            setup.commit()
+            setup.close()
+
+            first = connect(database, timeout=1.0)
+            second = connect(database, timeout=0.05)
+            try:
+                first.execute("BEGIN IMMEDIATE")
+                first.execute("INSERT INTO writes(value) VALUES (1)")
+
+                # busy_timeout changes only this connection's local setting.
+                # It must not contend for the shared catalog writer lock.
+                second.execute("PRAGMA busy_timeout=150")
+                self.assertEqual(second.execute("PRAGMA busy_timeout").fetchone()[0], 150)
+
+                with self.assertRaises(sqlite3.OperationalError):
+                    second.execute("INSERT INTO writes(value) VALUES (2)")
+                first.commit()
+            finally:
+                first.close()
+                second.close()
+
     def test_connection_executemany_uses_conservative_lock_detection(self):
         with tempfile.TemporaryDirectory() as directory:
             database = str(Path(directory) / "catalog.sqlite3")
