@@ -92,10 +92,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
             patch.object(notino_runtime, "_sessions", return_value=self.sessions),
             patch.object(notino_runtime, "_matcher", return_value=object()),
             patch.object(legacy_runtime, "build_legacy_connector", return_value=FakeLegacyConnector()),
-            patch.object(legacy_runtime, "persist_connector_record", return_value=fake_result) as persist,
+            patch.object(legacy_runtime, "persist_connector_record", return_value=fake_result),
         ]
-        for item in patches:
-            item.start()
+        started = [item.start() for item in patches]
+        persist = started[-1]
         try:
             result = legacy_runtime.handle_legacy_fetch({
                 "store_id": str(self.store_id),
