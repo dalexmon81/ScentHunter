@@ -20,6 +20,7 @@ from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
+from app.services.offer_refresh import refresh_offer_observation
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
