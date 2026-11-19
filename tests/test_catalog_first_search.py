@@ -456,17 +456,21 @@ def test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants()
             "availability": "in_stock",
         },
     ]
-    assert "6290360598970" in matcher._matcher._gtin_registry
     from scenthunter_next_engine.canonical_matcher import _offer_gtin
     from scenthunter_next_engine.offer_normalizer import normalize_offer
-    probe = normalize_offer(cases[0], retailer="Bplatz", currency_default="EUR")
-    assert _offer_gtin(probe.raw_payload) == "6290360598970"
-    assert matcher._matcher._match_verified_gtin(probe).reason == "verified_gtin_exact_variant"
+    for case in cases:
+        probe = normalize_offer(case, retailer="Bplatz", currency_default="EUR")
+        gtin = _offer_gtin(probe.raw_payload)
+        assert gtin in matcher._matcher._gtin_registry, f"GTIN missing from registry: {gtin}"
+        verified = matcher._matcher._match_verified_gtin(probe)
+        assert verified is not None and verified.reason == "verified_gtin_exact_variant", (
+            gtin, verified,
+        )
 
     result = matcher.process_records(
         cases, retailer="Bplatz", currency_default="EUR",
     ).aggregation
-    assert result.matched_offer_count == 21
+    assert result.matched_offer_count == 21, [(item.offer.raw_name, item.reason, item.candidate_product_ids) for item in result.unresolved]
     expected_gtins = {
         "6290360598970", "6290360592169", "6291108735749",
         "6294021906593", "6291107459363", "6291108529171",
