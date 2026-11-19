@@ -275,6 +275,131 @@
         "https://www.lovenmour.co.il/products/milestone-hayati-lychee-100ml-edp"
       ],
       "evidence_note": "Lovenmour independently identifies GTIN 6294021904759 as Milestone Hayati Lychee EDP 100 ml; Bplatz's ingested record carries the same identifier, brand and title."
+    },
+    {
+      "gtin": "6435074242867",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6435074242867",
+      "variant_id": "VAR-BPLATZ-6435074242867",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/fr-fr/products/ard-al-zaafaran-perfume-thara-al-oud-eau-de-parfum-100-ml",
+        "https://www.unpuf.ro/cumpara/ard-al-zaafaran-thara-al-oud-%E2%80%93-parfum-edp-100-ml-unisex-3079"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, brand, 100 ml size and EDP title. ScentArabia and Unpuf independently identify GTIN 6435074242867 as Ard Al Zaafaran Thara Al Oud EDP 100 ml."
+    },
+    {
+      "gtin": "6290360590707",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360590707",
+      "variant_id": "VAR-BPLATZ-6290360590707",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentcompare.app/product/maison-alhambra-chic-velvet-vert-secret-100ml-eau-de-parfum",
+        "https://maisondesfragrances.fr/products/chic-velvet-green-secret-eau-de-parfum-volume-100-ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, brand and 100 ml EDP format. ScentCompare and Maison des Fragrances independently list GTIN 6290360590707 for Maison Alhambra Chic Velvet Vert Secret 100 ml."
+    },
+    {
+      "gtin": "6294021907668",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907668",
+      "variant_id": "VAR-BPLATZ-6294021907668",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.tiendalafe.com/collections/emper",
+        "https://joyasshirel.com/collections/al-fares"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, Al Fares brand and 100 ml EDP title. Tienda Lafe and Joyasshirel independently list Hajes Flame with GTIN 6294021907668."
+    },
+    {
+      "gtin": "6290360599090",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360599090",
+      "variant_id": "VAR-BPLATZ-6290360599090",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.lattafa-usa.com/products/sehr?variant=46981632884959",
+        "https://www.shop-apotheke.com/beauty/upmZ9H72H/sehr-eau-de-parfum.htm"
+      ],
+      "evidence_note": "Bplatz's staged row uses the display title 'Very' but carries GTIN 6290360599090, Lattafa brand and 100 ml EDP size. Lattafa's official product page and Shop Apotheke identify this GTIN as Lattafa Sehr EDP 100 ml. 'Very' is retained as a retailer-title alias only; the canonical name is Sehr."
+    },
+    {
+      "gtin": "6294021904742",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021904742",
+      "variant_id": "VAR-BPLATZ-6294021904742",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.qogita.com/products/d9f7fb7631784d65b0f836e934ecfffc/milestone-hayati-marshmallow-eau-de-parfum-100-ml/"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, Milestone brand and 100 ml EDP title. Qogita independently lists Milestone Hayati Marshmallow EDP 100 ml with GTIN 6294021904742."
+    },
+    {
+      "gtin": "6294021906661",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906661",
+      "variant_id": "VAR-BPLATZ-6294021906661",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/en-ie/products/milestone-alvira-desira-eau-de-parfum-100-ml",
+        "https://store.shure-cosmetics.co.uk/ladies-perfume/alvina-desira-ladies-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021906661, Milestone brand and 100 ml EDP size. ScentArabia and Shure Cosmetics independently list Milestone Alvina/Alvira Desira EDP 100 ml with the same GTIN."
+    },
+    {
+      "gtin": "6294021907019",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907019",
+      "variant_id": "VAR-BPLATZ-6294021907019",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://store.shure-cosmetics.co.uk/milestone/perfume-blast-infrared-unisex-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021907019, Milestone brand and 100 ml EDP size. Shure Cosmetics independently lists Perfume Blast Infrared EDP 100 ml with the same GTIN."
+    },
+    {
+      "gtin": "6294021907002",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907002",
+      "variant_id": "VAR-BPLATZ-6294021907002",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://store.shure-cosmetics.co.uk/milestone/perfume-blast-confident-unisex-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021907002, Milestone brand and 100 ml EDP size. Shure Cosmetics independently lists Perfume Blast Confident EDP 100 ml with the same GTIN."
     }
   ]
 }
