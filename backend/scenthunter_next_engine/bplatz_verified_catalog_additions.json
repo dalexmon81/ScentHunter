@@ -164,6 +164,60 @@
         "Blast Confident"
       ],
       "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906586",
+      "brand_name": "Milestone",
+      "canonical_name": "1849 Matador Velarus",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906579",
+      "brand_name": "Milestone",
+      "canonical_name": "1849 Matador Linton",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906760",
+      "brand_name": "Milestone",
+      "canonical_name": "Coastal Waves Aqua Marine",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021906234",
+      "brand_name": "Al Fares",
+      "canonical_name": "Ward Al Qamr",
+      "aliases": [
+        "Al Fars Ward Al Qamr"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6423080615355",
+      "brand_name": "Ard Al Zaafaran",
+      "canonical_name": "Al Sayaad",
+      "aliases": [
+        "Al Sayaad For Men",
+        "Perfume Al Sayaad For Men"
+      ],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6291108522431",
+      "brand_name": "Al Fares",
+      "canonical_name": "Layaali",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
+    },
+    {
+      "product_id": "SH-BPLATZ-6294021905442",
+      "brand_name": "Milestone",
+      "canonical_name": "Obsession Cherry Overdose",
+      "aliases": [],
+      "concentration": "Eau de Parfum"
     }
   ],
   "variants": [
@@ -290,6 +344,48 @@
     {
       "variant_id": "VAR-BPLATZ-6294021907002",
       "product_id": "SH-BPLATZ-6294021907002",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906586",
+      "product_id": "SH-BPLATZ-6294021906586",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906579",
+      "product_id": "SH-BPLATZ-6294021906579",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906760",
+      "product_id": "SH-BPLATZ-6294021906760",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021906234",
+      "product_id": "SH-BPLATZ-6294021906234",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6423080615355",
+      "product_id": "SH-BPLATZ-6423080615355",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6291108522431",
+      "product_id": "SH-BPLATZ-6291108522431",
+      "size_ml": 100,
+      "aliases": []
+    },
+    {
+      "variant_id": "VAR-BPLATZ-6294021905442",
+      "product_id": "SH-BPLATZ-6294021905442",
       "size_ml": 100,
       "aliases": []
     }
