@@ -61,6 +61,22 @@ class SQLiteQueueTests(unittest.TestCase):
             status = sqlite_queue.fail_or_retry(job_id, job["attempts"], "failure")
         self.assertEqual(status, "failed")
 
+    def test_permanent_job_failure_skips_retry_backoff(self):
+        job_id = sqlite_queue.enqueue("refresh", {"external_product_id": "missing"})
+        job = sqlite_queue.claim_next("worker-a")
+        self.assertEqual(
+            sqlite_queue.fail_or_retry(
+                job_id, job["attempts"], "ValueError: inactive store", retryable=False
+            ),
+            "failed",
+        )
+        with sqlite_queue.connect() as conn:
+            row = conn.execute(
+                "SELECT status, attempts FROM ingestion_queue_jobs WHERE id=?", (job_id,)
+            ).fetchone()
+        self.assertEqual(row["status"], "failed")
+        self.assertEqual(row["attempts"], 1)
+
     def test_offer_refresh_helper_queues_store_and_external_identity(self):
         with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "sqlite"}):
             job_id = enqueue_offer_refresh("store-1", "CJ-123")
