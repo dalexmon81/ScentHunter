@@ -60,10 +60,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
             patch.object(notino_runtime, "_matcher", return_value=object()),
             patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True),
             patch.object(legacy_runtime, "build_legacy_connector", return_value=FakeLegacyConnector()),
-            patch.object(legacy_runtime, "enqueue_offer_fetch") as enqueue_fetch,
+            patch.object(legacy_runtime, "enqueue_offer_fetch"),
         ]
-        for item in patches:
-            item.start()
+        started = [item.start() for item in patches]
+        enqueue_fetch = started[-1]
         try:
             result = legacy_runtime.handle_legacy_discovery({
                 "store_id": str(self.store_id), "limit": 10,
