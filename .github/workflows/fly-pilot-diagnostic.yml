@@ -200,24 +200,11 @@ jobs:
                       size = offer.size_ml
                       gtin = payload.get("gtin") or payload.get("ean") or payload.get("gtin13") or payload.get("gtin14")
                       sku = payload.get("sku") or payload.get("retailer_product_id") or row.external_product_id
+                      # This diagnostic reports only deterministic matcher results.
+                      # Fuzzy suggestions are intentionally omitted: they are review
+                      # hints, not evidence, and scanning the entire catalog per row
+                      # can exceed the pilot's tight memory/exec budget.
                       suggestions = []
-                      offer_core = _retailer_title_core(name)
-                      brand_key = normalize_brand_text(brand) if brand else ""
-                      if match.status.value != "matched":
-                          candidates = []
-                          for product in catalog.all_products():
-                              if brand_key and normalize_brand_text(product.brand) != brand_key:
-                                  continue
-                              score = SequenceMatcher(None, offer_core, _retailer_title_core(product.name)).ratio()
-                              if score >= 0.45:
-                                  candidates.append((score, product))
-                          candidates.sort(key=lambda item: (-item[0], item[1].product_id))
-                          suggestions = [
-                              {"score": round(score, 3), "product_id": product.product_id,
-                               "brand": product.brand, "canonical_name": product.name,
-                               "sizes_ml": sorted({v.size_ml for v in product.variants if v.size_ml})}
-                              for score, product in candidates[:3]
-                          ]
                       reason_counts[reason] += 1
                       brand_counts[brand or "(missing brand)"] += 1
                       rows_out.append({
