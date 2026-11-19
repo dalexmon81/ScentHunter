@@ -2,7 +2,7 @@ name: Catalog worker queue foundation
 
 on:
   pull_request:
-    branches: [refactor/catalog-first-architecture]
+    branches: [main]
     paths:
       - "backend/app/workers/**"
       - "backend/app/services/canonical_matching.py"
