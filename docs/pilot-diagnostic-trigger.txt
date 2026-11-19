@@ -1,1 +1,3 @@
 Diagnostic trigger for the isolated pilot workflow. No production configuration is changed.
+
+After catalog-first search changes pass CI, redeploy the isolated pilot to verify that a validated Notino CJ attribution URL is returned separately from the direct retailer product URL.
