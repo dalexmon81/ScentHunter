@@ -31,4 +31,4 @@ jobs:
         run: >-
           python -m pytest -q
           tests/test_catalog_first_search.py::test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration
-          tests/test_catalog_first_search.py::test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency_evidence
+          tests/test_catalog_first_search.py::test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency
