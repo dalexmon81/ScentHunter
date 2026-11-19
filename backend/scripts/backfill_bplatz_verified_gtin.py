@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import make_engine
-from app.models import IngestionRaw, Store
+from app.models import IngestionRaw, Offer, Store
 from app.search.catalog import _offer_url_valid
 from app.services.ingestion_persistence import record_legacy_match, promote_offer
 from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
@@ -116,6 +116,17 @@ def main() -> int:
                     continue
                 if not _offer_url_valid(offer.product_url, store.domain):
                     skipped["invalid_store_url"] += 1
+                    continue
+
+                existing_offer = session.scalar(
+                    select(Offer).where(
+                        Offer.store_id == store.id,
+                        Offer.external_product_id == row.external_product_id,
+                        Offer.status == "active",
+                    )
+                )
+                if existing_offer is not None and existing_offer.availability == "in_stock":
+                    skipped["already_active_in_stock_offer"] += 1
                     continue
 
                 latest_by_gtin[gtin] = {
