@@ -18,6 +18,13 @@ import requests
 
 from app.connectors.base import ConnectorUnavailable, DiscoveredProduct, StoreConnector
 
+STORE_SLUGS = {
+    "deloox-be": "deloox",
+    "sabina-es": "sabina",
+    "easycosmetic-de": "easycosmetic",
+    "parfumzentrum-de": "parfumzentrum",
+}
+
 SCRAPER_MODULES = {
     "deloox": "scrapers.deloox.scraper",
     "sabina": "scrapers.sabina.scraper",
@@ -219,11 +226,23 @@ class LegacyScraperConnector(StoreConnector):
         if not url:
             raise ValueError("external_product_id is required")
         try:
-            return await asyncio.to_thread(self._fetch_product_sync, url)
+            record = await asyncio.to_thread(self._fetch_product_sync, url)
         except ConnectorUnavailable:
             raise
         except Exception as exc:
-            raise ConnectorUnavailable(f"{self.store_key} product parser failed: {type(exc).__name__}: {exc}") from exc
+            request_error = getattr(self._scraper, "StoreRequestError", ())
+            if request_error and isinstance(exc, request_error):
+                raise ConnectorUnavailable(
+                    f"{self.store_key} product endpoint unavailable: {type(exc).__name__}: {exc}"
+                ) from exc
+            raise
+        if isinstance(record, Mapping):
+            enriched = dict(record)
+            enriched.setdefault("external_product_id", url)
+            enriched.setdefault("product_url", self._product_url(record) or url)
+            enriched.setdefault("url", self._product_url(record) or url)
+            return enriched
+        return record
 
     async def fetch_offers(self, product_key: str) -> Sequence[Mapping[str, Any]]:
         record = await self.fetch_product(product_key)
@@ -287,3 +306,7 @@ class LegacyScraperConnector(StoreConnector):
 
 def build_legacy_connector(store_key: str) -> LegacyScraperConnector:
     return LegacyScraperConnector(store_key)
+
+
+def connector_key_for_store_slug(store_slug: str) -> str | None:
+    return STORE_SLUGS.get(store_slug)
