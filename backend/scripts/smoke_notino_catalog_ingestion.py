@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.models import IngestionRaw, IngestionRun, Offer, Store
+from app.search.catalog import catalog_status, search_catalog
 from app.services.connector_ingestion import persist_connector_record
 from scrapers.notino import affiliate_feed
 from scenthunter_next_engine.next_engine_service import NextEngineService
@@ -210,6 +211,31 @@ def main() -> int:
                         print("NOTINO_PRICE=" + str(offer.price) + " " + offer.currency, flush=True)
                         print("NOTINO_AVAILABILITY=" + str(offer.availability), flush=True)
                         print("NOTINO_OFFER_STATUS=" + str(offer.status), flush=True)
+
+                        # Verify the offer passes the exact public catalog gate,
+                        # not merely that an active Offer row was persisted.
+                        public_status = catalog_status(session)
+                        public_search = search_catalog(
+                            session, "French Avenue Liquid Brun EDP 100ml"
+                        )
+                        print(
+                            "NOTINO_PUBLISHED_OFFERS="
+                            + str(public_status.get("published_offers", 0)),
+                            flush=True,
+                        )
+                        print(
+                            "NOTINO_PUBLIC_SEARCH_OFFER_COUNT="
+                            + str(public_search.get("offer_count", 0)),
+                            flush=True,
+                        )
+                        if (
+                            public_status.get("published_offers", 0) < 1
+                            or public_search.get("offer_count", 0) < 1
+                        ):
+                            raise RuntimeError(
+                                "NOTINO_OFFER_NOT_VISIBLE_THROUGH_PUBLIC_CATALOG_GATE"
+                            )
+                        print("NOTINO_PUBLICATION_GATE=PASS", flush=True)
                         return 0
 
 
