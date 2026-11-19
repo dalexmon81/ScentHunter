@@ -57,6 +57,12 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
+      - name: Run offer refresh persistence regression tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_offer_refresh_persistence.py' -v
+
       - name: Verify explicit Notino discovery kickoff CLI
         working-directory: backend
         env:
