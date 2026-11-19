@@ -8,6 +8,7 @@ from app.models import Base, Store
 from app.services.connector_health import (
     record_connector_failure,
     record_connector_success,
+    reinstate_connector,
 )
 
 
@@ -66,6 +67,24 @@ class ConnectorHealthTests(unittest.TestCase):
             store = session.get(Store, self.store_id)
             self.assertEqual(store.status, "quarantined")
             self.assertEqual(store.consecutive_failures, 5)
+
+    def test_quarantine_requires_explicit_operator_reinstatement(self):
+        with self.sessions() as session, session.begin():
+            for _ in range(5):
+                record_connector_failure(session, store_id=self.store_id, error="feed timeout")
+        with self.sessions() as session, session.begin():
+            with self.assertRaisesRegex(ValueError, "explicit confirmation"):
+                reinstate_connector(session, store_id=self.store_id, confirmed=False)
+        with self.sessions() as session, session.begin():
+            self.assertTrue(reinstate_connector(
+                session, store_id=self.store_id, confirmed=True
+            ))
+        with self.sessions() as session:
+            store = session.get(Store, self.store_id)
+            self.assertEqual(store.status, "active")
+            self.assertEqual(store.consecutive_failures, 0)
+            self.assertIsNone(store.last_connector_error)
+            self.assertIsNone(store.quarantined_at)
 
     def test_invalid_threshold_is_rejected(self):
         with self.sessions() as session, session.begin():
