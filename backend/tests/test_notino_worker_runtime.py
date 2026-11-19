@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Base, IngestionRun, Store
-from app.connectors.base import DiscoveredProduct
+from app.connectors.base import ConnectorUnavailable, DiscoveredProduct
 from app.services.connector_ingestion import ConnectorIngestionResult
 from app.workers import notino_runtime
 from app.workers.runtime import clear_handlers, get_handler
@@ -126,6 +126,23 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
                 "store_id": str(uuid4()),
                 "limit": 10,
             })
+
+    def test_feed_outage_updates_connector_health_without_publishing(self):
+        class BrokenConnector(FakeNotinoConnector):
+            async def discover_products(self, *, cursor=None, limit=100):
+                raise ConnectorUnavailable("feed timeout")
+
+        with patch.object(notino_runtime, "_connector", return_value=BrokenConnector()):
+            with self.assertRaisesRegex(ConnectorUnavailable, "feed timeout"):
+                notino_runtime.handle_notino_discovery({
+                    "store_id": str(self.store_id),
+                    "limit": 10,
+                })
+        with self.sessions() as session:
+            store = session.get(Store, self.store_id)
+            self.assertEqual(store.consecutive_failures, 1)
+            self.assertEqual(store.last_connector_error, "feed timeout")
+            self.assertEqual(store.status, "active")
 
     def test_worker_bootstrap_registers_notino_discovery_and_fetch(self):
         notino_runtime.register_notino_handlers()
