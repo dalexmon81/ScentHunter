@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND))
 
 from app.db import make_session_factory
 from app.models import Store
