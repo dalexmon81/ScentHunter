@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.connectors.legacy_scrapers import LegacyScraperConnector
+from app.connectors.legacy_scrapers import LegacyScraperConnector, build_legacy_connector
 
 
 class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
@@ -36,6 +36,13 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         self.connector = LegacyScraperConnector("deloox", self.scraper)
+
+    async def test_factory_loads_all_existing_retailer_scraper_modules(self):
+        for store_key in ("deloox", "sabina", "easycosmetic", "parfumzentrum"):
+            with self.subTest(store_key=store_key):
+                connector = build_legacy_connector(store_key)
+                self.assertEqual(connector.store_key, store_key)
+                self.assertTrue(callable(getattr(connector._scraper, "search_stream", None)))
 
     async def test_discovery_uses_operator_seed_and_stable_product_url(self):
         with patch.dict(os.environ, {
