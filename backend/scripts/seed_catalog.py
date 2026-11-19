@@ -22,6 +22,7 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from scenthunter_next_engine.catalog_repository import merge_supplemental_catalog
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
@@ -207,8 +208,10 @@ def main() -> int:
     parser.add_argument("--seed-parfumzentrum-store", action="store_true", help="explicitly seed Parfum-Zentrum.de for catalog-first ingestion")
     args = parser.parse_args()
 
-    with Path(args.catalog).open(encoding="utf-8") as handle:
+    catalog_path = Path(args.catalog).expanduser().resolve()
+    with catalog_path.open(encoding="utf-8") as handle:
         raw = json.load(handle)
+    raw = merge_supplemental_catalog(raw, catalog_path)
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
