@@ -1,5 +1,5 @@
 name: Deploy isolated Offer Engine pilot
-# Isolated pilot recovery deploy: preserve offer currency evidence.
+# Isolated pilot recovery deploy: preserve offer currency evidence; verify detached read-only coverage reporting. [pilot-deploy]
 
 on:
   push:
