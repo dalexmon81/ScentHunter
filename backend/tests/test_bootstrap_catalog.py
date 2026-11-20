@@ -2,54 +2,43 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import call, patch
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-
-from app.models import Base, Store
-from scripts.bootstrap_catalog import ensure_notino_store
+from scripts.bootstrap_catalog import BACKEND, bootstrap_commands, main
 
 
 class PilotCatalogBootstrapTests(unittest.TestCase):
-    def setUp(self):
-        self.engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(self.engine)
+    def test_migrations_run_before_idempotent_canonical_seed(self):
+        commands = bootstrap_commands("/python")
+        self.assertEqual(commands, [
+            ["/python", "-m", "alembic", "upgrade", "head"],
+            ["/python", str(BACKEND / "scripts" / "seed_catalog.py"), "--apply"],
+        ])
 
-    def tearDown(self):
-        self.engine.dispose()
+    @patch("scripts.bootstrap_catalog.subprocess.run")
+    def test_main_runs_both_bootstrap_steps_from_backend_directory(self, run):
+        self.assertEqual(main(), 0)
+        run.assert_has_calls([
+            call(
+                ["/usr/local/bin/python", "-m", "alembic", "upgrade", "head"],
+                cwd=BACKEND,
+                check=True,
+            ),
+            call(
+                ["/usr/local/bin/python", str(BACKEND / "scripts" / "seed_catalog.py"), "--apply"],
+                cwd=BACKEND,
+                check=True,
+            ),
+        ], any_order=False)
+        self.assertEqual(run.call_count, 2)
 
-    def test_missing_notino_store_is_created_active(self):
-        with Session(self.engine) as session, session.begin():
-            result = ensure_notino_store(session)
-            store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
-            self.assertEqual(result, "created_active")
-            self.assertIsNotNone(store)
-            self.assertEqual(store.status, "active")
-            self.assertEqual(store.domain, "notino.fr")
-
-    def test_existing_quarantined_store_is_never_reactivated(self):
-        with Session(self.engine) as session, session.begin():
-            session.add(Store(
-                name="Notino.fr", slug="notino-fr", domain="notino.fr",
-                country="FR", currency="EUR", status="quarantined",
-            ))
-        with Session(self.engine) as session, session.begin():
-            result = ensure_notino_store(session)
-            store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
-            self.assertEqual(result, "preserved_existing_quarantined")
-            self.assertEqual(store.status, "quarantined")
-
-    def test_existing_inactive_store_is_never_reactivated(self):
-        with Session(self.engine) as session, session.begin():
-            session.add(Store(
-                name="Notino.fr", slug="notino-fr", domain="notino.fr",
-                country="FR", currency="EUR", status="inactive",
-            ))
-        with Session(self.engine) as session, session.begin():
-            result = ensure_notino_store(session)
-            store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
-            self.assertEqual(result, "preserved_existing_inactive")
-            self.assertEqual(store.status, "inactive")
+    @patch("scripts.bootstrap_catalog.subprocess.run")
+    def test_bootstrap_stops_if_migration_fails(self, run):
+        from subprocess import CalledProcessError
+        run.side_effect = CalledProcessError(1, ["alembic"])
+        with self.assertRaises(CalledProcessError):
+            main()
+        self.assertEqual(run.call_count, 1)
 
 
 if __name__ == "__main__":
