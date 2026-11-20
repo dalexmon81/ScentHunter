@@ -6,7 +6,7 @@ from unittest.mock import patch
 from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured, require_worker_broker
 from app.workers.queueing import QueueNotConfigured, enqueue_discovery
 from app.workers.runtime import clear_handlers, register_handler
-from app.workers.tasks import HandlerNotConfigured, RetryableCatalogTask, _execute
+from app.workers.tasks import HandlerNotConfigured, RetryableCatalogTask, _execute, worker_health_probe
 from app.connectors.base import ConnectorUnavailable
 
 class CatalogWorkerQueueTests(unittest.TestCase):
@@ -21,6 +21,10 @@ class CatalogWorkerQueueTests(unittest.TestCase):
         }
         for task, queue in expected.items():
             self.assertEqual(TASK_ROUTES[f"app.workers.tasks.{task}"]["queue"], queue)
+    def test_worker_health_probe_is_side_effect_free_and_validates_input(self):
+        self.assertEqual(worker_health_probe.run("ci-smoke"), {"ok": True, "probe": "ci-smoke"})
+        with self.assertRaises(ValueError):
+            worker_health_probe.run("")
     def test_delivery_and_retry_safety_defaults(self):
         self.assertTrue(celery_app.conf.task_acks_late)
         self.assertTrue(celery_app.conf.task_reject_on_worker_lost)
