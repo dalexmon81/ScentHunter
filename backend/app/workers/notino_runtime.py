@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
@@ -103,6 +104,15 @@ def _is_unique_canonical_candidate(
 
 
 def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
+    discovery_enabled = os.environ.get(
+        "SCENTHUNTER_NOTINO_DAILY_DISCOVERY_ENABLED", "1"
+    ).strip().lower()
+    if discovery_enabled not in {"1", "true", "yes", "on"}:
+        return {
+            "status": "disabled",
+            "reason": "notino_full_feed_discovery_disabled_by_configuration",
+            "fetch_jobs_queued": 0,
+        }
     store_id = _store_id(payload)
     limit = int(payload.get("limit", 500))
     if limit < 1 or limit > 1000:
