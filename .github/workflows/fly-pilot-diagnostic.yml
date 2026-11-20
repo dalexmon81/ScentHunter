@@ -288,4 +288,16 @@ jobs:
           REMOTE
           )"
           encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
-          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 90
+          remote_ok=0
+          for attempt in 1 2 3; do
+            echo "BPLATZ_REMOTE_DIAGNOSTIC_ATTEMPT=$attempt"
+            if flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 120; then
+              remote_ok=1
+              break
+            fi
+            echo "Bplatz read-only remote probe failed on attempt $attempt; retrying transport once the VM settles." >&2
+            sleep $((attempt * 5))
+          done
+          if [ "$remote_ok" -ne 1 ]; then
+            echo "::warning::Bplatz read-only remote probe could not complete after three attempts. Public health/catalog checks remain authoritative for this run; investigate Fly exec transport separately."
+          fi
