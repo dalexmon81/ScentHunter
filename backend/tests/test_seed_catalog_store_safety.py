@@ -238,11 +238,13 @@ class CanonicalGtinImportTests(unittest.TestCase):
                         "raw_xml": "<product/>",
                     }
                     matcher = NextEngineService.from_catalog_file(CATALOG)
+                    store_id = store.id
+                    session.commit()
                     with session.begin():
                         ingested = persist_connector_record(
                             session,
                             connector=connector,
-                            store_id=store.id,
+                            store_id=store_id,
                             raw_record=raw_record,
                             matcher=matcher,
                         )
