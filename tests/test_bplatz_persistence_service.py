@@ -604,7 +604,13 @@ def test_successful_bplatz_refresh_url_wires_into_phase2_after_legacy_hydration(
             catalog_engine, "http_get",
             lambda *args, **kwargs: (200, record["product_url"], b"<html><h1>Liquid Brun</h1></html>"),
         )
-        monkeypatch.setattr(catalog_engine, "parse_product", lambda *args, **kwargs: dict(item))
+        # Bplatz's retailer-specific parser is authoritative for identity and
+        # commercial fields. Mock that parser (not the generic fallback) so this
+        # integration test supplies a complete, explicitly priced offer.
+        monkeypatch.setattr(
+            catalog_engine, "_secondary_store_parser",
+            lambda *args, **kwargs: dict(item),
+        )
         monkeypatch.setenv("BPLATZ_PHASE2_PERSISTENCE", "true")
         monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", phase2_url)
 
