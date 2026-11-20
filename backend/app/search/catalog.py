@@ -33,7 +33,7 @@ def _offer_url_valid(url: str, domain: str | None) -> bool:
 
 def _display_offer_url(offer: Offer, store: Store, raw: IngestionRaw) -> str:
     """Use CJ attribution only when its validated target is this exact Notino item."""
-    if store.slug == "notino":
+    if store.slug in {"notino", "notino-fr"}:
         affiliate_url = raw.raw_payload.get("affiliate_url")
         validated = validated_cj_offer_url(affiliate_url, offer.url) if affiliate_url else None
         if validated:
