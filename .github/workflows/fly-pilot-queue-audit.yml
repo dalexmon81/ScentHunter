@@ -50,7 +50,13 @@ jobs:
           rm -f /data/catalog/queue_audit.done /data/catalog/queue_audit.exit
           cat > /data/catalog/queue_audit.py <<'PY'
           import json, os, sqlite3, subprocess, time
-          result = {"queue": {}, "catalog": {}, "worker_processes": []}
+          result = {
+              "queue": {}, "catalog": {}, "worker_processes": [],
+              "runtime_env": {
+                  "active_offer_refresh_enabled": os.environ.get("SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED"),
+                  "daily_notino_discovery_enabled": os.environ.get("SCENTHUNTER_NOTINO_DAILY_DISCOVERY_ENABLED"),
+              },
+          }
           qpath = "/data/catalog/ingestion_queue.sqlite3"
           cpath = "/data/catalog/catalog.sqlite3"
           if os.path.exists(qpath):
