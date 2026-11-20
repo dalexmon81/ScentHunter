@@ -49,6 +49,17 @@ class NotinoFeedStagingIndexTests(unittest.TestCase):
                 names = {row[1] for row in stage.execute("PRAGMA index_list(offers)")}
                 observed["legacy"] = "idx_notino_offers_legacy_url" in names
                 observed["url_slug"] = "idx_notino_offers_url_slug" in names
+                plan = list(stage.execute(
+                    "EXPLAIN QUERY PLAN SELECT url, MIN(slug) FROM offers "
+                    "INDEXED BY idx_notino_offers_url_slug GROUP BY url"
+                ))
+                observed["uses_covering_index"] = any(
+                    "USING COVERING INDEX idx_notino_offers_url_slug" in str(row[3])
+                    for row in plan
+                )
+                observed["avoids_temp_grouping"] = not any(
+                    "USE TEMP B-TREE FOR GROUP BY" in str(row[3]) for row in plan
+                )
 
             with patch.dict("sys.modules", {"catalog_engine": types.SimpleNamespace(DB_PATH=path)}), \
                  patch.object(feed, "_persist_staged_offers", side_effect=inspect_stage):
@@ -56,6 +67,8 @@ class NotinoFeedStagingIndexTests(unittest.TestCase):
 
             self.assertTrue(observed["legacy"])
             self.assertTrue(observed["url_slug"])
+            self.assertTrue(observed["uses_covering_index"])
+            self.assertTrue(observed["avoids_temp_grouping"])
 
 
 if __name__ == "__main__":
