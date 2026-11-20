@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -113,3 +115,169 @@ def test_seed_stops_when_normalized_name_and_slug_point_to_different_brands():
                 get_or_create_brand(session, "viktor and rolf", "Viktor & Rolf")
     finally:
         engine.dispose()
+
+
+
+class CanonicalGtinImportTests(unittest.TestCase):
+    def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit(self):
+        from scripts.seed_catalog import extract_variant_gtin
+
+        self.assertEqual(extract_variant_gtin({"gtins": ["3348901368247"]}), "3348901368247")
+        self.assertEqual(
+            extract_variant_gtin({"gtin": "3348901368247", "gtins": ["3348901368247"]}),
+            "3348901368247",
+        )
+
+    def test_extract_variant_gtin_rejects_invalid_and_ambiguous_codes(self):
+        from scripts.seed_catalog import extract_variant_gtin
+
+        with self.assertRaisesRegex(ValueError, "check digit"):
+            extract_variant_gtin({"gtins": ["3348901368248"]})
+        with self.assertRaisesRegex(ValueError, "multiple GTINs"):
+            extract_variant_gtin({"gtins": ["3348901368247", "3348901368254"]})
+
+    def test_catalog_contains_verified_dior_sauvage_edp_100ml_variant(self):
+        from scripts.seed_catalog import validate_catalog
+
+        raw = json.loads(CATALOG.read_text(encoding="utf-8"))
+        products, by_product, blocked = validate_catalog(raw)
+        self.assertEqual(blocked, [])
+        product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
+        variants = by_product[product["product_id"]]
+        target = [row for row in variants if row.get("size_ml") == 100]
+        self.assertEqual(len(target), 1)
+        self.assertEqual(target[0]["gtins"], ["3348901368247"])
+        self.assertIs(target[0]["is_tester"], False)
+        self.assertIs(target[0]["is_refill"], False)
+        self.assertIs(target[0]["is_gift_set"], False)
+        self.assertIs(target[0]["is_mini"], False)
+
+    def test_seeded_dior_sauvage_edp_100ml_matches_notino_gtin_in_disposable_sqlite(self):
+        from sqlalchemy import create_engine, select, func
+        from sqlalchemy.orm import Session
+        from app.models import Base, Store, ProductVariant, Offer
+        from app.services.canonical_matching import resolve_canonical_variant
+
+        with tempfile.TemporaryDirectory() as temp:
+            database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
+            engine = create_engine(database_url)
+            try:
+                Base.metadata.create_all(engine)
+                env = os.environ.copy()
+                env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+                completed = subprocess.run(
+                    [
+                        sys.executable, str(SEED), "--catalog", str(CATALOG),
+                        "--apply", "--seed-notino-store",
+                    ],
+                    cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout + "\\n" + completed.stderr)
+                report = json.loads(completed.stdout)
+                self.assertEqual(report["status"], "seeded")
+                self.assertTrue(report["database_written"])
+
+                # Re-importing the same canonical source must not duplicate
+                # the Dior variant, GTIN owner or Notino store.
+                repeated = subprocess.run(
+                    [
+                        sys.executable, str(SEED), "--catalog", str(CATALOG),
+                        "--apply", "--seed-notino-store",
+                    ],
+                    cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(repeated.returncode, 0, repeated.stdout + "\\n" + repeated.stderr)
+                self.assertEqual(json.loads(repeated.stdout)["status"], "seeded")
+
+                with Session(engine) as session:
+                    store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
+                    self.assertIsNotNone(store)
+                    result = resolve_canonical_variant(
+                        session,
+                        store_id=store.id,
+                        external_product_id="CJ-DIOR-SAU-EDP-100",
+                        record={
+                            "gtin": "3348901368247",
+                            "title": "Dior Sauvage Eau de Parfum 100 ml",
+                            "brand": "Dior",
+                            "concentration": "Eau de Parfum",
+                            "size_ml": 100,
+                        },
+                    )
+                    self.assertIsNotNone(result.match)
+                    self.assertEqual(result.match.method, "gtin_exact")
+                    variant = session.scalar(select(ProductVariant).where(
+                        ProductVariant.gtin == "3348901368247"
+                    ))
+                    self.assertIsNotNone(variant)
+                    self.assertEqual(result.match.product_variant_id, variant.id)
+                    self.assertEqual(variant.size_ml, 100)
+                    self.assertIs(variant.is_tester, False)
+                    self.assertIs(variant.is_refill, False)
+                    self.assertIs(variant.is_gift_set, False)
+                    self.assertIs(variant.is_mini, False)
+                    self.assertEqual(session.scalar(select(func.count()).select_from(Offer)), 0)
+
+                    # Canonical identity alone is searchable, but cannot invent
+                    # an offer before a retailer observation has been validated.
+                    from app.search.catalog import search_catalog
+                    before = search_catalog(session, "Dior Sauvage EDP 100 ml")
+                    self.assertEqual(before["count"], 1)
+                    self.assertEqual(before["offer_count"], 0)
+
+                    from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+                    from app.services.connector_ingestion import persist_connector_record
+                    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+                    connector = NotinoAffiliateFeedConnector(
+                        feed_loader=lambda: b"", cache_ttl_seconds=0,
+                    )
+                    raw_record = {
+                        "external_product_id": "CJ-DIOR-SAU-EDP-100",
+                        "title": "Dior Sauvage Eau de Parfum 100 ml",
+                        "brand": "Dior",
+                        "gtin": "3348901368247",
+                        "size_ml": 100,
+                        "concentration": "Eau de Parfum",
+                        "price": "89.90",
+                        "currency": "EUR",
+                        "currency_explicit": True,
+                        "availability": "in_stock",
+                        "product_url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+                        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+                        "affiliate_url": None,
+                        "source": "authorized_cj_viv_xml_feed",
+                        "raw_xml": "<product/>",
+                    }
+                    matcher = NextEngineService.from_catalog_file(CATALOG)
+                    store_id = store.id
+                    session.commit()
+                    with session.begin():
+                        ingested = persist_connector_record(
+                            session,
+                            connector=connector,
+                            store_id=store_id,
+                            raw_record=raw_record,
+                            matcher=matcher,
+                        )
+                    self.assertEqual(ingested.status, "promoted")
+                    self.assertIsNotNone(ingested.offer_id)
+                    self.assertEqual(ingested.product_variant_id, variant.id)
+
+                    after = search_catalog(session, "Dior Sauvage EDP 100 ml")
+                    self.assertEqual(after["count"], 1)
+                    self.assertEqual(after["offer_count"], 1)
+                    public_offer = after["results"][0]["offers"][0]
+                    self.assertEqual(public_offer["store"], "Notino.fr")
+                    self.assertEqual(public_offer["price"], "89.90")
+                    self.assertEqual(public_offer["currency"], "EUR")
+                    self.assertEqual(public_offer["availability"], "in_stock")
+                    self.assertEqual(
+                        public_offer["product_url"],
+                        raw_record["product_url"],
+                    )
+                    self.assertEqual(
+                        session.scalar(select(func.count()).select_from(Offer)), 1,
+                    )
+            finally:
+                engine.dispose()
