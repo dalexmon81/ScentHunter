@@ -99,5 +99,21 @@ jobs:
           done
           [ "$state" = "started" ] || { echo "Pilot machine did not start." >&2; exit 1; }
           encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
-          remote_command="sh -c 'echo $encoded_script | base64 -d > /tmp/notino_feed_coverage_audit.py && cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py'"
-          flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 600
+          remote_command="sh -c 'echo $encoded_script | base64 -d > /tmp/notino_feed_coverage_audit.py && rm -f /tmp/notino_feed_coverage_audit.log /tmp/notino_feed_coverage_audit.pid && nohup sh -c \"cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py\" > /tmp/notino_feed_coverage_audit.log 2>&1 < /dev/null & echo \\$! > /tmp/notino_feed_coverage_audit.pid && echo NOTINO_AUDIT_STARTED'"
+          flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 60
+          for attempt in $(seq 1 120); do
+            poll_command="sh -c 'if grep -q \"^NOTINO_FULL_FEED_AUDIT_JSON=\" /tmp/notino_feed_coverage_audit.log 2>/dev/null; then cat /tmp/notino_feed_coverage_audit.log; elif kill -0 \\$(cat /tmp/notino_feed_coverage_audit.pid 2>/dev/null) 2>/dev/null; then echo NOTINO_AUDIT_RUNNING; else cat /tmp/notino_feed_coverage_audit.log 2>/dev/null || true; echo NOTINO_AUDIT_FAILED >&2; exit 1; fi'"
+            output="$(flyctl machine exec "$machine_id" "$poll_command" --app "$FLY_APP" --timeout 60)" || { echo "$output"; exit 1; }
+            if [[ "$output" == *NOTINO_FULL_FEED_AUDIT_JSON=* ]]; then
+              echo "$output"
+              exit 0
+            fi
+            if [[ "$output" != *NOTINO_AUDIT_RUNNING* ]]; then
+              echo "$output"
+              exit 1
+            fi
+            echo "NOTINO_AUDIT_PROGRESS attempt=$attempt/120"
+            sleep 10
+          done
+          echo "NOTINO_AUDIT_TIMEOUT" >&2
+          exit 1
