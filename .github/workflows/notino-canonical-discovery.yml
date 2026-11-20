@@ -100,19 +100,19 @@ jobs:
           [ "$state" = "started" ] || { echo "Pilot machine did not start." >&2; exit 1; }
           # Fly machine exec rejects large payloads: transfer the audit in bounded chunks.
           encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
-          flyctl machine exec "$machine_id" "sh -c ': > /tmp/notino_feed_coverage_audit.b64'" --app "$FLY_APP" --timeout 60
+          flyctl machine exec "$machine_id" "sh -c ': > /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.b64'" --app "$FLY_APP" --timeout 60
           while [ -n "$encoded_script" ]; do
             chunk="${encoded_script:0:256}"
             encoded_script="${encoded_script:256}"
-            flyctl machine exec "$machine_id" "sh -c \"printf '%s' '$chunk' >> /tmp/notino_feed_coverage_audit.b64\"" --app "$FLY_APP" --timeout 60
+            flyctl machine exec "$machine_id" "sh -c \"printf '%s' '$chunk' >> /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.b64\"" --app "$FLY_APP" --timeout 60
           done
-          remote_command="sh -c 'base64 -d /tmp/notino_feed_coverage_audit.b64 > /tmp/notino_feed_coverage_audit.py && /app/.venv/bin/python -m py_compile /tmp/notino_feed_coverage_audit.py && rm -f /tmp/notino_feed_coverage_audit.log /tmp/notino_audit.done /tmp/notino_audit.failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py; if test \$? -eq 0; then touch /tmp/notino_audit.done; else touch /tmp/notino_audit.failed; fi\" > /tmp/notino_feed_coverage_audit.log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
+          remote_command="sh -c 'base64 -d /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.b64 > /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.py && /app/.venv/bin/python -m py_compile /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.py && rm -f /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log /tmp/notino_${GITHUB_RUN_ID}_audit.done /tmp/notino_${GITHUB_RUN_ID}_audit.failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.py; if test \$? -eq 0; then touch /tmp/notino_${GITHUB_RUN_ID}_audit.done; else touch /tmp/notino_${GITHUB_RUN_ID}_audit.failed; fi\" > /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
           flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 60
           for attempt in $(seq 1 240); do
-            poll_command="sh -c 'if test -f /tmp/notino_audit.done; then cat /tmp/notino_feed_coverage_audit.log; elif test -f /tmp/notino_audit.failed; then cat /tmp/notino_feed_coverage_audit.log; echo NOTINO_AUDIT_FAILED >&2; exit 1; else echo NOTINO_AUDIT_RUNNING; fi'"
+            poll_command="sh -c 'if test -f /tmp/notino_${GITHUB_RUN_ID}_audit.done; then cat /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log; elif test -f /tmp/notino_${GITHUB_RUN_ID}_audit.failed; then cat /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log; echo NOTINO_AUDIT_FAILED >&2; exit 1; else echo NOTINO_AUDIT_RUNNING; fi'"
             if ! output="$(flyctl machine exec "$machine_id" "$poll_command" --app "$FLY_APP" --timeout 60 2>&1)"; then
               echo "NOTINO_AUDIT_POLL_ERROR=$output" >&2
-              flyctl machine exec "$machine_id" "sh -c 'ls -l /tmp/notino_audit.* /tmp/notino_feed_coverage_audit.log 2>/dev/null || true; cat /tmp/notino_feed_coverage_audit.log 2>/dev/null || true'" --app "$FLY_APP" --timeout 60 || true
+              flyctl machine exec "$machine_id" "sh -c 'ls -l /tmp/notino_audit.* /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log 2>/dev/null || true; cat /tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log 2>/dev/null || true'" --app "$FLY_APP" --timeout 60 || true
               exit 1
             fi
             if [[ "$output" == *NOTINO_FULL_FEED_AUDIT_JSON=* ]]; then
@@ -123,7 +123,7 @@ jobs:
               echo "$output"
               exit 1
             fi
-            echo "NOTINO_AUDIT_PROGRESS attempt=$attempt/120"
+            echo "NOTINO_AUDIT_PROGRESS attempt=$attempt/240"
             sleep 10
           done
           echo "NOTINO_AUDIT_TIMEOUT" >&2
