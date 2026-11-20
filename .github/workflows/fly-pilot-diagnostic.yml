@@ -3,17 +3,17 @@
 name: Diagnose isolated ScentHunter pilot
 
 on:
-  push:
-    branches:
-      - refactor/catalog-first-architecture
+  # Diagnostics are manual so they never contend with the deployment or
+  # ingestion smoke test for the single Fly Machine lease.
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: scent-hunter-pilot-diagnostics
-  cancel-in-progress: true
+  # Serialize all machine exec sessions with the deploy workflow.
+  group: scent-hunter-offer-engine-pilot
+  cancel-in-progress: false
 
 jobs:
   diagnose:
