@@ -7,6 +7,8 @@ on:
     paths:
       - "backend/app/connectors/legacy_scrapers.py"
       - "backend/app/workers/sqlite_worker.py"
+      - "backend/app/workers/notino_runtime.py"
+      - "backend/tests/test_notino_worker_runtime.py"
       - "backend/tests/test_legacy_scraper_connectors.py"
       - "backend/tests/test_pilot_refresh_scheduling.py"
       - ".github/workflows/pilot-refresh-regression.yml"
@@ -35,4 +37,5 @@ jobs:
         run: >-
           python -m pytest -q
           backend/tests/test_legacy_scraper_connectors.py
+          backend/tests/test_notino_worker_runtime.py
           backend/tests/test_pilot_refresh_scheduling.py
