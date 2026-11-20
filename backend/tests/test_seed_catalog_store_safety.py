@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -148,3 +150,61 @@ def test_catalog_contains_verified_dior_sauvage_edp_100ml_variant():
     assert target[0]["is_refill"] is False
     assert target[0]["is_gift_set"] is False
     assert target[0]["is_mini"] is False
+
+
+
+def test_seeded_dior_sauvage_edp_100ml_matches_notino_gtin_in_disposable_sqlite():
+    from sqlalchemy import create_engine, select, func
+    from sqlalchemy.orm import Session
+    from app.models import Base, Store, ProductVariant, Offer
+    from app.services.canonical_matching import resolve_canonical_variant
+
+    with tempfile.TemporaryDirectory() as temp:
+        database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
+        engine = create_engine(database_url)
+        try:
+            Base.metadata.create_all(engine)
+            env = os.environ.copy()
+            env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+            completed = subprocess.run(
+                [
+                    sys.executable, str(SEED), "--catalog", str(CATALOG),
+                    "--apply", "--seed-notino-store",
+                ],
+                cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+            )
+            assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+            report = json.loads(completed.stdout)
+            assert report["status"] == "seeded"
+            assert report["database_written"] is True
+
+            with Session(engine) as session:
+                store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
+                assert store is not None
+                result = resolve_canonical_variant(
+                    session,
+                    store_id=store.id,
+                    external_product_id="CJ-DIOR-SAU-EDP-100",
+                    record={
+                        "gtin": "3348901368247",
+                        "title": "Dior Sauvage Eau de Parfum 100 ml",
+                        "brand": "Dior",
+                        "concentration": "Eau de Parfum",
+                        "size_ml": 100,
+                    },
+                )
+                assert result.match is not None
+                assert result.match.method == "gtin_exact"
+                variant = session.scalar(select(ProductVariant).where(
+                    ProductVariant.gtin == "3348901368247"
+                ))
+                assert variant is not None
+                assert result.match.product_variant_id == variant.id
+                assert variant.size_ml == 100
+                assert variant.is_tester is False
+                assert variant.is_refill is False
+                assert variant.is_gift_set is False
+                assert variant.is_mini is False
+                assert session.scalar(select(func.count()).select_from(Offer)) == 0
+        finally:
+            engine.dispose()
