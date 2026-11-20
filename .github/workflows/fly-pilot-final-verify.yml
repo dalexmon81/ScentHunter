@@ -45,25 +45,69 @@ jobs:
           echo "PILOT_MACHINE_ID=$machine_id" >> "$GITHUB_ENV"
           echo "PILOT_MACHINE_STATE=started"
 
-      - name: Read retailer ingestion coverage (read-only)
-        continue-on-error: true
+      - name: Launch bounded detached catalog diagnostics and evidence backfill
         shell: bash
         run: |
           set -euo pipefail
-          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 180
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/final_verify.done
+          cat > /data/catalog/final_verify.sh <<'VERIFY'
+          #!/bin/sh
+          cd /app/backend
+          timeout 90s /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168 > /data/catalog/coverage.log 2>&1
+          echo $? > /data/catalog/coverage.exit
 
-      - name: Diagnose public publication gate (read-only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 180
+          timeout 90s /app/.venv/bin/python scripts/publication_gate_report.py > /data/catalog/publication_before.log 2>&1
+          echo $? > /data/catalog/publication_before.exit
 
-      - name: Backfill only independently verified Notino EUR evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/backfill_notino_currency_evidence.py --apply'" --app "$FLY_APP" --timeout 180
-          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 180
+          timeout 90s /app/.venv/bin/python scripts/backfill_notino_currency_evidence.py --apply > /data/catalog/currency_backfill.log 2>&1
+          echo $? > /data/catalog/currency_backfill.exit
+
+          timeout 90s /app/.venv/bin/python scripts/publication_gate_report.py > /data/catalog/publication_after.log 2>&1
+          echo $? > /data/catalog/publication_after.exit
+
+          echo complete > /data/catalog/final_verify.done
+          VERIFY
+          chmod +x /data/catalog/final_verify.sh
+          nohup /bin/sh /data/catalog/final_verify.sh </dev/null >/data/catalog/final_verify.runner.log 2>&1 &
+          echo FINAL_VERIFY_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          finished=0
+          for attempt in $(seq 1 90); do
+            poll="$(flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'test -f /data/catalog/final_verify.done && echo FINAL_VERIFY_DONE || echo FINAL_VERIFY_RUNNING'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Verification status poll failed ($attempt/90): $poll"
+              sleep 5
+              continue
+            }
+            printf '%s\n' "$poll"
+            if printf '%s\n' "$poll" | grep -q 'FINAL_VERIFY_DONE'; then
+              finished=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$finished" -ne 1 ]; then
+            echo "Detached verification did not finish within the polling window." >&2
+            flyctl machine exec "$PILOT_MACHINE_ID" "tail -n 80 /data/catalog/final_verify.runner.log" --app "$FLY_APP" --timeout 30 || true
+            exit 1
+          fi
+
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'for f in coverage publication_before currency_backfill publication_after; do echo ===\$f===; cat /data/catalog/\$f.exit 2>/dev/null || true; tail -n 100 /data/catalog/\$f.log 2>/dev/null || true; done'" --app "$FLY_APP" --timeout 30
+
+          for f in coverage publication_before currency_backfill publication_after; do
+            code="$(flyctl machine exec "$PILOT_MACHINE_ID" "cat /data/catalog/$f.exit" --app "$FLY_APP" --timeout 30 | tail -n 1)"
+            if [ "$code" != "0" ]; then
+              echo "PILOT_DIAGNOSTIC_FAILED=$f exit=$code" >&2
+              exit 1
+            fi
+          done
+          echo "PILOT_DIAGNOSTICS_AND_CURRENCY_EVIDENCE_BACKFILL=PASS"
 
       - name: Verify live health and public product search
         shell: bash
@@ -85,14 +129,14 @@ jobs:
                       raise RuntimeError(f"{path} returned HTTP {response.status}")
                   return json.loads(response.read().decode("utf-8"))
 
-          health = get("/health")
+          get("/health")
           status = get("/api/catalog/status")
           query = urllib.parse.quote("French Avenue Liquid Brun EDP 100ml")
           result = get("/api/catalog/search?q=" + query)
           if result.get("status") != "completed":
               raise RuntimeError("Public catalog search did not complete: " + json.dumps(result))
           if int(result.get("offer_count", 0)) < 1:
-              raise RuntimeError("Expected the verified Notino offer in public search: " + json.dumps(result))
+              raise RuntimeError("Expected verified Notino offer in public search: " + json.dumps(result))
           print("FINAL_PILOT_HEALTH=PASS")
           print("FINAL_CATALOG_STATUS=PASS")
           print("FINAL_PUBLIC_SEARCH=PASS")
