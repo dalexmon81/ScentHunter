@@ -65,6 +65,8 @@ PR [#806](https://github.com/dalexmon81/ScentHunter/pull/806) contains a narrow 
 
 The PR remains open and unmerged. Its final operational gate remains a separately authorized full-feed import, followed by checks of published variants, URLs, stock, currency provenance, and catalog search visibility. Raw feed rows, parsed offers, matched variants, and published offers must be reported separately.
 
+A separate read-only public-storefront smoke run on 2026-11-20 completed without touching the database or using the CJ feed. It found priced Notino.fr product pages for 2 of 5 test queries. Both Dior Sauvage results (100 ml at €136.00 and 200 ml at €69.70) had `availability=unknown`; they are discovery candidates, not publishable offers. The smoke script currently labels normalized priced rows as `verified_offers`, so that counter must not be interpreted as stock verification or successful catalog publication. The direct Notino search endpoints returned HTTP 403 and the fallback reader supplied the candidates. This test does not verify the authorized CJ feed, GTIN matching against live feed rows, or live stock.
+
 ## Production readiness gaps
 
 1. Decide whether to retain the existing atomic fetch pipeline or implement independently queued normalization/matching/validation stages. PR #809 proposes removing currently unused downstream queue contracts; review and merge it before treating that cleanup as part of `main`.
