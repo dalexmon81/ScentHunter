@@ -232,9 +232,10 @@ def test_notino_catalog_link_preserves_only_exact_validated_cj_destination():
     assert validated_cj_offer_url(click_url, product_url) == click_url
 
     offer = SimpleNamespace(url=product_url)
-    store = SimpleNamespace(slug="notino")
     raw = SimpleNamespace(raw_payload={"affiliate_url": click_url})
-    assert _display_offer_url(offer, store, raw) == click_url
+    for slug in ("notino", "notino-fr"):
+        store = SimpleNamespace(slug=slug)
+        assert _display_offer_url(offer, store, raw) == click_url
 
     wrong_destination = click_url.replace("liquid-brun", "other-product")
     raw.raw_payload = {"affiliate_url": wrong_destination}
@@ -258,7 +259,7 @@ def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypa
         offer = session.get(Offer, result.offer_id)
         store = session.get(Store, offer.store_id)
         raw = session.get(IngestionRaw, result.ingestion_raw_id)
-        store.slug = "notino"
+        store.slug = "notino-fr"
         store.name = "Notino.fr"
         store.domain = "www.notino.fr"
         offer.url = product_url
