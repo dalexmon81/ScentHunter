@@ -89,6 +89,47 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"{kind}:{source_id}")
 
 
+def _normalize_gtin(value: object) -> str:
+    """Normalize a GTIN and verify its GS1 check digit."""
+    raw = str(value or "").strip()
+    if not re.fullmatch(r"[0-9\\s-]+", raw):
+        raise ValueError(f"invalid GTIN characters: {raw!r}")
+    digits = re.sub(r"[\\s-]", "", raw)
+    if len(digits) not in {8, 12, 13, 14}:
+        raise ValueError(f"invalid GTIN length: {raw!r}")
+    body = [int(char) for char in digits[:-1]]
+    weighted_sum = sum(
+        digit * (3 if offset % 2 == 0 else 1)
+        for offset, digit in enumerate(reversed(body))
+    )
+    expected = (10 - weighted_sum % 10) % 10
+    if expected != int(digits[-1]):
+        raise ValueError(f"invalid GTIN check digit: {raw!r}")
+    return digits
+
+
+def extract_variant_gtin(variant: dict) -> str | None:
+    """Read the catalog's plural GTIN field without silently losing identities.
+
+    ProductVariant currently stores one GTIN. Multiple distinct codes require
+    a dedicated variant-GTIN table and therefore block this import explicitly.
+    """
+    values: list[object] = []
+    singular = variant.get("gtin")
+    if singular not in (None, ""):
+        values.append(singular)
+    plural = variant.get("gtins", [])
+    if plural in (None, ""):
+        plural = []
+    if not isinstance(plural, list):
+        raise ValueError("gtins must be a list")
+    values.extend(value for value in plural if value not in (None, ""))
+    normalized = {_normalize_gtin(value) for value in values}
+    if len(normalized) > 1:
+        raise ValueError("multiple GTINs supplied but ProductVariant stores one GTIN")
+    return next(iter(normalized), None)
+
+
 def get_or_create_brand(session: Session, normalized_name: str, name: str) -> Brand:
     """Resolve an existing brand by either canonical name or unique slug.
 
@@ -137,6 +178,7 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
     product_ids: set[str] = set()
     by_product: dict[str, list[dict]] = {}
     variant_ids: set[str] = set()
+    gtin_owners: dict[str, str] = {}
 
     for index, row in enumerate(products):
         if not isinstance(row, dict):
@@ -179,6 +221,17 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
             except (TypeError, ValueError):
                 blocked.append(f"{source_id}: invalid size_ml {size!r}")
                 continue
+        try:
+            gtin = extract_variant_gtin(row)
+        except ValueError as exc:
+            blocked.append(f"{source_id}: {exc}")
+            continue
+        if gtin:
+            previous = gtin_owners.get(gtin)
+            if previous and previous != source_id:
+                blocked.append(f"{source_id}: GTIN {gtin} is already assigned to {previous}")
+                continue
+            gtin_owners[gtin] = source_id
         by_product.setdefault(pid, []).append(row)
 
     return products, by_product, blocked
@@ -313,7 +366,17 @@ def main() -> int:
                         str(bool(variant.get("is_gift_set", False))),
                         source_id,
                     ))
+                    gtin = extract_variant_gtin(variant)
                     variant_id = stable_id("variant", source_id)
+                    if gtin:
+                        duplicate_gtin = session.scalar(select(ProductVariant).where(
+                            ProductVariant.gtin == gtin,
+                            ProductVariant.id != variant_id,
+                        ))
+                        if duplicate_gtin is not None:
+                            raise RuntimeError(
+                                f"GTIN {gtin} is already assigned to another canonical variant."
+                            )
                     variant_row = session.get(ProductVariant, variant_id)
                     if variant_row is None:
                         variant_row = ProductVariant(
@@ -324,13 +387,30 @@ def main() -> int:
                             is_tester=variant.get("is_tester"),
                             is_refill=variant.get("is_refill"),
                             is_gift_set=variant.get("is_gift_set"),
-                            gtin=variant.get("gtin"),
+                            is_mini=variant.get("is_mini"),
+                            gtin=gtin,
                             canonical_key=str(variant.get("canonical_key") or key[:320]),
                         )
                         session.add(variant_row)
                         session.flush()
                     elif variant_row.fragrance_id != fragrance.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} resolves to a variant of another fragrance.")
+                    else:
+                        if gtin:
+                            if variant_row.gtin not in (None, gtin):
+                                raise RuntimeError(
+                                    f"Legacy variant ID {source_id} already has a different GTIN."
+                                )
+                            variant_row.gtin = gtin
+                        for field in ("is_tester", "is_refill", "is_gift_set", "is_mini"):
+                            incoming = variant.get(field)
+                            existing = getattr(variant_row, field)
+                            if incoming is not None:
+                                if existing is not None and existing != incoming:
+                                    raise RuntimeError(
+                                        f"Legacy variant ID {source_id} has conflicting {field} metadata."
+                                    )
+                                setattr(variant_row, field, incoming)
 
                     variant_map = session.get(LegacyVariantIdMap, source_id)
                     if variant_map is None:
