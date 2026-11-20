@@ -90,25 +90,21 @@ with tempfile.TemporaryFile() as source:
 
 def download_catalog_snapshot(destination: Path) -> int:
     remote = r'''
-import base64, hashlib, sqlite3, sys, tempfile
+import base64, hashlib, sqlite3, sys
 source = sqlite3.connect("file:/data/catalog/catalog.sqlite3?mode=ro", uri=True, timeout=60)
-snapshot = tempfile.TemporaryFile()
+target = sqlite3.connect(":memory:")
 try:
-    source.backup(snapshot)
+    source.backup(target)
+    payload = target.serialize()
 finally:
     source.close()
-snapshot.seek(0)
-digest = hashlib.sha256()
-size = 0
+    target.close()
+digest = hashlib.sha256(payload)
+size = len(payload)
 out = sys.stdout.buffer
 out.write(b"NOTINO_DB_BEGIN" + bytes([10]))
-while True:
-    chunk = snapshot.read(65535)
-    if not chunk:
-        break
-    size += len(chunk)
-    digest.update(chunk)
-    out.write(base64.b64encode(chunk) + bytes([10]))
+for offset in range(0, size, 65535):
+    out.write(base64.b64encode(payload[offset:offset + 65535]) + bytes([10]))
 out.write(b"NOTINO_DB_END=" + str(size).encode() + b":" + digest.hexdigest().encode() + bytes([10]))
 out.flush()
 '''
