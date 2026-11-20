@@ -33,10 +33,14 @@ The canonical frontend path is therefore already the default in the current sour
 - The single-machine pilot uses a durable SQLite queue and `backend/app/workers/sqlite_worker.py`.
 - `Dockerfile.pilot` starts that SQLite worker alongside the API in the pilot machine.
 - `fly.staging.toml` targets the isolated app `scenthunter-pilot-20261030`, uses a persistent SQLite volume, and selects the SQLite queue backend.
-- Celery task definitions, queue routing, handler registration, and Redis configuration exist in `backend/app/workers/`.
-- The worker README explicitly gates a multi-machine Celery deployment on shared PostgreSQL, a dedicated Redis broker, a separate worker deployment, and runtime verification.
+- Celery task definitions, queue routing, and Redis configuration exist in `backend/app/workers/`.
+- The registered runtime handlers on `main` currently cover `discover`, `fetch`, and `refresh` (Notino plus the four legacy scraper adapters).
+- Celery tasks and queue routes also exist for `normalize`, `match`, `validate`, `quarantine`, and `reprocess`, but those stages do not have runtime handlers registered. A direct task execution for one of those stages fails closed with `HandlerNotConfigured`.
+- In the current retailer path, parsing, normalization, canonical matching, validation, and offer promotion are performed together inside `persist_connector_record` during the fetch handler. They are not yet independent queue workers. Connector quarantine is recorded directly by the discovery/fetch/refresh handlers through `record_connector_failure`; it is not a separate dead-letter queue consumer.
+- PR #808 adds a CI-only Redis-backed worker smoke test. The worker successfully answered a broker ping and executed a no-side-effect probe task. This proves broker-to-worker task execution in CI, not deployment to Fly or use of a shared staging database.
+- The worker README gates multi-machine deployment on shared PostgreSQL, dedicated Redis, a separate worker deployment, and runtime verification.
 
-**Not proven:** a live Celery worker is deployed and consuming tasks against the same shared PostgreSQL catalog used by the API.
+**Not proven:** a live Celery worker is deployed and consuming tasks against the same shared PostgreSQL catalog used by the API. The five downstream queue stages listed above are not operationally wired as separate handlers.
 
 ## Deployment workflow blocker — do not dispatch
 
@@ -57,9 +61,10 @@ The PR remains open and unmerged. Its final operational gate remains a separatel
 
 ## Production readiness gaps
 
-1. Reconcile or replace the stale staging-worker deployment workflow and create a single source of truth for app, image, database, queue, and migration-head configuration.
-2. Provision an isolated PostgreSQL target and dedicated Redis broker only after the deployment configuration is reviewed.
-3. Deploy one separate Celery worker against the same PostgreSQL catalog as the API; verify broker ping, task execution, durable ingestion-run lifecycle, retry/recovery, and shutdown.
+1. Implement and test the missing independent normalization, matching, validation, quarantine, and reprocessing handlers, or formally simplify the design to the existing atomic fetch pipeline and remove unused queue contracts.
+2. Reconcile or replace the stale staging-worker deployment workflow and create a single source of truth for app, image, database, queue, and migration-head configuration.
+3. Provision an isolated PostgreSQL target and dedicated Redis broker only after the deployment configuration is reviewed.
+4. Deploy one separate Celery worker against the same PostgreSQL catalog as the API; verify broker ping, task execution, durable ingestion-run lifecycle, retry/recovery, and shutdown.
 4. Run a bounded Notino discovery/fetch pilot with explicit operator approval. Verify evidence and counts at every stage before publishing.
 5. Rehearse PostgreSQL backup and restore, then test migration rollback/recovery on disposable infrastructure.
 6. Verify the deployed frontend commit and API/database identity. Run shadow/canary traffic and prove rollback before any production cutover.
