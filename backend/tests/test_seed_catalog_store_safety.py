@@ -113,3 +113,38 @@ def test_seed_stops_when_normalized_name_and_slug_point_to_different_brands():
                 get_or_create_brand(session, "viktor and rolf", "Viktor & Rolf")
     finally:
         engine.dispose()
+
+
+
+def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit():
+    from scripts.seed_catalog import extract_variant_gtin
+
+    assert extract_variant_gtin({"gtins": ["3348901368247"]}) == "3348901368247"
+    assert extract_variant_gtin({"gtin": "3348901368247", "gtins": ["3348901368247"]}) == "3348901368247"
+
+
+def test_extract_variant_gtin_rejects_invalid_and_ambiguous_codes():
+    import pytest
+    from scripts.seed_catalog import extract_variant_gtin
+
+    with pytest.raises(ValueError, match="check digit"):
+        extract_variant_gtin({"gtins": ["3348901368248"]})
+    with pytest.raises(ValueError, match="multiple GTINs"):
+        extract_variant_gtin({"gtins": ["3348901368247", "3348901368254"]})
+
+
+def test_catalog_contains_verified_dior_sauvage_edp_100ml_variant():
+    from scripts.seed_catalog import validate_catalog
+
+    raw = json.loads(CATALOG.read_text(encoding="utf-8"))
+    products, by_product, blocked = validate_catalog(raw)
+    assert blocked == []
+    product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
+    variants = by_product[product["product_id"]]
+    target = [row for row in variants if row.get("size_ml") == 100]
+    assert len(target) == 1
+    assert target[0]["gtins"] == ["3348901368247"]
+    assert target[0]["is_tester"] is False
+    assert target[0]["is_refill"] is False
+    assert target[0]["is_gift_set"] is False
+    assert target[0]["is_mini"] is False
