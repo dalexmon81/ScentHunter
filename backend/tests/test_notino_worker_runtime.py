@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
@@ -109,6 +110,29 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
             self.assertFalse(notino_runtime._is_unique_canonical_candidate(
                 connector, self.store_id, {"external_product_id": "CJ-404"}
             ))
+
+    def test_discovery_stops_existing_queued_full_feed_job_when_disabled(self):
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_NOTINO_DAILY_DISCOVERY_ENABLED": "0",
+        }):
+            with patch.object(
+                notino_runtime, "_sessions",
+                side_effect=AssertionError("disabled discovery must not touch the database"),
+            ), patch.object(
+                notino_runtime, "_connector",
+                side_effect=AssertionError("disabled discovery must not download the feed"),
+            ):
+                result = notino_runtime.handle_notino_discovery({
+                    "store_id": str(self.store_id),
+                    "limit": 100,
+                    "cursor": "4800",
+                })
+        self.assertEqual(result["status"], "disabled")
+        self.assertEqual(result["fetch_jobs_queued"], 0)
+        self.assertEqual(
+            result["reason"],
+            "notino_full_feed_discovery_disabled_by_configuration",
+        )
 
     def test_discovery_queues_all_products_for_conservative_matching(self):
         with patch.object(notino_runtime, "_is_unique_canonical_candidate", side_effect=AssertionError("pre-filter must not run")), \
