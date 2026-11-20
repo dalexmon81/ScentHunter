@@ -5,7 +5,9 @@ on:
     branches:
       - refactor/catalog-first-architecture
       - work/ingestion-coverage-report-20261119-rebased
+      - work/notino-full-feed-audit-20261120
     paths:
+      - "backend/scripts/notino_feed_coverage_audit.py"
       - "backend/app/workers/notino_runtime.py"
       - "backend/app/workers/legacy_runtime.py"
       - "backend/app/services/offer_refresh.py"
@@ -28,6 +30,7 @@ on:
       - "backend/app/services/canonical_matching.py"
       - "backend/scripts/ingestion_coverage_report.py"
       - "backend/tests/test_ingestion_coverage_report.py"
+      - "backend/scripts/notino_feed_coverage_audit.py"
       - ".github/workflows/notino-canonical-discovery.yml"
 
 permissions:
@@ -61,3 +64,40 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
+
+      - name: Install Fly CLI for isolated Notino audit
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'work/notino-full-feed-audit-20261120'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run read-only full Notino feed audit on pilot
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'work/notino-full-feed-audit-20261120'
+        shell: bash
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: scenthunter-pilot-20261030
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          export FLY_API_TOKEN
+          flyctl status --app "$FLY_APP"
+          machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["id"] if rows else "")')"
+          state="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
+          test -n "$machine_id" || { echo "No pilot machine exists." >&2; exit 1; }
+          if [ "$state" != "started" ]; then
+            flyctl machine start "$machine_id" --app "$FLY_APP"
+          fi
+          for attempt in $(seq 1 18); do
+            state="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
+            echo "PILOT_MACHINE_STATE=$state"
+            [ "$state" = "started" ] && break
+            sleep 5
+          done
+          [ "$state" = "started" ] || { echo "Pilot machine did not start." >&2; exit 1; }
+          encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
+          remote_command="sh -c 'echo $encoded_script | base64 -d > /tmp/notino_feed_coverage_audit.py && cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py'"
+          flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 600
