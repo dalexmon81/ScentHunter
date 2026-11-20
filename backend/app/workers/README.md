@@ -53,7 +53,9 @@ start Celery workers, provision Redis, or activate ingestion.
 
 ## Notino pilot runtime
 
-The worker bootstrap registers Notino's discovery and fetch handlers. Discovery
+The worker bootstrap registers discovery, fetch and refresh handlers. It does not register the downstream `normalize`, `match`, `validate`, `quarantine` or `reprocess` queue tasks. Those Celery task names and routes are currently contracts only; direct execution fails closed with `HandlerNotConfigured`. In the current implementation, parsing, normalization, matching, validation and promotion run together in the fetch handler through `persist_connector_record`. Connector quarantine is recorded synchronously by connector-health handling, not by a separate dead-letter consumer.
+
+The Notino discovery handler
 reads one page from the authorized CJ/VIV feed snapshot and queues one fetch task
 per retailer product. Fetch stages the original record, normalizes it, resolves
 only existing legacy-to-canonical UUID mappings, validates explicit price,
@@ -166,4 +168,6 @@ Refresh scheduling includes active offers from these retailers. Each refresh
 re-fetches the known product URL and updates only the existing offer identity;
 it never rematches or changes the canonical variant.
 
-Pilot deployment note (isolated only): the catalog-first architecture branch deploys to `scenthunter-pilot-20261030` via the dedicated Fly staging workflow. This is separate from production; production deployment requires a separate explicit approval.
+Celery integration verification: PR #808 adds an ephemeral Redis service and starts a real Celery worker in CI. The worker successfully answered a broker ping and executed a no-side-effect probe task. This does not mean a worker is deployed in Fly or that the downstream queue stages above are implemented.
+
+Pilot deployment note (isolated only): `fly.staging.toml` and `Dockerfile.pilot` target the single-machine SQLite pilot app `scenthunter-pilot-20261030`. Do not dispatch `.github/workflows/deploy-staging-worker.yml` as a substitute: that workflow currently references a missing branch/config and a different PostgreSQL/Celery worker app. See `docs/architecture/catalog-first-status-2026-11-20.md` for the verified mismatch and required gates. No production deployment is implied.
