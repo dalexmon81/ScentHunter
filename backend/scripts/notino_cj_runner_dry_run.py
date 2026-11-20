@@ -43,8 +43,11 @@ with tempfile.TemporaryFile() as source:
     encoded = base64.b64encode(remote.encode()).decode("ascii")
     command = "/bin/sh -lc 'printf \"%s\" \"" + encoded + "\" | base64 -d | /app/.venv/bin/python'"
     with tempfile.TemporaryFile() as transport, tempfile.TemporaryFile() as errors:
+        app = os.environ.get("SCENTHUNTER_NOTINO_FEED_APP", "scenthunter-pilot-20261030").strip()
+        if not app:
+            raise RuntimeError("SCENTHUNTER_NOTINO_FEED_APP must name the isolated feed source app")
         result = subprocess.run(
-            ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", command],
+            ["flyctl", "ssh", "console", "--app", app, "--select=false", "-C", command],
             stdout=transport, stderr=errors, timeout=1200, check=False,
         )
         if result.returncode:
