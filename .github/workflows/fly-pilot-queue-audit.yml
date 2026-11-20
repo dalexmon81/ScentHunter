@@ -59,6 +59,14 @@ jobs:
                   dict(zip(("stage","status","jobs","oldest_created_at","newest_created_at"), row))
                   for row in q.execute("SELECT stage,status,count(*),min(created_at),max(created_at) FROM ingestion_queue_jobs GROUP BY stage,status ORDER BY stage,status")
               ]
+              result["queue"]["queued_discovery_payloads"] = [
+                  row[0] for row in q.execute(
+                      "SELECT payload_json FROM ingestion_queue_jobs WHERE stage='discover' AND status='queued' ORDER BY created_at LIMIT 5"
+                  )
+              ]
+              result["queue"]["queued_refresh_count"] = q.execute(
+                  "SELECT count(*) FROM ingestion_queue_jobs WHERE stage='refresh' AND status='queued'"
+              ).fetchone()[0]
               result["queue"]["oldest_queued_age_seconds"] = q.execute(
                   "SELECT CASE WHEN min(created_at) IS NULL THEN NULL ELSE CAST(strftime('%s','now') AS INTEGER)-CAST(min(created_at) AS INTEGER) END FROM ingestion_queue_jobs WHERE status='queued'"
               ).fetchone()[0]
