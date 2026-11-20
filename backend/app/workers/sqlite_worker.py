@@ -32,6 +32,12 @@ def _stop(_signum, _frame):
 
 
 def _schedule_daily_notino_discovery(session_factory) -> None:
+    discovery_enabled = os.environ.get(
+        "SCENTHUNTER_NOTINO_DAILY_DISCOVERY_ENABLED", "1"
+    ).strip().lower()
+    if discovery_enabled not in {"1", "true", "yes", "on"}:
+        log.info("Daily Notino full-feed discovery is disabled by configuration")
+        return
     day = datetime.now(timezone.utc).date().isoformat()
     try:
         with session_factory() as session:
