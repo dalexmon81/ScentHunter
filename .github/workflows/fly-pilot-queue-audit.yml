@@ -1,0 +1,121 @@
+name: Audit isolated ScentHunter worker queue
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - ".github/workflows/fly-pilot-queue-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-offer-engine-pilot
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate pilot and locate machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          case "$FLY_API_TOKEN" in fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;; esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          printf 'FLY_API_TOKEN=%s\n' "$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=[m for m in json.load(sys.stdin) if m.get("state")=="started"]; print(rows[0]["id"] if rows else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine." >&2; exit 1; }
+          echo "PILOT_MACHINE_ID=$machine_id" >> "$GITHUB_ENV"
+
+      - name: Read durable queue and catalog freshness without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/queue_audit.done
+          cat > /data/catalog/queue_audit.py <<'PY'
+          import json, os, sqlite3, subprocess, time
+          result = {"queue": {}, "catalog": {}, "worker_processes": []}
+          qpath = "/data/catalog/ingestion_queue.sqlite3"
+          cpath = "/data/catalog/catalog.sqlite3"
+          if os.path.exists(qpath):
+              q = sqlite3.connect("file:" + qpath + "?mode=ro", uri=True, timeout=5)
+              result["queue"]["integrity"] = q.execute("PRAGMA quick_check").fetchone()[0]
+              result["queue"]["by_stage_status"] = [
+                  dict(zip(("stage","status","jobs","oldest_created_at","newest_created_at"), row))
+                  for row in q.execute("SELECT stage,status,count(*),min(created_at),max(created_at) FROM ingestion_queue_jobs GROUP BY stage,status ORDER BY stage,status")
+              ]
+              result["queue"]["oldest_queued_age_seconds"] = q.execute(
+                  "SELECT CASE WHEN min(created_at) IS NULL THEN NULL ELSE CAST(strftime('%s','now') AS INTEGER)-CAST(min(created_at) AS INTEGER) END FROM ingestion_queue_jobs WHERE status='queued'"
+              ).fetchone()[0]
+              q.close()
+          else:
+              result["queue"]["missing"] = True
+          if os.path.exists(cpath):
+              c = sqlite3.connect("file:" + cpath + "?mode=ro", uri=True, timeout=5)
+              result["catalog"]["integrity"] = c.execute("PRAGMA quick_check").fetchone()[0]
+              result["catalog"]["offers_by_store_freshness"] = [
+                  dict(zip(("store","status","availability","total","fresh_under_24h","stale_over_24h"), row))
+                  for row in c.execute("""
+                      SELECT s.slug,o.status,coalesce(o.availability,'unknown'),count(*),
+                             sum(CASE WHEN o.captured_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END),
+                             sum(CASE WHEN o.captured_at < datetime('now','-24 hours') THEN 1 ELSE 0 END)
+                      FROM offers o JOIN stores s ON s.id=o.store_id
+                      GROUP BY s.slug,o.status,o.availability ORDER BY s.slug,o.status,o.availability
+                  """)
+              ]
+              result["catalog"]["recent_runs"] = [
+                  dict(zip(("store","status","runs","products_discovered","offers_created","offers_updated","offers_rejected"), row))
+                  for row in c.execute("""
+                      SELECT s.slug,r.status,count(*),sum(r.products_discovered),sum(r.offers_created),
+                             sum(r.offers_updated),sum(r.offers_rejected)
+                      FROM ingestion_runs r JOIN stores s ON s.id=r.store_id
+                      WHERE r.started_at >= datetime('now','-7 days')
+                      GROUP BY s.slug,r.status ORDER BY s.slug,r.status
+                  """)
+              ]
+              c.close()
+          try:
+              ps = subprocess.check_output(["ps","-eo","pid,etime,args"], text=True)
+              result["worker_processes"] = [line.strip() for line in ps.splitlines() if "sqlite_worker" in line and "grep" not in line]
+          except Exception as exc:
+              result["worker_process_error"] = str(exc)
+          print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
+          PY
+          nohup /app/.venv/bin/python /data/catalog/queue_audit.py </dev/null >/data/catalog/queue_audit.log 2>&1 &
+          echo QUEUE_AUDIT_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          finished=0
+          for attempt in $(seq 1 30); do
+            poll="$(flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'pgrep -f /data/catalog/queue_audit.py >/dev/null && echo QUEUE_AUDIT_RUNNING || echo QUEUE_AUDIT_FINISHED'" --app "$FLY_APP" --timeout 20 2>&1)" || {
+              echo "Queue audit poll failed ($attempt/30): $poll"
+              sleep 3
+              continue
+            }
+            printf '%s\n' "$poll"
+            if printf '%s\n' "$poll" | grep -q 'QUEUE_AUDIT_FINISHED'; then
+              finished=1
+              break
+            fi
+            sleep 3
+          done
+          test "$finished" -eq 1 || { echo "Queue audit did not finish." >&2; exit 1; }
+          flyctl machine exec "$PILOT_MACHINE_ID" "cat /data/catalog/queue_audit.log" --app "$FLY_APP" --timeout 30
