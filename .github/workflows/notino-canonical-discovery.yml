@@ -79,82 +79,13 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
 
       - name: Install Fly CLI for isolated Notino audit
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'audit/notino-full-feed-coverage-main-20261120'
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Run read-only full Notino feed audit on pilot
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'audit/notino-full-feed-coverage-main-20261120'
-        shell: bash
+      - name: Run full Notino feed audit with runner-local processing
+        working-directory: backend
+        timeout-minutes: 40
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          FLY_APP: scenthunter-pilot-20261030
-        run: |
-          set -euo pipefail
-          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
-          case "$FLY_API_TOKEN" in
-            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
-          esac
-          echo "::add-mask::$FLY_API_TOKEN"
-          export FLY_API_TOKEN
-          flyctl status --app "$FLY_APP"
-          machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
-          machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["id"] if rows else "")')"
-          state="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
-          test -n "$machine_id" || { echo "No pilot machine exists." >&2; exit 1; }
-          if [ "$state" != "started" ]; then
-            flyctl machine start "$machine_id" --app "$FLY_APP"
-          fi
-          for attempt in $(seq 1 18); do
-            state="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
-            echo "PILOT_MACHINE_STATE=$state"
-            [ "$state" = "started" ] && break
-            sleep 5
-          done
-          [ "$state" = "started" ] || { echo "Pilot machine did not start." >&2; exit 1; }
-
-          encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
-          remote_b64="/tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.b64"
-          remote_py="/tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.py"
-          remote_log="/tmp/notino_${GITHUB_RUN_ID}_feed_coverage_audit.log"
-          remote_done="/tmp/notino_${GITHUB_RUN_ID}_audit.done"
-          remote_failed="/tmp/notino_${GITHUB_RUN_ID}_audit.failed"
-          flyctl machine exec "$machine_id" "sh -c ': > $remote_b64'" --app "$FLY_APP" --timeout 60
-          while [ -n "$encoded_script" ]; do
-            chunk="${encoded_script:0:256}"
-            encoded_script="${encoded_script:256}"
-            flyctl machine exec "$machine_id" "sh -c \"printf '%s' '$chunk' >> $remote_b64\"" --app "$FLY_APP" --timeout 60
-          done
-
-          launch_command="sh -c 'base64 -d $remote_b64 > $remote_py && /app/.venv/bin/python -m py_compile $remote_py && rm -f $remote_log $remote_done $remote_failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python $remote_py; rc=\\\$?; if test \\\$rc -eq 0; then touch $remote_done; else touch $remote_failed; fi\" > $remote_log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
-          flyctl machine exec "$machine_id" "$launch_command" --app "$FLY_APP" --timeout 60
-
-          for attempt in $(seq 1 240); do
-            poll_command="sh -c 'if test -f $remote_done; then cat $remote_log; elif test -f $remote_failed; then cat $remote_log; echo NOTINO_AUDIT_FAILED >&2; exit 1; else echo NOTINO_AUDIT_RUNNING; fi'"
-            poll_output=""
-            poll_ok=0
-            for poll_retry in 1 2 3; do
-              if poll_output="$(flyctl machine exec "$machine_id" "$poll_command" --app "$FLY_APP" --timeout 60 2>&1)"; then
-                poll_ok=1
-                break
-              fi
-              echo "NOTINO_AUDIT_POLL_RETRY=$poll_retry; $poll_output" >&2
-              sleep 5
-            done
-            if [ "$poll_ok" -ne 1 ]; then
-              echo "NOTINO_AUDIT_POLL_ERROR=$poll_output" >&2
-              flyctl machine exec "$machine_id" "sh -c 'ls -l $remote_log $remote_done $remote_failed 2>/dev/null || true; cat $remote_log 2>/dev/null || true'" --app "$FLY_APP" --timeout 60 || true
-              exit 1
-            fi
-            if [[ "$poll_output" == *NOTINO_FULL_FEED_AUDIT_JSON=* ]]; then
-              echo "$poll_output"
-              exit 0
-            fi
-            if [[ "$poll_output" != *NOTINO_AUDIT_RUNNING* ]]; then
-              echo "$poll_output"
-              exit 1
-            fi
-            echo "NOTINO_AUDIT_PROGRESS attempt=$attempt/240"
-            sleep 10
-          done
-          echo "NOTINO_AUDIT_TIMEOUT" >&2
-          exit 1
+          SCENTHUNTER_NOTINO_FEED_APP: scenthunter-pilot-20261030
+          PYTHONPATH: .
+        run: python scripts/notino_feed_coverage_runner_audit.py
