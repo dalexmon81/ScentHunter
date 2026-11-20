@@ -10,8 +10,6 @@ on:
       - "backend/app/connectors/notino_feed.py"
       - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
-      - "backend/app/connectors/notino_feed.py"
-      - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/legacy_runtime.py"
       - "backend/app/services/offer_refresh.py"
       - "backend/tests/test_offer_refresh_persistence.py"
@@ -25,6 +23,8 @@ on:
       - main
       - refactor/catalog-first-architecture
     paths:
+      - "backend/app/connectors/notino_feed.py"
+      - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
       - "backend/app/workers/legacy_runtime.py"
       - "backend/app/services/offer_refresh.py"
