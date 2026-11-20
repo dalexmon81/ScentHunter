@@ -88,8 +88,24 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     statement = select(ProductVariant, Fragrance, Brand).join(
         Fragrance, ProductVariant.fragrance_id == Fragrance.id
     ).join(Brand, Fragrance.brand_id == Brand.id)
+    # Treat explicit variant attributes as hard filters, but do not let
+    # incidental words ("spray", "vapourisateur", "parfum", etc.) erase an
+    # otherwise valid product result. A text token is a required term only
+    # when that token exists somewhere in the canonical catalog.
+    text_aliases = {
+        "christian": "dior",
+        "parfum": "parfum",
+        "perfume": "parfum",
+        "perfume": "parfum",
+        "eau": None,
+        "spray": None,
+        "vap": None,
+        "vaporisateur": None,
+        "vaporisateur": None,
+        "ml": None,
+    }
     for token in tokens:
-        if token == "ml":
+        if token in {"ml", "eau", "spray", "vap", "vaporisateur", "vaporisateur"}:
             continue
         if token.isdecimal():
             if len(token) > 5 or int(token) > 10000:
@@ -110,9 +126,21 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             )
             statement = statement.where(flag.is_(True))
         else:
-            statement = statement.where(or_(*(
-                func.lower(field).contains(token, autoescape=True) for field in text_fields
-            )))
+            search_token = text_aliases.get(token, token)
+            if search_token is None:
+                continue
+            token_condition = or_(*(
+                func.lower(field).contains(search_token, autoescape=True) for field in text_fields
+            ))
+            token_exists = session.scalar(
+                select(token_condition).select_from(Brand)
+                .join(Fragrance, Fragrance.brand_id == Brand.id)
+                .join(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
+                .limit(1)
+            )
+            # Unknown incidental words are soft terms, not mandatory filters.
+            if token_exists:
+                statement = statement.where(token_condition)
     rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id).limit(50)).all()
     variant_ids = [variant.id for variant, _, _ in rows]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
