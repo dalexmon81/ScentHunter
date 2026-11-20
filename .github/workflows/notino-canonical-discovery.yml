@@ -110,7 +110,11 @@ jobs:
           flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 60
           for attempt in $(seq 1 240); do
             poll_command="sh -c 'if test -f /tmp/notino_audit.done; then cat /tmp/notino_feed_coverage_audit.log; elif test -f /tmp/notino_audit.failed; then cat /tmp/notino_feed_coverage_audit.log; echo NOTINO_AUDIT_FAILED >&2; exit 1; else echo NOTINO_AUDIT_RUNNING; fi'"
-            output="$(flyctl machine exec "$machine_id" "$poll_command" --app "$FLY_APP" --timeout 60)" || { echo "$output"; exit 1; }
+            if ! output="$(flyctl machine exec "$machine_id" "$poll_command" --app "$FLY_APP" --timeout 60 2>&1)"; then
+              echo "NOTINO_AUDIT_POLL_ERROR=$output" >&2
+              flyctl machine exec "$machine_id" "sh -c 'ls -l /tmp/notino_audit.* /tmp/notino_feed_coverage_audit.log 2>/dev/null || true; cat /tmp/notino_feed_coverage_audit.log 2>/dev/null || true'" --app "$FLY_APP" --timeout 60 || true
+              exit 1
+            fi
             if [[ "$output" == *NOTINO_FULL_FEED_AUDIT_JSON=* ]]; then
               echo "$output"
               exit 0
