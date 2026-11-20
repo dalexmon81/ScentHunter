@@ -88,8 +88,13 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     statement = select(ProductVariant, Fragrance, Brand).join(
         Fragrance, ProductVariant.fragrance_id == Fragrance.id
     ).join(Brand, Fragrance.brand_id == Brand.id)
+    # Treat explicit variant attributes as hard filters, but do not let
+    # incidental words ("spray", "vapourisateur", "parfum", etc.) erase an
+    # otherwise valid product result. A text token is a required term only
+    # when that token exists somewhere in the canonical catalog.
+    ignored_tokens = {"ml", "eau", "spray", "vap", "vaporisateur"}
     for token in tokens:
-        if token == "ml":
+        if token in ignored_tokens:
             continue
         if token.isdecimal():
             if len(token) > 5 or int(token) > 10000:
@@ -110,9 +115,19 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             )
             statement = statement.where(flag.is_(True))
         else:
-            statement = statement.where(or_(*(
+            token_condition = or_(*(
                 func.lower(field).contains(token, autoescape=True) for field in text_fields
+            ))
+            token_exists = session.scalar(select(exists(
+                select(1).select_from(Brand)
+                .join(Fragrance, Fragrance.brand_id == Brand.id)
+                .join(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
+                .where(token_condition)
             )))
+            # Ignore incidental words not represented in the catalog; keep
+            # every recognized brand/name token as a required search term.
+            if token_exists:
+                statement = statement.where(token_condition)
     rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id).limit(50)).all()
     variant_ids = [variant.id for variant, _, _ in rows]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
