@@ -65,10 +65,10 @@ The PR remains open and unmerged. Its final operational gate remains a separatel
 2. Reconcile or replace the stale staging-worker deployment workflow and create a single source of truth for app, image, database, queue, and migration-head configuration.
 3. Provision an isolated PostgreSQL target and dedicated Redis broker only after the deployment configuration is reviewed.
 4. Deploy one separate Celery worker against the same PostgreSQL catalog as the API; verify broker ping, task execution, durable ingestion-run lifecycle, retry/recovery, and shutdown.
-4. Run a bounded Notino discovery/fetch pilot with explicit operator approval. Verify evidence and counts at every stage before publishing.
-5. Rehearse PostgreSQL backup and restore, then test migration rollback/recovery on disposable infrastructure.
-6. Verify the deployed frontend commit and API/database identity. Run shadow/canary traffic and prove rollback before any production cutover.
-7. Expand retailer coverage one store at a time with explicit provisioning and approved discovery seeds.
+5. Run a bounded Notino discovery/fetch pilot with explicit operator approval. Verify evidence and counts at every stage before publishing.
+6. Rehearse PostgreSQL backup and restore, then test migration rollback/recovery on disposable infrastructure.
+7. Verify the deployed frontend commit and API/database identity. Run shadow/canary traffic and prove rollback before any production cutover.
+8. Expand retailer coverage one store at a time with explicit provisioning and approved discovery seeds.
 
 ## Safety invariants
 
