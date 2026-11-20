@@ -68,7 +68,7 @@ def main() -> int:
         legacy_valid_input = 0
 
         with Session(engine) as session:
-            store = session.scalar(select(Store).where(Store.slug == "notino"))
+            store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
             if store is None:
                 raise SystemExit("NOTINO_AUDIT_STORE_NOT_FOUND")
             store_id = store.id
