@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+      - fix/pilot-diagnostic-retry-main-20261120
   workflow_dispatch:
 
 permissions:
