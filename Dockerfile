@@ -23,9 +23,7 @@ COPY . .
 RUN /app/.venv/bin/playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 ENV PYTHONPATH=/app/backend
 
-# Bootstrap the canonical catalog before exposing the catalog-first frontend.
-# Keep the existing legacy discovery/report workers running during the gradual
-# cutover; the new catalog worker uses its own DB and queue files on the same
-# mounted volume. Any migration/seed error fails startup instead of serving an
-# empty or partially initialized canonical catalog.
-CMD ["sh", "-c", "set -eu; cd /app/backend; /app/.venv/bin/python scripts/bootstrap_catalog.py; /app/.venv/bin/python -m catalog_family_coverage & FAMILY_PID=$!; /app/.venv/bin/python -m phase0_baseline_worker & PHASE0_PID=$!; /app/.venv/bin/python -m app.workers.sqlite_worker & INGESTION_PID=$!; cleanup(){ kill \"$FAMILY_PID\" \"$PHASE0_PID\" \"$INGESTION_PID\" 2>/dev/null || true; wait \"$FAMILY_PID\" 2>/dev/null || true; wait \"$PHASE0_PID\" 2>/dev/null || true; wait \"$INGESTION_PID\" 2>/dev/null || true; }; trap 'exit 143' TERM INT; trap cleanup EXIT; /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080"]
+# Run Family Coverage as a separate background process.
+# It shares the same Fly volume/database but never participates in the
+# FastAPI /search path. The trap terminates it together with uvicorn.
+CMD ["sh", "-c", "cd /app/backend; /app/.venv/bin/python -m catalog_family_coverage & FAMILY_PID=$!; /app/.venv/bin/python -m phase0_baseline_worker & PHASE0_PID=$!; trap 'kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true; exit 143' TERM INT; trap 'kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true' EXIT; /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080"]
