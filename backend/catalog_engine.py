@@ -4430,7 +4430,28 @@ def refresh_url(store, url):
             except Exception as exc:
                 parser_error = f'{type(exc).__name__}:{exc}'
                 item = None
-            if not item or not item.get('name'):
+
+            # Notino's product-page parser deliberately rejects non-perfume
+            # destinations (deodorants, shower gels, gift sets, etc.). A generic
+            # JSON-LD fallback can then pick up a related perfume elsewhere on
+            # the page and attach its identity/price to the rejected URL. Keep
+            # the rejection authoritative when the destination H1 identifies
+            # one of those non-perfume product types.
+            notino_non_perfume_rejection = False
+            if store == 'notino' and not item:
+                try:
+                    notino_parser = importlib.import_module('scrapers.notino.scraper')
+                    marker_check = getattr(notino_parser, '_has_non_perfume_marker', None)
+                    soup = BeautifulSoup(data or b'', 'html.parser')
+                    h1 = soup.find('h1')
+                    notino_non_perfume_rejection = bool(
+                        h1 and callable(marker_check)
+                        and marker_check(h1.get_text(' ', strip=True))
+                    )
+                except Exception:
+                    notino_non_perfume_rejection = False
+
+            if (not item or not item.get('name')) and not notino_non_perfume_rejection:
                 fallback_item = parse_product(store, final, data)
                 if fallback_item and fallback_item.get('name'):
                     item = fallback_item
