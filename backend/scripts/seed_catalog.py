@@ -92,9 +92,9 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
 def _normalize_gtin(value: object) -> str:
     """Normalize a GTIN and verify its GS1 check digit."""
     raw = str(value or "").strip()
-    if not re.fullmatch(r"[0-9\\s-]+", raw):
+    if not re.fullmatch(r"[0-9\s-]+", raw):
         raise ValueError(f"invalid GTIN characters: {raw!r}")
-    digits = re.sub(r"[\\s-]", "", raw)
+    digits = re.sub(r"[\s-]", "", raw)
     if len(digits) not in {8, 12, 13, 14}:
         raise ValueError(f"invalid GTIN length: {raw!r}")
     body = [int(char) for char in digits[:-1]]
