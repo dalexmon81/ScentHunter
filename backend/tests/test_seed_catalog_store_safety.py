@@ -205,5 +205,65 @@ class CanonicalGtinImportTests(unittest.TestCase):
                     self.assertIs(variant.is_gift_set, False)
                     self.assertIs(variant.is_mini, False)
                     self.assertEqual(session.scalar(select(func.count()).select_from(Offer)), 0)
+
+                    # Canonical identity alone is searchable, but cannot invent
+                    # an offer before a retailer observation has been validated.
+                    from app.search.catalog import search_catalog
+                    before = search_catalog(session, "Dior Sauvage EDP 100 ml")
+                    self.assertEqual(before["count"], 1)
+                    self.assertEqual(before["offer_count"], 0)
+
+                    from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+                    from app.services.connector_ingestion import persist_connector_record
+                    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+                    connector = NotinoAffiliateFeedConnector(
+                        feed_loader=lambda: b"", cache_ttl_seconds=0,
+                    )
+                    raw_record = {
+                        "external_product_id": "CJ-DIOR-SAU-EDP-100",
+                        "title": "Dior Sauvage Eau de Parfum 100 ml",
+                        "brand": "Dior",
+                        "gtin": "3348901368247",
+                        "size_ml": 100,
+                        "concentration": "Eau de Parfum",
+                        "price": "89.90",
+                        "currency": "EUR",
+                        "currency_explicit": True,
+                        "availability": "in_stock",
+                        "product_url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+                        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+                        "affiliate_url": None,
+                        "source": "authorized_cj_viv_xml_feed",
+                        "raw_xml": "<product/>",
+                    }
+                    matcher = NextEngineService.from_catalog_file(CATALOG)
+                    with session.begin():
+                        ingested = persist_connector_record(
+                            session,
+                            connector=connector,
+                            store_id=store.id,
+                            raw_record=raw_record,
+                            matcher=matcher,
+                        )
+                    self.assertEqual(ingested.status, "promoted")
+                    self.assertIsNotNone(ingested.offer_id)
+                    self.assertEqual(ingested.product_variant_id, variant.id)
+
+                    after = search_catalog(session, "Dior Sauvage EDP 100 ml")
+                    self.assertEqual(after["count"], 1)
+                    self.assertEqual(after["offer_count"], 1)
+                    public_offer = after["results"][0]["offers"][0]
+                    self.assertEqual(public_offer["store"], "Notino.fr")
+                    self.assertEqual(public_offer["price"], "89.90")
+                    self.assertEqual(public_offer["currency"], "EUR")
+                    self.assertEqual(public_offer["availability"], "in_stock")
+                    self.assertEqual(
+                        public_offer["product_url"],
+                        raw_record["product_url"],
+                    )
+                    self.assertEqual(
+                        session.scalar(select(func.count()).select_from(Offer)), 1,
+                    )
             finally:
                 engine.dispose()
