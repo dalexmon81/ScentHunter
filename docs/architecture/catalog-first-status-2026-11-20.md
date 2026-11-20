@@ -42,16 +42,22 @@ The canonical frontend path is therefore already the default in the current sour
 
 **Not proven:** a live Celery worker is deployed and consuming tasks against the same shared PostgreSQL catalog used by the API. The five downstream queue stages listed above are not operationally wired as separate handlers.
 
-## Deployment workflow blocker — do not dispatch
+## Deployment workflow retirement — pending review
 
-The current `.github/workflows/deploy-staging-worker.yml` is not aligned with the checked-in `main` deployment files:
+On the `main` baseline inspected for this document, `.github/workflows/deploy-staging-worker.yml` was misaligned with the checked-in deployment files: it referenced a missing branch (`phase5/fly-staging-workers-config`), a missing `fly.staging-workers.toml`, Alembic revision `0007_ingestion_dead_letters` (while `main` was at `0005_connector_quarantine`), and Fly app `scenthunter-staging-workers` rather than the SQLite pilot app.
 
-1. It checks out branch `phase5/fly-staging-workers-config`. That ref currently returns “No commit found”.
-2. It invokes `fly.staging-workers.toml`, which is not present on `main` and cannot be fetched from that missing ref.
-3. It expects Alembic revision `0007_ingestion_dead_letters` and tables such as `ingestion_artifacts` and `ingestion_dead_letters`; current `main` contains migrations only through `0005_connector_quarantine`.
-4. It targets Fly app `scenthunter-staging-workers`, while the checked-in `fly.staging.toml` targets `scenthunter-pilot-20261030` and the SQLite pilot image.
+PR [#811](https://github.com/dalexmon81/ScentHunter/pull/811) proposes removing that stale deployment workflow and recording the retirement rationale. It remains a proposed change until merged. Do not dispatch the old workflow. The separate `phase5-readonly-staging-audit.yml` is read-only and is not the deploy workflow. No Fly app, volume, database, or secret is deleted or changed by PR #811.
 
-This workflow must be reconciled with the current source, migrations, app identity, and worker image before anyone dispatches it. Do not use it as evidence that staging is ready. No deploy, secret change, resource provisioning, or database migration is authorized by this documentation update.
+## Proposed code and test changes under review
+
+The following are separate open pull requests and are not part of `main` until merged:
+
+- PR [#809](https://github.com/dalexmon81/ScentHunter/pull/809) aligns the Celery queue contracts with the currently registered `discover`, `fetch`, and `refresh` runtime stages, removing misleading downstream task contracts that have no handlers. It does not add independent downstream workers or change catalog data.
+- PR [#808](https://github.com/dalexmon81/ScentHunter/pull/808) adds a CI-only Redis-backed Celery worker smoke test. A real worker answered `ping` and executed a no-side-effect probe in GitHub Actions; this is not a Fly deployment.
+- PR [#810](https://github.com/dalexmon81/ScentHunter/pull/810) adds the canonical Dior Sauvage EDP 100 ml variant with validated GTIN `3348901368247`, plus a temporary-SQLite integration test covering seed, exact GTIN match, Notino-shaped connector parsing, offer promotion, catalog search before/after ingestion, and seed idempotency. The simulated €89.90 offer exists only in the disposable test database, not in the checked-in catalog.
+- PR [#811](https://github.com/dalexmon81/ScentHunter/pull/811) retires the misaligned staging deploy workflow as described above.
+
+These PRs were reported with passing required CI checks at the time of review, but they remain unmerged and must be rechecked before merge.
 
 ## Notino CJ feed publication
 
@@ -61,8 +67,8 @@ The PR remains open and unmerged. Its final operational gate remains a separatel
 
 ## Production readiness gaps
 
-1. Implement and test the missing independent normalization, matching, validation, quarantine, and reprocessing handlers, or formally simplify the design to the existing atomic fetch pipeline and remove unused queue contracts.
-2. Reconcile or replace the stale staging-worker deployment workflow and create a single source of truth for app, image, database, queue, and migration-head configuration.
+1. Decide whether to retain the existing atomic fetch pipeline or implement independently queued normalization/matching/validation stages. PR #809 proposes removing currently unused downstream queue contracts; review and merge it before treating that cleanup as part of `main`.
+2. Retire the stale staging-worker deploy workflow and establish one source of truth for app, image, database, queue, and migration-head configuration. PR #811 proposes the workflow retirement; it does not provision or deploy a replacement.
 3. Provision an isolated PostgreSQL target and dedicated Redis broker only after the deployment configuration is reviewed.
 4. Deploy one separate Celery worker against the same PostgreSQL catalog as the API; verify broker ping, task execution, durable ingestion-run lifecycle, retry/recovery, and shutdown.
 5. Run a bounded Notino discovery/fetch pilot with explicit operator approval. Verify evidence and counts at every stage before publishing.
