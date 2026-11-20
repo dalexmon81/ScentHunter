@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+      - work/phase0-stabilization-20261120
   workflow_dispatch:
 
 permissions:
