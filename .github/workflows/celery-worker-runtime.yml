@@ -1,0 +1,99 @@
+name: Celery worker runtime smoke
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/workers/**"
+      - "backend/tests/test_catalog_worker_queue.py"
+      - ".github/workflows/celery-worker-runtime.yml"
+      - "requirements.txt"
+      - "backend/requirements.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  celery-worker-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PYTHONPATH: backend
+      SCENTHUNTER_REDIS_URL: redis://localhost:6379/0
+      SCENTHUNTER_CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      SCENTHUNTER_QUEUE_BACKEND: redis
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+
+      - name: Compile worker package and run queue contracts
+        run: |
+          python -m compileall -q backend/app/workers
+          pytest -q backend/tests/test_catalog_worker_queue.py
+
+      - name: Start a real Celery worker and execute a broker task
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          celery -A app.workers.celery_app:celery_app worker \
+            --pool=solo \
+            --loglevel=INFO \
+            --queues=discovery,offers,normalization,matching,validation,refresh,dead_letter \
+            --hostname=ci-worker@%h > /tmp/scenthunter-celery-worker.log 2>&1 &
+          worker_pid=$!
+          cleanup() {
+            kill "$worker_pid" 2>/dev/null || true
+            wait "$worker_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          python - <<'PY'
+          import time
+          from app.workers.celery_app import celery_app
+
+          inspector = celery_app.control.inspect(timeout=1)
+          deadline = time.monotonic() + 30
+          while time.monotonic() < deadline:
+              try:
+                  if inspector.ping():
+                      break
+              except Exception:
+                  pass
+              time.sleep(1)
+          else:
+              raise SystemExit("Celery worker did not answer broker ping within 30 seconds")
+
+          result = celery_app.send_task(
+              "app.workers.tasks.worker_health_probe",
+              kwargs={"probe": "github-actions"},
+              queue="offers",
+          )
+          payload = result.get(timeout=20)
+          assert payload == {"ok": True, "probe": "github-actions"}, payload
+          print({"worker_ping": "pong", "task_execution": payload})
+          PY
+
+          cat /tmp/scenthunter-celery-worker.log
