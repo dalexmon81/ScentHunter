@@ -51,6 +51,14 @@ def reprocess_failed_offers(self, payload: dict):
     return _execute("reprocess", payload)
 
 
+@celery_app.task(name="app.workers.tasks.worker_health_probe")
+def worker_health_probe(probe: str):
+    """Broker-to-worker smoke probe; deliberately performs no catalog or network I/O."""
+    if not isinstance(probe, str) or not probe.strip():
+        raise ValueError("probe must be a non-empty string")
+    return {"ok": True, "probe": probe}
+
+
 # Importing the task module is the worker bootstrap boundary. Registration is
 # local-only: it constructs no DB engine, downloads no feed, and opens no Redis
 # connection until a task is actually executed.
