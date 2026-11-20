@@ -916,6 +916,14 @@ def _import_stream(source, started_at, deadline=None):
                     "ON offers(url, legacy_variant_key) "
                     "WHERE legacy_variant_key IS NOT NULL"
                 )
+                # Publication groups all staged variants by URL several times.
+                # Build this compact index before taking the production writer
+                # lock so GROUP BY can stream in URL order instead of creating
+                # large temporary sort structures inside the atomic transaction.
+                stage.execute(
+                    "CREATE INDEX idx_notino_offers_url_slug "
+                    "ON offers(url, slug)"
+                )
                 if stage.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                     raise FeedImportError("notino_feed_staging_integrity_error")
                 count = staged_count
