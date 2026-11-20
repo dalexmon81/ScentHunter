@@ -125,7 +125,7 @@ jobs:
             flyctl machine exec "$machine_id" "sh -c \"printf '%s' '$chunk' >> $remote_b64\"" --app "$FLY_APP" --timeout 60
           done
 
-          launch_command="sh -c 'base64 -d $remote_b64 > $remote_py && /app/.venv/bin/python -m py_compile $remote_py && rm -f $remote_log $remote_done $remote_failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python $remote_py; rc=\$?; if test \$rc -eq 0; then touch $remote_done; else touch $remote_failed; fi\" > $remote_log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
+          launch_command="sh -c 'base64 -d $remote_b64 > $remote_py && /app/.venv/bin/python -m py_compile $remote_py && rm -f $remote_log $remote_done $remote_failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python $remote_py; rc=\\\$?; if test \\\$rc -eq 0; then touch $remote_done; else touch $remote_failed; fi\" > $remote_log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
           flyctl machine exec "$machine_id" "$launch_command" --app "$FLY_APP" --timeout 60
 
           for attempt in $(seq 1 240); do
