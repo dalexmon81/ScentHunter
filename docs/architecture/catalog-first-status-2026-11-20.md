@@ -1,57 +1,74 @@
-# ScentHunter catalog-first architecture status — 2026-11-20
+# ScentHunter catalog-first status — verified 2026-11-20
 
-## Executive decision
+## Executive status
 
-The catalog-first foundation is implemented in the reconciled architecture branch and is under CI verification in PR #799. It is **not yet a production cutover**. Keep the legacy search path and production data intact until the operational gates below are met.
+The catalog-first application path is present on `main`. This is not yet a production cutover of the ingestion architecture. The remaining work is operational integration and proof: PostgreSQL target, separately deployed Celery worker and Redis, verified data migration, production backup/restore, and a controlled rollout.
 
-## Implemented in the architecture foundation
+This document supersedes the older status statements that described catalog search as opt-in and the frontend default as legacy. Those statements no longer match `main`.
 
-- Canonical SQLAlchemy catalog with Alembic revisions through `0005_connector_quarantine`.
-- Shared normalization that preserves concentration, size and sellable-format distinctions, including unknown versus explicitly false flags.
-- Database-native canonical variant matching with auditable match outcomes.
-- Shared StoreConnector contract and adapters for the authorized Notino CJ feed plus supported legacy scrapers (Deloox, Sabina, Easycosmetic and Parfumzentrum); Bplatz persistence remains separately guarded.
-- Staging, validation, promotion, price-history persistence, connector health and explicit quarantine/reactivation.
-- Persistent SQLite queue and single-process worker for the isolated single-machine pilot. Celery/Redis queue configuration is present for a later multi-worker deployment; Redis is not the pilot's active queue.
-- Read-only catalog API and browser demo. Search handlers query the internal catalog and do not initiate retailer scraping.
-- PostgreSQL schema/import compatibility workflows and regression tests.
+## Verified on `main`
 
-## Last operational pilot evidence
+### Catalog database and migrations
 
-The latest recorded isolated-pilot verification (2026-11-19) reported:
+- `backend/app/db.py` supports SQLite and PostgreSQL through SQLAlchemy and psycopg 3.
+- SQLite remains the default unless an explicit database URL is configured. `SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL` can make a PostgreSQL URL mandatory.
+- Alembic migrations currently present on `main` are `0001` through `0005_connector_quarantine`; the current checked-in head is `0005_connector_quarantine`.
+- `.github/workflows/phase2-postgresql.yml` defines a disposable PostgreSQL 16 CI service, repeatable Alembic upgrade, complete checked-in catalog seed/import, checksums, idempotent repeat import, schema/constraint tests, and catalog search regressions.
+- `backend/scripts/migrate_canonical_sqlite_to_postgres.py` is dry-run-first, opens the SQLite source read-only, requires an explicit PostgreSQL migration target, checks the schema/revision, and supports an explicitly confirmed apply.
 
-- 1,403 canonical products and 539 variants.
-- 170 published offers: 149 Notino.fr and 21 Bplatz.
-- 2 active offers that did not pass the publication gate.
-- 36,095 Notino CJ feed records scanned in the ingestion smoke run.
+**Not proven by these code checks:** a production PostgreSQL database has been provisioned, populated, backed up, or restored successfully. Do not point the importer at production without a separate approved runbook and restore rehearsal.
 
-The 36,095 figure is a raw feed scan count, **not** a count of unique, valid, canonicalized or purchasable offers. The 149 Notino offers are the published subset, not the full Notino inventory. A full-feed breakdown by parser validity, deduplication, currency evidence, canonical matching and publication outcome remains a separate measurement task.
+### Frontend and search
 
-## Explicitly not complete
+- `frontend/index.html` uses `/api/catalog/search` by default.
+- The old `/search-start` retailer-search path is retained only as an explicit diagnostic opt-out with `?catalog_first=0`.
+- `backend/app/api/catalog_search.py` exposes catalog search and status endpoints.
+- `backend/app/search/catalog.py` documents and implements a database-only search: it does not contact retailers or mutate catalog data during a user search.
+- Offer publication filters include active store/offer state, promoted raw evidence, matching audit, in-stock state, positive price, explicit EUR provenance, valid retailer-domain URL, and a 24-hour freshness window.
 
-1. **Frontend cutover:** the default frontend still uses the legacy `/search-start` path. The canonical path is opt-in. Do not change the default in this PR.
-2. **Production database:** the isolated pilot uses persistent SQLite. PostgreSQL compatibility is tested in CI, but a production PostgreSQL migration and verified restore are not evidenced.
-3. **Retailer coverage:** the pilot has Notino and Bplatz provisioned. The four legacy adapters are available but require explicit store provisioning and operator-approved query seeds. The remaining scraper packages are not automatically considered covered.
-4. **Search and ranking:** catalog search is database-backed and conservative; full-text search infrastructure and the planned multi-factor offer ranking are not complete.
-5. **Operations:** production backup/restore rehearsal, canary rollout, rollback proof, alerting and the 5/20/50/100% traffic migration are pending.
-6. **Notino coverage measurement:** the detailed full-feed audit is not a release gate for the architecture foundation and must not block the core PR indefinitely. It must be completed as a separate read-only operational task before making claims about total Notino coverage.
+The canonical frontend path is therefore already the default in the current source. This does not by itself prove that the production deployment is serving the same commit or that its database contains enough valid offers.
 
-## Merge gate for PR #799
+### Worker architecture
 
-- Required regression workflows on the reconciled head complete successfully.
-- Alembic upgrade is repeatable and the canonical catalog import is idempotent on disposable PostgreSQL.
-- Connector, worker, matching, normalization, parser and hydration regressions pass.
-- The PR diff is reviewed; production deployment and frontend default cutover remain disabled.
+- The single-machine pilot uses a durable SQLite queue and `backend/app/workers/sqlite_worker.py`.
+- `Dockerfile.pilot` starts that SQLite worker alongside the API in the pilot machine.
+- `fly.staging.toml` targets the isolated app `scenthunter-pilot-20261030`, uses a persistent SQLite volume, and selects the SQLite queue backend.
+- Celery task definitions, queue routing, handler registration, and Redis configuration exist in `backend/app/workers/`.
+- The worker README explicitly gates a multi-machine Celery deployment on shared PostgreSQL, a dedicated Redis broker, a separate worker deployment, and runtime verification.
 
-## Next milestone after the foundation
+**Not proven:** a live Celery worker is deployed and consuming tasks against the same shared PostgreSQL catalog used by the API.
 
-1. Finish the isolated Notino full-feed coverage report with aggregate counts and rejection reasons.
-2. Provision and measure the remaining retailers one at a time, without weakening publication validation.
-3. Complete PostgreSQL production migration only after backup and restore are rehearsed.
-4. Run the canonical frontend in shadow/canary mode, prove rollback, then decide on the default cutover.
+## Deployment workflow blocker — do not dispatch
+
+The current `.github/workflows/deploy-staging-worker.yml` is not aligned with the checked-in `main` deployment files:
+
+1. It checks out branch `phase5/fly-staging-workers-config`. That ref currently returns “No commit found”.
+2. It invokes `fly.staging-workers.toml`, which is not present on `main` and cannot be fetched from that missing ref.
+3. It expects Alembic revision `0007_ingestion_dead_letters` and tables such as `ingestion_artifacts` and `ingestion_dead_letters`; current `main` contains migrations only through `0005_connector_quarantine`.
+4. It targets Fly app `scenthunter-staging-workers`, while the checked-in `fly.staging.toml` targets `scenthunter-pilot-20261030` and the SQLite pilot image.
+
+This workflow must be reconciled with the current source, migrations, app identity, and worker image before anyone dispatches it. Do not use it as evidence that staging is ready. No deploy, secret change, resource provisioning, or database migration is authorized by this documentation update.
+
+## Notino CJ feed publication
+
+PR [#806](https://github.com/dalexmon81/ScentHunter/pull/806) contains a narrow staging-index optimization for the slow URL-grouping phase of the Notino feed publisher. Its parser and regression checks have passed in the PR checks inspected on 2026-11-20. The live feed parsing jobs in the latest inspected run were skipped.
+
+The PR remains open and unmerged. Its final operational gate remains a separately authorized full-feed import, followed by checks of published variants, URLs, stock, currency provenance, and catalog search visibility. Raw feed rows, parsed offers, matched variants, and published offers must be reported separately.
+
+## Production readiness gaps
+
+1. Reconcile or replace the stale staging-worker deployment workflow and create a single source of truth for app, image, database, queue, and migration-head configuration.
+2. Provision an isolated PostgreSQL target and dedicated Redis broker only after the deployment configuration is reviewed.
+3. Deploy one separate Celery worker against the same PostgreSQL catalog as the API; verify broker ping, task execution, durable ingestion-run lifecycle, retry/recovery, and shutdown.
+4. Run a bounded Notino discovery/fetch pilot with explicit operator approval. Verify evidence and counts at every stage before publishing.
+5. Rehearse PostgreSQL backup and restore, then test migration rollback/recovery on disposable infrastructure.
+6. Verify the deployed frontend commit and API/database identity. Run shadow/canary traffic and prove rollback before any production cutover.
+7. Expand retailer coverage one store at a time with explicit provisioning and approved discovery seeds.
 
 ## Safety invariants
 
-- Do not delete `product_catalog.json`, `family_registry.json`, legacy scrapers or the monolithic legacy runtime as part of this foundation merge.
-- Do not publish offers with guessed identity, stock, URL, price or currency.
-- Do not run broad retailer scraping inside user-search requests.
-- Do not treat raw feed rows, deduplicated products, matched variants and published offers as interchangeable counts.
+- Do not delete `product_catalog.json`, `family_registry.json`, legacy scrapers, or the legacy runtime as part of this work.
+- Do not perform broad retailer scraping inside a user search request.
+- Do not publish guessed identity, stock, URL, price, or currency.
+- Do not launch the stale staging workflow or migrate a production database until the deployment mismatch and recovery gates are resolved.
+- Do not claim production readiness from unit tests, a successful build, or a CI-only PostgreSQL service.
