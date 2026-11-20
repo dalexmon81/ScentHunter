@@ -101,6 +101,14 @@ jobs:
               except (OSError, ValueError, IndexError):
                   pass
           PY
+          echo "=== NOTINO FULL FEED AUDIT PROCESS ==="
+          ps -eo pid,ppid,stat,etime,rss,args | grep -E '[n]otino_.*feed_coverage_audit|[n]otino_feed_coverage_audit' || true
+          ls -lh /tmp/notino_*_feed_coverage_audit.* 2>/dev/null || true
+          for audit_log in /tmp/notino_*_feed_coverage_audit.log; do
+            [ -f "$audit_log" ] || continue
+            echo "AUDIT_LOG=$audit_log"
+            tail -n 60 "$audit_log" || true
+          done
           echo "=== SEED LOG ==="
           tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
           /app/.venv/bin/python - <<'PY'
