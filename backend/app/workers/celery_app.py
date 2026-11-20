@@ -25,6 +25,7 @@ TASK_ROUTES = {
     "app.workers.tasks.refresh_price_and_stock": {"queue": "refresh"},
     "app.workers.tasks.quarantine_failed_connector": {"queue": "dead_letter"},
     "app.workers.tasks.reprocess_failed_offers": {"queue": "dead_letter"},
+    "app.workers.tasks.worker_health_probe": {"queue": "offers"},
 }
 celery_app = Celery("scenthunter_catalog", broker=BROKER_URL, backend=RESULT_BACKEND, include=["app.workers.tasks"])
 celery_app.conf.update(
