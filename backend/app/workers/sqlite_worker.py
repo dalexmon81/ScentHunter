@@ -31,6 +31,11 @@ def _stop(_signum, _frame):
     _STOP = True
 
 
+def _schedule_due(now: float, last_scheduled: float, interval_seconds: float) -> bool:
+    """Run a periodic task immediately at process start, then at its interval."""
+    return last_scheduled <= 0 or now - last_scheduled >= interval_seconds
+
+
 def _schedule_daily_notino_discovery(session_factory) -> None:
     discovery_enabled = os.environ.get(
         "SCENTHUNTER_NOTINO_DAILY_DISCOVERY_ENABLED", "1"
@@ -106,8 +111,7 @@ def _schedule_active_offer_refresh(session_factory) -> None:
                 for store_id, external_product_id in rows:
                     enqueue_offer_refresh(store_id, external_product_id)
                     queued += 1
-        if queued:
-            log.info("Queued active retailer offer refresh candidates=%s", queued)
+        log.info("Active retailer offer refresh candidates queued=%s", queued)
     except Exception:
         log.exception("Unable to schedule active retailer offer refresh")
 
@@ -132,11 +136,11 @@ def main() -> None:
             if recovered:
                 log.warning("Recovered stale ingestion jobs count=%s", recovered)
             last_recovery = now
-        if now - last_schedule >= 60:
+        if _schedule_due(now, last_schedule, 60):
             _schedule_daily_notino_discovery(session_factory)
             _schedule_daily_legacy_discovery(session_factory)
             last_schedule = now
-        if now - last_refresh_schedule >= 1800:
+        if _schedule_due(now, last_refresh_schedule, 1800):
             _schedule_active_offer_refresh(session_factory)
             last_refresh_schedule = now
         job = None
