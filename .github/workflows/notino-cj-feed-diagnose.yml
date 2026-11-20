@@ -1,6 +1,9 @@
 name: Notino CJ Feed Schema Diagnostic
 
 on:
+  push:
+    branches:
+      - audit/notino-feed-shape-20261120
   workflow_dispatch:
 
 permissions:
@@ -114,4 +117,4 @@ jobs:
           )
           remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
           remote_command="/bin/sh -lc 'export NOTINO_PARSER_SOURCE_B64=\"$parser_source_b64\"; printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
-          timeout 570s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          timeout 570s flyctl ssh console --app scenthunter-pilot-20261030 --select=false -C "$remote_command"
