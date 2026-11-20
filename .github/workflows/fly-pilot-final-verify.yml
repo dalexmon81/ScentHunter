@@ -45,23 +45,6 @@ jobs:
           echo "PILOT_MACHINE_ID=$machine_id" >> "$GITHUB_ENV"
           echo "PILOT_MACHINE_STATE=started"
 
-      - name: Release stale pilot exec lease with a safe isolated restart
-        shell: bash
-        run: |
-          set -euo pipefail
-          flyctl machine restart "$PILOT_MACHINE_ID" --app "$FLY_APP"
-          ready=0
-          for attempt in $(seq 1 24); do
-            state="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); rows=[m for m in machines if m.get("id") == "'"$PILOT_MACHINE_ID"'"]; print(rows[0].get("state","unknown") if rows else "missing")')"
-            echo "PILOT_RESTART_STATE=$state"
-            if [ "$state" = "started" ]; then
-              ready=1
-              break
-            fi
-            sleep 5
-          done
-          test "$ready" -eq 1 || { echo "Pilot did not return to started state after restart." >&2; exit 1; }
-
       - name: Launch bounded detached catalog diagnostics and evidence backfill
         shell: bash
         run: |
@@ -132,19 +115,29 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json
+          import time
           import urllib.parse
           import urllib.request
 
           base = "https://scenthunter-pilot-20261030.fly.dev"
           def get(path):
-              req = urllib.request.Request(
-                  base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Final-Pilot-Verification/1.0"},
-              )
-              with urllib.request.urlopen(req, timeout=30) as response:
-                  if response.status != 200:
-                      raise RuntimeError(f"{path} returned HTTP {response.status}")
-                  return json.loads(response.read().decode("utf-8"))
+              last_error = None
+              for attempt in range(1, 9):
+                  try:
+                      req = urllib.request.Request(
+                          base + path,
+                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-Final-Pilot-Verification/1.0"},
+                      )
+                      with urllib.request.urlopen(req, timeout=12) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{path} returned HTTP {response.status}")
+                          return json.loads(response.read().decode("utf-8"))
+                  except Exception as exc:
+                      last_error = exc
+                      print(f"RETRY {attempt}/8 {path}: {type(exc).__name__}: {exc}", flush=True)
+                      if attempt < 8:
+                          time.sleep(5)
+              raise RuntimeError(f"{path} failed after retries: {last_error}")
 
           get("/health")
           status = get("/api/catalog/status")
