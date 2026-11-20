@@ -99,11 +99,11 @@ jobs:
           done
           [ "$state" = "started" ] || { echo "Pilot machine did not start." >&2; exit 1; }
           encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
-          cat > /tmp/notino_audit_launch.sh <<'LAUNCH'
+          cat > /tmp/notino_audit_launch.sh <<LAUNCH
           #!/bin/sh
           echo "$encoded_script" | base64 -d > /tmp/notino_feed_coverage_audit.py
           rm -f /tmp/notino_feed_coverage_audit.log /tmp/notino_audit.done /tmp/notino_audit.failed
-          nohup sh -c 'cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py; status=$?; if [ "$status" -eq 0 ]; then touch /tmp/notino_audit.done; else touch /tmp/notino_audit.failed; fi' > /tmp/notino_feed_coverage_audit.log 2>&1 < /dev/null &
+          nohup sh -c 'cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py; status=\$?; if [ "\$status" -eq 0 ]; then touch /tmp/notino_audit.done; else touch /tmp/notino_audit.failed; fi' > /tmp/notino_feed_coverage_audit.log 2>&1 < /dev/null &
           echo NOTINO_AUDIT_STARTED
           LAUNCH
           launch_encoded="$(base64 -w0 /tmp/notino_audit_launch.sh)"
