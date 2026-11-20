@@ -1,0 +1,6 @@
+Diagnostic trigger for the isolated pilot workflow. No production configuration is changed.
+
+After catalog-first search changes pass CI, redeploy the isolated pilot to verify that a validated Notino CJ attribution URL is returned separately from the direct retailer product URL.
+
+
+2026-11-19: catalog search API regression now asserts that the returned offer URL is the validated CJ click URL and that product_url remains the direct Notino product URL. Redeploy the isolated pilot after CI passes to exercise this contract against the live imported offer.

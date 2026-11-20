@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import unittest
 from pathlib import Path
 
 
@@ -41,6 +42,29 @@ def test_bplatz_activation_requires_explicit_opt_in():
     assert report["database_written"] is False
     assert report["source_modified"] is False
 
+
+
+def test_notino_activation_requires_explicit_opt_in():
+    report = run_seed("--seed-notino-store")
+    assert report["status"] == "validated"
+    assert [store["slug"] for store in report["stores_to_seed"]] == ["notino-fr"]
+    assert report["database_written"] is False
+    assert report["source_modified"] is False
+
+
+class LegacyRetailerSeedOptInTests(unittest.TestCase):
+    def test_legacy_retailer_activation_requires_explicit_opt_in(self):
+        report = run_seed(
+            "--seed-deloox-store", "--seed-sabina-store",
+            "--seed-easycosmetic-store", "--seed-parfumzentrum-store",
+        )
+        self.assertEqual(report["status"], "validated")
+        self.assertEqual(
+            [store["slug"] for store in report["stores_to_seed"]],
+            ["deloox-be", "sabina-es", "easycosmetic-de", "parfumzentrum-de"],
+        )
+        self.assertFalse(report["database_written"])
+        self.assertFalse(report["source_modified"])
 
 
 def test_seed_reuses_existing_brand_when_slug_matches_but_normalized_name_differs():

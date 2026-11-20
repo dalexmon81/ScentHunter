@@ -7,6 +7,7 @@ on:
     paths:
       - backend/catalog_engine.py
       - backend/app/services/bplatz_phase2_adapter.py
+      - backend/app/services/connector_ingestion.py
       - backend/app/services/ingestion_persistence.py
       - backend/app/models/**
       - backend/app/db.py

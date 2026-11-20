@@ -1,0 +1,77 @@
+name: Apply reviewed Bplatz GTIN offers to isolated pilot
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - .github/workflows/bplatz-gtin-backfill-apply.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bplatz-gtin-backfill-apply
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate isolated pilot access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          flyctl status --app "$FLY_APP"
+
+      - name: Apply only the 13 dry-run verified Bplatz GTIN offers
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); started=[m for m in rows if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started isolated pilot machine." >&2; exit 1; }
+
+          dry_run_output="$(flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/backfill_bplatz_verified_gtin.py'" --app "$FLY_APP" --timeout 120)"
+          printf '%s\n' "$dry_run_output"
+          summary="$(printf '%s\n' "$dry_run_output" | sed -n 's/^BPLATZ_VERIFIED_GTIN_BACKFILL=//p' | tail -n 1)"
+          test -n "$summary" || { echo "Missing Bplatz dry-run summary; refusing to write." >&2; exit 1; }
+          python - "$summary" <<'PY'
+          import json, sys
+          data = json.loads(sys.argv[1])
+          expected = {
+              "mode": "dry_run",
+              "database_written": False,
+              "verified_gtin_candidates": 14,
+              "unique_gtin_candidates": 14,
+              "in_stock_candidates": 14,
+              "out_of_stock_candidates": 0,
+          }
+          for key, value in expected.items():
+              if data.get(key) != value:
+                  raise SystemExit(f"Refusing apply: {key}={data.get(key)!r}, expected {value!r}")
+          reasons = data.get("skipped_reasons", {})
+          if reasons.get("missing_gtin") != 5 or reasons.get("no_exact_canonical_name_and_brand_match") != 48:
+              raise SystemExit(f"Refusing apply: unexpected skipped reasons {reasons!r}")
+          if data.get("duplicate_rows_suppressed") != 37:
+              raise SystemExit(f"Refusing apply: duplicate count changed: {data.get('duplicate_rows_suppressed')!r}")
+          print("BPLATZ_APPLY_GUARD=PASS")
+          PY
+
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/backfill_bplatz_verified_gtin.py --apply'" --app "$FLY_APP" --timeout 120
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 120
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 120

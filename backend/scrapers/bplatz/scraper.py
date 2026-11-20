@@ -366,6 +366,11 @@ def parse_product_html(html, final_url, query):
 
     size = size_ml(name, soup.get_text(" ", strip=True))
     offers = offer_list(data)
+    explicit_currency = next(
+        (clean(offer.get("priceCurrency")) for offer in offers
+         if offer.get("priceCurrency") not in (None, "")),
+        None,
+    )
     price = None
     availability = None
     for offer in offers:
@@ -412,7 +417,7 @@ def parse_product_html(html, final_url, query):
         "source": {"source_name": name, "source_brand": brand or None, "url": final_url, "image": image},
         "identity": {"gtin": gtin, "mpn": None, "sku": sku, "store_product_id": {"value": final_url, "source": "product_url"}, "store_variant_id": None},
         "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": concentration(name), "source": "product_title"} if concentration(name) else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": price, "currency": "EUR", "availability": availability},
+        "offer": {"price": price, "currency": explicit_currency or "EUR", "currency_explicit": bool(explicit_currency), "availability": availability},
         "provenance": {"source_page": final_url, "product_source": "shopify_product_page"},
         "raw_data": {"jsonld": data},
         "name": name,
@@ -421,6 +426,8 @@ def parse_product_html(html, final_url, query):
         "gtin": gtin,
         "price": f"{price:.2f} €" if price is not None else None,
         "price_num": price,
+        "currency": explicit_currency or "EUR",
+        "currency_explicit": bool(explicit_currency),
         "url": final_url,
         "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
         "availability": availability,
@@ -429,6 +436,37 @@ def parse_product_html(html, final_url, query):
         "concentration": concentration(name),
         "image": image,
     }
+
+
+
+def extract_product_page(session, url, query, html=None):
+    """Expose Bplatz's authoritative parser to catalog hydration.
+
+    Reuse the already-fetched HTML when supplied. The page's own H1 is used
+    as the parser query because hydration is already bound to this exact URL;
+    this avoids treating URL slug wording as product identity.
+    """
+    final_url = url
+    if html is None:
+        try:
+            response = session.get(
+                url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True,
+            )
+            if response.status_code >= 400:
+                response.close()
+                return None
+            html = response.text
+            final_url = response.url or url
+            response.close()
+        except requests.RequestException:
+            return None
+    soup = BeautifulSoup(html, "html.parser")
+    product = jsonld_product(soup)
+    h1 = soup.find("h1")
+    page_title = clean((product or {}).get("name") or (h1.get_text(" ", strip=True) if h1 else ""))
+    if not page_title:
+        return None
+    return parse_product_html(html, final_url, page_title)
 
 
 def product_from_page(session, url, query):

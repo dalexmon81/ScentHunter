@@ -1210,6 +1210,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "image": image,
         "size_ml": size_ml,
         "url": url,
+        # Keep structured source evidence so catalog ingestion can distinguish
+        # an explicit ISO currency from the parser's EUR fallback.
+        "raw_data": {"jsonld_product": product_json} if product_json else {},
     }
 
 

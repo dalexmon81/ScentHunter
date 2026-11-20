@@ -1,0 +1,41 @@
+name: Bplatz generic hydration size regression
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - backend/catalog_engine.py
+      - backend/scripts/seed_catalog.py
+      - backend/scenthunter_next_engine/**
+      - tests/test_catalog_first_search.py
+      - .github/workflows/bplatz-size-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bplatz-size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/catalog-first-architecture
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Validate reviewed supplemental catalog seed (dry-run)
+        env:
+          PYTHONPATH: backend
+        run: python backend/scripts/seed_catalog.py --catalog backend/product_catalog.json
+      - name: Verify Bplatz title size and concentration extraction
+        env:
+          PYTHONPATH: backend
+        run: >-
+          python -m pytest -q
+          tests/test_catalog_first_search.py::test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration
+          tests/test_catalog_first_search.py::test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency
+          tests/test_catalog_first_search.py::test_reviewed_bplatz_gtin_supplement_resolves_only_exact_verified_variants

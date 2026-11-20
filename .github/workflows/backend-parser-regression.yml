@@ -15,6 +15,13 @@ on:
       - fix/catalog-hydration-slug-normalization
       - fix/notino-authorized-feed-import
       - fix/notino-cj-memory
+  workflow_dispatch:
+    inputs:
+      run_live_notino_feed:
+        description: Run the two expensive, read-only full-feed parser checks against the isolated pilot
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   parser-regression:
@@ -24,7 +31,7 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -54,6 +61,14 @@ jobs:
           backend/tests/test_bplatz_live_offer_check.py
           tests/test_bplatz_persistence_service.py
 
+      - name: Probe public Notino storefront fallback (read-only, 5 products)
+        id: notino-public-smoke
+        continue-on-error: true
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/notino_public_fallback_smoke.py
+
       - name: Verify opt-in Notino persistence profiling including SQLite commit
         env:
           PYTHONPATH: backend
@@ -72,7 +87,7 @@ jobs:
         run: python backend/scripts/check_bplatz_liquid_brun_live.py
 
   notino-live-parser-dry-run:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_notino_feed
     name: Parse live CJ feed with PR parser (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -80,18 +95,20 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Verify Fly SSH command execution
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: scenthunter-pilot-20261030
         timeout-minutes: 2
         run: |
           set -euo pipefail
-          timeout 90s flyctl ssh console --app scenthunter --select=false -C "printf 'NOTINO_FLY_SSH_PREFLIGHT=PASS\\n'; /app/.venv/bin/python --version"
+          timeout 90s flyctl ssh console --app "$FLY_APP" --select=false -C "printf 'NOTINO_FLY_SSH_PREFLIGHT=PASS\\n'; /app/.venv/bin/python --version"
       - name: Stream live CJ feed through PR parser without catalog writes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: scenthunter-pilot-20261030
         timeout-minutes: 32
         shell: bash
         run: |
@@ -259,10 +276,10 @@ jobs:
           )
           remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
           remote_command="/bin/sh -lc 'export NOTINO_PARSER_SOURCE_B64=\"$parser_source_b64\"; printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
-          timeout 1830s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          timeout 1830s flyctl ssh console --app "$FLY_APP" --select=false -C "$remote_command"
 
   notino-runner-parser-dry-run:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_notino_feed
     name: Parse live CJ feed on runner (read-only)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -270,7 +287,7 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -280,6 +297,7 @@ jobs:
       - name: Download via Fly and validate with temporary runner staging
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SCENTHUNTER_NOTINO_FEED_APP: scenthunter-pilot-20261030
           PYTHONPATH: backend
           PYTHONDONTWRITEBYTECODE: "1"
         run: python backend/scripts/notino_cj_runner_dry_run.py

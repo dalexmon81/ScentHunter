@@ -1,0 +1,32 @@
+# Isolated ScentHunter pilot configuration.
+# Never use this file for production; it targets a dedicated app and volume.
+app = "scenthunter-pilot-20261030"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile.pilot"
+
+[env]
+  SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
+  SCENTHUNTER_QUEUE_BACKEND = "sqlite"
+  SCENTHUNTER_SQLITE_QUEUE_DB = "/data/catalog/ingestion_queue.sqlite3"
+  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED = "0"
+  BPLATZ_PHASE2_PERSISTENCE = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[mounts]
+  source = "scenthunter_pilot_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -9,6 +9,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Brand, Fragrance, IngestionRaw, MatchAudit, Offer, ProductVariant, Store
+from scrapers.notino.affiliate_feed import validated_cj_offer_url
 
 
 def _utc(value: datetime) -> datetime:
@@ -28,6 +29,16 @@ def _offer_url_valid(url: str, domain: str | None) -> bool:
         )
     except ValueError:
         return False
+
+
+def _display_offer_url(offer: Offer, store: Store, raw: IngestionRaw) -> str:
+    """Use CJ attribution only when its validated target is this exact Notino item."""
+    if store.slug == "notino":
+        affiliate_url = raw.raw_payload.get("affiliate_url")
+        validated = validated_cj_offer_url(affiliate_url, offer.url) if affiliate_url else None
+        if validated:
+            return validated
+    return offer.url
 
 
 def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | None = None):
@@ -90,11 +101,12 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
                 func.lower(ProductVariant.concentration).contains(concentration, autoescape=True),
                 func.lower(ProductVariant.concentration) == token,
             ))
-        elif token in {"tester", "refill", "gift", "set"}:
+        elif token in {"tester", "refill", "gift", "set", "mini", "miniature"}:
             flag = (
                 ProductVariant.is_tester if token == "tester" else
                 ProductVariant.is_refill if token == "refill" else
-                ProductVariant.is_gift_set
+                ProductVariant.is_gift_set if token in {"gift", "set"} else
+                ProductVariant.is_mini
             )
             statement = statement.where(flag.is_(True))
         else:
@@ -105,10 +117,11 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     variant_ids = [variant.id for variant, _, _ in rows]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
     offers_by_variant: dict = {}
-    for offer, store, _raw in _eligible_offer_rows(session, now, variant_ids):
+    for offer, store, raw in _eligible_offer_rows(session, now, variant_ids):
         offers_by_variant.setdefault(offer.product_variant_id, []).append({
             "store": store.name,
-            "url": offer.url,
+            "url": _display_offer_url(offer, store, raw),
+            "product_url": offer.url,
             "price": str(offer.price),
             "currency": offer.currency,
             "availability": offer.availability,
@@ -125,6 +138,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             "Tester" if variant.is_tester else None,
             "Refill" if variant.is_refill else None,
             "Gift set" if variant.is_gift_set else None,
+            "Mini" if variant.is_mini else None,
         )))
         results.append({
             "catalog_id": str(variant.id),

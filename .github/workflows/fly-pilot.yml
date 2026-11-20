@@ -1,4 +1,5 @@
 name: Deploy isolated Offer Engine pilot
+# Isolated pilot recovery deploy: preserve offer currency evidence.
 
 on:
   push:
@@ -213,6 +214,21 @@ jobs:
             sleep 5
           done
 
+      - name: Dry-run reviewed Bplatz GTIN backfill (no writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine for Bplatz GTIN dry-run." >&2; exit 1; }
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          cd /app/backend
+          /app/.venv/bin/python scripts/backfill_bplatz_verified_gtin.py
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 120
+
       - name: Verify durable SQLite worker is running on the pilot machine
         shell: bash
         run: |
@@ -361,12 +377,38 @@ jobs:
             sleep 10
           done
 
-      - name: Verify API.SH Notino provider inside the isolated Fly app
-        if: ${{ env.APISH_API_KEY != '' }}
+      - name: Report retailer ingestion coverage (read-only)
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/smoke_apish_notino.py'"
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for coverage report." >&2; exit 1; }
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 60
+
+      - name: Diagnose why active offers fail the public publication gate (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for publication gate diagnostics." >&2; exit 1; }
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 60
+
+      - name: Backfill only independently verified Notino EUR currency evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine found for Notino evidence backfill." >&2; exit 1; }
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/backfill_notino_currency_evidence.py --apply'" --app "$FLY_APP" --timeout 60
+          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 60
+
+      - name: Verify API.SH Notino provider inside the isolated Fly app
+        if: ${{ env.APISH_API_KEY != '' }}
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s flyctl ssh console --app "$FLY_APP" --command "sh -lc 'cd /app/backend && timeout 90s /app/.venv/bin/python scripts/smoke_apish_notino.py'"
 
       - name: Print pilot URL
         if: success()

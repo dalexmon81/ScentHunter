@@ -61,6 +61,52 @@ def _list_of_mappings(value: Any) -> list[Mapping[str, Any]]:
     return [item for item in value if isinstance(item, Mapping)]
 
 
+def merge_supplemental_catalog(
+    raw: Mapping[str, Any], source: str | Path,
+) -> dict[str, Any]:
+    """Merge reviewed supplemental identities without modifying the base catalog.
+
+    Supplemental records are explicit canonical products/variants, not retailer
+    offers. The base product_catalog.json remains untouched and is still the
+    primary catalog source.
+    """
+    merged = dict(raw)
+    source_path = Path(source).expanduser().resolve()
+    supplement_path = (
+        source_path.parent
+        / "scenthunter_next_engine"
+        / "bplatz_verified_catalog_additions.json"
+    )
+    if not supplement_path.is_file():
+        return merged
+    try:
+        with supplement_path.open("r", encoding="utf-8") as handle:
+            supplement = json.load(handle)
+    except OSError as exc:
+        raise CatalogFormatError(
+            f"Cannot read supplemental canonical catalog: {supplement_path}"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise CatalogFormatError(
+            f"Supplemental canonical catalog is not valid JSON: {supplement_path}"
+        ) from exc
+    if not isinstance(supplement, Mapping) or supplement.get("schema_version") != 1:
+        raise CatalogFormatError("Supplemental canonical catalog has an unsupported schema")
+    supplemental_products = supplement.get("products")
+    supplemental_variants = supplement.get("variants")
+    if not isinstance(supplemental_products, list) or not isinstance(supplemental_variants, list):
+        raise CatalogFormatError("Supplemental canonical catalog requires products[] and variants[]")
+    merged["products"] = [
+        *_list_of_mappings(merged.get("products")),
+        *_list_of_mappings(supplemental_products),
+    ]
+    merged["variants"] = [
+        *_list_of_mappings(merged.get("variants")),
+        *_list_of_mappings(supplemental_variants),
+    ]
+    return merged
+
+
 class CatalogRepository:
     """Immutable in-memory view of canonical products and explicit variants."""
 
@@ -104,6 +150,7 @@ class CatalogRepository:
 
         if not isinstance(raw, Mapping):
             raise CatalogFormatError("Catalog root must be a JSON object")
+        raw = merge_supplemental_catalog(raw, source)
 
         product_records = _list_of_mappings(raw.get("products"))
         variant_records = _list_of_mappings(raw.get("variants"))

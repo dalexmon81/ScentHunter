@@ -1,0 +1,291 @@
+# Re-run the Bplatz pending-row probe after the isolated parser deployment.
+# Inspect pilot state after the read-only cross-retailer GTIN probe attempt.
+name: Diagnose isolated ScentHunter pilot
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-pilot-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+      PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate pilot access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          flyctl status --app "$FLY_APP"
+
+      # Read-only inspection while the deploy pipeline is running.
+      - name: Inspect machine, logs and SQLite catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl logs --app "$FLY_APP" --no-tail || true
+          machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          printf '%s\\n' "$machine_json"
+          machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["id"] if rows else "")')"
+          test -n "$machine_id" || { echo "No pilot machine exists." >&2; exit 1; }
+          state="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
+          if [ "$state" != "started" ]; then
+            echo "PILOT_MACHINE_STATE=$state; starting the isolated machine for diagnosis."
+            flyctl machine start "$machine_id" --app "$FLY_APP" || true
+          fi
+          for attempt in $(seq 1 12); do
+            state="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0].get("state","unknown") if rows else "unknown")')"
+            echo "PILOT_MACHINE_STATE=$state"
+            [ "$state" = "started" ] && break
+            sleep 5
+          done
+          if [ "$state" != "started" ]; then
+            flyctl logs --app "$FLY_APP" --no-tail -n 100 || true
+            echo "Pilot machine did not start." >&2
+            exit 1
+          fi
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          echo "SEED_EXIT=$(cat /data/catalog/catalog_seed.exit 2>/dev/null || echo NOT_FINISHED)"
+          echo "SEED_PROCESSES:"
+          ps -eo pid,ppid,stat,etime,args | grep -E "[s]eed_catalog|[a]lembic" || true
+          echo "SEED_LOG_TAIL:"
+          tail -n 120 /data/catalog/catalog_seed.log 2>/dev/null || true
+          ls -lh /data/catalog
+          echo "=== NOTINO SMOKE STATUS (candidate scan) ==="
+          echo "NOTINO_SMOKE_EXIT=$(cat /data/catalog/notino_smoke.exit 2>/dev/null || echo RUNNING)"
+          tail -n 80 /data/catalog/notino_smoke.log 2>/dev/null || true
+          echo "=== MEMORY (live ingestion CPU follow-up) ==="
+          cat /proc/meminfo | head -n 12 || true
+          echo "=== ALL PYTHON PROCESSES ==="
+          ps -eo pid,ppid,stat,etime,rss,args | grep -E '[p]ython|[s]h -c' || true
+          echo "=== ACTIVE PYTHON PROCESS DETAILS ==="
+          /app/.venv/bin/python - <<'PY'
+          import glob, os
+          for path in glob.glob("/proc/[0-9]*/cmdline"):
+              try:
+                  pid = int(path.split("/")[2])
+                  cmd = open(path, "rb").read().replace(b"\\0", b" ").decode("utf-8", "replace")
+                  if "smoke_notino_catalog_ingestion.py" not in cmd:
+                      continue
+                  status = open(f"/proc/{pid}/status").read()
+                  selected = [line for line in status.splitlines() if line.startswith(("State:", "VmRSS:", "VmSize:", "Threads:"))]
+                  stat = open(f"/proc/{pid}/stat").read().split()
+                  print("NOTINO_PID=" + str(pid), "UTIME=" + stat[13], "STIME=" + stat[14], " ".join(selected), flush=True)
+                  try:
+                      print("WCHAN=" + open(f"/proc/{pid}/wchan").read().strip(), flush=True)
+                  except OSError:
+                      pass
+              except (OSError, ValueError, IndexError):
+                  pass
+          PY
+          echo "=== SEED LOG ==="
+          tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
+          /app/.venv/bin/python - <<'PY'
+          import os, sqlite3
+          p = "/data/catalog/catalog.sqlite3"
+          print("DB_EXISTS=" + str(os.path.exists(p)))
+          if os.path.exists(p):
+              db = sqlite3.connect(p)
+              tables = {r[0] for r in db.execute("select name from sqlite_master where type='table'")}
+              print("TABLES=" + ",".join(sorted(tables)))
+              for table in ("brands", "fragrances", "product_variants", "stores", "offers", "ingestion_raw", "ingestion_runs"):
+                  if table in tables:
+                      print("COUNT_" + table.upper() + "=" + str(db.execute("select count(*) from " + table).fetchone()[0]))
+              if "alembic_version" in tables:
+                  print("ALEMBIC_VERSION=" + str(db.execute("select version_num from alembic_version").fetchone()))
+          PY
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+      - name: Check public health and catalog endpoints
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request
+          base = "https://scenthunter-pilot-20261030.fly.dev"
+          for path in ("/health", "/api/catalog/status", "/api/catalog/search?q=French%20Avenue%20Liquid%20Brun%20EDP%20100ml"):
+              try:
+                  req = urllib.request.Request(base + path, headers={"Accept":"application/json","User-Agent":"ScentHunter-Pilot-Diagnostic/1.0"})
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      print(path, "HTTP", response.status, response.read(4000).decode("utf-8","replace"))
+              except Exception as exc:
+                  print(path, type(exc).__name__, str(exc))
+          PY
+
+      - name: Inspect unresolved Bplatz rows and safe canonical candidates (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; rows=[m for m in json.load(sys.stdin) if m.get("state") == "started"]; print(rows[0]["id"] if rows else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine for Bplatz read-only report." >&2; exit 1; }
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          cd /app/backend
+          /app/.venv/bin/python - <<'PY'
+          import json
+          import re
+          from collections import Counter
+          from difflib import SequenceMatcher
+          from pathlib import Path
+          from sqlalchemy import select
+          from sqlalchemy.orm import Session
+          from app.db import make_engine
+          from app.models import IngestionRaw, Store
+          from scenthunter_next_engine.catalog_repository import CatalogRepository
+          from scenthunter_next_engine.canonical_matcher import CanonicalMatcher, normalize_brand_text, normalize_identity_text, _retailer_title_core, _offer_name_forms, _catalog_forms
+          from scenthunter_next_engine.offer_normalizer import normalize_offer
+
+          engine = make_engine()
+          catalog = CatalogRepository.from_file(Path("/app/backend/product_catalog.json"))
+          matcher = CanonicalMatcher(catalog)
+          reason_counts = Counter()
+          brand_counts = Counter()
+          rows_out = []
+          with Session(engine) as session:
+              store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+              if store is None:
+                  raise SystemExit("BPLATZ_STORE_NOT_FOUND")
+              rows = session.scalars(
+                  select(IngestionRaw)
+                  .where(IngestionRaw.store_id == store.id, IngestionRaw.status.in_(("pending", "unmatched")))
+                  .order_by(IngestionRaw.created_at.desc())
+                  .limit(300)
+              ).all()
+              for row in rows:
+                  payload = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+                  try:
+                      # The pending legacy rows were captured by the generic parser,
+                      # which omitted size_ml. Recover volume only from an explicit
+                      # unit-bearing title token; this is a read-only matching probe.
+                      match_payload = dict(payload)
+                      title_for_size = str(
+                          match_payload.get("raw_name") or match_payload.get("name") or ""
+                      )
+                      explicit_size = re.search(
+                          r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b",
+                          title_for_size, re.I,
+                      )
+                      if not match_payload.get("size_ml") and explicit_size:
+                          amount = float(explicit_size.group(1).replace(",", "."))
+                          unit = explicit_size.group(2).lower()
+                          amount *= {"ml": 1, "cl": 10, "dl": 100, "l": 1000}[unit]
+                          if amount > 0 and amount.is_integer() and amount <= 10000:
+                              match_payload["size_ml"] = int(amount)
+                      offer = normalize_offer(match_payload, retailer="Bplatz", currency_default="EUR")
+                      match = matcher.match(offer)
+                      reason = match.reason or match.status.value
+                      brand = offer.brand_raw
+                      name = offer.raw_name
+                      size = offer.size_ml
+                      gtin = payload.get("gtin") or payload.get("ean") or payload.get("gtin13") or payload.get("gtin14")
+                      sku = payload.get("sku") or payload.get("retailer_product_id") or row.external_product_id
+                      # This diagnostic reports only deterministic matcher results.
+                      # Fuzzy suggestions are intentionally omitted: they are review
+                      # hints, not evidence, and scanning the entire catalog per row
+                      # can exceed the pilot's tight memory/exec budget.
+                      suggestions = []
+                      reason_counts[reason] += 1
+                      brand_counts[brand or "(missing brand)"] += 1
+                      rows_out.append({
+                          "raw_id": str(row.id),
+                          "created_at": row.created_at.isoformat() if row.created_at else None,
+                          "status": row.status,
+                          "reason": reason,
+                          "brand": brand,
+                          "raw_name": name,
+                          "size_ml": size,
+                          "concentration": payload.get("concentration"),
+                          "gtin": gtin,
+                          "sku": sku,
+                          "price": str(offer.price) if offer.price is not None else None,
+                          "currency": offer.currency,
+                          "availability": offer.availability,
+                          "url_host": __import__("urllib.parse", fromlist=["urlparse"]).urlparse(offer.product_url or "").hostname,
+                          "candidate_product_ids": list(match.candidate_product_ids),
+                          "review_suggestions_not_auto_matches": suggestions,
+                          "payload_keys": sorted(payload.keys()),
+                      })
+                  except Exception as exc:
+                      reason_counts["normalization_error"] += 1
+                      rows_out.append({"raw_id": str(row.id), "status": row.status,
+                                       "reason": "normalization_error", "error": str(exc),
+                                       "payload_keys": sorted(payload.keys())})
+          print("BPLATZ_PENDING_ROWS=" + str(len(rows_out)))
+          print("BPLATZ_REASON_COUNTS=" + json.dumps(reason_counts, ensure_ascii=False, sort_keys=True))
+          print("BPLATZ_BRAND_COUNTS=" + json.dumps(brand_counts, ensure_ascii=False, sort_keys=True))
+          canonical_products = catalog.all_products()
+          canonical_brand_counts = Counter(normalize_brand_text(product.brand) for product in canonical_products)
+          incoming_brands = sorted({normalize_brand_text(row.get("brand")) for row in rows_out if row.get("brand")})
+          print("BPLATZ_CANONICAL_BRAND_COVERAGE=" + json.dumps({
+              brand: {"canonical_product_count": canonical_brand_counts.get(brand, 0)}
+              for brand in incoming_brands
+          }, ensure_ascii=False, sort_keys=True))
+          exact_form_index = {}
+          for product in canonical_products:
+              for form in _catalog_forms([product.name, *product.aliases], product.brand):
+                  exact_form_index.setdefault(form, []).append(product)
+          incoming_products = {}
+          for row in rows_out:
+              if row.get("brand") and row.get("raw_name"):
+                  key = (row["brand"], row["raw_name"])
+                  incoming_products[key] = incoming_products.get(key, 0) + 1
+          cross_brand_exact = []
+          for (brand, name), duplicate_count in sorted(incoming_products.items()):
+              offer_forms = _offer_name_forms(name, brand)
+              candidates = {}
+              for form in offer_forms:
+                  for product in exact_form_index.get(form, []):
+                      if normalize_brand_text(product.brand) != normalize_brand_text(brand):
+                          candidates[product.product_id] = product
+              if candidates:
+                  cross_brand_exact.append({
+                      "incoming_brand": brand, "incoming_name": name,
+                      "duplicate_rows": duplicate_count,
+                      "exact_name_candidates_other_brand": [
+                          {"product_id": product.product_id, "canonical_brand": product.brand,
+                           "canonical_name": product.name,
+                           "sizes_ml": sorted({v.size_ml for v in product.variants if v.size_ml})}
+                          for product in sorted(candidates.values(), key=lambda p: p.product_id)
+                      ],
+                      "review_only_not_auto_matches": True,
+                  })
+          print("BPLATZ_CROSS_BRAND_EXACT_NAME_CANDIDATES=" + json.dumps(cross_brand_exact, ensure_ascii=False, sort_keys=True))
+          known_gtins = set(matcher._gtin_registry)
+          incoming_gtins = {str(row.get("gtin")) for row in rows_out if row.get("gtin")}
+          print("BPLATZ_VERIFIED_GTIN_REGISTRY=" + json.dumps({
+              "registry_entries": len(known_gtins),
+              "incoming_unique_gtins": len(incoming_gtins),
+              "incoming_gtins_with_reviewed_mapping": len(incoming_gtins & known_gtins),
+          }, sort_keys=True))
+          print("BPLATZ_ROWS_READ_ONLY=" + json.dumps(rows_out, ensure_ascii=False, sort_keys=True))
+          engine.dispose()
+          PY
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 90
