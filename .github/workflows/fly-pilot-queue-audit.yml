@@ -1,3 +1,4 @@
+# Re-run after the pilot refresh scheduling rollout to verify the live queue.
 name: Audit isolated ScentHunter worker queue
 
 on:
