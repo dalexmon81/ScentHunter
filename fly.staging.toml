@@ -1,6 +1,6 @@
 # Isolated ScentHunter pilot configuration.
 # Never use this file for production; it targets a dedicated app and volume.
-# [pilot-deploy] Refresh existing validated offers; keep full Notino discovery opt-in.
+# [pilot-deploy] Refresh existing validated offers immediately; keep full Notino discovery opt-in.
 app = "scenthunter-pilot-20261030"
 primary_region = "ams"
 
