@@ -45,6 +45,23 @@ jobs:
           echo "PILOT_MACHINE_ID=$machine_id" >> "$GITHUB_ENV"
           echo "PILOT_MACHINE_STATE=started"
 
+      - name: Release stale pilot exec lease with a safe isolated restart
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine restart "$PILOT_MACHINE_ID" --app "$FLY_APP"
+          ready=0
+          for attempt in $(seq 1 24); do
+            state="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); rows=[m for m in machines if m.get("id") == "'"$PILOT_MACHINE_ID"'"]; print(rows[0].get("state","unknown") if rows else "missing")')"
+            echo "PILOT_RESTART_STATE=$state"
+            if [ "$state" = "started" ]; then
+              ready=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" -eq 1 || { echo "Pilot did not return to started state after restart." >&2; exit 1; }
+
       - name: Launch bounded detached catalog diagnostics and evidence backfill
         shell: bash
         run: |
