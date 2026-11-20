@@ -38,7 +38,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.connector = LegacyScraperConnector("deloox", self.scraper)
 
     async def test_factory_loads_all_existing_retailer_scraper_modules(self):
-        for store_key in ("deloox", "sabina", "easycosmetic", "parfumzentrum"):
+        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum"):
             with self.subTest(store_key=store_key):
                 connector = build_legacy_connector(store_key)
                 self.assertEqual(connector.store_key, store_key)
