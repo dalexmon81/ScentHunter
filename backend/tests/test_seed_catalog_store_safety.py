@@ -173,7 +173,7 @@ def test_seeded_dior_sauvage_edp_100ml_matches_notino_gtin_in_disposable_sqlite(
                 ],
                 cwd=ROOT, env=env, text=True, capture_output=True, check=False,
             )
-            assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+            assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
             report = json.loads(completed.stdout)
             assert report["status"] == "seeded"
             assert report["database_written"] is True
