@@ -378,6 +378,7 @@ jobs:
           done
 
       - name: Report retailer ingestion coverage (read-only)
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -386,6 +387,7 @@ jobs:
           flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 60
 
       - name: Diagnose why active offers fail the public publication gate (read-only)
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -394,6 +396,7 @@ jobs:
           flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 60
 
       - name: Backfill only independently verified Notino EUR currency evidence
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
