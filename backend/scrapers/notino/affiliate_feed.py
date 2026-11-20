@@ -758,8 +758,9 @@ def _persist_staged_offers(stage, count, started_at, deadline):
             timed_execute(
                 "store_urls",
                 """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                   SELECT ?,url,MIN(slug),NULL,?,1 FROM notino_stage.offers
-                   WHERE 1 GROUP BY url
+                   SELECT ?,url,MIN(slug),NULL,?,1
+                   FROM notino_stage.offers INDEXED BY idx_notino_offers_url_slug
+                   GROUP BY url
                    ON CONFLICT(store,url) DO UPDATE SET
                      active=1
                    WHERE store_urls.active != 1""",
