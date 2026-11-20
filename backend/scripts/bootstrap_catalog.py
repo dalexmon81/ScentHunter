@@ -22,6 +22,24 @@ from app.db import make_engine
 from app.models import Store
 
 
+def ensure_notino_store(session: Session) -> str:
+    """Create the pilot store only when missing; preserve operator status."""
+    store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
+    if store is not None:
+        return f"preserved_existing_{store.status}"
+
+    session.add(Store(
+        name="Notino.fr",
+        slug="notino-fr",
+        domain="notino.fr",
+        country="FR",
+        currency="EUR",
+        status="active",
+    ))
+    session.flush()
+    return "created_active"
+
+
 def main() -> int:
     python = sys.executable
     print("CATALOG_BOOTSTRAP step=migrations status=starting", flush=True)
@@ -37,22 +55,7 @@ def main() -> int:
     engine = make_engine()
     try:
         with Session(engine) as session, session.begin():
-            store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
-            if store is None:
-                store = Store(
-                    name="Notino.fr",
-                    slug="notino-fr",
-                    domain="notino.fr",
-                    country="FR",
-                    currency="EUR",
-                    status="active",
-                )
-                session.add(store)
-                session.flush()
-                result = "created_active"
-            else:
-                # Preserve operator-controlled status, especially quarantine.
-                result = f"preserved_existing_{store.status}"
+            result = ensure_notino_store(session)
         print(f"CATALOG_BOOTSTRAP step=notino_store result={result}", flush=True)
     finally:
         engine.dispose()
