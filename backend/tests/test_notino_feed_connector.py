@@ -51,6 +51,11 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         second_page = await connector.discover_products(cursor="1", limit=1)
         self.assertEqual(second_page[0].external_product_id, "SAUVAGE60")
         self.assertEqual(calls, 1)
+        # The ID index is built once with the snapshot and reused by fetch jobs.
+        self.assertIs(
+            connector._snapshot_by_id["SAUVAGE100"],
+            await connector.fetch_product("SAUVAGE100"),
+        )
 
     async def test_fetch_parse_and_validate_dior_edp_100ml(self) -> None:
         connector = NotinoAffiliateFeedConnector(feed_loader=lambda: DIOR_FEED)
@@ -105,6 +110,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         await connector.discover_products()
         await connector.refresh_snapshot()
         self.assertEqual(calls, 2)
+        self.assertIn("SAUVAGE100", connector._snapshot_by_id)
 
 
 if __name__ == "__main__":
