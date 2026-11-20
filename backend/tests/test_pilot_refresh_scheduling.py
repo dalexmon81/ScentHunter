@@ -13,6 +13,11 @@ from app.workers import sqlite_worker
 
 
 class PilotRefreshSchedulingTests(unittest.TestCase):
+    def test_periodic_refresh_is_due_immediately_after_worker_start(self):
+        self.assertTrue(sqlite_worker._schedule_due(1.0, 0.0, 1800))
+        self.assertFalse(sqlite_worker._schedule_due(10.0, 1.0, 1800))
+        self.assertTrue(sqlite_worker._schedule_due(1801.0, 1.0, 1800))
+
     def setUp(self):
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
