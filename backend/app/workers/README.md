@@ -166,4 +166,4 @@ Refresh scheduling includes active offers from these retailers. Each refresh
 re-fetches the known product URL and updates only the existing offer identity;
 it never rematches or changes the canonical variant.
 
-Pilot deployment note (isolated only): the catalog-first architecture branch deploys to `scenthunter-pilot-20261030` via the dedicated Fly staging workflow. This is separate from production; production deployment requires a separate explicit approval.
+Pilot deployment note (isolated only): `fly.staging.toml` and `Dockerfile.pilot` target the single-machine SQLite pilot app `scenthunter-pilot-20261030`. Do not dispatch `.github/workflows/deploy-staging-worker.yml` as a substitute: that workflow currently references a missing branch/config and a different PostgreSQL/Celery worker app. See `docs/architecture/catalog-first-status-2026-11-20.md` for the verified mismatch and required gates. No production deployment is implied.
