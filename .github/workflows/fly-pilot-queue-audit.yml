@@ -46,7 +46,7 @@ jobs:
           remote_script="$(cat <<'REMOTE'
           set -eu
           mkdir -p /data/catalog
-          rm -f /data/catalog/queue_audit.done
+          rm -f /data/catalog/queue_audit.done /data/catalog/queue_audit.exit
           cat > /data/catalog/queue_audit.py <<'PY'
           import json, os, sqlite3, subprocess, time
           result = {"queue": {}, "catalog": {}, "worker_processes": []}
@@ -96,7 +96,7 @@ jobs:
               result["worker_process_error"] = str(exc)
           print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
           PY
-          nohup /app/.venv/bin/python /data/catalog/queue_audit.py </dev/null >/data/catalog/queue_audit.log 2>&1 &
+          nohup /bin/sh -c '/app/.venv/bin/python /data/catalog/queue_audit.py; echo $? > /data/catalog/queue_audit.exit' </dev/null >/data/catalog/queue_audit.log 2>&1 &
           echo QUEUE_AUDIT_STARTED
           REMOTE
           )"
@@ -105,7 +105,7 @@ jobs:
 
           finished=0
           for attempt in $(seq 1 30); do
-            poll="$(flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'pgrep -f /data/catalog/queue_audit.py >/dev/null && echo QUEUE_AUDIT_RUNNING || echo QUEUE_AUDIT_FINISHED'" --app "$FLY_APP" --timeout 20 2>&1)" || {
+            poll="$(flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'test -f /data/catalog/queue_audit.exit && echo QUEUE_AUDIT_FINISHED || echo QUEUE_AUDIT_RUNNING'" --app "$FLY_APP" --timeout 20 2>&1)" || {
               echo "Queue audit poll failed ($attempt/30): $poll"
               sleep 3
               continue
@@ -118,4 +118,6 @@ jobs:
             sleep 3
           done
           test "$finished" -eq 1 || { echo "Queue audit did not finish." >&2; exit 1; }
+          code="$(flyctl machine exec "$PILOT_MACHINE_ID" "cat /data/catalog/queue_audit.exit" --app "$FLY_APP" --timeout 30 | tail -n 1)"
           flyctl machine exec "$PILOT_MACHINE_ID" "cat /data/catalog/queue_audit.log" --app "$FLY_APP" --timeout 30
+          test "$code" = "0" || { echo "Queue audit failed with exit=$code" >&2; exit 1; }
