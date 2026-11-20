@@ -15,17 +15,18 @@ class PilotCatalogBootstrapTests(unittest.TestCase):
             ["/python", str(BACKEND / "scripts" / "seed_catalog.py"), "--apply"],
         ])
 
+    @patch("scripts.bootstrap_catalog.sys.executable", "/python")
     @patch("scripts.bootstrap_catalog.subprocess.run")
     def test_main_runs_both_bootstrap_steps_from_backend_directory(self, run):
         self.assertEqual(main(), 0)
         run.assert_has_calls([
             call(
-                ["/usr/local/bin/python", "-m", "alembic", "upgrade", "head"],
+                ["/python", "-m", "alembic", "upgrade", "head"],
                 cwd=BACKEND,
                 check=True,
             ),
             call(
-                ["/usr/local/bin/python", str(BACKEND / "scripts" / "seed_catalog.py"), "--apply"],
+                ["/python", str(BACKEND / "scripts" / "seed_catalog.py"), "--apply"],
                 cwd=BACKEND,
                 check=True,
             ),
