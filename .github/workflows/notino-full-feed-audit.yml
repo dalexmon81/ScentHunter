@@ -66,5 +66,5 @@ jobs:
 
           encoded_script="$(base64 -w0 backend/scripts/notino_feed_coverage_audit.py)"
           remote_command="sh -c 'echo $encoded_script | base64 -d > /tmp/notino_feed_coverage_audit.py && cd /app/backend && /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py'"
-          flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 900
+          flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 600
 
