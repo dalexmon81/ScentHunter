@@ -26,7 +26,9 @@ from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
 
-EXPECTED_REVISION = "0004_variant_mini"
+EXPECTED_REVISION = "0005_connector_quarantine"
+NOTINO_STORE_SLUG = "notino-fr"
+NOTINO_STORE_DOMAIN = "notino.fr"
 
 
 def _ensure_notino_store(engine):
@@ -39,15 +41,15 @@ def _ensure_notino_store(engine):
     if revision != EXPECTED_REVISION:
         raise RuntimeError(f"phase2_schema_revision_mismatch:{revision!r}")
     with Session(engine) as session, session.begin():
-        store = session.scalar(select(Store).where(Store.slug == "notino"))
+        store = session.scalar(select(Store).where(Store.slug == NOTINO_STORE_SLUG))
         if store is None:
             store = Store(
-                name="Notino", slug="notino", domain="notino.fr",
+                name="Notino.fr", slug=NOTINO_STORE_SLUG, domain=NOTINO_STORE_DOMAIN,
                 country="FR", currency="EUR", status="active",
             )
             session.add(store)
             session.flush()
-        elif store.status != "active" or store.domain not in {"notino.fr", "www.notino.fr"}:
+        elif store.status != "active" or store.domain not in {NOTINO_STORE_DOMAIN, "www.notino.fr"}:
             raise RuntimeError("existing_notino_store_is_not_active_or_has_unexpected_domain")
         return store.id
 
