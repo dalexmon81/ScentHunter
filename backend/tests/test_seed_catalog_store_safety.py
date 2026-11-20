@@ -118,93 +118,92 @@ def test_seed_stops_when_normalized_name_and_slug_point_to_different_brands():
 
 
 
-def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit():
-    from scripts.seed_catalog import extract_variant_gtin
+class CanonicalGtinImportTests(unittest.TestCase):
+    def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit(self):
+        from scripts.seed_catalog import extract_variant_gtin
 
-    assert extract_variant_gtin({"gtins": ["3348901368247"]}) == "3348901368247"
-    assert extract_variant_gtin({"gtin": "3348901368247", "gtins": ["3348901368247"]}) == "3348901368247"
+        self.assertEqual(extract_variant_gtin({"gtins": ["3348901368247"]}), "3348901368247")
+        self.assertEqual(
+            extract_variant_gtin({"gtin": "3348901368247", "gtins": ["3348901368247"]}),
+            "3348901368247",
+        )
 
+    def test_extract_variant_gtin_rejects_invalid_and_ambiguous_codes(self):
+        from scripts.seed_catalog import extract_variant_gtin
 
-def test_extract_variant_gtin_rejects_invalid_and_ambiguous_codes():
-    import pytest
-    from scripts.seed_catalog import extract_variant_gtin
+        with self.assertRaisesRegex(ValueError, "check digit"):
+            extract_variant_gtin({"gtins": ["3348901368248"]})
+        with self.assertRaisesRegex(ValueError, "multiple GTINs"):
+            extract_variant_gtin({"gtins": ["3348901368247", "3348901368254"]})
 
-    with pytest.raises(ValueError, match="check digit"):
-        extract_variant_gtin({"gtins": ["3348901368248"]})
-    with pytest.raises(ValueError, match="multiple GTINs"):
-        extract_variant_gtin({"gtins": ["3348901368247", "3348901368254"]})
+    def test_catalog_contains_verified_dior_sauvage_edp_100ml_variant(self):
+        from scripts.seed_catalog import validate_catalog
 
+        raw = json.loads(CATALOG.read_text(encoding="utf-8"))
+        products, by_product, blocked = validate_catalog(raw)
+        self.assertEqual(blocked, [])
+        product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
+        variants = by_product[product["product_id"]]
+        target = [row for row in variants if row.get("size_ml") == 100]
+        self.assertEqual(len(target), 1)
+        self.assertEqual(target[0]["gtins"], ["3348901368247"])
+        self.assertIs(target[0]["is_tester"], False)
+        self.assertIs(target[0]["is_refill"], False)
+        self.assertIs(target[0]["is_gift_set"], False)
+        self.assertIs(target[0]["is_mini"], False)
 
-def test_catalog_contains_verified_dior_sauvage_edp_100ml_variant():
-    from scripts.seed_catalog import validate_catalog
+    def test_seeded_dior_sauvage_edp_100ml_matches_notino_gtin_in_disposable_sqlite(self):
+        from sqlalchemy import create_engine, select, func
+        from sqlalchemy.orm import Session
+        from app.models import Base, Store, ProductVariant, Offer
+        from app.services.canonical_matching import resolve_canonical_variant
 
-    raw = json.loads(CATALOG.read_text(encoding="utf-8"))
-    products, by_product, blocked = validate_catalog(raw)
-    assert blocked == []
-    product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
-    variants = by_product[product["product_id"]]
-    target = [row for row in variants if row.get("size_ml") == 100]
-    assert len(target) == 1
-    assert target[0]["gtins"] == ["3348901368247"]
-    assert target[0]["is_tester"] is False
-    assert target[0]["is_refill"] is False
-    assert target[0]["is_gift_set"] is False
-    assert target[0]["is_mini"] is False
-
-
-
-def test_seeded_dior_sauvage_edp_100ml_matches_notino_gtin_in_disposable_sqlite():
-    from sqlalchemy import create_engine, select, func
-    from sqlalchemy.orm import Session
-    from app.models import Base, Store, ProductVariant, Offer
-    from app.services.canonical_matching import resolve_canonical_variant
-
-    with tempfile.TemporaryDirectory() as temp:
-        database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
-        engine = create_engine(database_url)
-        try:
-            Base.metadata.create_all(engine)
-            env = os.environ.copy()
-            env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
-            completed = subprocess.run(
-                [
-                    sys.executable, str(SEED), "--catalog", str(CATALOG),
-                    "--apply", "--seed-notino-store",
-                ],
-                cwd=ROOT, env=env, text=True, capture_output=True, check=False,
-            )
-            assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
-            report = json.loads(completed.stdout)
-            assert report["status"] == "seeded"
-            assert report["database_written"] is True
-
-            with Session(engine) as session:
-                store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
-                assert store is not None
-                result = resolve_canonical_variant(
-                    session,
-                    store_id=store.id,
-                    external_product_id="CJ-DIOR-SAU-EDP-100",
-                    record={
-                        "gtin": "3348901368247",
-                        "title": "Dior Sauvage Eau de Parfum 100 ml",
-                        "brand": "Dior",
-                        "concentration": "Eau de Parfum",
-                        "size_ml": 100,
-                    },
+        with tempfile.TemporaryDirectory() as temp:
+            database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
+            engine = create_engine(database_url)
+            try:
+                Base.metadata.create_all(engine)
+                env = os.environ.copy()
+                env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+                completed = subprocess.run(
+                    [
+                        sys.executable, str(SEED), "--catalog", str(CATALOG),
+                        "--apply", "--seed-notino-store",
+                    ],
+                    cwd=ROOT, env=env, text=True, capture_output=True, check=False,
                 )
-                assert result.match is not None
-                assert result.match.method == "gtin_exact"
-                variant = session.scalar(select(ProductVariant).where(
-                    ProductVariant.gtin == "3348901368247"
-                ))
-                assert variant is not None
-                assert result.match.product_variant_id == variant.id
-                assert variant.size_ml == 100
-                assert variant.is_tester is False
-                assert variant.is_refill is False
-                assert variant.is_gift_set is False
-                assert variant.is_mini is False
-                assert session.scalar(select(func.count()).select_from(Offer)) == 0
-        finally:
-            engine.dispose()
+                self.assertEqual(completed.returncode, 0, completed.stdout + "\\n" + completed.stderr)
+                report = json.loads(completed.stdout)
+                self.assertEqual(report["status"], "seeded")
+                self.assertTrue(report["database_written"])
+
+                with Session(engine) as session:
+                    store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
+                    self.assertIsNotNone(store)
+                    result = resolve_canonical_variant(
+                        session,
+                        store_id=store.id,
+                        external_product_id="CJ-DIOR-SAU-EDP-100",
+                        record={
+                            "gtin": "3348901368247",
+                            "title": "Dior Sauvage Eau de Parfum 100 ml",
+                            "brand": "Dior",
+                            "concentration": "Eau de Parfum",
+                            "size_ml": 100,
+                        },
+                    )
+                    self.assertIsNotNone(result.match)
+                    self.assertEqual(result.match.method, "gtin_exact")
+                    variant = session.scalar(select(ProductVariant).where(
+                        ProductVariant.gtin == "3348901368247"
+                    ))
+                    self.assertIsNotNone(variant)
+                    self.assertEqual(result.match.product_variant_id, variant.id)
+                    self.assertEqual(variant.size_ml, 100)
+                    self.assertIs(variant.is_tester, False)
+                    self.assertIs(variant.is_refill, False)
+                    self.assertIs(variant.is_gift_set, False)
+                    self.assertIs(variant.is_mini, False)
+                    self.assertEqual(session.scalar(select(func.count()).select_from(Offer)), 0)
+            finally:
+                engine.dispose()
