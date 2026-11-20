@@ -1,4 +1,4 @@
-# ScentHunter Fly.io configuration
+# ScentHunter Fly.io production configuration
 
 app = "scenthunter"
 primary_region = "ams"
@@ -6,8 +6,14 @@ primary_region = "ams"
 [build]
 
 [env]
+  # Legacy catalog remains available during the controlled frontend cutover.
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
-  # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
+  # Canonical catalog used by /api/catalog/search and the new ingestion worker.
+  SCENTHUNTER_CATALOG_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
+  SCENTHUNTER_QUEUE_BACKEND = "sqlite"
+  SCENTHUNTER_SQLITE_QUEUE_DB = "/data/catalog/ingestion_queue.sqlite3"
+  SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED = "1"
+  # Interactive legacy requests must not block on retailer HTTP fetches.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
 
 [http_service]
