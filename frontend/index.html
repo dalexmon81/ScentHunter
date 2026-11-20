@@ -746,6 +746,27 @@ function shPrice(o){
   if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
   return "Prezzo non disponibile";
 }
+function hasValidOfferPrice(o){
+  const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
+  const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
+  return Number.isFinite(parsed)&&parsed>0;
+}
+function storeKey(o){return String(o?.store||o?.shop||"").normalize("NFKC").trim().toLocaleLowerCase("it");}
+function dedupeStoreOffers(offers){
+  const byStore=new Map();
+  (Array.isArray(offers)?offers:[]).forEach(offer=>{
+    const key=storeKey(offer);if(!key)return;
+    const previous=byStore.get(key);
+    if(!previous){byStore.set(key,offer);return;}
+    const score=item=>[hasValidOfferPrice(item)&&!isOfferOutOfStock(item)?0:hasValidOfferPrice(item)?1:2,shNum(item),-(Date.parse(item?.captured_at||"")||0)];
+    const a=score(offer),b=score(previous);
+    if(a[0]<b[0]||(a[0]===b[0]&&(a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))))byStore.set(key,offer);
+  });
+  return [...byStore.values()].sort((a,b)=>{
+    const aa=!hasValidOfferPrice(a)||isOfferOutOfStock(a),bb=!hasValidOfferPrice(b)||isOfferOutOfStock(b);
+    if(aa!==bb)return aa?1:-1;return shNum(a)-shNum(b);
+  });
+}
 function shNum(o){
   const n=Number(o&&o.price_num);
   if(Number.isFinite(n)&&n>0)return n;
@@ -762,7 +783,7 @@ function shNum(o){
 function shGroupData(data){
   const groups=Array.isArray(data?.results)?data.results:[];
   return groups.map(group=>{
-    const offers=(Array.isArray(group.offers)?group.offers:[]).map(offer=>({
+    const offers=dedupeStoreOffers((Array.isArray(group.offers)?group.offers:[]).map(offer=>({
       ...offer,
       catalog_id:offer.catalog_id||group.catalog_id||"",
       brand:offer.canonical_brand||offer.brand||group.canonical_brand||group.brand||"",
@@ -772,7 +793,7 @@ function shGroupData(data){
       family:offer.family||group.family||"",
       variant:offer.variant||group.variant||"",
       size_ml:offer.size_ml??offer.format_ml??""
-    }));
+    })));
     /*
      * IMAGE PRESENTATION FALLBACK
      * group.image remains the canonical image when the backend provides one.
@@ -884,7 +905,7 @@ function getSizeGroups(g){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     }),
-    best:offers.find(o=>!isOfferOutOfStock(o))||null
+    best:offers.find(o=>!isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null
   })).sort((a,b)=>{
     if(!a.size)return 1;
     if(!b.size)return -1;
@@ -909,7 +930,7 @@ function showProducts(groups){
   clearOpenProduct();
   statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
-    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
+    const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
@@ -921,13 +942,13 @@ function showProducts(groups){
 
 function renderOffersHtml(g,img,offers,saved){
   return (offers||[]).map((o,n)=>{
-    const out=isOfferOutOfStock(o);
+    const out=isOfferOutOfStock(o)||!hasValidOfferPrice(o);
     const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
     const updated=o.captured_at?new Date(o.captured_at):null;
-    const updatedText=updated&&!Number.isNaN(updated.getTime())?`Disponibile · Aggiornato il ${updated.toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}`:"";
+    const updatedText=updated&&!Number.isNaN(updated.getTime())?`${hasValidOfferPrice(o)&&!isOfferOutOfStock(o)?"Disponibile":"Ultimo controllo"} · ${updated.toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}`:"";
     const shipping=o.captured_at?(o.shipping_cost==null?"Spedizione da verificare":`Spedizione: ${formatEuro(Number(o.shipping_cost))}`):"";
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?`<div class="offer-meta">${o.captured_at?"PREZZO PRODOTTO PIÙ BASSO":"MIGLIOR PREZZO"}</div>`:"")}${updatedText?`<div class="offer-meta">${esc(updatedText)}</div>`:""}${shipping?`<div class="offer-meta">${esc(shipping)}</div>`:""}${out?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?`<div class="offer-meta">${o.captured_at?"PREZZO PRODOTTO PIÙ BASSO":"MIGLIOR PREZZO"}</div>`:"")}${updatedText?`<div class="offer-meta">${esc(updatedText)}</div>`:""}${shipping?`<div class="offer-meta">${esc(shipping)}</div>`:""}${out?'<div class="offer-outstock">'+(hasValidOfferPrice(o)?'OUT OF STOCK':'PREZZO NON VERIFICATO')+'</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
   }).join("");
 }
 
@@ -1227,9 +1248,12 @@ async function searchPerfume(){
     // store snapshots while searching, but do not redraw the product list for
     // each partial poll; render the final, deduplicated payload once all stores
     // have finished so results do not flicker in progressively.
-    const catalogPilot=new URLSearchParams(window.location.search).get("catalog_first")==="1";
-    const data=catalogPilot
-      ? await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),15000)
+    // Catalog-first is the default on the pilot and for the new search flow.
+    // Keep the legacy progressive path available only as an explicit diagnostic opt-out.
+    const searchParams=new URLSearchParams(window.location.search);
+    const catalogFirst=searchParams.get("catalog_first")!=="0";
+    const data=catalogFirst
+      ? await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000)
       : await searchStoresProgressive(q,()=>{});
     renderData(data,true);
   } catch (e) {

@@ -1,0 +1,7 @@
+Isolated Fly.io catalog pilot deployment requested.
+Target: scenthunter-pilot-20261030 (ams).
+Production app and production fly.toml must remain untouched.
+
+Deploy the tested canonical matcher fix for the actual Notino.fr feed title:
+"French Avenue Liquid Brun Eau de Parfum pour homme 100 ml".
+The smoke test must confirm exact canonical variant resolution and persisted active offer.

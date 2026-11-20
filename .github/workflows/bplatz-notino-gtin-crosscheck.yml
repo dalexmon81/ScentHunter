@@ -1,0 +1,128 @@
+name: Bplatz GTIN cross-check against Notino CJ feed
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - .github/workflows/bplatz-notino-gtin-crosscheck.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bplatz-notino-gtin-crosscheck
+  cancel-in-progress: true
+
+jobs:
+  crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate isolated pilot access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          flyctl status --app "$FLY_APP"
+
+      - name: Compare Bplatz GTINs with Notino CJ feed (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_json="$(flyctl machine list --app "$FLY_APP" --json)"
+          machine_id="$(printf '%s' "$machine_json" | python -c 'import json,sys; rows=[m for m in json.load(sys.stdin) if m.get("state") == "started"]; print(rows[0]["id"] if rows else "")')"
+          test -n "$machine_id" || { echo "No started isolated pilot machine." >&2; exit 1; }
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          cd /app/backend
+          /app/.venv/bin/python - <<'PY'
+          import json
+          import tempfile
+          from collections import defaultdict
+          from sqlalchemy import select
+          from sqlalchemy.orm import Session
+          from app.db import make_engine
+          from app.models import IngestionRaw, Store
+          from scrapers.notino import affiliate_feed
+
+          engine = make_engine()
+          try:
+              with Session(engine) as session:
+                  store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+                  if store is None:
+                      raise SystemExit("BPLATZ_STORE_NOT_FOUND")
+                  raw_rows = session.scalars(
+                      select(IngestionRaw).where(
+                          IngestionRaw.store_id == store.id,
+                          IngestionRaw.status == "pending",
+                      )
+                  ).all()
+                  target_gtins = set()
+                  for raw in raw_rows:
+                      payload = raw.raw_payload if isinstance(raw.raw_payload, dict) else {}
+                      value = payload.get("gtin") or payload.get("ean") or payload.get("barcode")
+                      if value:
+                          target_gtins.add(str(value).strip())
+              print("BPLATZ_PENDING_RAW_ROWS=" + str(len(raw_rows)), flush=True)
+              print("BPLATZ_UNIQUE_GTINS=" + str(len(target_gtins)), flush=True)
+              if not target_gtins:
+                  print("NOTINO_GTIN_CROSSCHECK_MATCHES=0", flush=True)
+                  raise SystemExit(0)
+
+              matches = defaultdict(list)
+              scanned = 0
+              with tempfile.TemporaryFile(mode="w+b") as payload:
+                  size = affiliate_feed._download_feed(payload)
+                  print("NOTINO_FEED_BYTES=" + str(size), flush=True)
+                  payload.seek(0)
+                  with affiliate_feed._xml_stream(payload) as stream:
+                      for node in affiliate_feed._feed_items(stream):
+                          scanned += 1
+                          fields = affiliate_feed._field_map(node)
+                          gtin = affiliate_feed._first(
+                              node, "gtin", "gtin13", "gtin12", "gtin14",
+                              "ean", "barcode", fields=fields,
+                          ).strip()
+                          if not gtin or gtin not in target_gtins:
+                              continue
+                          item = affiliate_feed._parse_item(node, fields)
+                          if item is None:
+                              continue
+                          matches[gtin].append({
+                              "title": item.title,
+                              "brand": item.brand,
+                              "size_ml": item.size_ml,
+                              "concentration": item.concentration,
+                              "price": str(item.price),
+                              "currency": item.currency,
+                              "availability": item.availability,
+                              "notino_url_host": __import__("urllib.parse", fromlist=["urlparse"]).urlparse(item.url).hostname,
+                          })
+              matched_gtins = set(matches)
+              print("NOTINO_FEED_RECORDS_SCANNED=" + str(scanned), flush=True)
+              print("NOTINO_GTIN_CROSSCHECK_MATCHES=" + str(len(matched_gtins)), flush=True)
+              print("NOTINO_GTIN_CROSSCHECK_UNMATCHED=" + str(len(target_gtins - matched_gtins)), flush=True)
+              print("NOTINO_GTIN_CROSSCHECK_DETAILS=" + json.dumps(
+                  {gtin: matches[gtin] for gtin in sorted(matches)},
+                  ensure_ascii=False, sort_keys=True,
+              ), flush=True)
+          finally:
+              engine.dispose()
+          PY
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 600

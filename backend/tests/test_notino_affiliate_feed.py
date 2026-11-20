@@ -139,6 +139,17 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 CREATE TABLE sync_state(store TEXT PRIMARY KEY, status TEXT, started_at REAL,
                     finished_at REAL, discovered_count INTEGER, fetched_count INTEGER, error TEXT);
             """)
+            active_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+            inactive_url = "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/"
+            db.execute(
+                "INSERT INTO store_urls VALUES(?,?,?,?,?,?)",
+                ("notino", active_url, "existing-active-slug", None, 123.0, 1),
+            )
+            db.execute(
+                "INSERT INTO store_urls VALUES(?,?,?,?,?,?)",
+                ("notino", inactive_url, "existing-inactive-slug", None, 456.0, 0),
+            )
+            db.commit()
             db.close()
             with patch.dict("sys.modules", {"catalog_engine": types.SimpleNamespace(DB_PATH=path)}):
                 with patch.dict(os.environ, {"NOTINO_PERSIST_PROFILE": "1"}):
@@ -148,6 +159,14 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 self.assertEqual(result["imported_offers"], 2)
                 self.assertEqual(result["rejected_items"], 2)
                 db = sqlite3.connect(path)
+                url_rows = {
+                    row[0]: (row[1], row[2], row[3])
+                    for row in db.execute(
+                        "SELECT url, slug, discovered_at, active FROM store_urls WHERE store='notino'"
+                    )
+                }
+                self.assertEqual(url_rows[active_url], ("existing-active-slug", 123.0, 1))
+                self.assertEqual(url_rows[inactive_url], ("existing-inactive-slug", 456.0, 1))
                 db.execute("UPDATE store_product_variants SET variant_key=? WHERE size_ml=100",
                            ("100ml:6291108730001",))
                 db.commit()

@@ -22,11 +22,12 @@ BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
+from scenthunter_next_engine.catalog_repository import merge_supplemental_catalog
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
 
-# Deliberately seed only Bplatz while its Phase 2 adapter is being validated.
-# Other retailer stores remain operator-managed and are never touched here.
+# Retailer activation remains explicit. The pilot may opt into Bplatz and/or
+# Notino; no other retailer is touched by this seed script.
 BPLATZ_STORE = {
     "name": "Bplatz",
     "slug": "bplatz",
@@ -36,8 +37,36 @@ BPLATZ_STORE = {
     "status": "active",
 }
 
+NOTINO_STORE = {
+    "name": "Notino.fr",
+    "slug": "notino-fr",
+    "domain": "notino.fr",
+    "country": "FR",
+    "currency": "EUR",
+    "status": "active",
+}
 
-def norm(value: str) -> str:
+LEGACY_RETAILER_STORES = {
+    "deloox": {
+        "name": "Deloox.be", "slug": "deloox-be", "domain": "www.deloox.be",
+        "country": "BE", "currency": "EUR", "status": "active",
+    },
+    "sabina": {
+        "name": "Sabina", "slug": "sabina-es", "domain": "www.sabina.com",
+        "country": "ES", "currency": "EUR", "status": "active",
+    },
+    "easycosmetic": {
+        "name": "Easycosmetic.de", "slug": "easycosmetic-de", "domain": "www.easycosmetic.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    },
+    "parfumzentrum": {
+        "name": "Parfum-Zentrum.de", "slug": "parfumzentrum-de", "domain": "www.parfum-zentrum.de",
+        "country": "DE", "currency": "EUR", "status": "active",
+    },
+}
+
+
+def norm(value: str):
     value = unicodedata.normalize("NFKD", value)
     value = "".join(ch for ch in value if not unicodedata.combining(ch)).lower()
     return re.sub(r"[^a-z0-9]+", " ", value).strip()
@@ -168,10 +197,21 @@ def main() -> int:
         action="store_true",
         help="explicitly create or activate the Bplatz store row for the dedicated Bplatz integration test",
     )
+    parser.add_argument(
+        "--seed-notino-store",
+        action="store_true",
+        help="explicitly create or activate the Notino.fr store row for the authorized feed connector",
+    )
+    parser.add_argument("--seed-deloox-store", action="store_true", help="explicitly seed Deloox.be for catalog-first ingestion")
+    parser.add_argument("--seed-sabina-store", action="store_true", help="explicitly seed Sabina for catalog-first ingestion")
+    parser.add_argument("--seed-easycosmetic-store", action="store_true", help="explicitly seed Easycosmetic.de for catalog-first ingestion")
+    parser.add_argument("--seed-parfumzentrum-store", action="store_true", help="explicitly seed Parfum-Zentrum.de for catalog-first ingestion")
     args = parser.parse_args()
 
-    with Path(args.catalog).open(encoding="utf-8") as handle:
+    catalog_path = Path(args.catalog).expanduser().resolve()
+    with catalog_path.open(encoding="utf-8") as handle:
         raw = json.load(handle)
+    raw = merge_supplemental_catalog(raw, catalog_path)
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -207,7 +247,14 @@ def main() -> int:
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
-        "stores_to_seed": [BPLATZ_STORE.copy()] if args.seed_bplatz_store else [],
+        "stores_to_seed": (
+            ([BPLATZ_STORE.copy()] if args.seed_bplatz_store else [])
+            + ([NOTINO_STORE.copy()] if args.seed_notino_store else [])
+            + ([LEGACY_RETAILER_STORES["deloox"].copy()] if args.seed_deloox_store else [])
+            + ([LEGACY_RETAILER_STORES["sabina"].copy()] if args.seed_sabina_store else [])
+            + ([LEGACY_RETAILER_STORES["easycosmetic"].copy()] if args.seed_easycosmetic_store else [])
+            + ([LEGACY_RETAILER_STORES["parfumzentrum"].copy()] if args.seed_parfumzentrum_store else [])
+        ),
         "database_written": False,
         "source_modified": False,
     }
@@ -296,14 +343,30 @@ def main() -> int:
 
         # Retailer activation is opt-in. Canonical catalog seeding must not
         # silently activate Bplatz (or any other store) in staging.
+        stores_to_seed = []
         if args.seed_bplatz_store:
+            stores_to_seed.append(BPLATZ_STORE)
+        if args.seed_notino_store:
+            stores_to_seed.append(NOTINO_STORE)
+        if args.seed_deloox_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["deloox"])
+        if args.seed_sabina_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["sabina"])
+        if args.seed_easycosmetic_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["easycosmetic"])
+        if args.seed_parfumzentrum_store:
+            stores_to_seed.append(LEGACY_RETAILER_STORES["parfumzentrum"])
+        if stores_to_seed:
             with Session(engine) as session, session.begin():
-                store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
-                if store is None:
-                    session.add(Store(**BPLATZ_STORE))
-                else:
-                    for field, value in BPLATZ_STORE.items():
-                        setattr(store, field, value)
+                for store_config in stores_to_seed:
+                    store = session.scalar(
+                        select(Store).where(Store.slug == store_config["slug"])
+                    )
+                    if store is None:
+                        session.add(Store(**store_config))
+                    else:
+                        for field, value in store_config.items():
+                            setattr(store, field, value)
 
         inspector = inspect(engine)
         expected_tables = {
@@ -335,7 +398,7 @@ def main() -> int:
             "database_counts": counts,
             "invalid_active_offers": invalid_active_offers,
             "database_written": True,
-            "stores_seeded": [BPLATZ_STORE["slug"]] if args.seed_bplatz_store else [],
+            "stores_seeded": [store["slug"] for store in stores_to_seed],
         })
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0

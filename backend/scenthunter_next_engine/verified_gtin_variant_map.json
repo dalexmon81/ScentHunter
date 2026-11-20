@@ -65,6 +65,454 @@
         "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
       ],
       "evidence_note": "Deloox Product JSON-LD explicitly reports GTIN 6298042001831 for French Avenue Liquid Brun Extrait de Parfum Limited Edition, size 150 ml, SKU 1385920. The target product SH-0031 and real variant VAR-f5aff76b4bb5de8a exist in backend/product_catalog.json at current main. The canonical product documents Extrait de Parfum; the standard Liquid Brun 100 ml is separate as SH-0030 / VAR-f87146c82d167f4c. This GTIN maps only to the existing 150 ml variant; OUT OF STOCK status and missing price are preserved by the retailer adapter."
+    },
+    {
+      "gtin": "6294021906593",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906593",
+      "variant_id": "VAR-BPLATZ-6294021906593",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://store.shure-cosmetics.co.uk/milestone/milestone-1849-matador-green-valley-unisex-100ml-edp",
+        "https://en.bplatz.de/Products/milestone-1849-matador-green-valley-eau-de-parfum-100-ml"
+      ],
+      "evidence_note": "The Bplatz product page and Shure Cosmetics independently identify GTIN 6294021906593 as Milestone 1849 Matador Green Valley EDP 100 ml."
+    },
+    {
+      "gtin": "6290360592169",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360592169",
+      "variant_id": "VAR-BPLATZ-6290360592169",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.parfumverkoop.nl/product.php?id=8596",
+        "https://www.kruidvat.nl/niche-emarati-lujain-100-ml/p/mp-00067257",
+        "https://bplatz.de/products/niche-emarati-parfum-lujain-eau-de-perfume-100ml"
+      ],
+      "evidence_note": "Bplatz, Parfumverkoop and Kruidvat identify GTIN 6290360592169 as Niche Emarati Lujain EDP 100 ml. Other listings also group Niche Emarati under Lattafa; the canonical brand is kept as Niche Emarati because that exact brand is corroborated by independent listings."
+    },
+    {
+      "gtin": "6290360598970",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360598970",
+      "variant_id": "VAR-BPLATZ-6290360598970",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.lattafa-usa.com/products/mayar-natural-intense",
+        "https://nuactueel.nl/vergelijken/product/lattafa-mayar-natural-intense-6290360598970"
+      ],
+      "evidence_note": "Lattafa's own product page and an independent EAN listing corroborate GTIN 6290360598970 as Lattafa Mayar Natural Intense EDP 100 ml."
+    },
+    {
+      "gtin": "6291107459363",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291107459363",
+      "variant_id": "VAR-BPLATZ-6291107459363",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://maisonalhambra-usa.com/products/maison-alhambra-salvo-eau-de-parfum-for-men",
+        "https://www.superdrug.com/fragrance/fragrance-for-him/mens-aftershave/maison-alhambra-salvo-perfume-100ml-edp/p/mp-00159389",
+        "https://bplatz.de/products/maison-alhambra-parfum-salvo-eau-de-parfum-100ml"
+      ],
+      "evidence_note": "Maison Alhambra USA, Superdrug and Bplatz identify GTIN 6291107459363 as Maison Alhambra Salvo EDP 100 ml."
+    },
+    {
+      "gtin": "6291108735749",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291108735749",
+      "variant_id": "VAR-BPLATZ-6291108735749",
+      "size_ml": 80,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://1a-fragrance.com/products/maison-alhambra-pink-velvet-80-ml",
+        "https://bplatz.de/products/maison-alhambra-perfume-rose-petals-eau-de-parfum-80-ml"
+      ],
+      "evidence_note": "1A Fragrance and Bplatz identify GTIN 6291108735749 as Maison Alhambra Pink Velvet EDP 80 ml. The Bplatz title also carries the retailer descriptor XL, retained as a product alias."
+    },
+    {
+      "gtin": "6291108529171",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291108529171",
+      "variant_id": "VAR-BPLATZ-6291108529171",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/emper-shelton-ilang-62-eau-de-parfum-100ml",
+        "https://nalda.de/products/6291108529171",
+        "https://bplatz.de/products/emper-shelton-ilang-62-eau-de-parfum-100ml"
+      ],
+      "evidence_note": "ScentArabia, Nalda and Bplatz corroborate GTIN 6291108529171 as Emper Shelton Ilang 62 EDP 100 ml."
+    },
+    {
+      "gtin": "6291108529188",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291108529188",
+      "variant_id": "VAR-BPLATZ-6291108529188",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/emper-shelton-velvetier-42-eau-de-parfum-100ml",
+        "https://en.bplatz.de/Products/emper-shelton-velvetier-42-eau-de-parfum-100ml"
+      ],
+      "evidence_note": "ScentArabia and Bplatz identify GTIN 6291108529188 as Emper Shelton Velvetier 42 EDP 100 ml."
+    },
+    {
+      "gtin": "6291108529164",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291108529164",
+      "variant_id": "VAR-BPLATZ-6291108529164",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/emper-shelton-noir-92-eau-de-parfum-100ml",
+        "https://nalda.de/products/6291108529164",
+        "https://en.bplatz.de/Products/emper-shelton-noir-92-eau-de-parfum-100ml"
+      ],
+      "evidence_note": "ScentArabia, Nalda and Bplatz identify GTIN 6291108529164 as Emper Shelton Noir 92 EDP 100 ml."
+    },
+    {
+      "gtin": "6294021906241",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906241",
+      "variant_id": "VAR-BPLATZ-6294021906241",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/de-de/products/al-fares-asrar-al-layl-eau-de-parfum-100-ml",
+        "https://en.bplatz.de/Products/al-fares-asrar-al-layl-eau-de-parfum-100-ml"
+      ],
+      "evidence_note": "ScentArabia and Bplatz identify GTIN 6294021906241 as Al Fares Asrar Al Layl EDP 100 ml."
+    },
+    {
+      "gtin": "6294021906784",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906784",
+      "variant_id": "VAR-BPLATZ-6294021906784",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://nalda.fr/products/6294021906784",
+        "https://fr.bplatz.de/%C3%A9coresponsables/jalon-vagues-c%C3%B4ti%C3%A8res-pistacia-eau-de-parfum-100-ml"
+      ],
+      "evidence_note": "Nalda and Bplatz identify GTIN 6294021906784 as Milestone Coastal Waves Pistacia EDP 100 ml."
+    },
+    {
+      "gtin": "6294021906777",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906777",
+      "variant_id": "VAR-BPLATZ-6294021906777",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/milestone-coastal-waves-rose-couture-eau-de-parfum-100-ml"
+      ],
+      "evidence_note": "ScentArabia identifies GTIN 6294021906777 as Milestone Coastal Waves Rose Couture EDP 100 ml; the Bplatz ingestion row reports the same GTIN, title, brand and explicit 100 ml format."
+    },
+    {
+      "gtin": "6294021907026",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907026",
+      "variant_id": "VAR-BPLATZ-6294021907026",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/en-ie/products/milestone-blast-night-version-eau-de-parfum-100-ml",
+        "https://bplatz.de/products/milestone-blast-night-version-eau-de-parfum-100-ml"
+      ],
+      "evidence_note": "ScentArabia and Bplatz identify GTIN 6294021907026 as Milestone Blast Night Version EDP 100 ml."
+    },
+    {
+      "gtin": "6294021904759",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021904759",
+      "variant_id": "VAR-BPLATZ-6294021904759",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.lovenmour.co.il/products/milestone-hayati-lychee-100ml-edp"
+      ],
+      "evidence_note": "Lovenmour independently identifies GTIN 6294021904759 as Milestone Hayati Lychee EDP 100 ml; Bplatz's ingested record carries the same identifier, brand and title."
+    },
+    {
+      "gtin": "6435074242867",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6435074242867",
+      "variant_id": "VAR-BPLATZ-6435074242867",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/fr-fr/products/ard-al-zaafaran-perfume-thara-al-oud-eau-de-parfum-100-ml",
+        "https://www.unpuf.ro/cumpara/ard-al-zaafaran-thara-al-oud-%E2%80%93-parfum-edp-100-ml-unisex-3079"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, brand, 100 ml size and EDP title. ScentArabia and Unpuf independently identify GTIN 6435074242867 as Ard Al Zaafaran Thara Al Oud EDP 100 ml."
+    },
+    {
+      "gtin": "6290360590707",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360590707",
+      "variant_id": "VAR-BPLATZ-6290360590707",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentcompare.app/product/maison-alhambra-chic-velvet-vert-secret-100ml-eau-de-parfum",
+        "https://maisondesfragrances.fr/products/chic-velvet-green-secret-eau-de-parfum-volume-100-ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, brand and 100 ml EDP format. ScentCompare and Maison des Fragrances independently list GTIN 6290360590707 for Maison Alhambra Chic Velvet Vert Secret 100 ml."
+    },
+    {
+      "gtin": "6294021907668",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907668",
+      "variant_id": "VAR-BPLATZ-6294021907668",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.tiendalafe.com/collections/emper",
+        "https://joyasshirel.com/collections/al-fares"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, Al Fares brand and 100 ml EDP title. Tienda Lafe and Joyasshirel independently list Hajes Flame with GTIN 6294021907668."
+    },
+    {
+      "gtin": "6290360599090",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6290360599090",
+      "variant_id": "VAR-BPLATZ-6290360599090",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.lattafa-usa.com/products/sehr?variant=46981632884959",
+        "https://www.shop-apotheke.com/beauty/upmZ9H72H/sehr-eau-de-parfum.htm"
+      ],
+      "evidence_note": "Bplatz's staged row uses the display title 'Very' but carries GTIN 6290360599090, Lattafa brand and 100 ml EDP size. Lattafa's official product page and Shop Apotheke identify this GTIN as Lattafa Sehr EDP 100 ml. 'Very' is retained as a retailer-title alias only; the canonical name is Sehr."
+    },
+    {
+      "gtin": "6294021904742",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021904742",
+      "variant_id": "VAR-BPLATZ-6294021904742",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.qogita.com/products/d9f7fb7631784d65b0f836e934ecfffc/milestone-hayati-marshmallow-eau-de-parfum-100-ml/"
+      ],
+      "evidence_note": "Bplatz's staged product record carries the same GTIN, Milestone brand and 100 ml EDP title. Qogita independently lists Milestone Hayati Marshmallow EDP 100 ml with GTIN 6294021904742."
+    },
+    {
+      "gtin": "6294021906661",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906661",
+      "variant_id": "VAR-BPLATZ-6294021906661",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/en-ie/products/milestone-alvira-desira-eau-de-parfum-100-ml",
+        "https://store.shure-cosmetics.co.uk/ladies-perfume/alvina-desira-ladies-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021906661, Milestone brand and 100 ml EDP size. ScentArabia and Shure Cosmetics independently list Milestone Alvina/Alvira Desira EDP 100 ml with the same GTIN."
+    },
+    {
+      "gtin": "6294021907019",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907019",
+      "variant_id": "VAR-BPLATZ-6294021907019",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://store.shure-cosmetics.co.uk/milestone/perfume-blast-infrared-unisex-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021907019, Milestone brand and 100 ml EDP size. Shure Cosmetics independently lists Perfume Blast Infrared EDP 100 ml with the same GTIN."
+    },
+    {
+      "gtin": "6294021907002",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021907002",
+      "variant_id": "VAR-BPLATZ-6294021907002",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://store.shure-cosmetics.co.uk/milestone/perfume-blast-confident-unisex-edp-100ml"
+      ],
+      "evidence_note": "Bplatz's staged product record carries GTIN 6294021907002, Milestone brand and 100 ml EDP size. Shure Cosmetics independently lists Perfume Blast Confident EDP 100 ml with the same GTIN."
+    },
+    {
+      "gtin": "6294021906586",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906586",
+      "variant_id": "VAR-BPLATZ-6294021906586",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.qogita.com/products/076b79f237c84ae5a0bf9e0fc2bf93c9/milestone-1849-matador-velarus-eau-de-parfum-100-ml/"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6294021906586, Milestone brand, 100 ml and EDP. Qogita independently identifies the same GTIN as Milestone 1849 Matador Velarus EDP 100 ml."
+    },
+    {
+      "gtin": "6294021906579",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906579",
+      "variant_id": "VAR-BPLATZ-6294021906579",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.qogita.com/products/a11a1f1f1deb49f98f2b7aebc2afbc02/milestone-1849-matador-linton-eau-de-parfum-100-ml/"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6294021906579, Milestone brand, 100 ml and EDP. Qogita independently identifies the same GTIN as Milestone 1849 Matador Linton EDP 100 ml."
+    },
+    {
+      "gtin": "6294021906760",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906760",
+      "variant_id": "VAR-BPLATZ-6294021906760",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/milestone-coastal-waves-aqua-marine-eau-de-parfum-100-ml",
+        "https://www.kiwiku.com/milestone-coastal-waves-aqua-marine-eau-de-parfum-100-ml-unisex-fragancia-fresca-acutica.html",
+        "https://allegro.pl/produkt/oryginalne-perfumy-arabskie-milestone-coastal-waves-aqua-marine-100ml-edp-g-1b9071c5-8158-438c-8432-a999cbc1f2ae"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6294021906760, Milestone brand, 100 ml and EDP. ScentArabia, Kiwiku and Allegro independently list Coastal Waves Aqua Marine with the same GTIN and size."
+    },
+    {
+      "gtin": "6294021906234",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021906234",
+      "variant_id": "VAR-BPLATZ-6294021906234",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/products/al-fars-ward-al-qamr-eau-de-parfum-100-ml",
+        "https://nalda.fr/products/6294021906234"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6294021906234, Al Fares brand, 100 ml and EDP. ScentArabia and Nalda independently identify the same GTIN as Ward Al Qamr EDP 100 ml."
+    },
+    {
+      "gtin": "6423080615355",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6423080615355",
+      "variant_id": "VAR-BPLATZ-6423080615355",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.jomashop.com/ard-al-zaafaran-mens-al-sayaad-edp-spray-3-4-oz-fragrances-6423080615355.html",
+        "https://www.shamperfume.com/perfumes/ard-al-zaafaran/al-sayaad-for-men/",
+        "https://www.noon.com/saudi-en/al-sayaad-eau-de-parfum-100ml-by-ard-al-zaafaran/Z8E2B83B0B8AB7A68D3EDZ/p/"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6423080615355, Ard Al Zaafaran brand, 100 ml and EDP. Jomashop, Sham Perfume and Noon independently identify the same GTIN as Al Sayaad / Al Sayaad For Men EDP 100 ml."
+    },
+    {
+      "gtin": "6291108522431",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6291108522431",
+      "variant_id": "VAR-BPLATZ-6291108522431",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://www.qogita.com/brands/al-fares/",
+        "https://lolitka.com.ua/product/18882774431"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6291108522431, Al Fares brand, 100 ml and EDP. Qogita's Al Fares catalog and Lolitka independently identify the same GTIN as Al Fares Layaali EDP 100 ml."
+    },
+    {
+      "gtin": "6294021905442",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-BPLATZ-6294021905442",
+      "variant_id": "VAR-BPLATZ-6294021905442",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-11-19",
+      "source_urls": [
+        "https://scentarabia.at/en-ie/products/milestone-obsession-cherry-overdose-eau-de-parfum-100-ml",
+        "https://www.kiwiku.com/milestone-obsession-cherry-overdose-eau-de-parfum-100-ml-unisex-fragancia-gourmand-oriental.html",
+        "https://www.qogita.com/products/f80e4ffb1a4343e6bab941a6b49e5c5e/milestone-obsession-cherry-overdose-eau-de-parfum-100-ml/"
+      ],
+      "evidence_note": "Bplatz's staged row carries GTIN 6294021905442, Milestone brand, 100 ml and EDP. ScentArabia, Kiwiku and Qogita independently identify the same GTIN as Obsession Cherry Overdose EDP 100 ml."
     }
   ]
 }

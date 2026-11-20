@@ -205,9 +205,9 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         existing.confidence = confidence if confidence is not None else row.match_confidence
         existing.valid_until = None
         existing.status = "active"
-        # Record every successfully captured observation, including an unchanged
-        # price. This makes each normal hydration auditable without creating a
-        # second Offer row for the same retailer product.
+        # Keep one current Offer row per store/product, but preserve every
+        # successful refresh observation in price history. Identical prices at
+        # different capture times are still useful evidence of price stability.
         session.add(PriceHistory(
             offer_id=existing.id, price=price,
             currency=currency, availability=availability,
@@ -219,7 +219,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         offer_id=offer_id, product_variant_id=row.product_variant_id,
         method=row.match_method or "unspecified",
         confidence=confidence if confidence is not None else row.match_confidence,
-        reason="promoted_from_resolved_legacy_catalog_ids",
+        reason="promoted_from_resolved_canonical_variant_match",
     ))
     row.status = "promoted"
     session.flush()

@@ -31,10 +31,21 @@ _GENERIC_TITLE_SUFFIXES = (
     "eau de parfum",
     "eau de toilette",
     "eau de cologne",
+    # Retailer feeds often abbreviate concentration at the end of the title.
+    # These tokens describe concentration, not a distinct fragrance identity.
+    "edp",
+    "edt",
+    "edc",
     "parfum",
     "perfume",
     "for men",
     "for women",
+    # French retailer feeds append these gender descriptors to otherwise
+    # exact fragrance titles (e.g. "Liquid Brun Eau de Parfum pour homme").
+    "pour homme",
+    "pour femme",
+    "pour les hommes",
+    "pour les femmes",
     "unisex",
 )
 
@@ -601,19 +612,34 @@ class CanonicalMatcher:
         # use that evidence to distinguish EDT/EDP/etc. Never infer a missing
         # concentration or choose between duplicates sharing the same one.
         offer_concentration = _explicit_concentration(offer.raw_name)
-        if (
-            len(candidates) > 1
-            and offer_concentration
-            and all(product.concentration for product, _ in candidates)
-        ):
+        if offer_concentration:
             concentration_candidates = [
                 (product, variants)
                 for product, variants in candidates
                 if _explicit_concentration(product.concentration)
                 == offer_concentration
             ]
-            if concentration_candidates and len(concentration_candidates) < len(candidates):
+            if (
+                len(candidates) > 1
+                and all(product.concentration for product, _ in candidates)
+                and concentration_candidates
+                and len(concentration_candidates) < len(candidates)
+            ):
                 candidates = concentration_candidates
+            elif len(candidates) == 1:
+                product_concentration = _explicit_concentration(
+                    candidates[0][0].concentration
+                )
+                if (
+                    product_concentration
+                    and product_concentration != offer_concentration
+                ):
+                    return OfferMatch(
+                        offer=offer,
+                        status=MatchStatus.UNRESOLVED,
+                        reason="canonical_concentration_conflict",
+                        candidate_product_ids=(candidates[0][0].product_id,),
+                    )
 
         if len(candidates) > 1 and offer.size_ml is not None:
             # A duplicate canonical title is a genuine catalog collision:
