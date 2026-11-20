@@ -177,6 +177,18 @@ class CanonicalGtinImportTests(unittest.TestCase):
                 self.assertEqual(report["status"], "seeded")
                 self.assertTrue(report["database_written"])
 
+                # Re-importing the same canonical source must not duplicate
+                # the Dior variant, GTIN owner or Notino store.
+                repeated = subprocess.run(
+                    [
+                        sys.executable, str(SEED), "--catalog", str(CATALOG),
+                        "--apply", "--seed-notino-store",
+                    ],
+                    cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(repeated.returncode, 0, repeated.stdout + "\\n" + repeated.stderr)
+                self.assertEqual(json.loads(repeated.stdout)["status"], "seeded")
+
                 with Session(engine) as session:
                     store = session.scalar(select(Store).where(Store.slug == "notino-fr"))
                     self.assertIsNotNone(store)
