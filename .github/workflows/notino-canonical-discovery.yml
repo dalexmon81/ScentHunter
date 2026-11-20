@@ -104,7 +104,7 @@ jobs:
           while [ -n "$encoded_script" ]; do
             chunk="${encoded_script:0:256}"
             encoded_script="${encoded_script:256}"
-            flyctl machine exec "$machine_id" "sh -c 'printf '%s' '$chunk' >> /tmp/notino_feed_coverage_audit.b64'" --app "$FLY_APP" --timeout 60
+            flyctl machine exec "$machine_id" "sh -c \"printf '%s' '$chunk' >> /tmp/notino_feed_coverage_audit.b64\"" --app "$FLY_APP" --timeout 60
           done
           remote_command="sh -c 'base64 -d /tmp/notino_feed_coverage_audit.b64 > /tmp/notino_feed_coverage_audit.py && /app/.venv/bin/python -m py_compile /tmp/notino_feed_coverage_audit.py && rm -f /tmp/notino_feed_coverage_audit.log /tmp/notino_audit.done /tmp/notino_audit.failed && nohup sh -c \"cd /app/backend; /app/.venv/bin/python /tmp/notino_feed_coverage_audit.py; if test \$? -eq 0; then touch /tmp/notino_audit.done; else touch /tmp/notino_audit.failed; fi\" > /tmp/notino_feed_coverage_audit.log 2>&1 < /dev/null & echo NOTINO_AUDIT_STARTED'"
           flyctl machine exec "$machine_id" "$remote_command" --app "$FLY_APP" --timeout 60
