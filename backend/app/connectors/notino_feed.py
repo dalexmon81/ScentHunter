@@ -32,6 +32,9 @@ class NotinoAffiliateFeedConnector(StoreConnector):
         self._cache_ttl_seconds = cache_ttl_seconds
         self._cached_at = 0.0
         self._snapshot: tuple[dict[str, Any], ...] = ()
+        # Fetch jobs address products by external ID. Keep an index beside the
+        # immutable snapshot so a full feed is not rescanned for every product.
+        self._snapshot_by_id: dict[str, dict[str, Any]] = {}
         self._snapshot_lock = asyncio.Lock()
 
     @staticmethod
@@ -81,7 +84,14 @@ class NotinoAffiliateFeedConnector(StoreConnector):
                 snapshot = tuple(self._to_record(item) for item in offers)
             except Exception as exc:
                 raise ConnectorUnavailable(f"Notino affiliate feed unavailable or invalid: {type(exc).__name__}: {exc}") from exc
+            snapshot_by_id: dict[str, dict[str, Any]] = {}
+            for row in snapshot:
+                external_id = str(row.get("external_product_id") or "").strip()
+                if external_id:
+                    # Preserve the previous linear lookup's first-match behavior.
+                    snapshot_by_id.setdefault(external_id, row)
             self._snapshot = snapshot
+            self._snapshot_by_id = snapshot_by_id
             self._cached_at = time.monotonic()
             return snapshot
 
@@ -116,10 +126,8 @@ class NotinoAffiliateFeedConnector(StoreConnector):
         key = str(external_product_id or "").strip()
         if not key:
             return None
-        for row in await self._get_snapshot():
-            if row["external_product_id"] == key:
-                return row
-        return None
+        await self._get_snapshot()
+        return self._snapshot_by_id.get(key)
 
     async def fetch_offers(self, product_key: str) -> Sequence[Mapping[str, Any]]:
         key = str(product_key or "").strip()
