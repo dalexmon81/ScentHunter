@@ -5,7 +5,10 @@ on:
     branches:
       - refactor/catalog-first-architecture
       - work/ingestion-coverage-report-20261119-rebased
+      - work/notino-feed-index-20261120
     paths:
+      - "backend/app/connectors/notino_feed.py"
+      - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
       - "backend/app/workers/legacy_runtime.py"
       - "backend/app/services/offer_refresh.py"
