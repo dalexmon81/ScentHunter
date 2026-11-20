@@ -1,0 +1,108 @@
+name: Final isolated ScentHunter pilot verification
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - ".github/workflows/fly-pilot-final-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-offer-engine-pilot
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify live isolated catalog and publication
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+      PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate access and locate the started pilot machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || { echo "Missing FLY_API_TOKEN" >&2; exit 1; }
+          case "$FLY_API_TOKEN" in
+            fm2_*) FLY_API_TOKEN="FlyV1 $FLY_API_TOKEN" ;;
+          esac
+          echo "::add-mask::$FLY_API_TOKEN"
+          printf 'FLY_API_TOKEN=%s\n' "$FLY_API_TOKEN" >> "$GITHUB_ENV"
+          flyctl status --app "$FLY_APP"
+          machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started pilot machine." >&2; exit 1; }
+          echo "PILOT_MACHINE_ID=$machine_id" >> "$GITHUB_ENV"
+          echo "PILOT_MACHINE_STATE=started"
+
+      - name: Read retailer ingestion coverage (read-only)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 180
+
+      - name: Diagnose public publication gate (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 180
+
+      - name: Backfill only independently verified Notino EUR evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/backfill_notino_currency_evidence.py --apply'" --app "$FLY_APP" --timeout 180
+          flyctl machine exec "$PILOT_MACHINE_ID" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/publication_gate_report.py'" --app "$FLY_APP" --timeout 180
+
+      - name: Verify live health and public product search
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter-pilot-20261030.fly.dev"
+          def get(path):
+              req = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Final-Pilot-Verification/1.0"},
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          health = get("/health")
+          status = get("/api/catalog/status")
+          query = urllib.parse.quote("French Avenue Liquid Brun EDP 100ml")
+          result = get("/api/catalog/search?q=" + query)
+          if result.get("status") != "completed":
+              raise RuntimeError("Public catalog search did not complete: " + json.dumps(result))
+          if int(result.get("offer_count", 0)) < 1:
+              raise RuntimeError("Expected the verified Notino offer in public search: " + json.dumps(result))
+          print("FINAL_PILOT_HEALTH=PASS")
+          print("FINAL_CATALOG_STATUS=PASS")
+          print("FINAL_PUBLIC_SEARCH=PASS")
+          print("FINAL_CANONICAL_PRODUCTS=" + str(status.get("canonical_products", 0)))
+          print("FINAL_CANONICAL_VARIANTS=" + str(status.get("canonical_variants", 0)))
+          print("FINAL_PUBLISHED_OFFERS=" + str(status.get("published_offers", 0)))
+          print("FINAL_QUERY_OFFER_COUNT=" + str(result.get("offer_count", 0)))
+          print("FINAL_PILOT_URL=" + base)
+          PY
+
+      - name: Print isolated pilot URL
+        if: success()
+        run: echo "ScentHunter isolated pilot verified at $PILOT_URL"
