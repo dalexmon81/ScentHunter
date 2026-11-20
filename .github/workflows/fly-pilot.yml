@@ -379,12 +379,58 @@ jobs:
 
       - name: Report retailer ingestion coverage (read-only)
         continue-on-error: true
+        timeout-minutes: 15
         shell: bash
         run: |
           set -euo pipefail
           machine_id="$(flyctl machine list --app "$FLY_APP" --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
           test -n "$machine_id" || { echo "No started pilot machine found for coverage report." >&2; exit 1; }
-          flyctl machine exec "$machine_id" "sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168'" --app "$FLY_APP" --timeout 60
+
+          # This is a read-only but potentially expensive aggregate over every
+          # retailer. Run detached so Fly's machine-exec request is not held
+          # open while SQLite scans the ingestion history.
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          mkdir -p /data/catalog
+          rm -f /data/catalog/coverage_report.exit /data/catalog/coverage_report.log
+          nohup /bin/sh -c '
+            cd /app/backend
+            set +e
+            /app/.venv/bin/python scripts/ingestion_coverage_report.py --hours 168
+            result=$?
+            echo "$result" > /data/catalog/coverage_report.exit
+            exit 0
+          ' </dev/null >/data/catalog/coverage_report.log 2>&1 &
+          echo COVERAGE_REPORT_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 30
+
+          for attempt in $(seq 1 90); do
+            poll="$(flyctl machine exec "$machine_id" "sh -c 'if [ -f /data/catalog/coverage_report.exit ]; then echo COVERAGE_REPORT_EXIT=\$(cat /data/catalog/coverage_report.exit); else echo COVERAGE_REPORT_RUNNING; fi'" --app "$FLY_APP" --timeout 30 2>&1)" || {
+              echo "Coverage report status poll failed ($attempt/90): $poll"
+              sleep 10
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'COVERAGE_REPORT_EXIT=0'; then
+              flyctl machine exec "$machine_id" "tail -n 240 /data/catalog/coverage_report.log" --app "$FLY_APP" --timeout 30
+              echo "RETAILER_COVERAGE_REPORT=PASS"
+              break
+            fi
+            if printf '%s\\n' "$poll" | grep -Eq 'COVERAGE_REPORT_EXIT=[1-9]'; then
+              flyctl machine exec "$machine_id" "tail -n 240 /data/catalog/coverage_report.log" --app "$FLY_APP" --timeout 30 || true
+              echo "RETAILER_COVERAGE_REPORT=FAILED (read-only diagnostic; does not invalidate canonical offer smoke test)"
+              break
+            fi
+            if [ "$attempt" -eq 90 ]; then
+              echo "Retailer coverage report exceeded 15 minutes; diagnostic only." >&2
+              flyctl machine exec "$machine_id" "tail -n 120 /data/catalog/coverage_report.log" --app "$FLY_APP" --timeout 30 || true
+              break
+            fi
+            sleep 10
+          done
 
       - name: Diagnose why active offers fail the public publication gate (read-only)
         continue-on-error: true
