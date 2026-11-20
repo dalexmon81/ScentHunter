@@ -4,9 +4,14 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+      - fix/notino-feed-index-main-20261120
       - work/ingestion-coverage-report-20261119-rebased
     paths:
+      - "backend/app/connectors/notino_feed.py"
+      - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
+      - "backend/app/connectors/notino_feed.py"
+      - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/legacy_runtime.py"
       - "backend/app/services/offer_refresh.py"
       - "backend/tests/test_offer_refresh_persistence.py"
@@ -46,6 +51,11 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install backend requirements
         run: python -m pip install -r backend/requirements.txt
+      - name: Test Notino feed connector snapshot and indexed lookup
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_notino_feed_connector.py' -v
       - name: Test Notino canonical discovery filter
         working-directory: backend
         env:
