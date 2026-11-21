@@ -185,6 +185,54 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         self.assertEqual(connector.seen, ("123:456", product_url))
         refresh.assert_called_once()
 
+
+    def test_shopify_refresh_rejects_unverified_currency_provenance(self):
+        product_url = "https://orioudh.com/products/test-product"
+        with self.sessions() as session, session.begin():
+            session.add(Offer(
+                store_id=self.store_id,
+                external_product_id="123:456",
+                url=product_url,
+                price="89.90",
+                currency="EUR",
+                availability="in_stock",
+                source="test",
+                status="active",
+            ))
+
+        class ShopifyRefreshConnector(FakeLegacyConnector):
+            store_key = "orioudh"
+
+            async def fetch_offer_price_and_stock(self, external_id, persisted_url=None):
+                return {"raw_record": {"price": "88.90"}, "captured_at": 1}
+
+            def parse_raw(self, raw):
+                return {
+                    "price": "88.90",
+                    "currency": "EUR",
+                    "currency_explicit": True,
+                    "currency_source": "untrusted_product_json_default",
+                    "availability": "in_stock",
+                    "product_url": product_url,
+                    "url": product_url,
+                    "source": "test",
+                }
+
+        connector = ShopifyRefreshConnector()
+        with (
+            patch.object(notino_runtime, "_sessions", return_value=self.sessions),
+            patch.object(legacy_runtime, "connector_key_for_store_slug", return_value="orioudh"),
+            patch.object(legacy_runtime, "build_legacy_connector", return_value=connector),
+            patch.object(legacy_runtime, "refresh_offer_observation") as refresh,
+        ):
+            with self.assertRaisesRegex(ValueError, "shopify_currency_provenance"):
+                legacy_runtime.handle_legacy_refresh({
+                    "store_id": str(self.store_id),
+                    "external_product_id": "123:456",
+                })
+
+        refresh.assert_not_called()
+
     def test_legacy_refresh_rejects_missing_offer_before_network(self):
         class MustNotFetch(FakeLegacyConnector):
             async def fetch_offer_price_and_stock(self, external_id, persisted_url=None):
