@@ -129,6 +129,10 @@ class PerfumeMarketConnector(StoreConnector):
         # Scraper currently defaults currency to EUR and does not expose whether
         # JSON-LD supplied priceCurrency. Never infer explicit provenance.
         explicit_currency = raw.get("currency_explicit") is True or offer.get("currency_explicit") is True
+        currency_source = (
+            offer.get("currency_source") or raw.get("currency_source")
+            if explicit_currency else None
+        )
         price = offer.get("price") if offer.get("price") is not None else raw.get("price_num", raw.get("price"))
         return {
             "external_product_id": str(raw.get("external_product_id") or url),
@@ -140,6 +144,7 @@ class PerfumeMarketConnector(StoreConnector):
             "price": str(price) if price is not None else None,
             "currency": currency,
             "currency_explicit": explicit_currency,
+            "currency_source": currency_source,
             "availability": offer.get("availability") or raw.get("availability"),
             "product_url": url,
             "url": url,
