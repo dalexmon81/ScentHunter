@@ -36,10 +36,11 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   self.assertFalse(c.parse_raw(offers[0])["currency_explicit"])
  async def test_explicit_currency_field_is_preserved(self):
   c=ParfumCityConnector(SimpleNamespace())
-  raw={"name":"Example","url":"https://www.parfumcity.nl/products/example","offer":{"price":30,"currency":"GBP","currency_explicit":True,"availability":"in_stock"}}
+  raw={"name":"Example","url":"https://www.parfumcity.nl/products/example","offer":{"price":30,"currency":"GBP","currency_explicit":True,"currency_source":"shopify_cart_presentment_currency","availability":"in_stock"}}
   parsed=c.parse_raw(raw)
   self.assertEqual(parsed["currency"],"GBP")
   self.assertTrue(parsed["currency_explicit"])
+  self.assertEqual(parsed["currency_source"],"shopify_cart_presentment_currency")
  async def test_missing_seeds_fail_closed(self):
   c=ParfumCityConnector(SimpleNamespace())
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY":""}):
