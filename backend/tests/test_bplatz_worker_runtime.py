@@ -107,6 +107,15 @@ class BplatzWorkerRuntimeTests(unittest.TestCase):
             self.assertEqual(run.status, "completed")
             self.assertEqual(run.products_discovered, 1)
 
+    def test_generic_dispatch_routes_bplatz_to_its_isolated_runtime(self):
+        with (
+            patch.object(notino_runtime, "_sessions", return_value=self.sessions),
+            patch.object(bplatz_runtime, "handle_bplatz_discovery", return_value={"status": "routed"}) as handler,
+        ):
+            result = legacy_runtime._dispatch("discover", {"store_id": str(self.store_id)})
+        self.assertEqual(result, {"status": "routed"})
+        handler.assert_called_once_with({"store_id": str(self.store_id)})
+
     def test_discovery_rejects_inactive_or_non_bplatz_store(self):
         with self.sessions() as session, session.begin():
             store = Store(
