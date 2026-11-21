@@ -143,7 +143,7 @@ jobs:
             fi
           fi
           echo "=== CURRENT MACHINES ==="
-          flyctl machines list --app scenthunter --json || true
+          flyctl machines list --app scenthunter || true
 
       - name: Initialize and verify isolated Phase 2 SQLite catalog
         if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
