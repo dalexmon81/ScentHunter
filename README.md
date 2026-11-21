@@ -5,7 +5,7 @@ ScentHunter is a fragrance catalog and price-comparison service. The repository 
 ## Current runtime boundaries
 
 - **Production Fly app:** `fly.toml` builds with the root `Dockerfile`. That image starts the existing `backend/main.py` FastAPI application, the family-coverage process and the Phase 0 baseline worker. Treat this as the production runtime; do not replace its entrypoint as part of repository cleanup.
-- **Isolated Fly pilot:** `fly.staging.toml` explicitly selects `Dockerfile.pilot`. It starts the catalog bootstrap, SQLite ingestion worker and API for the isolated pilot. It is not the production deployment.
+- **Isolated Fly pilot:** `fly.staging.toml` explicitly selects `Dockerfile.pilot`. The pilot is API-only: it bootstraps its dedicated catalog volume and starts Uvicorn, but does not start the SQLite ingestion worker or automatic catalog discovery/hydration. The API-only guard also rejects legacy search, retailer resync, live diagnostics and Phase 0 job-start routes. It is not the production deployment. Runtime deployment remains separately gated and has not been performed.
 - **Read-only catalog demo:** the root `catalog_demo_app.py` is a hosting shim for `backend/catalog_demo_app.py`. `start_catalog_demo.sh` starts the demo with a temporary SQLite database. Keep the shim and its backend app together.
 - **Railway configuration:** `railway.toml` is a separate platform configuration. Its current deployment status is not established by this repository alone.
 
