@@ -91,7 +91,8 @@ permissions:
 
 jobs:
   postgres-schema-and-engine:
-    runs-on: ubuntu-latest
+    # Playwright 1.40's Linux dependency installer is not yet compatible with the newer resolute image.
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     services:
       postgres:
