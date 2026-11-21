@@ -121,6 +121,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install backend database dependencies
         run: python -m pip install -r backend/requirements.txt pytest
+      - name: Install Chromium for the catalog-first browser smoke test
+        run: python -m playwright install --with-deps chromium
       - name: Upgrade disposable PostgreSQL schema to Alembic head
         working-directory: backend
         run: alembic upgrade head
