@@ -390,9 +390,9 @@ def parse_product_html(html, final_url, query):
 
     if price is None:
         price_patterns = [
-            r"retail\\s+price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)
