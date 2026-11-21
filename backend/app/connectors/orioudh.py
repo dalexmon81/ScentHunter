@@ -21,7 +21,7 @@ class OrioudhConnector(StoreConnector):
     def _is_store_product_url(url: str) -> bool:
         parsed = urlparse(url)
         return (
-            parsed.scheme in {"http", "https"}
+            parsed.scheme == "https"
             and parsed.hostname in {"orioudh.com", "www.orioudh.com"}
             and parsed.username is None
             and parsed.password is None
