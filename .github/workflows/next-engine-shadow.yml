@@ -1,9 +1,6 @@
 name: Next Engine Shadow Integration
 
 on:
-  push:
-    branches:
-      - integration/next-engine-shadow
   pull_request:
     branches:
       - main
