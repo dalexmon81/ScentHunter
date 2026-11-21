@@ -72,10 +72,12 @@ class OrioudhConnector(StoreConnector):
         if not isinstance(raw,Mapping): return ()
         return tuple({**dict(row),"url":product_key,"external_product_id":self._variant_id(row)} for row in raw.get("variants",()) if isinstance(row,Mapping))
 
-    async def fetch_price_and_stock(self, offer_id:str) -> Mapping[str,Any]:
+    async def fetch_price_and_stock(self, offer_id:str, product_url:str|None=None) -> Mapping[str,Any]:
         if ":" not in offer_id: raise ValueError("offer_id must contain Shopify product ID and variant ID")
         product_id,variant_id=offer_id.split(":",1)
-        urls=self._snapshot
+        # The persisted Offer URL is authoritative. Do not depend on a process-local
+        # discovery snapshot: workers can restart between ingestion and refresh.
+        urls=(product_url,) if product_url else self._snapshot
         match=None
         for url in urls:
             raw=await self.fetch_product(url)
