@@ -23,6 +23,21 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   self.assertEqual(localized,"EUR")
   self.assertEqual(session.calls[-1],"https://www.parfumcity.nl/fr/cart.js")
 
+ async def test_product_json_uses_cart_js_currency_in_raw_offer(self):
+  product={"id":20,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":201,"title":"100 ml","price":"30.00","available":True,"sku":"EX-100"}]}
+  class Response:
+   def __init__(self,payload): self.payload=payload
+   def json(self): return self.payload
+   def close(self): pass
+  def fake_get(session,url):
+   return Response(product.copy() if url.endswith(".js") else {"currency":"GBP"})
+  with patch.object(parfumcity_scraper,"_get",side_effect=fake_get):
+   loaded=parfumcity_scraper.product_json(SimpleNamespace(),"https://www.parfumcity.nl/products/example")
+  self.assertEqual(loaded["_scenthunter_currency"],"GBP")
+  row=parfumcity_scraper.make_item(loaded,loaded["variants"][0],"https://www.parfumcity.nl/products/example","Example")
+  self.assertEqual(row["offer"]["currency"],"GBP")
+  self.assertTrue(row["offer"]["currency_explicit"])
+  self.assertEqual(row["offer"]["currency_source"],"shopify_cart_presentment_currency")
  async def test_variants_keep_distinct_ids_and_currency_unverified(self):
   product={"id":20,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":201,"title":"50 ml","price":"30.00","available":True},{"id":202,"title":"100 ml","price":"45.00","available":True}]}
   def make(p,v,u,q):
