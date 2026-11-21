@@ -18,3 +18,13 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   c=OrioudhConnector(SimpleNamespace())
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH":""}):
    with self.assertRaises(ValueError): await c.discover_products()
+
+class RefreshAfterRestartTests(unittest.IsolatedAsyncioTestCase):
+ async def test_refresh_uses_persisted_product_url_without_discovery_snapshot(self):
+  url="https://orioudh.com/products/example"
+  scraper=SimpleNamespace(extract_product_page=lambda s,u,q:[variant(11,33)])
+  c=OrioudhConnector(scraper)
+  observation=await c.fetch_price_and_stock("10:11",product_url=url)
+  self.assertEqual(observation["external_product_id"],"10:11")
+  self.assertEqual(observation["price"],"33")
+  self.assertEqual(c._snapshot,())
