@@ -125,3 +125,30 @@ No scraper code or production configuration was changed in this follow-up audit.
   has not yet been inspected, so test success is not claimed.
 - No retailer HTTP calls, production database writes, worker activation,
   merge, or deployment were performed.
+
+## Isolated branch follow-up — host boundary hardening (2026-11-21)
+
+The Offer-First adapters now enforce retailer-specific host allowlists before
+accepting discovered product URLs or fetching product pages:
+
+- Bplatz: HTTPS hosts under bplatz.de; redirects are not followed.
+- Orioudh: orioudh.com and www.orioudh.com.
+- Parfumcity: parfumcity.nl and www.parfumcity.nl.
+- PerfumeMarket: perfumemarket.nl and www.perfumemarket.nl.
+
+Fixture tests reject foreign product hosts during discovery and direct fetch.
+This prevents an arbitrary product URL from being treated as a valid retailer
+record. It is defense in depth; production network egress controls are still
+required.
+
+The latest full PostgreSQL CI run on architecture/offer-first-v2 is workflow
+#924 (commit 6f38312d50dde27bd4eaa665e4d03c322a43e3f6), conclusion success.
+All 23 validation steps passed, including PostgreSQL schema/import, currency
+provenance, queue retry/recovery, idempotent promotion/history, retailer
+capability boundaries, Bplatz runtime/parser, all four new adapter suites,
+catalog-first API and price-selection regression.
+
+No production database, live retailer endpoint, scheduler, deployment or
+main branch was touched. Orioudh, Parfumcity and PerfumeMarket remain
+adapter-only until their canonical store slugs are established and a separate
+operator approval authorizes any worker integration.
