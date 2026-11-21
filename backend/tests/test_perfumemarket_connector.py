@@ -150,5 +150,25 @@ class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
                 await connector.discover_products()
 
 
+    async def test_foreign_product_hosts_are_rejected_during_discovery_and_fetch(self):
+        scraper = SimpleNamespace(search_stream=lambda query: {
+            "status": "success", "verified": True, "details": {},
+            "results": [
+                {"url": "https://attacker.example/products/fake"},
+                {"url": "https://www.perfumemarket.nl/products/real"},
+            ],
+        })
+        connector = PerfumeMarketConnector(scraper)
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_PERFUMEMARKET": "Example"
+        }):
+            products = await connector.discover_products()
+        self.assertEqual(
+            [product.product_url for product in products],
+            ["https://www.perfumemarket.nl/products/real"],
+        )
+        with self.assertRaisesRegex(ValueError, "PerfumeMarket Shopify"):
+            await connector.fetch_product("https://attacker.example/products/fake")
+
 if __name__ == "__main__":
     unittest.main()
