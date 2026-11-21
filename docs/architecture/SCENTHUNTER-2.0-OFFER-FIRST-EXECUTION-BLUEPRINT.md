@@ -206,3 +206,17 @@ Search must have tests proving that connector methods are never invoked by the r
 ## 11. Immediate next implementation task
 
 Start with Phase 1 in an isolated test environment: inspect every existing migration and model, create a disposable PostgreSQL test target, and prove the current schema/seed path before changing production-facing code. If a disposable PostgreSQL service cannot be provisioned by the available CI environment, stop at the reproducible test harness and report the exact external prerequisite; do not substitute SQLite and call it PostgreSQL validation.
+
+## Worker activation safety gate (2026-11-21)
+
+The isolated SQLite worker must not start retailer discovery or refresh scheduling merely because the process is running. These schedules now fail closed and require explicit operator opt-in:
+
+- `SCENTHUNTER_NOTINO_DISCOVERY_ENABLED=1` enables daily Notino discovery.
+- `SCENTHUNTER_LEGACY_DISCOVERY_ENABLED=1` enables the legacy-retailer scheduler; each retailer still also requires its own `SCENTHUNTER_DISCOVERY_QUERIES_<CONNECTOR>` query seed.
+- `SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1` enables periodic refresh scheduling for active offers.
+
+All three settings default to disabled. No production environment variables have been changed and no worker has been started.
+
+Before any runtime activation, reconcile the separate database settings. The Fly app currently declares `SCENTHUNTER_CATALOG_DB=/data/store_catalog.sqlite3`, while the Phase 2 SQLAlchemy engine reads `SCENTHUNTER_CATALOG_DATABASE_URL` or `SCENTHUNTER_DATABASE_URL` and otherwise defaults to `/data/catalog/catalog.sqlite3`. The queue database independently defaults to `/data/catalog/ingestion_queue.sqlite3`. Do not assume these paths refer to the same database or change the legacy catalog setting to point at the Phase 2 database.
+
+Runtime activation remains a separate, explicitly approved operation after tests, database identity checks, single-worker/concurrency policy, and rollback procedure are verified.
