@@ -163,7 +163,7 @@
           ]
         },
         {
-          "canonical_name": "Hawas Éclat",
+          "canonical_name": "Hawas for Her Éclat",
           "aliases": [
             "Hawas Éclat",
             "Hawas For Her Éclat",
@@ -323,10 +323,11 @@
           ]
         },
         {
-          "canonical_name": "Hawas Alpha",
+          "canonical_name": "Hawas Alpha for Him",
           "aliases": [
             "Hawas Alpha",
-            "Hawas Alpha for Him"
+            "Hawas Alpha for Him",
+            "Alpha for Him"
           ]
         },
         {
@@ -340,6 +341,12 @@
           "canonical_name": "Hawas Frost",
           "aliases": [
             "Hawas Frost"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Venom",
+          "aliases": [
+            "Hawas Venom"
           ]
         }
       ],
