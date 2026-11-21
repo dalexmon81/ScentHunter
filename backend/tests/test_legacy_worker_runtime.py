@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.connectors.base import DiscoveredProduct
-from app.models import Base, IngestionRun, Store
+from app.models import Base, IngestionRun, Offer, Store
 from app.services.connector_ingestion import ConnectorIngestionResult
 from app.workers import legacy_runtime, notino_runtime
 
