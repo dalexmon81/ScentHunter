@@ -2,7 +2,7 @@
 
 ## Repository state and safety contract
 
-This migration is performed on `refactor/catalog-first-architecture`. The protected `main` branch is not modified by this plan.
+This document describes the catalog-first work already present in the repository. The current isolated cleanup branch is `architecture/offer-first-v2`; protected `main` remains untouched. Repository cleanup must be completed and explicitly approved before any new architecture implementation begins.
 
 The repository already contains substantial catalog-first work. Do not recreate or overwrite these components without first reviewing and extending them:
 
@@ -17,6 +17,9 @@ The repository already contains substantial catalog-first work. Do not recreate 
 The legacy runtime remains important for compatibility. This work must be additive and staged. Never delete or rename legacy modules, JSON inputs, scraper modules, diagnostic scripts, database volumes, or production workflows as part of a structural-only commit.
 
 ## Verified current inventory (2026-11-18)
+
+> Historical snapshot: the inventory below records the repository state observed on 2026-11-18. It is not a claim that every listed path, byte count, branch name or runtime detail remains current. Recheck the live tree and deployment configuration before acting on it.
+
 
 Repository: `dalexmon81/ScentHunter`
 
