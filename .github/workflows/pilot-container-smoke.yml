@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/pilot-container-smoke.yml"
       - "Dockerfile.pilot"
+      - "requirements.txt"
+      - "frontend/index.html"
+      - "backend/**"
       - "fly.staging.toml"
       - "backend/main.py"
       - "backend/app/api/catalog_search.py"
@@ -37,7 +40,7 @@ jobs:
           cleanup() {
             docker logs scenthunter-pilot-smoke 2>&1 || true
             docker rm -f scenthunter-pilot-smoke >/dev/null 2>&1 || true
-            rm -rf "$data_dir"
+            sudo rm -rf "$data_dir"
           }
           trap cleanup EXIT
 
