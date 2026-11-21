@@ -22,7 +22,7 @@ These deployment paths are intentionally distinct. Do not consolidate Dockerfile
 | `backend/scrapers/` | Retailer-specific scraping implementations |
 | `backend/scripts/` | Backend maintenance, seed, migration and operator scripts |
 | `backend/tests/`, `tests/` | Backend and repository-level regression tests |
-| `tools/diagnostics/`, `tools/debug/` | Operator diagnostics and debugging utilities |
+| `tools/diagnostics/` | Retained operator diagnostics; scripts coupled to application routes remain available here |
 | `.github/workflows/` | CI, diagnostics and explicitly controlled operational workflows |
 | `docs/` | Architecture, migration and operations documentation |
 | `frontend/index.html` | Existing frontend |
