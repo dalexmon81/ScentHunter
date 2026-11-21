@@ -56,7 +56,8 @@ jobs:
           SH
           )"
           encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
-          flyctl ssh console --app scenthunter --select=false -C "/bin/sh -lc 'echo $encoded_script | base64 -d | /bin/sh'"
+          flyctl ssh console --app scenthunter --machine 8654e0da7d7268 --pty=false --quiet \
+            -C "/bin/sh -lc 'printf %s $encoded_script | base64 -d | /bin/sh'"
 
       - name: Confirm this workflow does not switch production runtime
         run: echo "IMPORT_APPLIED_TO_NEON_STAGING_ONLY=1; production runtime remains unchanged."
