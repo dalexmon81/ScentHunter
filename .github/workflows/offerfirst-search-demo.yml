@@ -29,7 +29,7 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-offerfirst-demo-20261121
       FLY_ORG: personal
-      FLY_VOLUME: scenthunter_offerfirst_demo_data
+      FLY_VOLUME: sh_offerfirst_demo
       DEMO_URL: https://scenthunter-offerfirst-demo-20261121.fly.dev
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
           echo "::add-mask::$token"
           printf 'FLY_API_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
           grep -Fq 'app = "scenthunter-offerfirst-demo-20261121"' fly.offerfirst-demo.toml
-          grep -Fq 'source = "scenthunter_offerfirst_demo_data"' fly.offerfirst-demo.toml
+          grep -Fq 'source = "sh_offerfirst_demo"' fly.offerfirst-demo.toml
           grep -Fq 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' fly.offerfirst-demo.toml
           echo "Dedicated app, dedicated volume, API-only startup: verified."
 
