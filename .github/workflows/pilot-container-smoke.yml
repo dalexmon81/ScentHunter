@@ -86,6 +86,26 @@ jobs:
           print("Canonical variants:", status["canonical_variants"])
           PY
 
+          # Verify the actual browser demo and its user-facing search API.
+          demo_code="$(curl --silent --output /tmp/catalog-demo.html --write-out '%{http_code}' http://127.0.0.1:18080/catalog-demo)"
+          test "$demo_code" = "200"
+          grep -Fq "search-form" /tmp/catalog-demo.html
+          grep -Fq "/api/catalog/search?q=" /tmp/catalog-demo.html
+
+          search_code="$(curl --silent --output /tmp/catalog-search.json --write-out '%{http_code}' --get --data-urlencode "q=Dior Sauvage Eau de Parfum 100 ml" http://127.0.0.1:18080/api/catalog/search)"
+          test "$search_code" = "200"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("/tmp/catalog-search.json").read_text())
+          assert result.get("status") == "completed", result
+          assert isinstance(result.get("results"), list), result
+          print("Catalog demo page: PASS")
+          print("Catalog search API: PASS")
+          print("Dior Sauvage matching results:", result.get("count", 0))
+          print("Verified offers returned:", result.get("offer_count", 0))
+          PY
+
           for path in \
             "/search-start?q=Dior" \
             "/diagnostic/deloox-pipeline?url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123" \
