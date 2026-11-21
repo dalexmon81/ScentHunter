@@ -11,6 +11,7 @@ on:
       - .github/workflows/notino-cj-production-feed-monitor.yml
       # Read-only production inventory workflows must never trigger an app deploy.
       - .github/workflows/scenthunter-production-db-inventory.yml
+      - .github/workflows/scenthunter-postgres-precutover-backup.yml
       # This workflow's own path-filter safety update must not trigger a deploy.
       - .github/workflows/fly.yml
 

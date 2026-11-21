@@ -1,0 +1,52 @@
+name: ScentHunter PostgreSQL pre-cutover backup
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/scenthunter-postgres-precutover-backup.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-postgres-precutover-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "::error::FLY_API_TOKEN repository secret is missing."
+            exit 1
+          }
+          echo "Fly authentication is configured."
+
+      - name: Create point-in-time snapshot of production volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl volumes snapshots create vol_vwn91672oj9d1z9v --app scenthunter --json
+
+      - name: Create and verify SQLite online backup of Offer-First catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"import hashlib,sqlite3; from datetime import datetime,timezone; from pathlib import Path; root=Path(\\\"/data/migration-backups\\\"); root.mkdir(parents=True,exist_ok=True); source=\\\"/data/catalog/catalog.sqlite3\\\"; target=str(root/(\\\"phase2-catalog-\\\"+datetime.now(timezone.utc).strftime(\\\"%Y%m%dT%H%M%SZ\\\")+\\\".sqlite3\\\")); src=sqlite3.connect(\\\"file:\\\"+source+\\\"?mode=ro\\\",uri=True,timeout=30); dst=sqlite3.connect(target); src.backup(dst); dst.close(); src.close(); check=sqlite3.connect(\\\"file:\\\"+target+\\\"?mode=ro\\\",uri=True,timeout=30); result=check.execute(\\\"PRAGMA quick_check(1)\\\").fetchone()[0]; tables=[r[0] for r in check.execute(\\\"SELECT name FROM sqlite_master WHERE type=char(116,97,98,108,101) AND name NOT LIKE char(115,113,108,105,116,101,95,37) ORDER BY name\\\")]; counts={t:check.execute(\\\"SELECT COUNT(*) FROM \\\\\\\"\\\"+t+\\\"\\\\\\\"\\\").fetchone()[0] for t in tables}; revision=check.execute(\\\"SELECT version_num FROM alembic_version\\\").fetchone()[0]; check.close(); digest=hashlib.sha256(Path(target).read_bytes()).hexdigest(); print(\\\"BACKUP_PATH:\\\",target); print(\\\"BACKUP_SIZE_BYTES:\\\",Path(target).stat().st_size); print(\\\"BACKUP_SHA256:\\\",digest); print(\\\"BACKUP_QUICK_CHECK:\\\",result); print(\\\"BACKUP_ALEMBIC_REVISION:\\\",revision); print(\\\"BACKUP_TABLE_COUNTS:\\\",counts); assert result==\\\"ok\\\" and revision==\\\"0005_connector_quarantine\\\" and counts.get(\\\"offers\\\")==11 and counts.get(\\\"price_history\\\")==50\"' "
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Confirm backup boundary
+        run: echo "PRE_CUTOVER_BACKUP=VERIFIED; production databases were not migrated or switched."
