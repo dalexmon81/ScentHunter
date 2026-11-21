@@ -63,7 +63,8 @@ def _schedule_active_offer_refresh(session_factory) -> None:
     try:
         with session_factory() as session:
             rows = session.execute(select(Offer.store_id, Offer.external_product_id).join(Store).where(
-                Store.status == "active", Offer.status == "active",
+                Store.status == "active", Store.slug.in_(("notino-fr", *tuple(STORE_SLUGS))),
+                Offer.status == "active",
                 Offer.external_product_id.is_not(None)
             ).order_by(Offer.captured_at.asc()).limit(200)).all()
         for store_id, external_product_id in rows:
