@@ -125,6 +125,27 @@ jobs:
             sleep "$delay"
           done
 
+      - name: Diagnose failed Fly release machine
+        if: failure()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set +e
+          echo "=== RELEASE COMMAND FAILURE CONTEXT ==="
+          if [ -f /tmp/fly-deploy.log ]; then
+            cat /tmp/fly-deploy.log
+            machine_id="$(sed -nE 's/.*Created release_command machine ([a-f0-9]+).*/\\1/p' /tmp/fly-deploy.log | tail -n1)"
+            if [ -n "$machine_id" ]; then
+              echo "=== RELEASE MACHINE STATUS: $machine_id ==="
+              flyctl machine status "$machine_id" --app scenthunter --json || true
+              echo "=== RELEASE MACHINE LOGS: $machine_id ==="
+              timeout 30s flyctl logs --app scenthunter --machine "$machine_id" --no-tail || true
+            fi
+          fi
+          echo "=== CURRENT MACHINES ==="
+          flyctl machines list --app scenthunter --json || true
+
       - name: Initialize and verify isolated Phase 2 SQLite catalog
         if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         env:
