@@ -188,12 +188,25 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not external_id:
         raise ValueError("external_product_id is required")
 
+    # Resolve the persisted URL before network I/O. A worker restart must not
+    # make a refresh depend on a process-local discovery snapshot.
+    with notino_runtime._sessions()() as session:
+        offer_url = session.scalar(select(Offer.url).where(
+            Offer.store_id == store_id,
+            Offer.external_product_id == external_id,
+            Offer.status == "active",
+        ))
+    if not offer_url:
+        raise LookupError("active_offer_not_found_for_refresh")
+
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
     connector = build_legacy_connector(connector_key)
     try:
-        observation = asyncio.run(connector.fetch_price_and_stock(external_id))
+        observation = asyncio.run(
+            connector.fetch_offer_price_and_stock(external_id, offer_url)
+        )
         raw_record = observation.get("raw_record")
         parsed = connector.parse_raw(raw_record if isinstance(raw_record, Mapping) else observation)
         if parsed.get("currency_explicit") is not True:
