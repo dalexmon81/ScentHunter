@@ -86,6 +86,12 @@ _CATALOG_HYDRATION_STOP = threading.Event()
 _CATALOG_DISCOVERY_STARTED = False
 _CATALOG_DISCOVERY_STOP = threading.Event()
 
+
+def _automatic_catalog_startup_disabled():
+    """Fail closed for API-only pilot processes unless explicitly enabled."""
+    value = str(os.environ.get('SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP', '0')).strip().lower()
+    return value in {'1', 'true', 'yes', 'on'}
+
 # Controlled operational resync for stores whose persistent catalog needs to
 # be rebuilt without touching the normal search path. Keep this list limited to
 # stores with a confirmed catalog-coverage gap; discovery runs in the background
@@ -644,6 +650,9 @@ def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
 @app.on_event('startup')
 def _start_catalog_bootstrap():
     global _CATALOG_BOOTSTRAP_STARTED
+    if _automatic_catalog_startup_disabled():
+        print('CATALOG STARTUP DISABLED: automatic discovery and hydration are disabled by configuration', flush=True)
+        return
     with _CATALOG_BOOTSTRAP_LOCK:
         if _CATALOG_BOOTSTRAP_STARTED:
             return
@@ -5008,6 +5017,9 @@ def frontend():
 @app.on_event('startup')
 def _initialize_phase0_baseline_jobs():
     """Prepare the durable queue before accepting API requests."""
+    if _automatic_catalog_startup_disabled():
+        print("PHASE0 BASELINE STARTUP DISABLED BY CONFIGURATION", flush=True)
+        return
     from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema, ensure_smoke_schema
     conn = connect()
     try:
