@@ -226,3 +226,17 @@ Runtime activation remains a separate, explicitly approved operation after tests
 Offer promotion now takes a PostgreSQL row lock on the retailer's `stores` row before resolving an existing offer or inserting a new one. Concurrent promotions for the same retailer therefore serialize through the identity lookup and write, preventing the query-then-insert race from creating duplicate offers or bypassing the external-ID-to-variant conflict check. The lock is held until the caller commits or rolls back.
 
 A PostgreSQL concurrency regression test runs two independent sessions against the same retailer item and checks that both receive one offer ID and that both price observations are retained. This guarantee is specifically based on PostgreSQL row locking. SQLite does not implement equivalent `SELECT FOR UPDATE` row locks; the SQLite pilot must remain single-worker for offer promotion until a separate SQLite-safe serialization mechanism is designed and tested.
+
+
+## API-only pilot isolation gate (2026-11-21)
+
+The isolated pilot is intentionally API-only until a separate worker activation review is approved.
+
+- `SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP=1` disables automatic catalog bootstrap discovery, hydration and the Phase 0 startup queue-schema hook.
+- `Dockerfile.pilot` runs the idempotent canonical catalog bootstrap, then starts Uvicorn only. It does not start `app.workers.sqlite_worker`.
+- In API-only mode, legacy retailer search (`/search` and `/search-start`), catalog resync, live scraper diagnostics, Phase 0 job-start and queue-resume endpoints return HTTP 503.
+- Catalog-first search (`/api/catalog/search`), catalog status (`/api/catalog/status`), the browser demo, the root frontend and health check remain available.
+- The guard defaults off in the normal production runtime; no production environment variables, Dockerfile, Fly manifest, database, volume or secret has been changed.
+- This is a code/configuration safety gate only. No Fly deploy or pilot runtime activation has been performed.
+
+CI must prove that both startup hooks are skipped, manual background-operation routes fail closed, default startup behavior remains unchanged, and the pilot image no longer launches an ingestion worker.
