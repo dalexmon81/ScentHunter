@@ -38,9 +38,11 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   raw=variant(11,30)
   raw["offer"]["currency"]="GBP"
   raw["offer"]["currency_explicit"]=True
+  raw["offer"]["currency_source"]="shopify_cart_presentment_currency"
   parsed=c.parse_raw(raw)
   self.assertEqual(parsed["currency"],"GBP")
   self.assertTrue(parsed["currency_explicit"])
+  self.assertEqual(parsed["currency_source"],"shopify_cart_presentment_currency")
  async def test_missing_seeds_fail_closed(self):
   c=OrioudhConnector(SimpleNamespace())
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH":""}):
