@@ -266,6 +266,14 @@ def _dispatch(stage: str, payload: Mapping[str, Any]):
             "refresh": notino_runtime.handle_notino_refresh,
         }[stage]
         return handler(payload)
+    if slug == "bplatz":
+        from app.workers import bplatz_runtime
+        handler = {
+            "discover": bplatz_runtime.handle_bplatz_discovery,
+            "fetch": bplatz_runtime.handle_bplatz_fetch,
+            "refresh": bplatz_runtime.handle_bplatz_refresh,
+        }[stage]
+        return handler(payload)
     if stage == "discover":
         return handle_legacy_discovery(payload)
     if stage == "fetch":
