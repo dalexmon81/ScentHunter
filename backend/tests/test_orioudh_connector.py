@@ -21,6 +21,9 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   self.assertEqual(value,"EUR")
   self.assertEqual(orioudh_scraper._cart_currency(session,"https://orioudh.com/products/example"),"EUR")
   self.assertEqual(session.calls,["https://orioudh.com/cart.js"])
+  localized= orioudh_scraper._cart_currency(session,"https://orioudh.com/fr/products/example")
+  self.assertEqual(localized,"EUR")
+  self.assertEqual(session.calls[-1],"https://orioudh.com/fr/cart.js")
 
  async def test_variants_keep_distinct_stable_ids_and_currency_unverified(self):
   scraper=SimpleNamespace(search_stream=lambda q:{"status":"success","verified":True,"results":[{"url":"https://orioudh.com/products/example"}]},extract_product_page=lambda s,u,q:[variant(11,30),variant(12,40)])
