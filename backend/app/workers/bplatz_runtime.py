@@ -65,14 +65,13 @@ def handle_bplatz_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         with notino_runtime._sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
 
-        queued = skipped = 0
+        queued = 0
         errors: list[str] = []
+        # Bplatz discovery returns stable product URLs, not parsed product
+        # evidence. Queue every discovered URL and let fetch perform canonical
+        # matching against the actual product page; never pre-filter an
+        # incomplete discovery stub as though it were a full offer record.
         for product in products:
-            if not notino_runtime._is_unique_canonical_candidate(
-                connector, store_id, product.raw_payload
-            ):
-                skipped += 1
-                continue
             try:
                 enqueue_offer_fetch(store_id, product.external_product_id)
                 queued += 1
@@ -102,7 +101,6 @@ def handle_bplatz_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
             "store": store.slug,
             "run_id": str(run_id),
             "products_discovered": len(products),
-            "canonical_candidates_skipped": skipped,
             "fetch_jobs_queued": queued,
             "next_cursor": next_cursor,
             "errors": errors,
