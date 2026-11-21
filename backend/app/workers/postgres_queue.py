@@ -101,12 +101,21 @@ def enqueue_daily_once(schedule_key: str, stage: str, payload: Mapping[str, Any]
             if scheduled is None:
                 return None
             job_id = uuid.uuid4()
-            conn.execute(pg_insert(_jobs).values(
+            inserted = conn.execute(pg_insert(_jobs).values(
                 id=job_id, stage=stage, payload=value, dedupe_key=dedupe,
                 status="queued", attempts=0, max_attempts=MAX_ATTEMPTS,
                 available_at=_now(), created_at=_now(),
-            ))
-            return str(job_id)
+            ).on_conflict_do_nothing(
+                index_elements=[_jobs.c.stage, _jobs.c.dedupe_key],
+                index_where=text("status IN ('queued','running')"),
+            ).returning(_jobs.c.id)).scalar_one_or_none()
+            if inserted is not None:
+                return str(inserted)
+            existing = conn.execute(select(_jobs.c.id).where(
+                _jobs.c.stage == stage, _jobs.c.dedupe_key == dedupe,
+                _jobs.c.status.in_(("queued", "running")),
+            ).order_by(_jobs.c.created_at).limit(1)).scalar_one_or_none()
+            return str(existing) if existing is not None else None
     finally:
         engine.dispose()
 
