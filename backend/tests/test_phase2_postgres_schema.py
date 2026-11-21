@@ -32,6 +32,19 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
         for table in ("fragrances", "product_variants", "offers", "ingestion_raw"):
             self.assertTrue(inspector.get_foreign_keys(table), table)
 
+
+    def test_every_model_column_exists_in_migrated_schema(self):
+        """Alembic must provision every column consumed by the ORM models."""
+        inspector = inspect(self.engine)
+        missing = {}
+        for table_name, table in Base.metadata.tables.items():
+            actual = {column["name"] for column in inspector.get_columns(table_name)}
+            expected = {column.name for column in table.columns}
+            absent = sorted(expected - actual)
+            if absent:
+                missing[table_name] = absent
+        self.assertEqual(missing, {}, f"ORM columns missing from Alembic schema: {missing}")
+
     def test_json_uuid_numeric_and_transaction_rollback(self):
         from uuid import uuid4
 
