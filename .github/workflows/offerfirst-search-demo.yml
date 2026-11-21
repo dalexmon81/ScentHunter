@@ -164,6 +164,47 @@ jobs:
               raise SystemExit("Public demo smoke test failed: " + str(last_error))
           PY
 
+      - name: Wait for the first validated Notino offer
+        shell: bash
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          url = "https://scenthunter-offerfirst-demo-20261121.fly.dev/api/catalog/status"
+          last = None
+          for attempt in range(1, 41):
+              request = urllib.request.Request(
+                  url,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Notino-Pilot/1.0"},
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      last = json.loads(response.read())
+                  count = int(last.get("offers_by_store", {}).get("notino-fr", 0))
+                  print(
+                      "NOTINO_VALIDATED_OFFERS=" + str(count)
+                      + " ACTIVE_OFFERS=" + str(last.get("active_offers_not_currently_publishable", 0))
+                      + " UNRESOLVED_MATCHES=" + str(last.get("unresolved_match_reviews", 0)),
+                      flush=True,
+                  )
+                  if count > 0:
+                      print("NOTINO_FIRST_VALIDATED_OFFER=PASS")
+                      break
+              except Exception as exc:
+                  print("Notino status poll " + str(attempt) + "/40: " + type(exc).__name__, flush=True)
+              if attempt < 40:
+                  time.sleep(30)
+          else:
+              raise SystemExit(
+                  "No verified Notino offer was published within 20 minutes. "
+                  "The demo must not be presented as a working price comparator."
+              )
+          PY
+
       - name: Confirm retailer operations remain disabled
         shell: bash
         run: |
