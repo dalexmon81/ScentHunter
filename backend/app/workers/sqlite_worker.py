@@ -32,6 +32,10 @@ def _stop(_signum, _frame):
 
 
 def _schedule_daily_notino_discovery(session_factory) -> None:
+    enabled = os.environ.get("SCENTHUNTER_NOTINO_DISCOVERY_ENABLED", "0").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        log.info("Notino discovery scheduling is disabled by configuration")
+        return
     day = datetime.now(timezone.utc).date().isoformat()
     try:
         with session_factory() as session:
@@ -55,7 +59,11 @@ def _schedule_daily_notino_discovery(session_factory) -> None:
 
 
 def _schedule_daily_legacy_discovery(session_factory) -> None:
-    """Schedule only explicitly seeded stores with operator-approved query seeds."""
+    """Schedule only explicitly enabled stores with operator-approved query seeds."""
+    enabled = os.environ.get("SCENTHUNTER_LEGACY_DISCOVERY_ENABLED", "0").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        log.info("Legacy retailer discovery scheduling is disabled by configuration")
+        return
     day = datetime.now(timezone.utc).date().isoformat()
     try:
         with session_factory() as session:
@@ -81,7 +89,7 @@ def _schedule_daily_legacy_discovery(session_factory) -> None:
 
 def _schedule_active_offer_refresh(session_factory) -> None:
     """Queue active offer refreshes only when explicitly enabled."""
-    enabled = os.environ.get("SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED", "1").strip().lower()
+    enabled = os.environ.get("SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED", "0").strip().lower()
     if enabled not in {"1", "true", "yes", "on"}:
         log.info("Active offer refresh scheduling is disabled by configuration")
         return
