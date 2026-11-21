@@ -46,6 +46,7 @@ on:
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
       - "backend/tests/test_phase2_sqlite_postgres_import.py"
       - "backend/tests/test_phase2_bplatz_postgres.py"
+      - "backend/tests/test_phase2_catalog_search_api_postgres.py"
       - "tests/test_catalog_offer_price_selection.py"
       - "tests/test_catalog_first_search.py"
       - "tests/test_bplatz_persistence_service.py"
@@ -201,5 +202,7 @@ jobs:
         run: pytest -q tests/test_parfumcity_connector.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
+      - name: Verify catalog-first HTTP search against disposable PostgreSQL
+        run: pytest -q backend/tests/test_phase2_catalog_search_api_postgres.py
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
