@@ -161,6 +161,9 @@ jobs:
       - name: Verify central Shopify currency provenance promotion gate
         working-directory: backend
         run: pytest -q ../tests/test_bplatz_persistence_service.py::test_shopify_offer_cannot_bypass_currency_provenance_at_promotion_gate
+      - name: Verify central offer refresh persistence and Shopify provenance gate
+        working-directory: backend
+        run: pytest -q tests/test_offer_refresh_persistence.py
       - name: Verify retailer ingestion worker dispatch and matching
         working-directory: backend
         run: pytest -q tests/test_notino_worker_runtime.py tests/test_legacy_worker_runtime.py
