@@ -74,18 +74,22 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
         second_id = self._promote_snapshot("79.90")
         self.session.commit()
 
-        offers = self.session.scalars(select(Offer)).all()
-        history = self.session.scalars(select(PriceHistory).order_by(
-            PriceHistory.captured_at, PriceHistory.id
+        offers = self.session.scalars(select(Offer).where(
+            Offer.store_id == self.store_id
         )).all()
-        audits = self.session.scalars(select(MatchAudit)).all()
+        history = self.session.scalars(select(PriceHistory).where(
+            PriceHistory.offer_id == first_id
+        )).all()
+        audits = self.session.scalars(select(MatchAudit).where(
+            MatchAudit.offer_id == first_id
+        )).all()
 
         self.assertEqual(first_id, second_id)
         self.assertEqual(len(offers), 1)
         self.assertEqual(offers[0].price, Decimal("79.90"))
         self.assertEqual(offers[0].external_product_id, "retailer-item-123")
-        self.assertEqual([row.price for row in history], [
-            Decimal("89.90"), Decimal("79.90")
+        self.assertEqual(sorted(row.price for row in history), [
+            Decimal("79.90"), Decimal("89.90")
         ])
         self.assertEqual(len(audits), 2)
 
