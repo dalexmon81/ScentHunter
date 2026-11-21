@@ -9,6 +9,10 @@ on:
       - .github/workflows/phase2-sql-verification.yml
       - backend/scenthunter_next_engine/baseline_report.py
       - .github/workflows/notino-cj-production-feed-monitor.yml
+      # Read-only production inventory workflows must never trigger an app deploy.
+      - .github/workflows/scenthunter-production-db-inventory.yml
+      # This workflow's own path-filter safety update must not trigger a deploy.
+      - .github/workflows/fly.yml
 
 jobs:
   deploy:
