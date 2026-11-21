@@ -1,6 +1,6 @@
-# SQLite canonical catalog — Phase 2
+# Canonical catalog database — SQLite pilot (Phase 2)
 
-Phase 2 uses a dedicated SQLite database on the existing Fly volume:
+The current isolated Phase 2 pilot uses a dedicated SQLite database on the existing Fly volume. This document is retained under its historical filename `README_POSTGRESQL.md`; it does not describe an active PostgreSQL deployment:
 
 - Canonical catalog: `/data/catalog/catalog.sqlite3`
 - Existing storefront catalog: `/data/store_catalog.sqlite3` (untouched)
