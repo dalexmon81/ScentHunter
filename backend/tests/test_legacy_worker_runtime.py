@@ -83,6 +83,28 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
             self.assertEqual(run.status, "completed")
             self.assertEqual(run.products_discovered, 1)
 
+    def test_legacy_discovery_passes_store_id_to_canonical_matcher(self):
+        patches = [
+            patch.object(notino_runtime, "_sessions", return_value=self.sessions),
+            patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True),
+            patch.object(legacy_runtime, "build_legacy_connector", return_value=FakeLegacyConnector()),
+            patch.object(legacy_runtime, "enqueue_offer_fetch"),
+        ]
+        started = [item.start() for item in patches]
+        candidate = started[1]
+        try:
+            result = legacy_runtime.handle_legacy_discovery({
+                "store_id": str(self.store_id), "limit": 10,
+            })
+        finally:
+            for item in reversed(patches):
+                item.stop()
+        self.assertEqual(result["status"], "completed")
+        candidate.assert_called_once_with(
+            unittest.mock.ANY, self.store_id,
+            {"url": "https://www.deloox.be/product/123"},
+        )
+
     def test_legacy_fetch_uses_shared_catalog_persistence_gate(self):
         fake_result = ConnectorIngestionResult(
             ingestion_raw_id=uuid4(), status="promoted",
