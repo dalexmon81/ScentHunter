@@ -25,6 +25,7 @@ on:
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/tests/test_legacy_worker_runtime.py"
       - "backend/tests/test_worker_scheduling_safety.py"
+      - "backend/tests/test_sqlite_queue_retry_safety.py"
       - "backend/tests/test_offer_promotion_idempotency.py"
       - "backend/tests/test_worker_scheduling_safety.py"
       - "backend/scripts/seed_catalog.py"
@@ -155,6 +156,9 @@ jobs:
       - name: Verify retailer scheduling requires explicit opt-in
         working-directory: backend
         run: pytest -q tests/test_worker_scheduling_safety.py
+      - name: Verify SQLite queue retries and stale worker recovery
+        working-directory: backend
+        run: pytest -q tests/test_sqlite_queue_retry_safety.py
       - name: Verify repeated offer promotion and price history
         working-directory: backend
         run: pytest -q tests/test_offer_promotion_idempotency.py
