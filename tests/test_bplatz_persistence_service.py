@@ -775,3 +775,40 @@ def test_connector_persistence_does_not_publish_defaulted_currency(tmp_path):
             assert result.reason == "currency_not_explicit_in_source"
     finally:
         engine.dispose()
+
+
+def test_shopify_offer_cannot_bypass_currency_provenance_at_promotion_gate(tmp_path):
+    _parsed, _record, normalized, group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        with Session(engine) as session, session.begin():
+            store_id = _create_bplatz_store(session)
+            store = session.get(Store, store_id)
+            store.slug = "orioudh"
+            raw_id = stage_raw_offer(
+                session, store_id=store_id,
+                raw_payload={
+                    "connector_store_key": "orioudh",
+                    "currency_explicit": True,
+                    "currency_source": "untrusted_product_json_default",
+                },
+                external_product_id="10:20",
+            )
+            resolved = record_legacy_match(
+                session, ingestion_raw_id=raw_id,
+                legacy_product_id=group.canonical_product_id,
+                legacy_variant_id=group.canonical_variant_id,
+                method="test_canonical_match",
+            )
+            assert resolved is not None
+            with pytest.raises(PromotionRejected, match="provenance"):
+                promote_offer(
+                    session, ingestion_raw_id=raw_id, price=normalized.price,
+                    currency=normalized.currency, url=normalized.product_url,
+                    availability=normalized.availability, source="orioudh_shopify",
+                )
+        with Session(engine) as session:
+            assert session.scalar(select(Offer.id)) is None
+    finally:
+        engine.dispose()
