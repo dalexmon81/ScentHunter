@@ -152,6 +152,9 @@ jobs:
       - name: Verify retailer ingestion worker dispatch and matching
         working-directory: backend
         run: pytest -q tests/test_notino_worker_runtime.py tests/test_legacy_worker_runtime.py
+      - name: Verify retailer scheduling requires explicit opt-in
+        working-directory: backend
+        run: pytest -q tests/test_worker_scheduling_safety.py
       - name: Verify repeated offer promotion and price history
         working-directory: backend
         run: pytest -q tests/test_offer_promotion_idempotency.py
