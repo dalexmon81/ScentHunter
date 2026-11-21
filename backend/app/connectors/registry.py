@@ -27,9 +27,9 @@ RETAILER_CAPABILITIES: tuple[RetailerCapability, ...] = (
         display_name="Bplatz",
         adapter_module="app.connectors.bplatz",
         store_slug="bplatz",
-        worker_stages=(),
-        readiness="adapter_only",
-        notes="Fixture-tested adapter; not registered in worker dispatch.",
+        worker_stages=("discover", "fetch", "refresh"),
+        readiness="worker_registered",
+        notes="Isolated Offer-First worker handlers are registered; scheduling remains disabled and requires explicit operator action.",
     ),
     RetailerCapability(
         key="deloox",
