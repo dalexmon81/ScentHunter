@@ -62,6 +62,15 @@ class CatalogWorkerQueueTests(unittest.TestCase):
                 self.assertEqual(job["id"], job_id)
                 self.assertEqual(job["stage"], "discover")
 
+    def test_postgres_backend_routes_to_canonical_queue_without_redis(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "postgres"}, clear=True):
+            with patch("app.workers.postgres_queue.enqueue", return_value="job-123") as enqueue:
+                self.assertEqual(enqueue_discovery("store-1"), "job-123")
+                enqueue.assert_called_once_with("discover", {
+                    "store_id": "store-1", "cursor": None, "limit": 100
+                })
+
     def test_redis_backend_fails_closed_without_broker(self):
         with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "redis"}, clear=True):
             with self.assertRaises(QueueNotConfigured):

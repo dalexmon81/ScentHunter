@@ -31,6 +31,7 @@ TABLE_ORDER = (
     "offers", "price_history", "match_audit", "ingestion_runs",
 )
 EXPECTED_REVISION = "0005_connector_quarantine"
+SUPPORTED_TARGET_REVISIONS = {EXPECTED_REVISION, "0006_postgres_ingestion_queue"}
 
 
 def open_source_read_only(source_path: Path):
@@ -176,9 +177,9 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
         revision = target_connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar_one()
-        if revision != EXPECTED_REVISION:
+        if revision not in SUPPORTED_TARGET_REVISIONS:
             raise RuntimeError(
-                f"Target Alembic revision must be {EXPECTED_REVISION}; found {revision}."
+                f"Target Alembic revision must be one of {sorted(SUPPORTED_TARGET_REVISIONS)}; found {revision}."
             )
         database_name = target_connection.execute(
             text("SELECT current_database()")
@@ -201,9 +202,9 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
             source_revision = source_connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            if source_revision != EXPECTED_REVISION:
+            if source_revision not in SUPPORTED_TARGET_REVISIONS:
                 raise RuntimeError(
-                    f"Source Alembic revision must be {EXPECTED_REVISION}; "
+                    f"Source Alembic revision must be one of {sorted(SUPPORTED_TARGET_REVISIONS)}; "
                     f"found {source_revision}."
                 )
             report["source_alembic_revision"] = source_revision
