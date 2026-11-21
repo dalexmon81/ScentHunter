@@ -102,9 +102,26 @@ The four currently unwrapped scraper modules were reopened on the isolated branc
 ### Next safe implementation order
 
 1. Add fixture-driven contract tests for the four modules before writing adapters. Cover multiple variants, distinct prices, missing currency, unknown stock, parser empty results, timeout/blocked responses, and duplicate product URLs.
-2. Implement Bplatz and Perfumemarket as mapping-based adapters with strict explicit-currency and availability handling.
+2. Implement Bplatz and Perfumemarket as mapping-based adapters with strict explicit-currency and availability handling. (Adapter code and fixture tests are now present on the isolated branch; CI verification is pending. PerfumeMarket currency provenance is intentionally fail-closed because the current scraper output does not expose source-level currency evidence.)
 3. Implement Parfumcity and Orioudh as variant-aware adapters. Give each offer a stable external identity derived from retailer product ID plus retailer variant ID; never use array position.
 4. Add all four to a registry only after the contract tests pass.
 5. Run the isolated PostgreSQL persistence tests against these fixture records. No live ingestion, production DB, worker activation, merge, or deployment is part of this phase.
 
 No scraper code or production configuration was changed in this follow-up audit.
+
+
+## Adapter implementation progress (2026-11-21)
+
+- Added `backend/app/connectors/bplatz.py` and fixture tests. The adapter reuses
+  the existing parser, uses product URLs as stable IDs, and preserves unknown
+  stock and implicit currency as non-publishable states.
+- Added `backend/app/connectors/perfumemarket.py` and fixture tests. Its
+  discovery rejects unverified empty reports. Currency remains unverified
+  unless the scraper explicitly supplies provenance; current scraper output
+  does not, so normal records cannot pass the promotion currency gate.
+- Both adapters are exported from `app.connectors`, but are not connected to
+  `legacy_runtime`, scheduler dispatch, or an active retailer registry.
+- CI workflow now includes both adapter test modules. The new workflow run
+  has not yet been inspected, so test success is not claimed.
+- No retailer HTTP calls, production database writes, worker activation,
+  merge, or deployment were performed.
