@@ -56,7 +56,7 @@ class RetailerCapabilityRegistryTests(unittest.TestCase):
         # A registry lookup is pure metadata: no scheduler flags, network
         # clients, worker registration, or database handles are exposed.
         item = get_retailer_capability("bplatz")
-        self.assertEqual(item.readiness, "adapter_only")
+        self.assertEqual(item.readiness, "worker_registered")
         self.assertFalse(hasattr(item, "enabled"))
         self.assertFalse(hasattr(item, "health"))
         self.assertFalse(hasattr(item, "session"))
