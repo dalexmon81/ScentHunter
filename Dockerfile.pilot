@@ -18,7 +18,7 @@ COPY . .
 # remote build does not spend its deploy window downloading a browser runtime.
 ENV PYTHONPATH=/app/backend
 ENV PYTHONUNBUFFERED=1
-# API-only pilot: startup must not launch automatic catalog discovery/hydration.
+# Isolated demo only: start the single-machine SQLite ingestion worker when explicitly enabled.
 ENV SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP=1
 
 # Migrate and seed the mounted canonical DB before either process starts.
