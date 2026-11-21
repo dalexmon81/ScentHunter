@@ -1,0 +1,126 @@
+name: Isolated ScentHunter pilot container smoke
+
+on:
+  push:
+    branches: [architecture/offer-first-v2]
+    paths:
+      - ".github/workflows/pilot-container-smoke.yml"
+      - "Dockerfile.pilot"
+      - "fly.staging.toml"
+      - "backend/main.py"
+      - "backend/app/api/catalog_search.py"
+      - "backend/app/search/catalog.py"
+      - "backend/scripts/bootstrap_catalog.py"
+      - "backend/scripts/seed_catalog.py"
+      - "backend/product_catalog.json"
+      - "backend/alembic/**"
+      - "backend/app/models/**"
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-api-only-image:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the dedicated pilot image
+        run: docker build --file Dockerfile.pilot --tag scenthunter-pilot-smoke .
+
+      - name: Boot the real image on a disposable local volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          data_dir="$(mktemp -d)"
+          cleanup() {
+            docker logs scenthunter-pilot-smoke 2>&1 || true
+            docker rm -f scenthunter-pilot-smoke >/dev/null 2>&1 || true
+            rm -rf "$data_dir"
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name scenthunter-pilot-smoke \
+            --publish 127.0.0.1:18080:8080 \
+            --volume "$data_dir:/data" \
+            --env SCENTHUNTER_CATALOG_DATABASE_URL=sqlite:////data/catalog/catalog.sqlite3 \
+            --env SCENTHUNTER_QUEUE_BACKEND=sqlite \
+            --env SCENTHUNTER_SQLITE_QUEUE_DB=/data/catalog/ingestion_queue.sqlite3 \
+            --env CATALOG_FOREGROUND_REFRESH_ENABLED=0 \
+            --env SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=0 \
+            --env BPLATZ_PHASE2_PERSISTENCE=1 \
+            --env SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP=1 \
+            scenthunter-pilot-smoke
+
+          ready=0
+          for attempt in $(seq 1 60); do
+            if ! docker inspect -f '{{.State.Running}}' scenthunter-pilot-smoke | grep -q true; then
+              echo "Pilot container exited before becoming ready."
+              exit 1
+            fi
+            if curl --fail --silent http://127.0.0.1:18080/api/catalog/status >/tmp/catalog-status.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1 || {
+            echo "Pilot API did not become ready."
+            exit 1
+          }
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path("/tmp/catalog-status.json").read_text())
+          assert status["status"] == "ready", status
+          assert status["canonical_products"] > 0, status
+          assert status["canonical_variants"] > 0, status
+          print("Pilot catalog bootstrap and read-only status endpoint: PASS")
+          print("Canonical products:", status["canonical_products"])
+          print("Canonical variants:", status["canonical_variants"])
+          PY
+
+          for path in \
+            "/search-start?q=Dior" \
+            "/diagnostic/deloox-pipeline?url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123" \
+            "/catalog/refresh-store-url?store=deloox%26url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do
+            code="$(curl --silent --output /tmp/blocked-body.json --write-out '%{http_code}' "http://127.0.0.1:18080$path")"
+            test "$code" = 503 || {
+              echo "API-only pilot unexpectedly allowed $path (HTTP $code)"
+              cat /tmp/blocked-body.json
+              exit 1
+            }
+          done
+          echo "Legacy search and live retailer operations are blocked: PASS"
+
+          docker exec scenthunter-pilot-smoke python - <<'PY'
+          from pathlib import Path
+          commands = []
+          for entry in Path("/proc").iterdir():
+              if not entry.name.isdigit():
+                  continue
+              try:
+                  raw = (entry / "cmdline").read_bytes().replace(b"\\0", b" ").decode("utf-8", "replace")
+              except OSError:
+                  continue
+              if raw.strip():
+                  commands.append(raw.strip())
+          forbidden = [value for value in commands if "sqlite_worker" in value or "catalog_hydration" in value or "catalog_discovery" in value]
+          assert not forbidden, forbidden
+          print("No ingestion worker, catalog hydrator or discovery process is running: PASS")
+          PY
+
+          logs="$(docker logs scenthunter-pilot-smoke 2>&1)"
+          printf '%s\n' "$logs"
+          grep -Fq "CATALOG STARTUP DISABLED" <<<"$logs"
+          grep -Fq "PHASE0 BASELINE STARTUP DISABLED" <<<"$logs"
+          ! grep -Eq "CATALOG BOOTSTRAP START|CATALOG HYDRATION|CATALOG DISCOVERY START" <<<"$logs"
+          echo "Automatic discovery, hydration and Phase 0 queue startup are disabled: PASS"
+
+      - name: Record deployment boundary
+        run: |
+          echo "CONTAINER_BUILD_AND_LOCAL_SMOKE=PASS"
+          echo "No Fly API, production secret, remote volume, deployment or retailer endpoint was contacted."
