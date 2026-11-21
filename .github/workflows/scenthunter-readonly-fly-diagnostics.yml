@@ -1,0 +1,57 @@
+name: ScentHunter read-only Fly diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-readonly-fly-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect production without changing it
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "::error::FLY_API_TOKEN repository secret is missing."
+            exit 1
+          }
+          echo "Fly authentication is configured."
+
+      - name: Read app, machine, volume and secret-name inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== APP STATUS ==="
+          flyctl status --app scenthunter
+          echo "=== MACHINES ==="
+          flyctl machines list --app scenthunter
+          echo "=== VOLUMES ==="
+          flyctl volumes list --app scenthunter
+          echo "=== SECRET NAMES ONLY ==="
+          flyctl secrets list --app scenthunter
+
+      - name: Read runtime database backend and file presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"import os; from pathlib import Path; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); print(\x27CANONICAL_BACKEND:\x27,u.get_backend_name()); print(\x27CANONICAL_DRIVER:\x27,u.drivername); print(\x27CATALOG_URL_CONFIGURED:\x27,bool(os.getenv(\x27SCENTHUNTER_CATALOG_DATABASE_URL\x27))); print(\x27GENERAL_URL_CONFIGURED:\x27,bool(os.getenv(\x27SCENTHUNTER_DATABASE_URL\x27))); print(\x27POSTGRES_REQUIRED:\x27,os.getenv(\x27SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL\x27,\x27unset\x27)); print(\x27STORE_DB_PATH:\x27,os.getenv(\x27SCENTHUNTER_CATALOG_DB\x27,\x27unset\x27)); [print(k+\x27_EXISTS:\x27,Path(p).exists()) for k,p in [(\x27CANONICAL_SQLITE\x27,\x27/data/catalog/catalog.sqlite3\x27),(\x27STORE_SQLITE\x27,\x27/data/store_catalog.sqlite3\x27)]]\"'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Record diagnostic boundary
+        run: |
+          echo "READ_ONLY_DIAGNOSTICS=COMPLETE"
+          echo "No deploy, restart, migration, import, secret update, or database write was requested."
