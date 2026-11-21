@@ -3,7 +3,23 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from app.connectors.parfumcity import ParfumCityConnector
 
+from scrapers.parfumcity import scraper as parfumcity_scraper
+
 class Tests(unittest.IsolatedAsyncioTestCase):
+ async def test_shopify_cart_currency_is_explicit_and_cached(self):
+  class Response:
+   status_code=200
+   def json(self): return {"currency":"EUR"}
+   def close(self): pass
+  class Session:
+   def __init__(self): self.calls=[]
+   def get(self,url,**kwargs): self.calls.append(url); return Response()
+  session=Session()
+  value=parfumcity_scraper._cart_currency(session,"https://www.parfumcity.nl/products/example")
+  self.assertEqual(value,"EUR")
+  self.assertEqual(parfumcity_scraper._cart_currency(session,"https://www.parfumcity.nl/products/example"),"EUR")
+  self.assertEqual(session.calls,["https://www.parfumcity.nl/cart.js"])
+
  async def test_variants_keep_distinct_ids_and_currency_unverified(self):
   product={"id":20,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":201,"title":"50 ml","price":"30.00","available":True},{"id":202,"title":"100 ml","price":"45.00","available":True}]}
   def make(p,v,u,q):
