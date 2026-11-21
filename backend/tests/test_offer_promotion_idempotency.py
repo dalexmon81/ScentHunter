@@ -13,7 +13,7 @@ from app.models import (
     ProductVariant, Store,
 )
 from app.services.ingestion_persistence import (
-    promote_offer, record_match, stage_raw_offer,
+    PromotionRejected, promote_offer, record_match, stage_raw_offer,
 )
 
 
@@ -44,6 +44,13 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
         self.session.flush()
         self.store_id = store.id
         self.variant_id = variant.id
+        second_variant = ProductVariant(
+            fragrance_id=fragrance.id, concentration="EDT", size_ml=100,
+            canonical_key=f"dior|sauvage|edt|100|{suffix}",
+        )
+        self.session.add(second_variant)
+        self.session.flush()
+        self.second_variant_id = second_variant.id
 
     def tearDown(self) -> None:
         self.session.close()
@@ -68,6 +75,38 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
             url="https://retailer.example/item/123",
             availability="in_stock", source="fixture",
         )
+
+    def test_external_retailer_identity_cannot_be_reassigned_to_another_variant(self):
+        first_id = self._promote_snapshot("89.90")
+        raw_id = stage_raw_offer(
+            self.session, store_id=self.store_id,
+            external_product_id="retailer-item-123",
+            raw_payload={"price": "79.90"},
+        )
+        record_match(
+            self.session, ingestion_raw_id=raw_id,
+            product_variant_id=self.second_variant_id,
+            method="test_conflicting_match",
+        )
+        with self.assertRaisesRegex(
+            PromotionRejected, "already linked to a different canonical variant"
+        ):
+            promote_offer(
+                self.session, ingestion_raw_id=raw_id,
+                price=Decimal("79.90"), currency="EUR",
+                url="https://retailer.example/item/123",
+                availability="in_stock", source="fixture",
+            )
+        self.session.flush()
+        offer = self.session.get(Offer, first_id)
+        self.assertEqual(offer.product_variant_id, self.variant_id)
+        self.assertEqual(offer.price, Decimal("89.90"))
+        self.assertEqual(self.session.scalar(
+            select(Offer.id).where(
+                Offer.store_id == self.store_id,
+                Offer.external_product_id == "retailer-item-123",
+            )
+        ), first_id)
 
     def test_repeated_snapshots_update_one_offer_and_preserve_history(self):
         first_id = self._promote_snapshot("89.90")
