@@ -7,7 +7,9 @@
       "brand": "Rasasi",
       "query_aliases": [
         "Hawas",
-        "Rasasi Hawas"
+        "Rasasi Hawas",
+        "Hawas Private",
+        "Hawas 2026"
       ],
       "products": [
         {
@@ -205,6 +207,73 @@
           ],
           "formats_ml": [
             100
+          ]
+        },
+        {
+          "canonical_name": "Hawas Glitz",
+          "aliases": [
+            "Hawas Glitz"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Boa",
+          "aliases": [
+            "Hawas Boa",
+            "Hawas For Him Boa",
+            "Hawas for Him - Boa"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Love",
+          "aliases": [
+            "Hawas Love"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Dreams",
+          "aliases": [
+            "Hawas Dreams"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Private Luceo",
+          "aliases": [
+            "Hawas Private Luceo",
+            "Private Luceo"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Private Terra",
+          "aliases": [
+            "Hawas Private Terra",
+            "Private Terra"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Private Dulce",
+          "aliases": [
+            "Hawas Private Dulce",
+            "Private Dulce"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Ice Freeze",
+          "aliases": [
+            "Hawas Ice Freeze"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Blanche",
+          "aliases": [
+            "Hawas Blanche",
+            "Hawas Blanche Imrasasi"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Crystelle",
+          "aliases": [
+            "Hawas Crystelle",
+            "Hawas Crystelle Imrasasi"
           ]
         }
       ],
