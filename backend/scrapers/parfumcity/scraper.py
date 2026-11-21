@@ -1,6 +1,6 @@
 import json
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -266,11 +266,42 @@ def discover(session, query):
     return urls[:MAX_CANDIDATES], errors, discovery_verified
 
 
+def _cart_currency(session, product_url):
+    cache = getattr(session, "_scenthunter_cart_currency", None)
+    if isinstance(cache, dict) and product_url in cache:
+        return cache[product_url]
+    path = urlsplit(product_url).path
+    prefix = path.split("/products/", 1)[0].strip("/")
+    cart_path = ("/" + prefix if prefix else "") + "/cart.js"
+    try:
+        response = _get(session, urljoin(BASE_URL, cart_path))
+        try:
+            payload = response.json()
+            currency = payload.get("currency") if isinstance(payload, dict) else None
+            if not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
+                currency = None
+            else:
+                currency = currency.strip().upper()
+        finally:
+            response.close()
+    except (StoreRequestError, ValueError, TypeError):
+        currency = None
+    if not isinstance(cache, dict):
+        cache = {}
+    cache[product_url] = currency
+    setattr(session, "_scenthunter_cart_currency", cache)
+    return currency
+
+
 def product_json(session, url):
     r = _get(session, url.rstrip("/") + ".js")
     if not r: return None
     try:
-        data = r.json(); return data if isinstance(data, dict) else None
+        data = r.json()
+        if isinstance(data, dict):
+            data["_scenthunter_currency"] = _cart_currency(session, url)
+            return data
+        return None
     except (ValueError, TypeError): return None
     finally: r.close()
 
@@ -292,7 +323,7 @@ def make_item(product, variant, url, query):
     if not matches(f"{name} {product.get('vendor','')} {url}", query): return None
     source_name = name if not variant_name or variant_name.lower() == "default title" else f"{name} {variant_name}"
     p = parse_price(variant.get("price"))
-    explicit_currency = _explicit_currency(variant, product)
+    explicit_currency = _explicit_currency(variant, product, {"currency": product.get("_scenthunter_currency")})
     size = size_ml(variant_name, name)
     conc = concentration(variant_name, name)
     available = variant.get("available")
@@ -306,7 +337,7 @@ def make_item(product, variant, url, query):
         "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
         "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": p, "currency": explicit_currency, "currency_explicit": explicit_currency is not None, "availability": stock},
+        "offer": {"price": p, "currency": explicit_currency, "currency_explicit": explicit_currency is not None, "currency_source": "shopify_cart_presentment_currency" if explicit_currency else None, "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": {"product": product, "variant": variant},
         "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
