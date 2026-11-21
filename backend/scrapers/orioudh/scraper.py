@@ -200,12 +200,12 @@ def _request_json(session: requests.Session, url: str, params=None):
     return data
 
 def _cart_currency(session: requests.Session, product_url: str) -> Optional[str]:
-    cache = getattr(session, "_scenthunter_cart_currency", None)
-    if isinstance(cache, dict) and product_url in cache:
-        return cache[product_url]
     path = urlsplit(product_url).path
     prefix = path.split("/products/", 1)[0].strip("/")
     cart_path = ("/" + prefix if prefix else "") + "/cart.js"
+    cache = getattr(session, "_scenthunter_cart_currency", None)
+    if isinstance(cache, dict) and cart_path in cache:
+        return cache[cart_path]
     try:
         payload = _request_json(session, urljoin(BASE_URL, cart_path))
         currency = payload.get("currency") if isinstance(payload, dict) else None
@@ -217,7 +217,7 @@ def _cart_currency(session: requests.Session, product_url: str) -> Optional[str]
         currency = None
     if not isinstance(cache, dict):
         cache = {}
-    cache[product_url] = currency
+    cache[cart_path] = currency
     setattr(session, "_scenthunter_cart_currency", cache)
     return currency
 
