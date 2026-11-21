@@ -85,9 +85,9 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
         return {"query": query, "count": 0, "offer_count": 0, "results": [], "status": "completed", "completed": True}
 
     text_fields = (Brand.name, Fragrance.name, ProductVariant.concentration)
-    statement = select(ProductVariant, Fragrance, Brand).join(
-        Fragrance, ProductVariant.fragrance_id == Fragrance.id
-    ).join(Brand, Fragrance.brand_id == Brand.id)
+    statement = select(ProductVariant, Fragrance, Brand).select_from(Fragrance).join(
+        Brand, Fragrance.brand_id == Brand.id
+    ).outerjoin(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
     # Treat explicit variant attributes as hard filters, but do not let
     # incidental words ("spray", "vapourisateur", "parfum", etc.) erase an
     # otherwise valid product result. A text token is a required term only
@@ -129,8 +129,8 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             if token_exists:
                 statement = statement.where(token_condition)
     rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id).limit(50)).all()
-    variant_ids = [variant.id for variant, _, _ in rows]
-    sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
+    variant_ids = [variant.id for variant, _, _ in rows if variant is not None]
+    sizes = {variant.id: variant.size_ml for variant, _, _ in rows if variant is not None}
     offers_by_variant: dict = {}
     for offer, store, raw in _eligible_offer_rows(session, now, variant_ids):
         offers_by_variant.setdefault(offer.product_variant_id, []).append({
@@ -147,6 +147,16 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
 
     results = []
     for variant, fragrance, brand in rows:
+        if variant is None:
+            results.append({
+                "catalog_id": str(fragrance.id),
+                "brand": brand.name,
+                "name": fragrance.name,
+                "image": fragrance.image_url,
+                "offers": [],
+                "identity_only": True,
+            })
+            continue
         label = " ".join(filter(None, (
             fragrance.name, variant.concentration,
             f"{variant.size_ml} ml" if variant.size_ml else None,
