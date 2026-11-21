@@ -65,7 +65,8 @@ jobs:
           if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
             echo "App creation did not create a new app; verifying existing isolated app."
           fi
-          flyctl apps list --org "$FLY_ORG" --quiet | grep -Fx "$FLY_APP"
+          flyctl apps list --org "$FLY_ORG" --quiet | grep -Fq "$FLY_APP"
+          echo "Dedicated demo app verified."
 
       - name: Create or verify dedicated demo volume
         shell: bash
