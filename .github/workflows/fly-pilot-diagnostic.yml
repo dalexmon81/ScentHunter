@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - refactor/catalog-first-architecture
+      - fix/pilot-diagnostic-retry-main-20261120
   workflow_dispatch:
 
 permissions:
@@ -100,6 +101,14 @@ jobs:
               except (OSError, ValueError, IndexError):
                   pass
           PY
+          echo "=== NOTINO FULL FEED AUDIT PROCESS ==="
+          ps -eo pid,ppid,stat,etime,rss,args | grep -E '[n]otino_.*feed_coverage_audit|[n]otino_feed_coverage_audit' || true
+          ls -lh /tmp/notino_*_feed_coverage_audit.* 2>/dev/null || true
+          for audit_log in /tmp/notino_*_feed_coverage_audit.log; do
+            [ -f "$audit_log" ] || continue
+            echo "AUDIT_LOG=$audit_log"
+            tail -n 60 "$audit_log" || true
+          done
           echo "=== SEED LOG ==="
           tail -n 100 /data/catalog/catalog_seed.log 2>/dev/null || true
           /app/.venv/bin/python - <<'PY'
@@ -288,4 +297,16 @@ jobs:
           REMOTE
           )"
           encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
-          flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 90
+          remote_ok=0
+          for attempt in 1 2 3; do
+            echo "BPLATZ_REMOTE_DIAGNOSTIC_ATTEMPT=$attempt"
+            if flyctl machine exec "$machine_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app "$FLY_APP" --timeout 120; then
+              remote_ok=1
+              break
+            fi
+            echo "Bplatz read-only remote probe failed on attempt $attempt; retrying transport once the VM settles." >&2
+            sleep $((attempt * 5))
+          done
+          if [ "$remote_ok" -ne 1 ]; then
+            echo "::warning::Bplatz read-only remote probe could not complete after three attempts. Public health/catalog checks remain authoritative for this run; investigate Fly exec transport separately."
+          fi
