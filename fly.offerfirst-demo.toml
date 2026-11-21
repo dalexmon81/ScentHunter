@@ -24,7 +24,7 @@ primary_region = "ams"
   processes = ["app"]
 
 [mounts]
-  source = "scenthunter_offerfirst_demo_data"
+  source = "sh_offerfirst_demo"
   destination = "/data"
 
 [[vm]]
