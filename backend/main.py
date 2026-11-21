@@ -2,7 +2,7 @@
 # Keep this route available in the active Fly release for the post-deploy baseline workflow.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import csv, importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher
@@ -91,6 +91,37 @@ def _automatic_catalog_startup_disabled():
     """Fail closed for API-only pilot processes unless explicitly enabled."""
     value = str(os.environ.get('SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP', '0')).strip().lower()
     return value in {'1', 'true', 'yes', 'on'}
+
+
+
+_API_ONLY_BLOCKED_PATHS = {
+    "/search",
+    "/search-start",
+    "/diagnostic/matcher",
+    "/diagnostic/store-pipeline",
+    "/diagnostic/scraper-offer-compare",
+    "/diagnose-catalog-live-parse",
+    "/diagnose-hawas-ice-offers-read-only",
+    "/admin/phase0/baseline/start",
+    "/admin/phase0/smoke/start",
+    "/admin/phase0/admin/resume-deloox-queue",
+}
+
+
+@app.middleware("http")
+async def _api_only_background_operations_guard(request, call_next):
+    """Prevent manual legacy discovery/scraping/job actions in the API-only pilot."""
+    path = request.url.path
+    blocked = (
+        path in _API_ONLY_BLOCKED_PATHS
+        or path.startswith("/catalog/resync-")
+    )
+    if _automatic_catalog_startup_disabled() and blocked:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Background retailer operations are disabled in API-only pilot mode"},
+        )
+    return await call_next(request)
 
 # Controlled operational resync for stores whose persistent catalog needs to
 # be rebuilt without touching the normal search path. Keep this list limited to
