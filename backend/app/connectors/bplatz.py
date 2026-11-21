@@ -90,10 +90,13 @@ class BplatzConnector(StoreConnector):
                 timeout=getattr(self._scraper, "TIMEOUT", (2.5, 6.0)),
                 allow_redirects=True,
             )
-            if response.status_code >= 400:
-                raise ConnectorUnavailable(f"Bplatz product page returned HTTP {response.status_code}")
-            query = urlparse(response.url).path.rsplit("/products/", 1)[-1].replace("-", " ").strip()
-            return self._scraper.parse_product_html(response.text, response.url, query)
+            try:
+                if response.status_code >= 400:
+                    raise ConnectorUnavailable(f"Bplatz product page returned HTTP {response.status_code}")
+                query = urlparse(response.url).path.rsplit("/products/", 1)[-1].replace("-", " ").strip()
+                return self._scraper.parse_product_html(response.text, response.url, query)
+            finally:
+                response.close()
         except requests.RequestException as exc:
             raise ConnectorUnavailable(f"Bplatz product fetch failed: {type(exc).__name__}") from exc
         finally:
