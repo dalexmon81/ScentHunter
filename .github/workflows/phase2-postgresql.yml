@@ -5,6 +5,8 @@ on:
     branches: [architecture/offer-first-v2]
     paths:
       - ".github/workflows/phase2-postgresql.yml"
+      - "backend/app/connectors/bplatz.py"
+      - "backend/tests/test_bplatz_connector.py"
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
       - "backend/app/api/catalog_search.py"
@@ -162,6 +164,9 @@ jobs:
       - name: Verify repeated offer promotion and price history
         working-directory: backend
         run: pytest -q tests/test_offer_promotion_idempotency.py
+      - name: Verify Bplatz Offer-First connector adapter
+        working-directory: backend
+        run: pytest -q tests/test_bplatz_connector.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
