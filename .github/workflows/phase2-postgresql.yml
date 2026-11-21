@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/phase2-postgresql.yml"
       - "backend/app/connectors/bplatz.py"
+      - "backend/scrapers/bplatz/scraper.py"
+      - "backend/tests/test_bplatz_stock_signal_precedence.py"
       - "backend/app/connectors/perfumemarket.py"
       - "backend/scrapers/perfumemarket/scraper.py"
       - "backend/app/connectors/orioudh.py"
