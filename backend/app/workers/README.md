@@ -6,8 +6,9 @@ three queue stages: `discover`, `fetch` and `refresh`.
 
 ## Runtime boundary
 
-Notino and the four legacy retailer adapters (Deloox, Sabina, Easycosmetic and
-Parfum-Zentrum) register handlers for discovery, fetch and refresh.
+Notino, Bplatz and the four legacy retailer adapters (Deloox, Sabina,
+Easycosmetic and Parfum-Zentrum) register handlers for discovery, fetch and
+refresh.
 
 A product fetch currently runs parsing, normalization, canonical matching,
 validation and offer promotion together through
