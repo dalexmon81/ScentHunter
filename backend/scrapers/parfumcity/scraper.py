@@ -267,12 +267,12 @@ def discover(session, query):
 
 
 def _cart_currency(session, product_url):
-    cache = getattr(session, "_scenthunter_cart_currency", None)
-    if isinstance(cache, dict) and product_url in cache:
-        return cache[product_url]
     path = urlsplit(product_url).path
     prefix = path.split("/products/", 1)[0].strip("/")
     cart_path = ("/" + prefix if prefix else "") + "/cart.js"
+    cache = getattr(session, "_scenthunter_cart_currency", None)
+    if isinstance(cache, dict) and cart_path in cache:
+        return cache[cart_path]
     try:
         response = _get(session, urljoin(BASE_URL, cart_path))
         try:
@@ -288,7 +288,7 @@ def _cart_currency(session, product_url):
         currency = None
     if not isinstance(cache, dict):
         cache = {}
-    cache[product_url] = currency
+    cache[cart_path] = currency
     setattr(session, "_scenthunter_cart_currency", cache)
     return currency
 
