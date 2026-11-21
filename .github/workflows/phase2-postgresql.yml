@@ -7,6 +7,7 @@ on:
       - ".github/workflows/phase2-postgresql.yml"
       - "backend/app/connectors/bplatz.py"
       - "backend/app/connectors/perfumemarket.py"
+      - "backend/scrapers/perfumemarket/scraper.py"
       - "backend/app/connectors/orioudh.py"
       - "backend/app/connectors/parfumcity.py"
       - "backend/tests/test_perfumemarket_connector.py"
