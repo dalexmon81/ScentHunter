@@ -228,15 +228,17 @@
           ]
         },
         {
-          "canonical_name": "Hawas Love",
+          "canonical_name": "Hawas Love for Her",
           "aliases": [
-            "Hawas Love"
+            "Hawas Love",
+            "Love for Her"
           ]
         },
         {
-          "canonical_name": "Hawas Dreams",
+          "canonical_name": "Hawas Dreams for Her",
           "aliases": [
-            "Hawas Dreams"
+            "Hawas Dreams",
+            "Dreams for Her"
           ]
         },
         {
@@ -335,27 +337,9 @@
           ]
         },
         {
-          "canonical_name": "Hawas Blush",
-          "aliases": [
-            "Hawas Blush"
-          ]
-        },
-        {
           "canonical_name": "Hawas Frost",
           "aliases": [
             "Hawas Frost"
-          ]
-        },
-        {
-          "canonical_name": "Hawas Island",
-          "aliases": [
-            "Hawas Island"
-          ]
-        },
-        {
-          "canonical_name": "Hawas Passionate",
-          "aliases": [
-            "Hawas Passionate"
           ]
         }
       ],
