@@ -128,7 +128,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             # every recognized brand/name token as a required search term.
             if token_exists:
                 statement = statement.where(token_condition)
-    rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id).limit(50)).all()
+    rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id).limit(200)).all()
     variant_ids = [variant.id for variant, _, _ in rows if variant is not None]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows if variant is not None}
     offers_by_variant: dict = {}
