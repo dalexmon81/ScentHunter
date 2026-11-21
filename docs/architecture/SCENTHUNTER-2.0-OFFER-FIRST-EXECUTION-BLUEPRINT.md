@@ -240,3 +240,12 @@ The isolated pilot is intentionally API-only until a separate worker activation 
 - This is a code/configuration safety gate only. No Fly deploy or pilot runtime activation has been performed.
 
 CI must prove that both startup hooks are skipped, manual background-operation routes fail closed, default startup behavior remains unchanged, and the pilot image no longer launches an ingestion worker.
+
+## API-only browser smoke evidence (2026-11-21)
+
+- GitHub Actions workflow #942 completed successfully on commit 69f6c18c2a599c33b8bf15e4e1b333194d329020: [run #942](https://github.com/dalexmon81/ScentHunter/actions/runs/44884867155).
+- The CI job used a disposable PostgreSQL 16 service, started the actual main:app under Uvicorn with normal ASGI startup enabled and SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP=1, then exercised the real frontend in Chromium.
+- Browser flow: open /, search the isolated canonical fixture, see the product card, open it, and verify the Bplatz API-test offer and EUR price.
+- The HTTP test passed (1 passed); API-only safety tests passed (5 passed). The full workflow and all 30 job steps passed.
+- This is CI/browser evidence only. It does not prove the Fly pilot is deployed, production runtime topology, production DB identity, volume backup/restore, live retailer connector readiness, or production search parity.
+- Gate A remains open. The read-only Fly diagnostics workflow exists and requires workflow_dispatch; the available GitHub integration in this work session exposes repository GET/read operations but no workflow-dispatch action. Do not substitute a deployment or a production mutation to obtain this evidence.
