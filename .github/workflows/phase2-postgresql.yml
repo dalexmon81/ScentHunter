@@ -176,6 +176,9 @@ jobs:
       - name: Verify repeated offer promotion and price history
         working-directory: backend
         run: pytest -q tests/test_offer_promotion_idempotency.py
+      - name: Verify the nine-retailer capability inventory and activation boundaries
+        working-directory: backend
+        run: pytest -q tests/test_connector_registry.py
       - name: Verify Bplatz Offer-First connector adapter
         working-directory: backend
         run: pytest -q tests/test_bplatz_connector.py
