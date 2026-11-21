@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 35
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
+      CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
       FLY_APP: scenthunter-offerfirst-demo-20261121
       FLY_ORG: personal
       FLY_VOLUME: sh_offerfirst_demo
@@ -44,6 +46,10 @@ jobs:
             echo "::error::FLY_API_TOKEN Actions secret is missing."
             exit 1
           }
+          test -n "$CJ_HTTP_USERNAME" && test -n "$CJ_HTTP_PASSWORD" || {
+            echo "::error::CJ_HTTP_USERNAME or CJ_HTTP_PASSWORD Actions secret is missing; Notino ingestion cannot run."
+            exit 1
+          }
           token="$FLY_API_TOKEN"
           case "$token" in
             fm2_*) token="FlyV1 $token" ;;
@@ -55,7 +61,7 @@ jobs:
           grep -Fq 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' fly.offerfirst-demo.toml
           grep -Fq 'SCENTHUNTER_ENABLE_SQLITE_WORKER = "1"' fly.offerfirst-demo.toml
           grep -Fq 'SCENTHUNTER_NOTINO_DISCOVERY_ENABLED = "1"' fly.offerfirst-demo.toml
-          echo "Dedicated app, dedicated volume, isolated Notino worker: verified."
+          echo "Dedicated app, dedicated volume, isolated Notino worker and feed credentials: verified."
 
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -83,6 +89,13 @@ jobs:
           else
             flyctl volumes create "$FLY_VOLUME" --app "$FLY_APP" --region ams --size 1 --count 1 --yes
           fi
+
+      - name: Stage authorized Notino CJ feed credentials on isolated demo app
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl secrets set CJ_HTTP_USERNAME="$CJ_HTTP_USERNAME" CJ_HTTP_PASSWORD="$CJ_HTTP_PASSWORD" --stage --app "$FLY_APP"
+          echo "NOTINO_FEED_CREDENTIALS_STAGED=YES"
 
       - name: Deploy demo image
         run: flyctl deploy --remote-only --config fly.offerfirst-demo.toml --app "$FLY_APP" --yes --wait-timeout 600
