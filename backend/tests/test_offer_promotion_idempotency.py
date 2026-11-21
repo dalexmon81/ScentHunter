@@ -115,20 +115,48 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
         if self.engine.dialect.name != "postgresql":
             self.skipTest("row-lock concurrency guarantee is PostgreSQL-specific")
 
-        # Publish fixture rows so independent worker sessions can see them.
-        self.session.commit()
+        # Use committed fixture rows: separate worker sessions must be able
+        # to observe the retailer, variant and staged observations.
         factory = sessionmaker(bind=self.engine, expire_on_commit=False)
+        suffix = uuid4().hex[:12]
+        with factory() as session:
+            store = Store(
+                name="Concurrent fixture retailer",
+                slug=f"concurrent-retailer-{suffix}",
+                currency="EUR", status="active",
+            )
+            brand = Brand(
+                name="Dior", slug=f"concurrent-dior-{suffix}",
+                normalized_name=f"concurrent-dior-{suffix}",
+            )
+            session.add_all([store, brand])
+            session.flush()
+            fragrance = Fragrance(
+                brand_id=brand.id, name="Sauvage",
+                slug=f"concurrent-sauvage-{suffix}",
+            )
+            session.add(fragrance)
+            session.flush()
+            variant = ProductVariant(
+                fragrance_id=fragrance.id, concentration="EDP",
+                size_ml=100, canonical_key=f"concurrent|sauvage|edp|100|{suffix}",
+            )
+            session.add(variant)
+            session.flush()
+            store_id, variant_id = store.id, variant.id
+            session.commit()
+
         raw_ids = []
         for price in ("69.90", "59.90"):
             with factory() as session:
                 raw_id = stage_raw_offer(
-                    session, store_id=self.store_id,
+                    session, store_id=store_id,
                     external_product_id="concurrent-retailer-item",
                     raw_payload={"price": price},
                 )
                 record_match(
                     session, ingestion_raw_id=raw_id,
-                    product_variant_id=self.variant_id,
+                    product_variant_id=variant_id,
                     method="test_concurrent_exact_match",
                 )
                 session.commit()
@@ -155,7 +183,7 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
         self.assertEqual(offer_ids[0], offer_ids[1])
         with factory() as session:
             offers = session.scalars(select(Offer).where(
-                Offer.store_id == self.store_id,
+                Offer.store_id == store_id,
                 Offer.external_product_id == "concurrent-retailer-item",
             )).all()
             history = session.scalars(select(PriceHistory).where(
