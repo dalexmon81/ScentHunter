@@ -935,7 +935,20 @@ def extract_product_page(session, url, query):
     if price is None:
         return None
 
-    currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
+    explicit_currency = (
+        offer.get("priceCurrency")
+        if offer.get("priceCurrency") not in (None, "")
+        else product.get("priceCurrency")
+    )
+    currency = str(explicit_currency or "EUR").strip().upper()
+    currency_source = (
+        "jsonld_offer_priceCurrency"
+        if offer.get("priceCurrency") not in (None, "")
+        else "jsonld_product_priceCurrency"
+        if product.get("priceCurrency") not in (None, "")
+        else None
+    )
+    currency_explicit = currency_source is not None
     availability = _pm_extract_availability(product, offer, soup)
     image = _pm_extract_image(product, response.url)
 
@@ -961,6 +974,8 @@ def extract_product_page(session, url, query):
         "price_num": price,
         "price": price,
         "currency": currency,
+        "currency_explicit": currency_explicit,
+        "currency_source": currency_source,
         "availability": availability,
         "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
         "source": {
@@ -977,6 +992,8 @@ def extract_product_page(session, url, query):
         "offer": {
             "price": price,
             "currency": currency,
+            "currency_explicit": currency_explicit,
+            "currency_source": currency_source,
             "availability": availability,
         },
         "fetched_at": time.time(),
