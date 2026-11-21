@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from playwright.sync_api import sync_playwright
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from unittest.mock import patch
@@ -226,6 +227,24 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
                 assert live_offer["availability"] == "in_stock"
                 assert live_offer["size_ml"] == 100
                 assert live_offer["url"] == "https://bplatz.de/products/api-contract-fragrance"
+
+            # Real Chromium interaction: the legacy frontend must default to
+            # catalog-first, display the canonical product, and open its offer.
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch()
+                try:
+                    page = browser.new_page()
+                    page.goto(base_url + "/", wait_until="domcontentloaded")
+                    page.locator("#query").fill(query)
+                    page.locator("#searchButton").click()
+                    page.locator("#results .product-choice").wait_for(timeout=15000)
+                    assert "API Contract Fragrance" in page.locator("#results").inner_text()
+                    page.locator("#results .product-choice").first.click()
+                    page.locator("#results .offer-price").wait_for(timeout=5000)
+                    assert "Bplatz API Test" in page.locator("#results").inner_text()
+                    assert "42,50" in page.locator("#results").inner_text()
+                finally:
+                    browser.close()
         finally:
             server.terminate()
             try:
