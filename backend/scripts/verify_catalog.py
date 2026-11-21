@@ -20,12 +20,26 @@ EXPECTED = {
 
 
 def collect_report(connection):
-    journal_mode = connection.exec_driver_sql("PRAGMA journal_mode").scalar_one().lower()
-    foreign_keys = connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one()
-    integrity = connection.exec_driver_sql("PRAGMA integrity_check").scalar_one()
-    foreign_key_violations = len(
-        connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
-    )
+    backend = connection.dialect.name
+    if backend == "sqlite":
+        journal_mode = connection.exec_driver_sql("PRAGMA journal_mode").scalar_one().lower()
+        foreign_keys = connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one()
+        integrity = connection.exec_driver_sql("PRAGMA integrity_check").scalar_one()
+        foreign_key_violations = len(
+            connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+        )
+    elif backend == "postgresql":
+        # PostgreSQL has no SQLite journal/WAL or PRAGMA integrity_check.
+        # Referential integrity is enforced by validated database constraints.
+        journal_mode = "not_applicable"
+        foreign_keys = 1
+        integrity = "server_managed"
+        foreign_key_violations = connection.execute(text("""
+            SELECT COUNT(*) FROM pg_constraint
+            WHERE contype = 'f' AND NOT convalidated
+        """)).scalar_one()
+    else:
+        raise RuntimeError(f"Unsupported catalog verifier backend: {backend}")
     tables = set(inspect(connection).get_table_names())
     missing = sorted(EXPECTED - tables)
     if missing:
@@ -100,7 +114,8 @@ def collect_report(connection):
     }
 
     return {
-        "database_url": database_url(),
+        "database_backend": backend,
+        "database_url": __import__("sqlalchemy.engine", fromlist=["make_url"]).make_url(database_url()).render_as_string(hide_password=True),
         "journal_mode": journal_mode,
         "foreign_keys": foreign_keys,
         "foreign_key_violations": foreign_key_violations,
@@ -143,9 +158,16 @@ def main() -> int:
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
 
         checks = {
-            "JOURNAL_MODE": report["journal_mode"] == "wal",
+            "JOURNAL_MODE": (
+                report["database_backend"] == "postgresql"
+                or report["journal_mode"] == "wal"
+            ),
             "FOREIGN_KEYS": report["foreign_keys"] == 1 and report["foreign_key_violations"] == 0,
-            "INTEGRITY_CHECK": report["integrity_check"] == "ok",
+            "INTEGRITY_CHECK": (
+                report["integrity_check"] == "server_managed"
+                if report["database_backend"] == "postgresql"
+                else report["integrity_check"] == "ok"
+            ),
             "INVALID_ACTIVE_OFFERS": report["invalid_active_offers"] == 0,
             "BPLATZ_ACTIVE_OFFER": report["bplatz"]["active_offers"] > 0,
             "BPLATZ_CURRENT_PROMOTION": report["bplatz"]["current_offer_linked_to_promoted_raw"] > 0,
