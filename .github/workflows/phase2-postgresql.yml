@@ -33,6 +33,8 @@ on:
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/tests/test_legacy_worker_runtime.py"
       - "backend/tests/test_worker_scheduling_safety.py"
+      - "backend/tests/test_connector_registry.py"
+      - "backend/tests/test_bplatz_worker_runtime.py"
       - "backend/tests/test_sqlite_queue_retry_safety.py"
       - "backend/tests/test_offer_promotion_idempotency.py"
       - "backend/tests/test_worker_scheduling_safety.py"
@@ -179,6 +181,9 @@ jobs:
       - name: Verify the nine-retailer capability inventory and activation boundaries
         working-directory: backend
         run: pytest -q tests/test_connector_registry.py
+      - name: Verify Bplatz isolated Offer-First worker runtime
+        working-directory: backend
+        run: pytest -q tests/test_bplatz_worker_runtime.py
       - name: Verify Bplatz Offer-First connector adapter
         working-directory: backend
         run: pytest -q tests/test_bplatz_connector.py
