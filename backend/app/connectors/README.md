@@ -81,12 +81,11 @@ gate. Canonical matching and persistence stay in
 - `PerfumeMarketConnector` implements the shared connector contract.
 - It uses operator-approved discovery query variables and stable product URLs.
 - Fixture tests are in `tests/test_perfumemarket_connector.py`.
-- PerfumeMarket currently does not expose source-level `priceCurrency`
-  provenance from its scraper result. Its adapter therefore treats currency as
-  unverified unless a future source record explicitly carries
-  `currency_explicit=True`; offers remain ineligible for promotion otherwise.
+- The product-page parser now preserves JSON-LD `priceCurrency` provenance
+  (`jsonld_offer_priceCurrency` or `jsonld_product_priceCurrency`). A default
+  EUR fallback remains explicitly unverified and cannot pass publication.
 - It is deliberately not added to worker dispatch or a schedule until its
-  canonical store identity and currency provenance are established.
+  canonical store identity and end-to-end fixture coverage are established.
 
 
 ## Variant-aware isolated adapters (not worker-registered)
