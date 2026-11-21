@@ -211,6 +211,8 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         parsed = connector.parse_raw(raw_record if isinstance(raw_record, Mapping) else observation)
         if parsed.get("currency_explicit") is not True:
             raise ValueError("currency_not_explicit_in_retailer_source")
+        if connector.store_key in {"orioudh", "parfumcity"} and parsed.get("currency_source") != "shopify_cart_presentment_currency":
+            raise ValueError("shopify_currency_provenance_missing_or_unverified")
         if not connector.validate_offer(parsed).valid:
             raise ValueError("refreshed_offer_failed_validation")
         with notino_runtime._sessions()() as session, session.begin():
