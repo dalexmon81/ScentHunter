@@ -76,3 +76,18 @@ gate. Canonical matching and persistence stay in
   registry yet. The existing runtime dispatch supports only the four legacy
   wrappers, and generic multi-retailer worker routing needs its own tested
   implementation before activation.
+
+
+## Variant-aware isolated adapters (not worker-registered)
+
+- `OrioudhConnector` expands the existing Shopify parser's list into one
+  offer per Shopify product/variant ID pair. It does not infer currency
+  provenance from the scraper's EUR default.
+- `ParfumCityConnector` expands the Shopify product JSON into one offer per
+  product/variant ID pair. Its EUR value is also treated as unverified.
+- Both require operator-provided discovery seeds:
+  `SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH` and
+  `SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY`.
+- Fixture tests cover variant separation and fail-closed discovery seeds.
+  Neither adapter is registered with a worker or scheduler. Offers remain
+  ineligible for promotion until explicit currency evidence is available.
