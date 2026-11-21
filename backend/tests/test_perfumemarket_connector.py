@@ -155,6 +155,8 @@ class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
             "status": "success", "verified": True, "details": {},
             "results": [
                 {"url": "https://attacker.example/products/fake"},
+                {"url": "http://www.perfumemarket.nl/products/insecure"},
+                {"url": "https://evil-perfumemarket.nl/products/lookalike"},
                 {"url": "https://www.perfumemarket.nl/products/real"},
             ],
         })
@@ -169,6 +171,8 @@ class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
         )
         with self.assertRaisesRegex(ValueError, "PerfumeMarket Shopify"):
             await connector.fetch_product("https://attacker.example/products/fake")
+        with self.assertRaises(ValueError):
+            await connector.fetch_product("http://www.perfumemarket.nl/products/insecure")
 
 if __name__ == "__main__":
     unittest.main()
