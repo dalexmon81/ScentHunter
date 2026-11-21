@@ -131,7 +131,19 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         # canonical DB here: persist_connector_record performs canonical matching
         # first and the conservative legacy matcher fallback second, while keeping
         # unmatched/ambiguous rows staged for review instead of publishing them.
+        discovery_filter = os.environ.get("SCENTHUNTER_NOTINO_DISCOVERY_FILTER", "").strip().casefold()
+        filtered_out = 0
         for product in products:
+            if discovery_filter:
+                haystack = " ".join(str(value or "") for value in (
+                    product.raw_payload.get("title"),
+                    product.raw_payload.get("brand"),
+                    product.raw_payload.get("sku"),
+                    product.raw_payload.get("gtin"),
+                )).casefold()
+                if not all(term in haystack for term in discovery_filter.split()):
+                    filtered_out += 1
+                    continue
             try:
                 enqueue_offer_fetch(store_id, product.external_product_id)
                 queued += 1
@@ -165,7 +177,9 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
             "run_id": str(run_id),
             "products_discovered": len(products),
             "fetch_jobs_queued": queued,
-            "products_not_queued": len(products) - queued,
+            "products_not_queued": len(products) - queued - filtered_out,
+            "products_filtered_out": filtered_out,
+            "discovery_filter": discovery_filter or None,
             "next_cursor": next_cursor,
             "errors": errors,
         }
