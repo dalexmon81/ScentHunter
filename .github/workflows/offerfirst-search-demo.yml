@@ -135,6 +135,14 @@ jobs:
                   result = json.loads(body)
                   assert code == 200 and result.get("status") == "completed", result
                   assert isinstance(result.get("results"), list), result
+                  hawas_query = urllib.parse.quote("Hawas")
+                  code, body = get("/api/catalog/search?q=" + hawas_query)
+                  hawas = json.loads(body)
+                  assert code == 200 and hawas.get("status") == "completed", hawas
+                  assert hawas.get("count") == 30, {
+                      "expected_hawas_family_identities": 30,
+                      "actual": hawas.get("count"),
+                  }
                   print("DEMO_HEALTH=PASS")
                   print("DEMO_UI=PASS")
                   print("DEMO_CATALOG=PASS")
@@ -143,6 +151,8 @@ jobs:
                   print("CANONICAL_VARIANTS=" + str(status.get("canonical_variants", 0)))
                   print("PUBLISHED_OFFERS=" + str(status.get("published_offers", 0)))
                   print("DIOR_SAUVAGE_SEARCH_RESULTS=" + str(result.get("count", 0)))
+                  print("HAWAS_FAMILY_IDENTITIES=" + str(hawas.get("count", 0)))
+                  print("HAWAS_FAMILY_SEARCH=PASS")
                   print("DEMO_URL=" + base + "/catalog-demo")
                   break
               except Exception as exc:
