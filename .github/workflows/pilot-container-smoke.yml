@@ -86,7 +86,7 @@ jobs:
           for path in \
             "/search-start?q=Dior" \
             "/diagnostic/deloox-pipeline?url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123" \
-            "/catalog/refresh-store-url?store=deloox&url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do not shell-split the ampersand
+            "/catalog/refresh-store-url?store=deloox&url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do
             code="$(curl --silent --output /tmp/blocked-body.json --write-out '%{http_code}' "http://127.0.0.1:18080$path")"
             test "$code" = 503 || {
               echo "API-only pilot unexpectedly allowed $path (HTTP $code)"
