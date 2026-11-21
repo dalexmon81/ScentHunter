@@ -62,3 +62,20 @@ This inventory does not:
 - enable any environment variable;
 - change the production runtime or database;
 - assert current retailer health or offer freshness.
+
+## Isolated connector security verification (2026-11-21)
+
+The Bplatz, Orioudh, Parfumcity and PerfumeMarket adapters now validate product
+URLs against their own retailer hostnames during discovery and before product
+fetch. Foreign hosts and lookalike domains are not accepted. Bplatz additionally
+disables automatic redirects and rejects redirect responses rather than
+following an untrusted destination.
+
+These checks are adapter-level boundaries, not a substitute for network
+egress restrictions. They do not authorize retailer activation or live
+ingestion. The three adapter-only retailers remain unregistered because their
+canonical store slugs have not been established in the canonical seed.
+
+Verified on the isolated branch by PostgreSQL CI workflow #924, including the
+host-allowlist regression tests and the full existing compatibility suite:
+https://github.com/dalexmon81/ScentHunter/actions/runs/44881500247
