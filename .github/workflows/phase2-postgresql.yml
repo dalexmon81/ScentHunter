@@ -7,7 +7,11 @@ on:
       - ".github/workflows/phase2-postgresql.yml"
       - "backend/app/connectors/bplatz.py"
       - "backend/app/connectors/perfumemarket.py"
+      - "backend/app/connectors/orioudh.py"
+      - "backend/app/connectors/parfumcity.py"
       - "backend/tests/test_perfumemarket_connector.py"
+      - "backend/tests/test_orioudh_connector.py"
+      - "backend/tests/test_parfumcity_connector.py"
       - "backend/tests/test_bplatz_connector.py"
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
@@ -172,6 +176,12 @@ jobs:
       - name: Verify PerfumeMarket Offer-First connector adapter
         working-directory: backend
         run: pytest -q tests/test_perfumemarket_connector.py
+      - name: Verify Orioudh variant-aware connector adapter
+        working-directory: backend
+        run: pytest -q tests/test_orioudh_connector.py
+      - name: Verify ParfumCity variant-aware connector adapter
+        working-directory: backend
+        run: pytest -q tests/test_parfumcity_connector.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
