@@ -3,9 +3,25 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from app.connectors.orioudh import OrioudhConnector
 
+from scrapers.orioudh import scraper as orioudh_scraper
+
 def variant(vid,price):
  return {"name":"Example 100 ml","url":"https://orioudh.com/products/example","source":{"source_name":"Example 100 ml","source_brand":"Example","url":"https://orioudh.com/products/example"},"identity":{"store_product_id":{"value":10},"store_variant_id":{"value":vid},"sku":{"value":str(vid)}},"attributes":{"size_ml":{"value":100}},"offer":{"price":price,"currency":"EUR","availability":"in_stock"}}
 class Tests(unittest.IsolatedAsyncioTestCase):
+ async def test_shopify_cart_currency_is_explicit_and_cached(self):
+  class Response:
+   status_code=200
+   def json(self): return {"currency":"EUR"}
+   def close(self): pass
+  class Session:
+   def __init__(self): self.calls=[]
+   def get(self,url,**kwargs): self.calls.append(url); return Response()
+  session=Session()
+  value=orioudh_scraper._cart_currency(session,"https://orioudh.com/products/example")
+  self.assertEqual(value,"EUR")
+  self.assertEqual(orioudh_scraper._cart_currency(session,"https://orioudh.com/products/example"),"EUR")
+  self.assertEqual(session.calls,["https://orioudh.com/cart.js"])
+
  async def test_variants_keep_distinct_stable_ids_and_currency_unverified(self):
   scraper=SimpleNamespace(search_stream=lambda q:{"status":"success","verified":True,"results":[{"url":"https://orioudh.com/products/example"}]},extract_product_page=lambda s,u,q:[variant(11,30),variant(12,40)])
   c=OrioudhConnector(scraper)
