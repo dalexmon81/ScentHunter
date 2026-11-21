@@ -61,21 +61,32 @@ gate. Canonical matching and persistence stay in
 `app.services.connector_ingestion`.
 
 
-## Additional isolated adapters (not yet worker-registered)
+## Bplatz Offer-First worker
 
-- `BplatzConnector` and `PerfumeMarketConnector` implement the shared connector
-  contract and are exported from `app.connectors`.
-- Both use operator-approved discovery query variables and stable product URLs.
-- Fixture-only adapter tests are in `tests/test_bplatz_connector.py` and
-  `tests/test_perfumemarket_connector.py`.
+- `BplatzConnector` implements the shared contract and reuses the existing
+  Bplatz scraper for discovery and page parsing.
+- `app.workers.bplatz_runtime` handles explicit discovery, fetch and refresh
+  jobs through the shared staging/matching/promotion services.
+- The generic dispatcher routes only the canonical `bplatz` store slug to
+  these handlers. The store must already exist and be active.
+- Discovery returns product URLs rather than complete offer evidence, so every
+  discovered URL is queued for fetch-time parsing and canonical matching.
+- No Bplatz discovery or refresh schedule is enabled. Jobs must be explicitly
+  enqueued; adding handlers does not activate a retailer or start network work.
+- Fixture tests are in `tests/test_bplatz_connector.py` and worker orchestration
+  tests are in `tests/test_bplatz_worker_runtime.py`.
+
+## Additional isolated adapter (not yet worker-registered)
+
+- `PerfumeMarketConnector` implements the shared connector contract.
+- It uses operator-approved discovery query variables and stable product URLs.
+- Fixture tests are in `tests/test_perfumemarket_connector.py`.
 - PerfumeMarket currently does not expose source-level `priceCurrency`
   provenance from its scraper result. Its adapter therefore treats currency as
   unverified unless a future source record explicitly carries
   `currency_explicit=True`; offers remain ineligible for promotion otherwise.
-- These adapters are deliberately not added to `legacy_runtime` or a live
-  registry yet. The existing runtime dispatch supports only the four legacy
-  wrappers, and generic multi-retailer worker routing needs its own tested
-  implementation before activation.
+- It is deliberately not added to worker dispatch or a schedule until its
+  canonical store identity and currency provenance are established.
 
 
 ## Variant-aware isolated adapters (not worker-registered)
