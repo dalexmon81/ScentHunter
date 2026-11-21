@@ -190,7 +190,7 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
             stderr=subprocess.STDOUT,
             text=True,
         )
-        base_url = f"http://127.0.0.1:{port}"
+        base_url = f"http://localhost:{port}"
         try:
             deadline = time.monotonic() + 20
             while time.monotonic() < deadline:
