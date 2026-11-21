@@ -67,6 +67,25 @@ class BplatzConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(products[0].external_product_id, products[0].product_url)
         self.assertEqual(products[0].external_product_id, "https://en.bplatz.de/products/liquid-brun")
 
+    async def test_foreign_product_hosts_are_rejected_during_discovery_and_fetch(self):
+        scraper = SimpleNamespace(discover=lambda session, query: (
+            [
+                "https://attacker.example/products/fake",
+                "https://en.bplatz.de/products/liquid-brun",
+            ], [], True
+        ))
+        connector = BplatzConnector(scraper)
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ": "Liquid Brun"
+        }):
+            products = await connector.discover_products()
+        self.assertEqual(
+            [product.product_url for product in products],
+            ["https://en.bplatz.de/products/liquid-brun"],
+        )
+        with self.assertRaisesRegex(ValueError, "Bplatz Shopify"):
+            await connector.fetch_product("https://attacker.example/products/fake")
+
 
 if __name__ == "__main__":
     unittest.main()
