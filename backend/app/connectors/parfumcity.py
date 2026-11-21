@@ -64,6 +64,9 @@ class ParfumCityConnector(StoreConnector):
         if not isinstance(raw,Mapping): return ()
         product=raw["product"]
         return tuple(item for v in product.get("variants",()) if isinstance(v,Mapping) and (item:=self._item(product,product_key,v)) is not None)
+    async def fetch_offer_price_and_stock(self, offer_id: str, product_url: str | None = None) -> Mapping[str, Any]:
+        return await self.fetch_price_and_stock(offer_id, product_url=product_url)
+
     async def fetch_price_and_stock(self,offer_id:str,product_url:str|None=None)->Mapping[str,Any]:
         if ":" not in offer_id: raise ValueError("offer_id must contain Shopify product ID and variant ID")
         # Prefer the URL persisted with the Offer row. A restarted worker has no
