@@ -31,6 +31,18 @@ class PerfumeMarketConnector(StoreConnector):
         self._snapshot: tuple[str, ...] = ()
         self._lock = asyncio.Lock()
 
+    @staticmethod
+    def _is_store_product_url(url: str) -> bool:
+        parsed = urlparse(url)
+        return (
+            parsed.scheme in {"http", "https"}
+            and parsed.hostname in {"perfumemarket.nl", "www.perfumemarket.nl"}
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port in (None, 80, 443)
+            and "/products/" in parsed.path.lower()
+        )
+
     def _queries(self) -> tuple[str, ...]:
         raw = os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_PERFUMEMARKET", "")
         queries = tuple(dict.fromkeys(v.strip() for v in raw.split(";") if v.strip()))
@@ -61,8 +73,7 @@ class PerfumeMarketConnector(StoreConnector):
                 if not isinstance(row, Mapping):
                     continue
                 url = str(row.get("url") or "").strip()
-                parsed = urlparse(url)
-                if parsed.scheme in {"http", "https"} and parsed.netloc and "/products/" in parsed.path.lower() and url not in seen:
+                if self._is_store_product_url(url) and url not in seen:
                     seen.add(url)
                     urls.append(url)
         if not verified_any:
@@ -93,9 +104,8 @@ class PerfumeMarketConnector(StoreConnector):
         return tuple(DiscoveredProduct(url, url, {"discovery_source": "perfumemarket_scraper"}) for url in snapshot[offset:offset + limit])
 
     def _fetch_sync(self, url: str) -> Mapping[str, Any] | None:
-        parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc or "/products/" not in parsed.path.lower():
-            raise ValueError("external_product_id must be an absolute Shopify product URL")
+        if not self._is_store_product_url(url):
+            raise ValueError("external_product_id must be a PerfumeMarket Shopify product URL")
         session = requests.Session()
         try:
             record = self._scraper.extract_product_page(session, url, "")
