@@ -18,7 +18,7 @@ class ParfumCityConnector(StoreConnector):
     def _is_store_product_url(url: str) -> bool:
         parsed = urlparse(url)
         return (
-            parsed.scheme in {"http", "https"}
+            parsed.scheme == "https"
             and parsed.hostname in {"parfumcity.nl", "www.parfumcity.nl"}
             and parsed.username is None
             and parsed.password is None
@@ -31,7 +31,7 @@ class ParfumCityConnector(StoreConnector):
         if not q: raise ValueError("SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY must contain operator-approved queries")
         return q
     def _discover_sync(self):
-        s=requests.Session(); urls=[]; seen=set(); verified=False
+        s=requests.Session(); s.max_redirects = 0; urls=[]; seen=set(); verified=False
         try:
             for query in self._queries():
                 rows,errors,ok=self._scraper.discover(s,query); verified=verified or bool(ok)
