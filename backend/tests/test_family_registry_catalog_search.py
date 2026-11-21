@@ -10,7 +10,16 @@ from sqlalchemy.orm import Session
 
 from app.models import Base, Brand, Fragrance
 from app.search.catalog import search_catalog
-from scripts.seed_catalog import merge_family_registry_identities
+
+import importlib.util
+_BACKEND = Path(__file__).resolve().parents[1]
+_SEED_SPEC = importlib.util.spec_from_file_location(
+    "scenthunter_test_seed_catalog", _BACKEND / "scripts" / "seed_catalog.py"
+)
+_SEED_MODULE = importlib.util.module_from_spec(_SEED_SPEC)
+assert _SEED_SPEC and _SEED_SPEC.loader
+_SEED_SPEC.loader.exec_module(_SEED_MODULE)
+merge_family_registry_identities = _SEED_MODULE.merge_family_registry_identities
 
 
 class FamilyRegistryCatalogSearchTests(unittest.TestCase):
