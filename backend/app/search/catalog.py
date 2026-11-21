@@ -121,7 +121,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             token_exists = session.scalar(select(exists(
                 select(1).select_from(Brand)
                 .join(Fragrance, Fragrance.brand_id == Brand.id)
-                .join(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
+                .outerjoin(ProductVariant, ProductVariant.fragrance_id == Fragrance.id)
                 .where(token_condition)
             )))
             # Ignore incidental words not represented in the catalog; keep
