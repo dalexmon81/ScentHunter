@@ -2,7 +2,7 @@
 
 This test uses only the disposable PostgreSQL service configured by CI.
 It inserts a small, isolated canonical record and a validated offer, then
-exercises the same FastAPI router used by the application. No retailer network
+exercises the actual FastAPI application and its served frontend. No retailer network
 calls, worker startup, scheduler, or production database is involved.
 """
 from __future__ import annotations
@@ -121,6 +121,8 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
             home = client.get("/")
             assert home.status_code == 200, home.text
             assert "ScentHunter" in home.text
+            assert '/api/catalog/search?q=' in home.text
+            assert 'searchParams.get("catalog_first")!=="0"' in home.text
             status = client.get("/api/catalog/status")
             assert status.status_code == 200, status.text
             status_data = status.json()
@@ -146,6 +148,7 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
             assert public_offer["price"] == "42.50"
             assert public_offer["currency"] == "EUR"
             assert public_offer["availability"] == "in_stock"
+            assert public_offer["size_ml"] == 100
             assert public_offer["url"] == "https://bplatz.de/products/api-contract-fragrance"
             assert public_offer["captured_at"]
             assert expected_offer_id is not None
