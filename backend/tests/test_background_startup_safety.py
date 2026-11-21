@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import main
+from fastapi.testclient import TestClient
 
 
 def test_api_only_mode_skips_automatic_catalog_discovery_and_hydration():
@@ -69,3 +70,31 @@ def test_pilot_container_runs_api_without_starting_ingestion_worker():
     assert "app.workers.sqlite_worker" not in dockerfile
     assert "exec /app/.venv/bin/uvicorn main:app" in dockerfile
     assert 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' in staging
+
+
+def test_api_only_mode_rejects_manual_legacy_scraping_and_worker_triggers():
+    client = TestClient(main.app)
+    blocked_requests = [
+        ("GET", "/search?q=Hawas"),
+        ("GET", "/search-start?q=Hawas"),
+        ("GET", "/catalog/resync-easycosmetic"),
+        ("GET", "/catalog/resync-deloox"),
+        ("GET", "/catalog/resync-sabina-deloox"),
+        ("GET", "/diagnostic/matcher?store=deloox&q=Hawas"),
+        ("GET", "/diagnostic/store-pipeline?store=notino&q=Hawas&probe=true"),
+        ("GET", "/diagnostic/scraper-offer-compare?store=deloox&q=Hawas&url=https%3A%2F%2Fwww.deloox.com%2Fproduct%2F123"),
+        ("GET", "/diagnose-catalog-live-parse?store=deloox&url=https%3A%2F%2Fwww.deloox.com%2Fproduct%2F123"),
+        ("GET", "/diagnose-hawas-ice-offers-read-only"),
+        ("POST", "/admin/phase0/baseline/start"),
+        ("POST", "/admin/phase0/smoke/start"),
+        ("POST", "/admin/phase0/admin/resume-deloox-queue"),
+    ]
+
+    with patch.dict(os.environ, {"SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP": "1"}, clear=True):
+        for method, path in blocked_requests:
+            response = client.request(method, path)
+            assert response.status_code == 503, (method, path, response.status_code, response.text)
+            assert "disabled in API-only pilot mode" in response.json()["detail"]
+
+        health = client.get("/health")
+        assert health.status_code == 200
