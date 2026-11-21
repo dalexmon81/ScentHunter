@@ -158,9 +158,9 @@ jobs:
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
         run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
-      - name: Verify central Shopify currency provenance promotion gate
+      - name: Verify Shopify currency evidence from parser through PostgreSQL promotion
         working-directory: backend
-        run: pytest -q ../tests/test_bplatz_persistence_service.py::test_shopify_offer_cannot_bypass_currency_provenance_at_promotion_gate
+        run: pytest -q ../tests/test_bplatz_persistence_service.py::test_shopify_offer_cannot_bypass_currency_provenance_at_promotion_gate ../tests/test_bplatz_persistence_service.py::test_shopify_scraper_parser_staging_and_promotion_preserve_currency_evidence ../tests/test_bplatz_persistence_service.py::test_shopify_scraper_parser_staging_rejects_unverified_currency_evidence
       - name: Verify central offer refresh persistence and Shopify provenance gate
         working-directory: backend
         run: pytest -q tests/test_offer_refresh_persistence.py
