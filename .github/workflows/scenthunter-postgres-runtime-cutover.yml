@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote='cd /app/backend && /app/.venv/bin/python -c "from sqlalchemy import create_engine, text; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); assert u.get_backend_name()==\"postgresql\"; assert u.drivername==\"postgresql+psycopg\"; e=create_engine(u, pool_pre_ping=True); c=e.connect(); n=c.execute(text(\"select current_database()\")).scalar_one(); assert n==\"scenthunter_offerfirst\"; print(\"CANONICAL_BACKEND=postgresql\"); print(\"CANONICAL_DRIVER=psycopg\"); print(\"DATABASE_NAME=\"+n); c.close(); e.dispose()"'
+          remote="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c "from sqlalchemy import create_engine, text; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); assert u.get_backend_name()==\"postgresql\"; assert u.drivername==\"postgresql+psycopg\"; e=create_engine(u, pool_pre_ping=True); c=e.connect(); n=c.execute(text(\"select current_database()\")).scalar_one(); assert n==\"scenthunter_offerfirst\"; print(\"CANONICAL_BACKEND=postgresql\"); print(\"CANONICAL_DRIVER=psycopg\"); print(\"DATABASE_NAME=\"+n); c.close(); e.dispose()"'"
           for attempt in $(seq 1 24); do
             if flyctl ssh console --app scenthunter --machine 8654e0da7d7268 --pty=false --quiet -C "$remote"; then
               exit 0
