@@ -118,7 +118,17 @@ in `ingestion_raw`.
 This schedule is limited to the pilot. It does not claim a 15-minute freshness
 guarantee or establish that all retailer refreshes are active in production.
 
-## Bplatz adapter\n\nBplatz has isolated discovery, fetch and refresh handlers in\n`app.workers.bplatz_runtime`. The generic dispatcher routes only the canonical\n`bplatz` store slug to these handlers. The handlers require an already seeded,\nactive Bplatz store and use the shared staging/matching/promotion and refresh\nservices. They do not seed the store, enable scheduling, or start network work\nat process startup. Bplatz discovery and refresh jobs must be explicitly\nenqueued; the default scheduler does not include Bplatz.\n\n## Legacy retailer adapters
+## Bplatz adapter
+
+Bplatz has isolated discovery, fetch and refresh handlers in
+`app.workers.bplatz_runtime`. The generic dispatcher routes only the canonical
+`bplatz` store slug to these handlers. The handlers require an already seeded,
+active Bplatz store and use the shared staging/matching/promotion and refresh
+services. They do not seed the store, enable scheduling, or start network work
+at process startup. Bplatz discovery and refresh jobs must be explicitly
+enqueued; the default scheduler does not include Bplatz.
+
+## Legacy retailer adapters
 
 Deloox, Sabina, Easycosmetic and Parfum-Zentrum have thin async adapters around
 their existing scraper modules. The existing retailer parsers remain the
