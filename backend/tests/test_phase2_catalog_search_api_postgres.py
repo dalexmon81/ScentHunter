@@ -14,7 +14,6 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -33,8 +32,8 @@ DATABASE_URL = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "")
 @pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL service")
 def test_catalog_search_http_reads_validated_offer_from_postgresql():
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-    app = FastAPI()
-    app.include_router(catalog_search.router)
+    import main  # the actual Uvicorn application; importing does not start workers
+    client = TestClient(main.app)  # no lifespan startup in this HTTP contract test
     try:
         # Unique test identity; clean up only rows created by this test.
         with Session(engine) as session, session.begin():
@@ -119,40 +118,42 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
             expected_store_name = store.name
 
         with patch.object(catalog_search, "_engine", return_value=engine):
-            with TestClient(app) as client:
-                status = client.get("/api/catalog/status")
-                assert status.status_code == 200, status.text
-                status_data = status.json()
-                assert status_data["status"] == "ready"
-                assert status_data["published_offers"] >= 1
+            home = client.get("/")
+            assert home.status_code == 200, home.text
+            assert "ScentHunter" in home.text
+            status = client.get("/api/catalog/status")
+            assert status.status_code == 200, status.text
+            status_data = status.json()
+            assert status_data["status"] == "ready"
+            assert status_data["published_offers"] >= 1
 
-                response = client.get(
-                    "/api/catalog/search",
-                    params={"q": "ScentHunter API Test Brand API Contract Fragrance EDP 100 ml"},
-                )
-                assert response.status_code == 200, response.text
-                data = response.json()
-                assert data["status"] == "completed"
-                assert data["count"] == 1
-                assert data["offer_count"] == 1
-                item = data["results"][0]
-                assert item["catalog_id"] == expected_variant_id
-                assert item["brand"] == "ScentHunter API Test Brand"
-                assert item["name"] == "API Contract Fragrance Eau de Parfum 100 ml"
-                assert len(item["offers"]) == 1
-                public_offer = item["offers"][0]
-                assert public_offer["store"] == expected_store_name
-                assert public_offer["price"] == "42.50"
-                assert public_offer["currency"] == "EUR"
-                assert public_offer["availability"] == "in_stock"
-                assert public_offer["url"] == "https://bplatz.de/products/api-contract-fragrance"
-                assert public_offer["captured_at"]
-                assert expected_offer_id is not None
+            response = client.get(
+                "/api/catalog/search",
+                params={"q": "ScentHunter API Test Brand API Contract Fragrance EDP 100 ml"},
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["status"] == "completed"
+            assert data["count"] == 1
+            assert data["offer_count"] == 1
+            item = data["results"][0]
+            assert item["catalog_id"] == expected_variant_id
+            assert item["brand"] == "ScentHunter API Test Brand"
+            assert item["name"] == "API Contract Fragrance Eau de Parfum 100 ml"
+            assert len(item["offers"]) == 1
+            public_offer = item["offers"][0]
+            assert public_offer["store"] == expected_store_name
+            assert public_offer["price"] == "42.50"
+            assert public_offer["currency"] == "EUR"
+            assert public_offer["availability"] == "in_stock"
+            assert public_offer["url"] == "https://bplatz.de/products/api-contract-fragrance"
+            assert public_offer["captured_at"]
+            assert expected_offer_id is not None
 
-                demo = client.get("/catalog-demo")
-                assert demo.status_code == 200
-                assert "ScentHunter" in demo.text
-                assert "/api/catalog/search?q=" in demo.text
+            demo = client.get("/catalog-demo")
+            assert demo.status_code == 200
+            assert "ScentHunter" in demo.text
+            assert "/api/catalog/search?q=" in demo.text
     finally:
         # Remove only this test's records; CI database is disposable.
         with Session(engine) as session, session.begin():
