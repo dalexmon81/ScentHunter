@@ -1,0 +1,154 @@
+name: Deploy isolated ScentHunter 2.0 search demo
+
+on:
+  push:
+    branches:
+      - architecture/offer-first-v2
+    paths:
+      - ".github/workflows/offerfirst-search-demo.yml"
+      - "fly.offerfirst-demo.toml"
+      - "Dockerfile.pilot"
+      - "requirements.txt"
+      - "frontend/index.html"
+      - "backend/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-offerfirst-search-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy-demo:
+    name: Deploy isolated public search demo (SQLite prototype)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-offerfirst-demo-20261121
+      FLY_ORG: personal
+      FLY_VOLUME: scenthunter_offerfirst_demo_data
+      DEMO_URL: https://scenthunter-offerfirst-demo-20261121.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: architecture/offer-first-v2
+
+      - name: Validate isolated target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "::error::FLY_API_TOKEN Actions secret is missing."
+            exit 1
+          }
+          token="$FLY_API_TOKEN"
+          case "$token" in
+            fm2_*) token="FlyV1 $token" ;;
+          esac
+          echo "::add-mask::$token"
+          printf 'FLY_API_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
+          grep -Fq 'app = "scenthunter-offerfirst-demo-20261121"' fly.offerfirst-demo.toml
+          grep -Fq 'source = "scenthunter_offerfirst_demo_data"' fly.offerfirst-demo.toml
+          grep -Fq 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' fly.offerfirst-demo.toml
+          echo "Dedicated app, dedicated volume, API-only startup: verified."
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create or verify dedicated demo app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
+            echo "App creation did not create a new app; verifying existing isolated app."
+          fi
+          flyctl apps list --org "$FLY_ORG" --quiet | grep -Fx "$FLY_APP"
+
+      - name: Create or verify dedicated demo volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          volumes="$(flyctl volumes list --app "$FLY_APP" 2>&1)" || {
+            printf '%s\n' "$volumes" >&2
+            exit 1
+          }
+          if printf '%s\n' "$volumes" | grep -Fq "$FLY_VOLUME"; then
+            echo "Dedicated demo volume already exists."
+          else
+            flyctl volumes create "$FLY_VOLUME" --app "$FLY_APP" --region ams --size 1 --count 1 --yes
+          fi
+
+      - name: Deploy demo image
+        run: flyctl deploy --remote-only --config fly.offerfirst-demo.toml --app "$FLY_APP" --yes --wait-timeout 600
+
+      - name: Verify public demo, catalog and real search API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter-offerfirst-demo-20261121.fly.dev"
+
+          def get(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-OfferFirst-Demo/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  return response.status, response.read()
+
+          last_error = None
+          for attempt in range(1, 31):
+              try:
+                  code, body = get("/health")
+                  assert code == 200, (code, body[:500])
+                  code, body = get("/catalog-demo")
+                  assert code == 200 and b"ScentHunter" in body and b"search-form" in body
+                  code, body = get("/api/catalog/status")
+                  status = json.loads(body)
+                  assert code == 200 and status.get("status") == "ready", status
+                  query = urllib.parse.quote("Dior Sauvage Eau de Parfum 100 ml")
+                  code, body = get("/api/catalog/search?q=" + query)
+                  result = json.loads(body)
+                  assert code == 200 and result.get("status") == "completed", result
+                  assert isinstance(result.get("results"), list), result
+                  print("DEMO_HEALTH=PASS")
+                  print("DEMO_UI=PASS")
+                  print("DEMO_CATALOG=PASS")
+                  print("DEMO_SEARCH_API=PASS")
+                  print("CANONICAL_PRODUCTS=" + str(status.get("canonical_products", 0)))
+                  print("CANONICAL_VARIANTS=" + str(status.get("canonical_variants", 0)))
+                  print("PUBLISHED_OFFERS=" + str(status.get("published_offers", 0)))
+                  print("DIOR_SAUVAGE_SEARCH_RESULTS=" + str(result.get("count", 0)))
+                  print("DEMO_URL=" + base + "/catalog-demo")
+                  break
+              except Exception as exc:
+                  last_error = f"{type(exc).__name__}: {exc}"
+                  print(f"Attempt {attempt}/30: {last_error}", flush=True)
+                  if attempt < 30:
+                      time.sleep(10)
+          else:
+              raise SystemExit("Public demo smoke test failed: " + str(last_error))
+          PY
+
+      - name: Confirm retailer operations remain disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in \
+            "/search-start?q=Dior" \
+            "/catalog/refresh-store-url?store=deloox&url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' "$DEMO_URL$path")"
+            test "$code" = "503" || {
+              echo "Unexpected background retailer operation response: $path HTTP $code"
+              exit 1
+            }
+          done
+          echo "DEMO_RETAILER_SIDE_EFFECTS=BLOCKED"
