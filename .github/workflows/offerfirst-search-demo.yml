@@ -53,7 +53,9 @@ jobs:
           grep -Fq 'app = "scenthunter-offerfirst-demo-20261121"' fly.offerfirst-demo.toml
           grep -Fq 'source = "sh_offerfirst_demo"' fly.offerfirst-demo.toml
           grep -Fq 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' fly.offerfirst-demo.toml
-          echo "Dedicated app, dedicated volume, API-only startup: verified."
+          grep -Fq 'SCENTHUNTER_ENABLE_SQLITE_WORKER = "1"' fly.offerfirst-demo.toml
+          grep -Fq 'SCENTHUNTER_NOTINO_DISCOVERY_ENABLED = "1"' fly.offerfirst-demo.toml
+          echo "Dedicated app, dedicated volume, isolated Notino worker: verified."
 
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
