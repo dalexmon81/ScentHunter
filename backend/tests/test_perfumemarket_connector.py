@@ -30,6 +30,76 @@ class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(connector.validate_offer(parsed).valid)
         self.assertFalse(parsed["currency_explicit"])
 
+    def test_jsonld_offer_currency_provenance_survives_parser_and_adapter(self):
+        from scrapers.perfumemarket import scraper
+
+        html = """<h1>Example Eau de Parfum 100 ml</h1>
+        <script type="application/ld+json">
+        {
+          "@type": "Product",
+          "name": "Example Eau de Parfum 100 ml",
+          "brand": {"@type": "Brand", "name": "Example"},
+          "offers": {
+            "@type": "Offer",
+            "price": "39.95",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+        </script>"""
+
+        class Response:
+            status_code = 200
+            url = "https://www.perfumemarket.nl/products/example"
+            text = html
+
+        session = SimpleNamespace(get=lambda *args, **kwargs: Response())
+        raw = scraper.extract_product_page(
+            session, "https://www.perfumemarket.nl/products/example", "Example"
+        )
+        self.assertTrue(raw["currency_explicit"])
+        self.assertEqual(raw["currency_source"], "jsonld_offer_priceCurrency")
+        self.assertEqual(raw["offer"]["currency_source"], "jsonld_offer_priceCurrency")
+
+        parsed = PerfumeMarketConnector(SimpleNamespace()).parse_raw(raw)
+        self.assertTrue(parsed["currency_explicit"])
+        self.assertEqual(parsed["currency_source"], "jsonld_offer_priceCurrency")
+        self.assertTrue(PerfumeMarketConnector(SimpleNamespace()).validate_offer(parsed).valid)
+
+    def test_product_jsonld_currency_without_pricecurrency_remains_unverified(self):
+        from scrapers.perfumemarket import scraper
+
+        html = """<h1>Example Eau de Parfum 100 ml</h1>
+        <script type="application/ld+json">
+        {
+          "@type": "Product",
+          "name": "Example Eau de Parfum 100 ml",
+          "offers": {
+            "@type": "Offer",
+            "price": "39.95",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+        </script>"""
+
+        class Response:
+            status_code = 200
+            url = "https://www.perfumemarket.nl/products/example"
+            text = html
+
+        raw = scraper.extract_product_page(
+            SimpleNamespace(get=lambda *args, **kwargs: Response()),
+            "https://www.perfumemarket.nl/products/example",
+            "Example",
+        )
+        self.assertEqual(raw["currency"], "EUR")
+        self.assertFalse(raw["currency_explicit"])
+        self.assertIsNone(raw["currency_source"])
+
+        parsed = PerfumeMarketConnector(SimpleNamespace()).parse_raw(raw)
+        self.assertFalse(parsed["currency_explicit"])
+        self.assertIsNone(parsed["currency_source"])
+
     def test_explicit_currency_flag_and_known_stock_pass_validation(self):
         connector = PerfumeMarketConnector(SimpleNamespace())
         parsed = connector.parse_raw({
