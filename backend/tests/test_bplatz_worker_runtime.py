@@ -85,10 +85,7 @@ class BplatzWorkerRuntimeTests(unittest.TestCase):
 
     def test_discovery_queues_only_canonical_candidates(self):
         patches = self._common_patches()
-        patches.extend([
-            patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True),
-            patch.object(bplatz_runtime, "enqueue_offer_fetch"),
-        ])
+        patches.append(patch.object(bplatz_runtime, "enqueue_offer_fetch"))
         started = [item.start() for item in patches]
         enqueue_fetch = started[-1]
         try:
