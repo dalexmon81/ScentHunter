@@ -151,6 +151,13 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     )
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
+    raw_evidence = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+    connector_store_key = raw_evidence.get("connector_store_key")
+    if connector_store_key in {"orioudh", "parfumcity"}:
+        if raw_evidence.get("currency_explicit") is not True:
+            raise PromotionRejected("Shopify offer currency is not explicit in source evidence")
+        if raw_evidence.get("currency_source") != "shopify_cart_presentment_currency":
+            raise PromotionRejected("Shopify offer currency provenance is missing or unverified")
     if session.get(ProductVariant, row.product_variant_id) is None:
         raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
