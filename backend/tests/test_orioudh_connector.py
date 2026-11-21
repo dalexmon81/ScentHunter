@@ -27,7 +27,7 @@ class Tests(unittest.IsolatedAsyncioTestCase):
 
  async def test_product_json_uses_cart_js_currency_in_raw_offer(self):
   product={"id":10,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":11,"title":"100 ml","price":"30.00","available":True,"sku":"EX-100"}]}
-  with patch.object(orioudh_scraper,"_request_json",side_effect=lambda session,url: product.copy() if url.endswith(".js") else {"currency":"GBP"}):
+  with patch.object(orioudh_scraper,"_request_json",side_effect=lambda session,url: {"currency":"GBP"} if url.endswith("/cart.js") else product.copy()):
    session=SimpleNamespace()
    loaded=orioudh_scraper._product_json(session,"https://orioudh.com/products/example")
   self.assertEqual(loaded["_scenthunter_currency"],"GBP")
