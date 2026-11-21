@@ -19,3 +19,16 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   c=ParfumCityConnector(SimpleNamespace())
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY":""}):
    with self.assertRaises(ValueError): await c.discover_products()
+
+class RefreshAfterRestartTests(unittest.IsolatedAsyncioTestCase):
+ async def test_refresh_uses_persisted_product_url_without_discovery_snapshot(self):
+  url="https://www.parfumcity.nl/products/example"
+  product={"id":20,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":201,"title":"50 ml","price":"31.00","available":True}]}
+  def make(p,v,u,q):
+   return {"name":p["title"]+" "+v["title"],"url":u,"source":{"source_name":p["title"],"source_brand":p["vendor"],"url":u},"identity":{"store_product_id":{"value":p["id"]},"store_variant_id":{"value":v["id"]}},"attributes":{"size_ml":{"value":50}},"offer":{"price":float(v["price"]),"currency":"EUR","availability":"in_stock"}}
+  scraper=SimpleNamespace(product_json=lambda s,u:product,make_item=make)
+  c=ParfumCityConnector(scraper)
+  observation=await c.fetch_price_and_stock("20:201",product_url=url)
+  self.assertEqual(observation["external_product_id"],"20:201")
+  self.assertEqual(observation["price"],"31.0")
+  self.assertEqual(c._snapshot,())
