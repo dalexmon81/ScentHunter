@@ -39,6 +39,20 @@ class WorkerSchedulingSafetyTests(unittest.TestCase):
         self.assertEqual(enqueue.call_args.args[1], "discover")
         self.assertEqual(enqueue.call_args.args[2]["store_id"], "notino-store-id")
 
+    def test_shopify_retailers_are_not_registered_for_worker_scheduling(self):
+        from app.connectors.legacy_scrapers import STORE_SLUGS
+        self.assertNotIn("orioudh", STORE_SLUGS)
+        self.assertNotIn("parfumcity", STORE_SLUGS)
+        self.assertNotIn("orioudh-com", STORE_SLUGS)
+        self.assertNotIn("parfumcity-nl", STORE_SLUGS)
+
+    def test_shopify_retailers_fail_closed_in_legacy_dispatcher(self):
+        from app.workers.legacy_runtime import _connector_for
+        for slug in ("orioudh", "parfumcity", "orioudh-com", "parfumcity-nl"):
+            with self.subTest(slug=slug):
+                with self.assertRaisesRegex(ValueError, "unsupported legacy store slug"):
+                    _connector_for(slug)
+
     def test_legacy_discovery_requires_global_and_store_query_opt_ins(self):
         session = MagicMock()
         session.execute.return_value.all.return_value = []
