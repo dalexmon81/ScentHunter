@@ -237,6 +237,55 @@ def validate_catalog(raw: dict) -> tuple[list[dict], dict[str, list[dict]], list
     return products, by_product, blocked
 
 
+def merge_family_registry_identities(raw: dict, catalog_path: Path) -> dict:
+    """Add registered family product identities without inventing sellable variants.
+
+    family_registry.json is the source of truth for broad family coverage.
+    Entries create fragrance identities only; concentration, size, GTIN and
+    offers remain absent unless an explicit product_catalog variant supplies them.
+    """
+    registry_path = catalog_path.parent / "family_registry.json"
+    if not registry_path.is_file():
+        return raw
+    with registry_path.open(encoding="utf-8") as handle:
+        registry = json.load(handle)
+    products = raw.setdefault("products", [])
+    if not isinstance(products, list):
+        raise SystemExit("STOP: catalog products[] must be a list")
+    known = {
+        (normalize_brand(str(row.get("brand_name") or "")), norm(str(row.get("canonical_name") or "")))
+        for row in products if isinstance(row, dict)
+    }
+    added = 0
+    for family in registry.get("families", []):
+        if not isinstance(family, dict):
+            continue
+        brand_name = str(family.get("brand") or "").strip()
+        family_id = str(family.get("family_id") or "").strip()
+        if not brand_name or not family_id:
+            continue
+        for item in family.get("products", []):
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("canonical_name") or "").strip()
+            key = (normalize_brand(brand_name), norm(name))
+            if not name or key in known:
+                continue
+            products.append({
+                "product_id": f"family_registry:{family_id}:{slugify(name)}",
+                "brand_name": brand_name,
+                "canonical_name": name,
+                "family_name": family_id,
+                "gender": item.get("gender"),
+                "canonical_image": item.get("canonical_image"),
+                "description": None,
+            })
+            known.add(key)
+            added += 1
+    raw["_family_registry_identities_added"] = added
+    return raw
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
@@ -265,6 +314,7 @@ def main() -> int:
     with catalog_path.open(encoding="utf-8") as handle:
         raw = json.load(handle)
     raw = merge_supplemental_catalog(raw, catalog_path)
+    raw = merge_family_registry_identities(raw, catalog_path)
 
     products, by_product, blocked = validate_catalog(raw)
     if blocked:
@@ -296,6 +346,7 @@ def main() -> int:
         "source_brand_records": len(source_brands),
         "brands": len(names),
         "fragrances": len(products),
+        "family_registry_identities_added": int(raw.get("_family_registry_identities_added", 0)),
         "variants": variant_count,
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
