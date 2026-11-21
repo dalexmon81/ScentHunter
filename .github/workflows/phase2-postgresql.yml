@@ -23,6 +23,7 @@ on:
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_catalog_ingestion_run.py"
       - "backend/tests/test_notino_worker_runtime.py"
+      - "backend/tests/test_legacy_worker_runtime.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/product_catalog.json"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
@@ -54,6 +55,7 @@ on:
       - "backend/tests/test_catalog_worker_queue.py"
       - "backend/tests/test_catalog_ingestion_run.py"
       - "backend/tests/test_notino_worker_runtime.py"
+      - "backend/tests/test_legacy_worker_runtime.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/product_catalog.json"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
@@ -144,6 +146,9 @@ jobs:
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
         run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
+      - name: Verify retailer ingestion worker dispatch and matching
+        working-directory: backend
+        run: pytest -q tests/test_notino_worker_runtime.py tests/test_legacy_worker_runtime.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
