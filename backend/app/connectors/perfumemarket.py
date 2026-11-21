@@ -1,8 +1,8 @@
 """Fixture-friendly PerfumeMarket adapter for background Offer-First ingestion.
 
 The existing retailer scraper remains responsible for discovery and page parsing.
-Currency is deliberately not promoted as explicit until the scraper exposes
-source-level currency provenance.
+Only JSON-LD priceCurrency evidence is promoted as explicit; its EUR fallback
+remains unverified.
 """
 from __future__ import annotations
 
