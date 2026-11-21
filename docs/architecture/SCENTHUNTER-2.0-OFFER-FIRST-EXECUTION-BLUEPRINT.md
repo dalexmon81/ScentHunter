@@ -261,3 +261,14 @@ A route-by-route review found additional legacy endpoints that could initiate re
 These are now covered by the API-only safety regression test. Workflow #943 passed on commit `417a0251eaf948d05a63a606a2e474c029852e59`: PostgreSQL/Uvicorn catalog HTTP test (1 passed), API-only startup and route-guard tests (5 passed), and the complete workflow succeeded. The workflow path filters were also updated so future changes to `backend/main.py` run this safety suite.
 
 This remains code/CI evidence only. No Fly runtime was started and no production DB, volume, secret, or configuration was accessed or modified. Gate A remains blocked on the read-only Fly runtime/backup evidence described above.
+
+## Isolated pilot image smoke evidence (2026-11-21)
+
+- GitHub Actions workflow #4 completed successfully on commit `b26a0d727a19bcdd032cb5e81c2f620b8aed1263`: [pilot container smoke #4](https://github.com/dalexmon81/ScentHunter/actions/runs/44885852875).
+- CI built the actual `Dockerfile.pilot` image, mounted a fresh temporary local volume, ran its real bootstrap (Alembic + canonical seed), and started the actual Uvicorn application.
+- The container reported 1,403 canonical fragrances and 540 variants through `/api/catalog/status`.
+- Legacy `/search-start`, live Deloox diagnostics and targeted retailer refresh routes returned HTTP 503.
+- The container process table contained no SQLite ingestion worker, catalog hydrator or catalog discovery process. Logs confirmed both automatic catalog startup and Phase 0 queue initialization were disabled.
+- The workflow cleaned up the disposable container and volume successfully. It did not call Fly, use production secrets, access remote volumes, or contact retailer endpoints.
+
+This proves the isolated pilot image can bootstrap and serve the API in a fail-closed API-only mode in CI. It does not prove the Fly pilot is deployed, production runtime topology, production DB identity, backup/restore, live retailer readiness, or production parity. Gate A remains open.
