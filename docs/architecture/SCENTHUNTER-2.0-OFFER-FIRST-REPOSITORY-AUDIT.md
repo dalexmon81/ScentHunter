@@ -93,15 +93,26 @@ GitHub source APIs cannot inspect local uncommitted changes, production Fly volu
 4. Run local test/build commands where GitHub Actions or remote runner evidence is not enough.
 5. Confirm whether stale branches may eventually be deleted after associated PRs/diffs are classified.
 
-## Next execution steps
+## Corrected execution order — cleanup first
 
-1. Inspect all existing schema and migrations; determine whether current PostgreSQL schema is already sufficient for the Offer-First entities and add only missing tables/fields.
-2. Map existing API routes, frontend routes, and all SQLite read/write dependencies.
-3. Inspect connector implementations for Notino, Easycosmetic, Parfumzentrum, Sabina, Deloox and the source terms/rate limits; build a uniform bounded search capability.
-4. Design a SearchOrchestrator with per-retailer deadlines, independent failures, partial results, and persisted offer observations.
-5. Add verified-offer freshness and matching gates before rendering results.
-6. Add Dior Sauvage EDP 100 ml end-to-end pilot.
-7. Only then perform measured cleanup of unused diagnostics/workflows and legacy code on this branch.
+The repository must be cleaned and made understandable before any new architecture implementation. Do not begin schema changes, connector additions, orchestration, or frontend rewrites during this cleanup gate.
+
+1. **Freeze and baseline:** work only on `architecture/offer-first-v2`; preserve production `main`; record current branch/head, tracked tree, open PR dependencies and production backup evidence.
+2. **Safe generated-file cleanup:** remove tracked bytecode/cache artifacts only; keep ignore rules for generated files, local databases, secrets, logs and build output. This branch already removed two tracked `.pyc` files and added root `.gitignore`.
+3. **Repository classification:** inventory every root/backend/tools/scripts/tests/docs/workflow/deployment file into active runtime, reusable module, legacy compatibility, diagnostics, tests/fixtures, deployment/operations, or historical documentation.
+4. **Dependency tracing:** before moving or deleting anything, search imports, workflow references, Docker/Fly/Render/Railway commands, scripts, README instructions and tests. Root `catalog_demo_app.py` is a deployment shim and must not be mistaken for a duplicate to delete.
+5. **Structural cleanup only:** move files only when all references and runtime paths are updated together; prefer no-move cleanup when a directory is already isolated. Keep `tools/diagnostics/` and `tools/debug/` until every script is classified and replacement procedures exist.
+6. **Legacy separation:** label and document legacy entrypoints and workers without removing them. Preserve catalog JSON, family registry, frontend, scraper implementations, fixtures, migrations and deployment workflows.
+7. **Validation gate:** run relevant tests/workflows and deployment configuration checks; compare tracked tree and confirm no production paths changed. Do not merge or deploy as part of cleanup.
+8. **Cleanup sign-off:** publish a file-by-file change log, unresolved risks and explicit list of preserved components. Only after this gate is reviewed should architecture design/implementation begin.
+
+### Explicitly out of scope until cleanup sign-off
+
+- PostgreSQL schema changes or database migration.
+- New connector adapters or changes to existing retailer scrapers.
+- Search orchestration, queue/worker replacement, or feed re-imports.
+- Frontend/API rewrites.
+- Deleting diagnostics, workflows, legacy runtime, fixtures or historical docs based only on filenames.
 
 ## Safety statement
 
