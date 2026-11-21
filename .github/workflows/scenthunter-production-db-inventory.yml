@@ -1,0 +1,56 @@
+name: ScentHunter production database readiness inventory
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/scenthunter-production-db-inventory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-production-db-inventory
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "::error::FLY_API_TOKEN repository secret is missing."
+            exit 1
+          }
+          echo "Fly authentication is configured."
+
+      - name: Read production topology and volume snapshot inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl status --app scenthunter
+          flyctl machines list --app scenthunter
+          flyctl volumes list --app scenthunter
+          echo "=== EXISTING SNAPSHOTS ==="
+          flyctl volumes snapshots list vol_vwn91672oj9d1z9v --app scenthunter
+
+      - name: Inspect database configuration and both SQLite files read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"import os,sqlite3; from pathlib import Path; from urllib.parse import urlsplit; keys=(\\\"SCENTHUNTER_CATALOG_DATABASE_URL\\\",\\\"SCENTHUNTER_DATABASE_URL\\\",\\\"DATABASE_URL\\\",\\\"SCENTHUNTER_NEXT_DB\\\",\\\"SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\\\"); print(\\\"=== DATABASE URL SCHEMES (NO CREDENTIALS) ===\\\"); [(print(k+\\\":CONFIGURED=\\\"+str(bool(os.getenv(k)))+\\\",SCHEME=\\\"+(urlsplit(os.getenv(k)).scheme if os.getenv(k) else \\\"unset\\\"))) for k in keys]; print(\\\"=== SQLITE FILE INVENTORY (READ ONLY) ===\\\"); paths=(\\\"/data/catalog/catalog.sqlite3\\\",\\\"/data/store_catalog.sqlite3\\\"); [(lambda p,c: (print(\\\"FILE:\\\",p,\\\"SIZE_BYTES:\\\",Path(p).stat().st_size), print(\\\"QUICK_CHECK:\\\",c.execute(\\\"PRAGMA quick_check(1)\\\").fetchone()[0]), (lambda ts: (print(\\\"TABLES:\\\",ts), [print(\\\"ROW_COUNT:\\\",t,c.execute(\\\"SELECT COUNT(*) FROM \\\\\\\"\\\"+t+\\\"\\\\\\\"\\\").fetchone()[0]) for t in ts], print(\\\"ALEMBIC_REVISION:\\\",c.execute(\\\"SELECT version_num FROM alembic_version\\\").fetchone()[0] if \\\"alembic_version\\\" in ts else \\\"not_present\\\")))([r[0] for r in c.execute(\\\"SELECT name FROM sqlite_master WHERE type=char(116,97,98,108,101) AND name NOT LIKE char(115,113,108,105,116,101,95,37) ORDER BY name\\\")]), c.close()))(p,sqlite3.connect(\\\"file:\\\"+p+\\\"?mode=ro\\\",uri=True,timeout=10)) for p in paths if Path(p).exists()]; [(print(\\\"FILE_MISSING:\\\",p)) for p in paths if not Path(p).exists()]\"' "
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Confirm diagnostic boundary
+        run: echo "READ_ONLY_DATABASE_INVENTORY=COMPLETE; no database writes, backups, deploys, or restarts were performed."
