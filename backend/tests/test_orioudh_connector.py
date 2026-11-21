@@ -14,6 +14,14 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   offers=await c.fetch_offers(ds[0].product_url)
   self.assertEqual([x["external_product_id"] for x in offers],["10:11","10:12"])
   p=c.parse_raw(offers[0]); self.assertFalse(p["currency_explicit"]); self.assertEqual(p["price"],"30")
+ async def test_explicit_currency_field_is_preserved(self):
+  c=OrioudhConnector(SimpleNamespace())
+  raw=variant(11,30)
+  raw["offer"]["currency"]="GBP"
+  raw["offer"]["currency_explicit"]=True
+  parsed=c.parse_raw(raw)
+  self.assertEqual(parsed["currency"],"GBP")
+  self.assertTrue(parsed["currency_explicit"])
  async def test_missing_seeds_fail_closed(self):
   c=OrioudhConnector(SimpleNamespace())
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH":""}):
