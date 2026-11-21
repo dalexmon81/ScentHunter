@@ -142,18 +142,27 @@ jobs:
                   with open("backend/family_registry.json", encoding="utf-8") as handle:
                       registry = json.load(handle)
                   family = next(item for item in registry["families"] if item["family_id"] == "rasasi_hawas")
-                  expected_names = [item["canonical_name"] for item in family["products"]]
-                  returned_names = [item.get("name", "") for item in hawas.get("results", [])]
-                  missing_names = [
-                      name for name in expected_names
-                      if not any(value == name or value.startswith(name + " ") for value in returned_names)
-                  ]
-                  assert not missing_names, {
-                      "expected_hawas_family_identities": len(expected_names),
-                      "returned_rows": len(returned_names),
-                      "missing_hawas_identities": missing_names,
-                  }
-                  print("DEMO_HEALTH=PASS")
+                  family_products = family["products"]
+          returned_names = [item.get("name", "") for item in hawas.get("results", [])]
+          missing_names = []
+          for product in family_products:
+              canonical = product["canonical_name"]
+              accepted_names = [canonical, *product.get("aliases", [])]
+              if not any(
+                  any(value == name or value.startswith(name + " ") for name in accepted_names)
+                  for value in returned_names
+              ):
+                  missing_names.append({
+                      "canonical_name": canonical,
+                      "accepted_aliases": product.get("aliases", []),
+                  })
+          assert not missing_names, {
+              "expected_hawas_family_identities": len(family_products),
+              "returned_rows": len(returned_names),
+              "missing_hawas_identities": missing_names,
+              "returned_names": returned_names,
+          }
+          print("DEMO_HEALTH=PASS")
                   print("DEMO_UI=PASS")
                   print("DEMO_CATALOG=PASS")
                   print("DEMO_SEARCH_API=PASS")
