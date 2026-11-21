@@ -237,6 +237,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                 },
                 source=str(parsed.get("source") or f"{connector.store_key}_legacy_scraper"),
                 currency_explicit=parsed.get("currency_explicit") is True,
+                currency_source=parsed.get("currency_source"),
             )
             record_ingestion_progress(session, run_id=run_id, offers_updated=1)
             finish_ingestion_run(session, run_id=run_id, status="completed")
