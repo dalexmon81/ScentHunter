@@ -30,7 +30,7 @@ class Tests(unittest.IsolatedAsyncioTestCase):
    def json(self): return self.payload
    def close(self): pass
   def fake_get(session,url):
-   return Response(product.copy() if url.endswith(".js") else {"currency":"GBP"})
+   return Response({"currency":"GBP"} if url.endswith("/cart.js") else product.copy())
   with patch.object(parfumcity_scraper,"_get",side_effect=fake_get):
    loaded=parfumcity_scraper.product_json(SimpleNamespace(),"https://www.parfumcity.nl/products/example")
   self.assertEqual(loaded["_scenthunter_currency"],"GBP")
