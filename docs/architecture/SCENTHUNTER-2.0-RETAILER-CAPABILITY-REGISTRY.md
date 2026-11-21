@@ -11,7 +11,7 @@ database seed, or authorization switch.
 
 | Retailer | Adapter | Canonical store slug | Worker stages | Readiness |
 | --- | --- | --- | --- | --- |
-| Bplatz | `app.connectors.bplatz` | `bplatz` | — | adapter only |
+| Bplatz | `app.connectors.bplatz` | `bplatz` | discover, fetch, refresh | worker registered (schedule disabled) |
 | Deloox | legacy scraper wrapper | `deloox-be` | discover, fetch, refresh | worker registered |
 | Easycosmetic | legacy scraper wrapper | `easycosmetic-de` | discover, fetch, refresh | worker registered |
 | Notino | authorized CJ/VIV feed | `notino-fr` | discover, fetch, refresh | worker registered |
