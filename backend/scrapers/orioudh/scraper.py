@@ -2,7 +2,7 @@ import json
 import re
 import html
 from typing import List, Dict, Optional, Any
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus, urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -199,10 +199,36 @@ def _request_json(session: requests.Session, url: str, params=None):
     response.close()
     return data
 
+def _cart_currency(session: requests.Session, product_url: str) -> Optional[str]:
+    cache = getattr(session, "_scenthunter_cart_currency", None)
+    if isinstance(cache, dict) and product_url in cache:
+        return cache[product_url]
+    path = urlsplit(product_url).path
+    prefix = path.split("/products/", 1)[0].strip("/")
+    cart_path = ("/" + prefix if prefix else "") + "/cart.js"
+    try:
+        payload = _request_json(session, urljoin(BASE_URL, cart_path))
+        currency = payload.get("currency") if isinstance(payload, dict) else None
+        if not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
+            currency = None
+        else:
+            currency = currency.strip().upper()
+    except StoreRequestError:
+        currency = None
+    if not isinstance(cache, dict):
+        cache = {}
+    cache[product_url] = currency
+    setattr(session, "_scenthunter_cart_currency", cache)
+    return currency
+
+
 def _product_json(session: requests.Session, url: str) -> Optional[Dict[str, Any]]:
     clean_url = url.split("?")[0].rstrip("/")
     data = _request_json(session, clean_url + ".js")
-    return data if isinstance(data, dict) else None
+    if isinstance(data, dict):
+        data["_scenthunter_currency"] = _cart_currency(session, url)
+        return data
+    return None
 
 def _discovery(session: requests.Session, query: str):
     tokens = _query_tokens(query)
@@ -379,7 +405,7 @@ def _raw_offer(
     concentration = _concentration(variant_name, product_name)
     gender = _gender(variant_name, product_name)
     price = _price(variant.get("price"))
-    explicit_currency = _explicit_currency(variant, product)
+    explicit_currency = _explicit_currency(variant, product, {"currency": product.get("_scenthunter_currency")})
 
     return {
         "store": STORE,
@@ -416,6 +442,7 @@ def _raw_offer(
             "price": price,
             "currency": explicit_currency,
             "currency_explicit": explicit_currency is not None,
+            "currency_source": "shopify_cart_presentment_currency" if explicit_currency else None,
             "availability": _availability(variant.get("available")),
         },
         "provenance": {
