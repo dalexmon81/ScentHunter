@@ -74,6 +74,21 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
                     source="authorized_cj_feed", currency_explicit=False,
                 )
 
+    def test_shopify_refresh_cannot_bypass_provenance_at_persistence_gate(self):
+        with self.sessions() as session, session.begin():
+            offer = session.get(Offer, self.offer_id)
+            store = session.get(Store, offer.store_id)
+            store.slug = "orioudh"
+            with self.assertRaisesRegex(ValueError, "Shopify refresh currency provenance"):
+                refresh_offer_observation(
+                    session, offer_id=self.offer_id,
+                    observation={"price": "79.90", "currency": "EUR",
+                                 "availability": "in_stock",
+                                 "product_url": "https://orioudh.com/products/test"},
+                    source="orioudh_shopify", currency_explicit=True,
+                    currency_source="untrusted_product_json_default",
+                )
+
     def test_refresh_rejects_missing_or_ambiguous_stock(self):
         with self.sessions() as session, session.begin():
             with self.assertRaisesRegex(ValueError, "availability must be explicit"):
