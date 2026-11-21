@@ -72,6 +72,9 @@ class OrioudhConnector(StoreConnector):
         if not isinstance(raw,Mapping): return ()
         return tuple({**dict(row),"url":product_key,"external_product_id":self._variant_id(row)} for row in raw.get("variants",()) if isinstance(row,Mapping))
 
+    async def fetch_offer_price_and_stock(self, offer_id: str, product_url: str | None = None) -> Mapping[str, Any]:
+        return await self.fetch_price_and_stock(offer_id, product_url=product_url)
+
     async def fetch_price_and_stock(self, offer_id:str, product_url:str|None=None) -> Mapping[str,Any]:
         if ":" not in offer_id: raise ValueError("offer_id must contain Shopify product ID and variant ID")
         product_id,variant_id=offer_id.split(":",1)
