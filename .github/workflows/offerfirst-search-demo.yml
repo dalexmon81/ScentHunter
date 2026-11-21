@@ -139,8 +139,8 @@ jobs:
                   code, body = get("/api/catalog/search?q=" + hawas_query)
                   hawas = json.loads(body)
                   assert code == 200 and hawas.get("status") == "completed", hawas
-                  assert hawas.get("count") == 40, {
-                      "expected_hawas_family_identities": 40,
+                  assert hawas.get("count") == 52, {
+                      "expected_hawas_family_identities": 52,
                       "actual": hawas.get("count"),
                   }
                   print("DEMO_HEALTH=PASS")
