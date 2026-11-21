@@ -15,8 +15,8 @@ class QueueNotConfigured(RuntimeError):
 
 def _backend() -> str:
     value = os.environ.get("SCENTHUNTER_QUEUE_BACKEND", "redis").strip().lower()
-    if value not in {"sqlite", "redis"}:
-        raise RuntimeError("SCENTHUNTER_QUEUE_BACKEND must be sqlite or redis")
+    if value not in {"sqlite", "redis", "postgres"}:
+        raise RuntimeError("SCENTHUNTER_QUEUE_BACKEND must be sqlite, redis or postgres")
     return value
 
 def _enqueue(stage: str, payload: Mapping[str, Any]):
@@ -26,6 +26,9 @@ def _enqueue(stage: str, payload: Mapping[str, Any]):
     safe_payload = json.loads(json.dumps(dict(payload), allow_nan=False))
     if _backend() == "sqlite":
         from app.workers.sqlite_queue import enqueue
+        return enqueue(stage, safe_payload)
+    if _backend() == "postgres":
+        from app.workers.postgres_queue import enqueue
         return enqueue(stage, safe_payload)
     from app.workers.celery_app import celery_app, queue_is_configured
     if not queue_is_configured():
