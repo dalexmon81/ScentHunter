@@ -17,6 +17,18 @@ class OrioudhConnector(StoreConnector):
         self._snapshot: tuple[str, ...] = ()
         self._cached_at = 0.0
 
+    @staticmethod
+    def _is_store_product_url(url: str) -> bool:
+        parsed = urlparse(url)
+        return (
+            parsed.scheme in {"http", "https"}
+            and parsed.hostname in {"orioudh.com", "www.orioudh.com"}
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port in (None, 80, 443)
+            and "/products/" in parsed.path
+        )
+
     def _queries(self) -> tuple[str, ...]:
         values = tuple(dict.fromkeys(x.strip() for x in os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH", "").split(";") if x.strip()))
         if not values: raise ValueError("SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH must contain operator-approved queries")
@@ -31,8 +43,7 @@ class OrioudhConnector(StoreConnector):
             verified = verified or report.get("verified") is True
             for row in report.get("results") or ():
                 url = str(row.get("url") or "").strip() if isinstance(row, Mapping) else ""
-                p = urlparse(url)
-                if p.scheme in {"http","https"} and p.netloc and "/products/" in p.path and url not in seen:
+                if self._is_store_product_url(url) and url not in seen:
                     seen.add(url); urls.append(url)
         if not verified: raise ConnectorUnavailable("Orioudh discovery was not verified")
         return tuple(urls)
@@ -47,8 +58,7 @@ class OrioudhConnector(StoreConnector):
         return tuple(DiscoveredProduct(url,url,{"discovery_source":"orioudh_scraper"}) for url in self._snapshot[offset:offset+limit])
 
     def _fetch_sync(self,url:str):
-        p=urlparse(url)
-        if p.scheme not in {"http","https"} or not p.netloc or "/products/" not in p.path: raise ValueError("external_product_id must be an absolute Shopify product URL")
+        if not self._is_store_product_url(url): raise ValueError("external_product_id must be an Orioudh Shopify product URL")
         s=requests.Session()
         try:
             rows=self._scraper.extract_product_page(s,url,"")
