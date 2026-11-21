@@ -46,6 +46,32 @@ class FamilyRegistryCatalogSearchTests(unittest.TestCase):
             self.assertEqual(merged["products"][0]["family_name"], "rasasi_hawas")
             self.assertFalse(merged["variants"])
 
+    def test_broad_search_does_not_truncate_large_family_at_fifty_rows(self):
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        try:
+            with Session(engine) as session, session.begin():
+                brand = Brand(
+                    name="Rasasi", slug="rasasi", normalized_name="rasasi"
+                )
+                session.add(brand)
+                session.flush()
+                session.add_all([
+                    Fragrance(
+                        brand_id=brand.id,
+                        name=f"Hawas Test {index:02d}",
+                        slug=f"hawas-test-{index:02d}",
+                        family="rasasi_hawas",
+                    )
+                    for index in range(60)
+                ])
+            with Session(engine) as session:
+                result = search_catalog(session, "Hawas")
+            self.assertEqual(result["count"], 60)
+            self.assertEqual(len(result["results"]), 60)
+        finally:
+            engine.dispose()
+
     def test_broad_search_returns_family_identity_without_inventing_offer(self):
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)
