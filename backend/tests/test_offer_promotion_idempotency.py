@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import (
     Base, Brand, Fragrance, MatchAudit, Offer, PriceHistory,
@@ -54,7 +56,8 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.session.close()
-        self.transaction.rollback()
+        if self.transaction.is_active:
+            self.transaction.rollback()
         self.connection.close()
         self.engine.dispose()
 
@@ -107,6 +110,59 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
                 Offer.external_product_id == "retailer-item-123",
             )
         ), first_id)
+
+    def test_concurrent_promotions_for_same_retailer_identity_are_serialized(self):
+        if self.engine.dialect.name != "postgresql":
+            self.skipTest("row-lock concurrency guarantee is PostgreSQL-specific")
+
+        # Publish fixture rows so independent worker sessions can see them.
+        self.session.commit()
+        factory = sessionmaker(bind=self.engine, expire_on_commit=False)
+        raw_ids = []
+        for price in ("69.90", "59.90"):
+            with factory() as session:
+                raw_id = stage_raw_offer(
+                    session, store_id=self.store_id,
+                    external_product_id="concurrent-retailer-item",
+                    raw_payload={"price": price},
+                )
+                record_match(
+                    session, ingestion_raw_id=raw_id,
+                    product_variant_id=self.variant_id,
+                    method="test_concurrent_exact_match",
+                )
+                session.commit()
+                raw_ids.append((raw_id, price))
+
+        barrier = Barrier(2)
+
+        def promote(item):
+            raw_id, price = item
+            with factory() as session:
+                barrier.wait(timeout=10)
+                offer_id = promote_offer(
+                    session, ingestion_raw_id=raw_id,
+                    price=Decimal(price), currency="EUR",
+                    url="https://retailer.example/concurrent",
+                    availability="in_stock", source="concurrency-fixture",
+                )
+                session.commit()
+                return offer_id
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            offer_ids = list(pool.map(promote, raw_ids))
+
+        self.assertEqual(offer_ids[0], offer_ids[1])
+        with factory() as session:
+            offers = session.scalars(select(Offer).where(
+                Offer.store_id == self.store_id,
+                Offer.external_product_id == "concurrent-retailer-item",
+            )).all()
+            history = session.scalars(select(PriceHistory).where(
+                PriceHistory.offer_id == offer_ids[0]
+            )).all()
+            self.assertEqual(len(offers), 1)
+            self.assertEqual(len(history), 2)
 
     def test_repeated_snapshots_update_one_offer_and_preserve_history(self):
         first_id = self._promote_snapshot("89.90")
