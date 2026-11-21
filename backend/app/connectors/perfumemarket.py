@@ -35,7 +35,7 @@ class PerfumeMarketConnector(StoreConnector):
     def _is_store_product_url(url: str) -> bool:
         parsed = urlparse(url)
         return (
-            parsed.scheme in {"http", "https"}
+            parsed.scheme == "https"
             and parsed.hostname in {"perfumemarket.nl", "www.perfumemarket.nl"}
             and parsed.username is None
             and parsed.password is None
@@ -106,7 +106,7 @@ class PerfumeMarketConnector(StoreConnector):
     def _fetch_sync(self, url: str) -> Mapping[str, Any] | None:
         if not self._is_store_product_url(url):
             raise ValueError("external_product_id must be a PerfumeMarket Shopify product URL")
-        session = requests.Session()
+        session = requests.Session(); session.max_redirects = 0
         try:
             record = self._scraper.extract_product_page(session, url, "")
             return record if isinstance(record, Mapping) else None
