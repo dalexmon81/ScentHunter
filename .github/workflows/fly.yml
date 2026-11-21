@@ -134,7 +134,7 @@ jobs:
           echo "=== RELEASE COMMAND FAILURE CONTEXT ==="
           if [ -f /tmp/fly-deploy.log ]; then
             cat /tmp/fly-deploy.log
-            machine_id="$(sed -nE 's/.*Created release_command machine ([a-f0-9]+).*/\\1/p' /tmp/fly-deploy.log | tail -n1)"
+            machine_id="$(sed -nE 's/.*Created release_command machine ([a-f0-9]+).*/\1/p' /tmp/fly-deploy.log | tail -n1)"
             if [ -n "$machine_id" ]; then
               echo "=== RELEASE MACHINE STATUS: $machine_id ==="
               flyctl machine status "$machine_id" --app scenthunter || true
