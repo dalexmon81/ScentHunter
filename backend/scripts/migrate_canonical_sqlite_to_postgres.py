@@ -202,9 +202,9 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
             source_revision = source_connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            if source_revision != EXPECTED_REVISION:
+            if source_revision not in SUPPORTED_TARGET_REVISIONS:
                 raise RuntimeError(
-                    f"Source Alembic revision must be {EXPECTED_REVISION}; "
+                    f"Source Alembic revision must be one of {sorted(SUPPORTED_TARGET_REVISIONS)}; "
                     f"found {source_revision}."
                 )
             report["source_alembic_revision"] = source_revision
