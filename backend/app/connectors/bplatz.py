@@ -29,6 +29,19 @@ class BplatzConnector(StoreConnector):
         self._cached_at = 0.0
         self._cache_ttl = 900
 
+    @staticmethod
+    def _is_store_product_url(url: str) -> bool:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        return (
+            parsed.scheme == "https"
+            and (host == "bplatz.de" or host.endswith(".bplatz.de"))
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port in (None, 443)
+            and "/products/" in parsed.path.lower()
+        )
+
     def _queries(self) -> tuple[str, ...]:
         values = os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ", "")
         queries = tuple(dict.fromkeys(v.strip() for v in values.split(";") if v.strip()))
@@ -50,8 +63,7 @@ class BplatzConnector(StoreConnector):
                 verified_any = verified_any or bool(verified)
                 for url in urls or ():
                     value = str(url or "").strip()
-                    parsed = urlparse(value)
-                    if parsed.scheme in {"http", "https"} and parsed.netloc and value not in seen:
+                    if self._is_store_product_url(value) and value not in seen:
                         seen.add(value)
                         found.append(value)
                 if not verified and errors and not verified_any:
@@ -80,19 +92,20 @@ class BplatzConnector(StoreConnector):
         )
 
     def _fetch_sync(self, url: str) -> Mapping[str, Any] | None:
-        parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("external_product_id must be an absolute HTTP(S) URL")
+        if not self._is_store_product_url(url):
+            raise ValueError("external_product_id must be a Bplatz Shopify product URL")
         session = requests.Session()
         try:
             response = session.get(
                 url, headers=getattr(self._scraper, "HEADERS", {}),
                 timeout=getattr(self._scraper, "TIMEOUT", (2.5, 6.0)),
-                allow_redirects=True,
+                allow_redirects=False,
             )
             try:
-                if response.status_code >= 400:
+                if response.status_code >= 300:
                     raise ConnectorUnavailable(f"Bplatz product page returned HTTP {response.status_code}")
+                if not self._is_store_product_url(response.url):
+                    raise ConnectorUnavailable("Bplatz product page redirected outside the retailer domain")
                 query = urlparse(response.url).path.rsplit("/products/", 1)[-1].replace("-", " ").strip()
                 return self._scraper.parse_product_html(response.text, response.url, query)
             finally:
