@@ -220,3 +220,9 @@ All three settings default to disabled. No production environment variables have
 Before any runtime activation, reconcile the separate database settings. The Fly app currently declares `SCENTHUNTER_CATALOG_DB=/data/store_catalog.sqlite3`, while the Phase 2 SQLAlchemy engine reads `SCENTHUNTER_CATALOG_DATABASE_URL` or `SCENTHUNTER_DATABASE_URL` and otherwise defaults to `/data/catalog/catalog.sqlite3`. The queue database independently defaults to `/data/catalog/ingestion_queue.sqlite3`. Do not assume these paths refer to the same database or change the legacy catalog setting to point at the Phase 2 database.
 
 Runtime activation remains a separate, explicitly approved operation after tests, database identity checks, single-worker/concurrency policy, and rollback procedure are verified.
+
+## Offer promotion concurrency boundary (2026-11-21)
+
+Offer promotion now takes a PostgreSQL row lock on the retailer's `stores` row before resolving an existing offer or inserting a new one. Concurrent promotions for the same retailer therefore serialize through the identity lookup and write, preventing the query-then-insert race from creating duplicate offers or bypassing the external-ID-to-variant conflict check. The lock is held until the caller commits or rolls back.
+
+A PostgreSQL concurrency regression test runs two independent sessions against the same retailer item and checks that both receive one offer ID and that both price observations are retained. This guarantee is specifically based on PostgreSQL row locking. SQLite does not implement equivalent `SELECT FOR UPDATE` row locks; the SQLite pilot must remain single-worker for offer promotion until a separate SQLite-safe serialization mechanism is designed and tested.
