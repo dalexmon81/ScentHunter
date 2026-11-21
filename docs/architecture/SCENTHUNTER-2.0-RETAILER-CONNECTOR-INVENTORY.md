@@ -77,3 +77,34 @@ The nine scraper implementations exist, but the provider-neutral connector layer
 7. Run each retailer independently with bounded concurrency, durable run records, retries, quarantine and dead-letter handling.
 
 No scraper files were deleted or modified as part of this audit.
+
+
+## Follow-up adapter compatibility audit (2026-11-21)
+
+The four currently unwrapped scraper modules were reopened on the isolated branch and their public entry points inspected. This is a source-level audit only; no retailer requests were sent.
+
+| Retailer | Discovery entry point | Product parser | Returned shape / identity concern | Adapter decision |
+|---|---|---|---|---|
+| Bplatz | `search_stream(query)` | `extract_product_page(session, url, query, html=None)` | One structured product mapping; SKU/GTIN are copied only from JSON-LD; currency is explicit only when JSON-LD `priceCurrency` exists; stock may remain unknown | Suitable for a dedicated adapter, but unknown stock and implicit EUR must remain unpublished |
+| Orioudh | `search_stream(query)` | `extract_product_page(session, url, query="", html=None)` | Parser returns a list of Shopify variant records; each record contains product/variant identity and can have distinct price/stock | Must model each Shopify variant as a distinct retailer offer identity; do not collapse the list to its first item |
+| Parfumcity | `search_stream(query)` | `product_json(session, url)` plus `make_item(product, variant, url, query)` | Shopify product JSON is expanded into variant rows; scraper currently labels currency EUR but does not prove currency provenance in the shared raw record | Adapter must mark currency as unverified unless source evidence is added; do not treat a hard-coded EUR default as explicit evidence |
+| Perfumemarket | `search_stream(query)` | `extract_product_page(session, url, query)` | Product-page parser returns a mapping; availability deliberately returns `unknown` when stock evidence is insufficient; currency provenance needs explicit inspection of the returned fields | Dedicated adapter is possible, but unknown availability must fail the active-offer gate |
+
+### Implementation constraints confirmed
+
+- The current `LegacyScraperConnector` assumes `extract_product_page` returns one mapping and dispatches only the four configured legacy modules. It is not a safe drop-in wrapper for Orioudh's list-of-variants parser.
+- Discovery uses operator-provided query seeds. The new adapters must preserve that fail-closed behavior; no broad discovery should run merely because a worker starts.
+- Stable product URL and stable variant ID are different concepts. Where a source exposes Shopify variant IDs, the offer identity must include the variant ID. Reusing only the product URL would merge distinct sizes/prices into one offer.
+- A scraper's EUR default is not proof that the retailer explicitly supplied EUR. The shared promotion gate requires explicit currency evidence, so adapters must preserve provenance rather than manufacture it.
+- `unknown` stock is not equivalent to `in_stock`. Keep it staged/unpublished until the retailer provides a positive or negative stock signal.
+- Existing parser functions differ in whether they accept a prebuilt session, perform their own network request, return one mapping, or return a list. The adapter layer must normalize these differences intentionally and close sessions reliably.
+
+### Next safe implementation order
+
+1. Add fixture-driven contract tests for the four modules before writing adapters. Cover multiple variants, distinct prices, missing currency, unknown stock, parser empty results, timeout/blocked responses, and duplicate product URLs.
+2. Implement Bplatz and Perfumemarket as mapping-based adapters with strict explicit-currency and availability handling.
+3. Implement Parfumcity and Orioudh as variant-aware adapters. Give each offer a stable external identity derived from retailer product ID plus retailer variant ID; never use array position.
+4. Add all four to a registry only after the contract tests pass.
+5. Run the isolated PostgreSQL persistence tests against these fixture records. No live ingestion, production DB, worker activation, merge, or deployment is part of this phase.
+
+No scraper code or production configuration was changed in this follow-up audit.
