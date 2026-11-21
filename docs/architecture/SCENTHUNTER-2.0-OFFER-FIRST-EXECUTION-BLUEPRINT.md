@@ -249,3 +249,15 @@ CI must prove that both startup hooks are skipped, manual background-operation r
 - The HTTP test passed (1 passed); API-only safety tests passed (5 passed). The full workflow and all 30 job steps passed.
 - This is CI/browser evidence only. It does not prove the Fly pilot is deployed, production runtime topology, production DB identity, volume backup/restore, live retailer connector readiness, or production search parity.
 - Gate A remains open. The read-only Fly diagnostics workflow exists and requires workflow_dispatch; the available GitHub integration in this work session exposes repository GET/read operations but no workflow-dispatch action. Do not substitute a deployment or a production mutation to obtain this evidence.
+
+## API-only route guard audit follow-up (2026-11-21)
+
+A route-by-route review found additional legacy endpoints that could initiate retailer HTTP work despite being described as diagnostics or targeted refreshes. API-only mode now also returns HTTP 503 for:
+
+- `/diagnostic/deloox-pipeline` — fetches and parses a retailer product page.
+- `/diagnose-search-final` — can invoke the optional Notino live fallback.
+- `/catalog/refresh-deloox-url` and `/catalog/refresh-store-url` — fetch and persist a retailer product page.
+
+These are now covered by the API-only safety regression test. Workflow #943 passed on commit `417a0251eaf948d05a63a606a2e474c029852e59`: PostgreSQL/Uvicorn catalog HTTP test (1 passed), API-only startup and route-guard tests (5 passed), and the complete workflow succeeded. The workflow path filters were also updated so future changes to `backend/main.py` run this safety suite.
+
+This remains code/CI evidence only. No Fly runtime was started and no production DB, volume, secret, or configuration was accessed or modified. Gate A remains blocked on the read-only Fly runtime/backup evidence described above.
