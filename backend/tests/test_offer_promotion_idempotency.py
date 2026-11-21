@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import unittest
 from decimal import Decimal
+from uuid import uuid4
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -17,22 +19,26 @@ from app.services.ingestion_persistence import (
 
 class OfferPromotionIdempotencyTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(self.engine)
-        self.session = Session(self.engine)
+        database_url = os.environ.get("SCENTHUNTER_TEST_POSTGRES_URL", "sqlite:///:memory:")
+        self.engine = create_engine(database_url)
+        self.connection = self.engine.connect()
+        self.transaction = self.connection.begin()
+        Base.metadata.create_all(self.connection)
+        self.session = Session(bind=self.connection)
+        suffix = uuid4().hex[:12]
         store = Store(
-            name="Fixture retailer", slug="fixture-retailer",
+            name="Fixture retailer", slug=f"fixture-retailer-{suffix}",
             currency="EUR", status="active",
         )
-        brand = Brand(name="Dior", slug="dior", normalized_name="dior")
+        brand = Brand(name="Dior", slug=f"dior-{suffix}", normalized_name=f"dior-{suffix}")
         self.session.add_all([store, brand])
         self.session.flush()
-        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug=f"sauvage-{suffix}")
         self.session.add(fragrance)
         self.session.flush()
         variant = ProductVariant(
             fragrance_id=fragrance.id, concentration="EDP", size_ml=100,
-            canonical_key="dior|sauvage|edp|100",
+            canonical_key=f"dior|sauvage|edp|100|{suffix}",
         )
         self.session.add(variant)
         self.session.flush()
@@ -41,6 +47,8 @@ class OfferPromotionIdempotencyTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.session.close()
+        self.transaction.rollback()
+        self.connection.close()
         self.engine.dispose()
 
     def _promote_snapshot(self, price: str):
