@@ -25,6 +25,16 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   self.assertEqual(localized,"EUR")
   self.assertEqual(session.calls[-1],"https://orioudh.com/fr/cart.js")
 
+ async def test_product_json_uses_cart_js_currency_in_raw_offer(self):
+  product={"id":10,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":11,"title":"100 ml","price":"30.00","available":True,"sku":"EX-100"}]}
+  with patch.object(orioudh_scraper,"_request_json",side_effect=lambda session,url: product.copy() if url.endswith(".js") else {"currency":"GBP"}):
+   session=SimpleNamespace()
+   loaded=orioudh_scraper._product_json(session,"https://orioudh.com/products/example")
+  self.assertEqual(loaded["_scenthunter_currency"],"GBP")
+  row=orioudh_scraper._raw_offer(loaded,loaded["variants"][0],"https://orioudh.com/products/example")
+  self.assertEqual(row["offer"]["currency"],"GBP")
+  self.assertTrue(row["offer"]["currency_explicit"])
+  self.assertEqual(row["offer"]["currency_source"],"shopify_cart_presentment_currency")
  async def test_variants_keep_distinct_stable_ids_and_currency_unverified(self):
   scraper=SimpleNamespace(search_stream=lambda q:{"status":"success","verified":True,"results":[{"url":"https://orioudh.com/products/example"}]},extract_product_page=lambda s,u,q:[variant(11,30),variant(12,40)])
   c=OrioudhConnector(scraper)
