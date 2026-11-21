@@ -9,7 +9,11 @@
         "Hawas",
         "Rasasi Hawas",
         "Hawas Private",
-        "Hawas 2026"
+        "Hawas 2026",
+        "Hawas Apex",
+        "Hawas Ice Ultradose",
+        "Hawas Born in Dubai",
+        "Hawas Desire"
       ],
       "products": [
         {
@@ -274,6 +278,84 @@
           "aliases": [
             "Hawas Crystelle",
             "Hawas Crystelle Imrasasi"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Ice Ultradose",
+          "aliases": [
+            "Hawas Ice Ultradose",
+            "Ice Ultradose"
+          ]
+        },
+        {
+          "canonical_name": "Hawas for Him Le Parfum",
+          "aliases": [
+            "Hawas for Him Le Parfum",
+            "Hawas Le Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Desire for Her",
+          "aliases": [
+            "Hawas Desire for Her",
+            "Hawas Desire"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Apex",
+          "aliases": [
+            "Hawas Apex"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Apex GT",
+          "aliases": [
+            "Hawas Apex GT",
+            "Hawas Apex Gt"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Apex Hybrid",
+          "aliases": [
+            "Hawas Apex Hybrid"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Alpha",
+          "aliases": [
+            "Hawas Alpha",
+            "Hawas Alpha for Him"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Born in Dubai",
+          "aliases": [
+            "Hawas Born in Dubai",
+            "Rasasi Hawas Born In Dubai"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Blush",
+          "aliases": [
+            "Hawas Blush"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Frost",
+          "aliases": [
+            "Hawas Frost"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Island",
+          "aliases": [
+            "Hawas Island"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Passionate",
+          "aliases": [
+            "Hawas Passionate"
           ]
         }
       ],
