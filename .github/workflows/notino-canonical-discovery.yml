@@ -1,5 +1,9 @@
 name: Notino canonical discovery regression
 
+concurrency:
+  group: notino-canonical-discovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -7,6 +11,7 @@ on:
       - fix/notino-feed-index-main-20261120
       - work/ingestion-coverage-report-20261119-rebased
     paths:
+      - "backend/scripts/notino_feed_coverage_audit.py"
       - "backend/app/connectors/notino_feed.py"
       - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
@@ -23,6 +28,7 @@ on:
       - main
       - refactor/catalog-first-architecture
     paths:
+      - "backend/scripts/notino_feed_coverage_audit.py"
       - "backend/app/connectors/notino_feed.py"
       - "backend/tests/test_notino_feed_connector.py"
       - "backend/app/workers/notino_runtime.py"
@@ -41,7 +47,7 @@ permissions:
 jobs:
   canonical-discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -71,3 +77,15 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_canonical_matching.py' -v
+
+      - name: Install Fly CLI for isolated Notino audit
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run full Notino feed audit with runner-local processing
+        working-directory: backend
+        timeout-minutes: 40
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SCENTHUNTER_NOTINO_FEED_APP: scenthunter-pilot-20261030
+          PYTHONPATH: .
+        run: python scripts/notino_feed_coverage_runner_audit.py
