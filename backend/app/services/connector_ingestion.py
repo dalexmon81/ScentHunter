@@ -187,7 +187,11 @@ def persist_connector_record(
             raw_id, "matched", product_variant_id=resolved.product_variant_id,
             reason=";".join(validation.errors),
         )
-    if not raw_payload["currency_explicit"]:
+    currency_provenance_valid = (
+        connector.store_key not in {"orioudh", "parfumcity"}
+        or parsed.get("currency_source") == "shopify_cart_presentment_currency"
+    )
+    if not raw_payload["currency_explicit"] or not currency_provenance_valid:
         return ConnectorIngestionResult(
             raw_id, "matched", product_variant_id=resolved.product_variant_id,
             reason="currency_not_explicit_in_source",
