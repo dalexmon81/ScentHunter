@@ -4431,31 +4431,41 @@ def refresh_url(store, url):
                 parser_error = f'{type(exc).__name__}:{exc}'
                 item = None
 
-            # Notino's product-page parser deliberately rejects non-perfume
-            # destinations (deodorants, shower gels, gift sets, etc.). A generic
-            # JSON-LD fallback can then pick up a related perfume elsewhere on
-            # the page and attach its identity/price to the rejected URL. Keep
-            # the rejection authoritative when the destination H1 identifies
-            # one of those non-perfume product types.
-            notino_non_perfume_rejection = False
-            if store == 'notino' and not item:
-                try:
-                    notino_parser = importlib.import_module('scrapers.notino.scraper')
-                    marker_check = getattr(notino_parser, '_has_non_perfume_marker', None)
-                    soup = BeautifulSoup(data or b'', 'html.parser')
-                    h1 = soup.find('h1')
-                    notino_non_perfume_rejection = bool(
-                        h1 and callable(marker_check)
-                        and marker_check(h1.get_text(' ', strip=True))
-                    )
-                except Exception:
-                    notino_non_perfume_rejection = False
+        # Notino's destination identity guard must run independently of
+        # parser discovery. If the retailer adapter cannot be imported (or
+        # returns no product), a related JSON-LD perfume must never override
+        # an H1 that identifies a deodorant, shower gel, set, etc.
+        notino_non_perfume_rejection = False
+        if store == 'notino':
+            try:
+                notino_parser = importlib.import_module('scrapers.notino.scraper')
+                marker_check = getattr(notino_parser, '_has_non_perfume_marker', None)
+                soup = BeautifulSoup(data or b'', 'html.parser')
+                h1 = soup.find('h1')
+                notino_non_perfume_rejection = bool(
+                    h1 and callable(marker_check)
+                    and marker_check(h1.get_text(' ', strip=True))
+                )
+            except Exception as exc:
+                print(
+                    f'NOTINO IDENTITY GUARD ERROR url={url!r} '
+                    f'error={type(exc).__name__}:{exc}',
+                    flush=True,
+                )
+
+        if parser_available:
+            try:
+                item = _secondary_store_parser(store, final, url, html_data=data)
+                secondary_ok = bool(item and item.get('name'))
+            except Exception as exc:
+                parser_error = f'{type(exc).__name__}:{exc}'
+                item = None
 
             if (not item or not item.get('name')) and not notino_non_perfume_rejection:
                 fallback_item = parse_product(store, final, data)
                 if fallback_item and fallback_item.get('name'):
                     item = fallback_item
-        else:
+        elif not notino_non_perfume_rejection:
             item = parse_product(store, final, data)
 
         # Keep the diagnostic flag defined on every parser path. A missing
