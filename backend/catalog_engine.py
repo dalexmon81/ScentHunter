@@ -4442,10 +4442,31 @@ def refresh_url(store, url):
                 marker_check = getattr(notino_parser, '_has_non_perfume_marker', None)
                 soup = BeautifulSoup(data or b'', 'html.parser')
                 h1 = soup.find('h1')
-                notino_non_perfume_rejection = bool(
-                    h1 and callable(marker_check)
-                    and marker_check(h1.get_text(' ', strip=True))
-                )
+                h1_text = h1.get_text(' ', strip=True) if h1 else ''
+                if h1_text and callable(marker_check):
+                    notino_non_perfume_rejection = bool(marker_check(h1_text))
+                elif h1_text:
+                    # Fail closed even if the retailer adapter module is not
+                    # importable in this runtime. Normalize accents/punctuation
+                    # before checking destination product-type markers.
+                    normalized_h1 = unicodedata.normalize(
+                        'NFKD', h1_text.casefold()
+                    )
+                    normalized_h1 = ''.join(
+                        ch for ch in normalized_h1
+                        if not unicodedata.combining(ch)
+                    )
+                    normalized_h1 = re.sub(r'[^a-z0-9]+', ' ', normalized_h1)
+                    non_perfume_terms = (
+                        'deodorant', 'deo spray', 'shower gel', 'body wash',
+                        'body lotion', 'body cream', 'aftershave', 'after shave',
+                        'gift set', 'discovery set', 'fragrance set', 'coffret',
+                        'tester', 'testeur', 'shampoo',
+                    )
+                    notino_non_perfume_rejection = any(
+                        f' {term} ' in f' {normalized_h1} '
+                        for term in non_perfume_terms
+                    )
             except Exception as exc:
                 print(
                     f'NOTINO IDENTITY GUARD ERROR url={url!r} '
