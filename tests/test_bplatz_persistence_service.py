@@ -777,6 +777,112 @@ def test_connector_persistence_does_not_publish_defaulted_currency(tmp_path):
         engine.dispose()
 
 
+
+def _shopify_orioudh_raw(record, currency_source="shopify_cart_presentment_currency"):
+    return {
+        "name": record["raw_name"],
+        "url": "https://orioudh.com/products/liquid-brun",
+        "source": {
+            "source_name": record["raw_name"],
+            "source_brand": record["brand_raw"],
+            "url": "https://orioudh.com/products/liquid-brun",
+        },
+        "identity": {
+            "gtin": {"value": record["gtin"], "source": "shopify_barcode"},
+            "sku": {"value": record["sku"], "source": "shopify_variant"},
+            "store_product_id": {"value": 10, "source": "shopify_product"},
+            "store_variant_id": {"value": 20, "source": "shopify_variant"},
+        },
+        "attributes": {
+            "size_ml": {"value": record["size_ml"], "source": "product_source"},
+            "concentration": {"value": "EDP", "source": "product_source"},
+        },
+        "offer": {
+            "price": str(record["price"]),
+            "currency": "EUR",
+            "currency_explicit": True,
+            "currency_source": currency_source,
+            "availability": "in_stock",
+        },
+    }
+
+
+def test_shopify_scraper_parser_staging_and_promotion_preserve_currency_evidence(tmp_path):
+    from types import SimpleNamespace
+    from app.connectors.orioudh import OrioudhConnector
+    from app.services.connector_ingestion import persist_connector_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, record, _normalized, _group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        connector = OrioudhConnector(SimpleNamespace())
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        raw = _shopify_orioudh_raw(record)
+        with Session(engine) as session, session.begin():
+            store = Store(
+                name="Orioudh", slug="orioudh", domain="orioudh.com",
+                country="NL", currency="EUR", status="active",
+            )
+            session.add(store)
+            session.flush()
+            result = persist_connector_record(
+                session, connector=connector, store_id=store.id,
+                raw_record=raw, matcher=matcher,
+            )
+            assert result.status == "promoted"
+            assert result.offer_id is not None
+
+        with Session(engine) as session:
+            offer = session.get(Offer, result.offer_id)
+            staged = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert offer is not None and offer.currency == "EUR"
+            assert staged is not None and staged.status == "promoted"
+            assert staged.raw_payload["connector_store_key"] == "orioudh"
+            assert staged.raw_payload["currency_explicit"] is True
+            assert staged.raw_payload["currency_source"] == "shopify_cart_presentment_currency"
+    finally:
+        engine.dispose()
+
+
+def test_shopify_scraper_parser_staging_rejects_unverified_currency_evidence(tmp_path):
+    from types import SimpleNamespace
+    from app.connectors.orioudh import OrioudhConnector
+    from app.services.connector_ingestion import persist_connector_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, record, _normalized, _group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        _seed_real_catalog(db_url)
+        connector = OrioudhConnector(SimpleNamespace())
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+        raw = _shopify_orioudh_raw(record, "untrusted_product_json_default")
+        with Session(engine) as session, session.begin():
+            store = Store(
+                name="Orioudh", slug="orioudh", domain="orioudh.com",
+                country="NL", currency="EUR", status="active",
+            )
+            session.add(store)
+            session.flush()
+            result = persist_connector_record(
+                session, connector=connector, store_id=store.id,
+                raw_record=raw, matcher=matcher,
+            )
+            assert result.status == "matched"
+            assert result.offer_id is None
+            assert result.reason == "currency_not_explicit_in_source"
+
+        with Session(engine) as session:
+            staged = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert staged is not None and staged.status != "promoted"
+            assert staged.raw_payload["currency_source"] == "untrusted_product_json_default"
+            assert session.scalar(select(Offer.id)) is None
+    finally:
+        engine.dispose()
+
+
 def test_shopify_offer_cannot_bypass_currency_provenance_at_promotion_gate(tmp_path):
     _parsed, _record, normalized, group = _real_bplatz_components()
     engine, db_url, _ = _migrated_database(tmp_path)
