@@ -59,3 +59,20 @@ field in the retained JSON-LD (or an explicit provenance field from a source).
 Unknown availability remains unknown and is rejected by the shared validation
 gate. Canonical matching and persistence stay in
 `app.services.connector_ingestion`.
+
+
+## Additional isolated adapters (not yet worker-registered)
+
+- `BplatzConnector` and `PerfumeMarketConnector` implement the shared connector
+  contract and are exported from `app.connectors`.
+- Both use operator-approved discovery query variables and stable product URLs.
+- Fixture-only adapter tests are in `tests/test_bplatz_connector.py` and
+  `tests/test_perfumemarket_connector.py`.
+- PerfumeMarket currently does not expose source-level `priceCurrency`
+  provenance from its scraper result. Its adapter therefore treats currency as
+  unverified unless a future source record explicitly carries
+  `currency_explicit=True`; offers remain ineligible for promotion otherwise.
+- These adapters are deliberately not added to `legacy_runtime` or a live
+  registry yet. The existing runtime dispatch supports only the four legacy
+  wrappers, and generic multi-retailer worker routing needs its own tested
+  implementation before activation.
