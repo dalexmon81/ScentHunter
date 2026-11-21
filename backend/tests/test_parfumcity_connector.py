@@ -62,13 +62,15 @@ class Tests(unittest.IsolatedAsyncioTestCase):
    with self.assertRaises(ValueError): await c.discover_products()
 
  async def test_foreign_product_hosts_are_rejected_during_discovery_and_fetch(self):
-  scraper=SimpleNamespace(discover=lambda s,q:(["https://attacker.example/products/fake","https://www.parfumcity.nl/products/real"],[],True))
+  scraper=SimpleNamespace(discover=lambda s,q:(["https://attacker.example/products/fake","http://www.parfumcity.nl/products/insecure","https://evil-parfumcity.nl/products/lookalike","https://www.parfumcity.nl/products/real"],[],True))
   c=ParfumCityConnector(scraper)
   with patch.dict(os.environ,{"SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY":"Example"}):
    products=await c.discover_products()
   self.assertEqual([p.product_url for p in products],["https://www.parfumcity.nl/products/real"])
   with self.assertRaisesRegex(ValueError,"ParfumCity Shopify"):
    await c.fetch_product("https://attacker.example/products/fake")
+  with self.assertRaises(ValueError):
+   await c.fetch_product("http://www.parfumcity.nl/products/insecure")
 
 class RefreshAfterRestartTests(unittest.IsolatedAsyncioTestCase):
  async def test_refresh_uses_persisted_product_url_without_discovery_snapshot(self):
