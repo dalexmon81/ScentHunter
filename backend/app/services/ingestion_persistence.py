@@ -143,7 +143,12 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise ValueError("unknown ingestion_raw_id")
     if row.status != "matched" or row.product_variant_id is None:
         raise PromotionRejected("only rows with a resolved UUID match can be promoted")
-    store = session.get(Store, row.store_id)
+    # Serialize offer identity resolution per retailer on PostgreSQL. This
+    # closes the SELECT-then-INSERT race for both external IDs and variant
+    # fallback matching; the lock is held until the caller commits/rolls back.
+    store = session.scalar(
+        select(Store).where(Store.id == row.store_id).with_for_update()
+    )
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
     if session.get(ProductVariant, row.product_variant_id) is None:
