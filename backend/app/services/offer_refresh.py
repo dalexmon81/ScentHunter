@@ -13,7 +13,7 @@ from app.models import IngestionRaw, Offer, PriceHistory, Store
 
 def refresh_offer_observation(
     session: Session, *, offer_id: UUID, observation: dict,
-    source: str, currency_explicit: bool,
+    source: str, currency_explicit: bool, currency_source: str | None = None,
 ) -> UUID:
     """Update one existing offer and append price history after strict validation.
 
@@ -45,13 +45,15 @@ def refresh_offer_observation(
         raise ValueError("refresh currency changed; manual review required")
     if currency_explicit is not True:
         raise ValueError("refresh currency must be explicit in retailer source")
+    if store.slug in {"orioudh", "parfumcity"} and currency_source != "shopify_cart_presentment_currency":
+        raise ValueError("Shopify refresh currency provenance is missing or unverified")
 
     captured_at = datetime.now(timezone.utc)
     raw = IngestionRaw(
         store_id=offer.store_id,
         external_product_id=offer.external_product_id,
         raw_payload={"refresh_observation": observation, "source": source,
-                     "currency_explicit": True},
+                     "currency_explicit": True, "currency_source": currency_source},
         status="promoted",
         product_variant_id=offer.product_variant_id,
         match_method="existing_offer_identity_refresh",
