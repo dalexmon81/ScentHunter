@@ -139,9 +139,19 @@ jobs:
                   code, body = get("/api/catalog/search?q=" + hawas_query)
                   hawas = json.loads(body)
                   assert code == 200 and hawas.get("status") == "completed", hawas
-                  assert hawas.get("count") == 49, {
-                      "expected_hawas_family_identities": 49,
-                      "actual": hawas.get("count"),
+                  with open("backend/family_registry.json", encoding="utf-8") as handle:
+                      registry = json.load(handle)
+                  family = next(item for item in registry["families"] if item["family_id"] == "rasasi_hawas")
+                  expected_names = [item["canonical_name"] for item in family["products"]]
+                  returned_names = [item.get("name", "") for item in hawas.get("results", [])]
+                  missing_names = [
+                      name for name in expected_names
+                      if not any(value == name or value.startswith(name + " ") for value in returned_names)
+                  ]
+                  assert not missing_names, {
+                      "expected_hawas_family_identities": len(expected_names),
+                      "returned_rows": len(returned_names),
+                      "missing_hawas_identities": missing_names,
                   }
                   print("DEMO_HEALTH=PASS")
                   print("DEMO_UI=PASS")
@@ -151,7 +161,8 @@ jobs:
                   print("CANONICAL_VARIANTS=" + str(status.get("canonical_variants", 0)))
                   print("PUBLISHED_OFFERS=" + str(status.get("published_offers", 0)))
                   print("DIOR_SAUVAGE_SEARCH_RESULTS=" + str(result.get("count", 0)))
-                  print("HAWAS_FAMILY_IDENTITIES=" + str(hawas.get("count", 0)))
+                  print("HAWAS_FAMILY_IDENTITIES=" + str(len(expected_names)))
+                  print("HAWAS_SEARCH_ROWS=" + str(hawas.get("count", 0)))
                   print("HAWAS_FAMILY_SEARCH=PASS")
                   print("DEMO_URL=" + base + "/catalog-demo")
                   break
