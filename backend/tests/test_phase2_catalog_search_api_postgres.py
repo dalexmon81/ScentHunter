@@ -8,7 +8,12 @@ calls, worker startup, scheduler, or production database is involved.
 from __future__ import annotations
 
 import os
+import socket
+import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -157,6 +162,77 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
             assert demo.status_code == 200
             assert "ScentHunter" in demo.text
             assert "/api/catalog/search?q=" in demo.text
+
+        # Exercise the actual Uvicorn HTTP server against the disposable
+        # PostgreSQL database. --lifespan off deliberately skips legacy startup
+        # hooks (catalog discovery/bootstrap and Phase 0 worker setup); no
+        # background worker or retailer network request can be started here.
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+        server_env = os.environ.copy()
+        server_env["SCENTHUNTER_CATALOG_DATABASE_URL"] = DATABASE_URL
+        server_env["SCENTHUNTER_DATABASE_URL"] = DATABASE_URL
+        server_env["PYTHONPATH"] = str(BACKEND) + os.pathsep + server_env.get("PYTHONPATH", "")
+        server = subprocess.Popen(
+            [
+                sys.executable, "-m", "uvicorn", "main:app",
+                "--host", "127.0.0.1", "--port", str(port),
+                "--lifespan", "off", "--log-level", "warning",
+            ],
+            cwd=str(BACKEND),
+            env=server_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        base_url = f"http://127.0.0.1:{port}"
+        try:
+            deadline = time.monotonic() + 20
+            while time.monotonic() < deadline:
+                if server.poll() is not None:
+                    output = server.communicate()[0]
+                    raise AssertionError(f"Uvicorn exited before becoming ready:\\n{output}")
+                try:
+                    with urllib.request.urlopen(base_url + "/", timeout=2) as response:
+                        live_home = response.read().decode("utf-8")
+                        assert response.status == 200
+                        assert "ScentHunter" in live_home
+                        assert 'searchParams.get("catalog_first")!=="0"' in live_home
+                    break
+                except (urllib.error.URLError, TimeoutError, ConnectionError):
+                    time.sleep(0.2)
+            else:
+                raise AssertionError("Uvicorn did not become ready within 20 seconds")
+
+            with urllib.request.urlopen(base_url + "/api/catalog/status", timeout=5) as response:
+                live_status = __import__("json").loads(response.read().decode("utf-8"))
+                assert response.status == 200
+                assert live_status["status"] == "ready"
+                assert live_status["published_offers"] >= 1
+
+            query = "ScentHunter API Test Brand API Contract Fragrance EDP 100 ml"
+            search_url = base_url + "/api/catalog/search?q=" + __import__("urllib.parse").parse.quote(query)
+            with urllib.request.urlopen(search_url, timeout=10) as response:
+                live_data = __import__("json").loads(response.read().decode("utf-8"))
+                assert response.status == 200
+                assert live_data["status"] == "completed"
+                assert live_data["count"] == 1
+                assert live_data["offer_count"] == 1
+                live_offer = live_data["results"][0]["offers"][0]
+                assert live_offer["store"] == expected_store_name
+                assert live_offer["price"] == "42.50"
+                assert live_offer["currency"] == "EUR"
+                assert live_offer["availability"] == "in_stock"
+                assert live_offer["size_ml"] == 100
+                assert live_offer["url"] == "https://bplatz.de/products/api-contract-fragrance"
+        finally:
+            server.terminate()
+            try:
+                server.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait(timeout=5)
     finally:
         # Remove only this test's records; CI database is disposable.
         with Session(engine) as session, session.begin():
