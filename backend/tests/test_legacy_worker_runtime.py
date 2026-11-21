@@ -171,9 +171,11 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
                 return type("Validation", (), {"valid": True})()
 
         connector = RefreshConnector()
-        with patch.object(notino_runtime, "_sessions", return_value=self.sessions), \\
-             patch.object(legacy_runtime, "build_legacy_connector", return_value=connector), \\
-             patch.object(legacy_runtime, "refresh_offer_observation") as refresh:
+        with (
+            patch.object(notino_runtime, "_sessions", return_value=self.sessions),
+            patch.object(legacy_runtime, "build_legacy_connector", return_value=connector),
+            patch.object(legacy_runtime, "refresh_offer_observation") as refresh,
+        ):
             result = legacy_runtime.handle_legacy_refresh({
                 "store_id": str(self.store_id),
                 "external_product_id": "123:456",
@@ -188,8 +190,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
             async def fetch_offer_price_and_stock(self, external_id, persisted_url=None):
                 raise AssertionError("network refresh must not run without an active offer")
 
-        with patch.object(notino_runtime, "_sessions", return_value=self.sessions), \\
-             patch.object(legacy_runtime, "build_legacy_connector", return_value=MustNotFetch()):
+        with (
+            patch.object(notino_runtime, "_sessions", return_value=self.sessions),
+            patch.object(legacy_runtime, "build_legacy_connector", return_value=MustNotFetch()),
+        ):
             with self.assertRaisesRegex(LookupError, "active_offer_not_found"):
                 legacy_runtime.handle_legacy_refresh({
                     "store_id": str(self.store_id),
