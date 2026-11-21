@@ -185,9 +185,9 @@ jobs:
       - name: Verify Bplatz isolated Offer-First worker runtime
         working-directory: backend
         run: pytest -q tests/test_bplatz_worker_runtime.py
-      - name: Verify Bplatz Offer-First connector adapter
+      - name: Verify Bplatz Offer-First connector adapter and parser edge cases
         working-directory: backend
-        run: pytest -q tests/test_bplatz_connector.py
+        run: pytest -q tests/test_bplatz_connector.py tests/test_bplatz_stock_signal_precedence.py
       - name: Verify PerfumeMarket Offer-First connector adapter
         working-directory: backend
         run: pytest -q tests/test_perfumemarket_connector.py
