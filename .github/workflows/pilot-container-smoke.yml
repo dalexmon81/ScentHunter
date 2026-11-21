@@ -32,6 +32,14 @@ jobs:
       - name: Build the dedicated pilot image
         run: docker build --file Dockerfile.pilot --tag scenthunter-pilot-smoke .
 
+      - name: Test registered family identities and identity-only search
+        run: |
+          docker run --rm \
+            --entrypoint /app/.venv/bin/python \
+            --env PYTHONPATH=/app/backend \
+            scenthunter-pilot-smoke \
+            -m unittest discover -s /app/backend/tests -p 'test_family_registry_catalog_search.py' -v
+
       - name: Boot the real image on a disposable local volume
         shell: bash
         run: |
