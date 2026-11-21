@@ -79,11 +79,11 @@ class SQLiteQueueRetrySafetyTests(unittest.TestCase):
         with sqlite3.connect(self.path) as conn:
             conn.execute(
                 "UPDATE ingestion_queue_jobs SET started_at=?, attempts=? WHERE id=?",
-                (100.0, 1, retry_id),
+                (1.0, 1, retry_id),
             )
             conn.execute(
                 "UPDATE ingestion_queue_jobs SET started_at=?, attempts=? WHERE id=?",
-                (100.0, sqlite_queue.MAX_ATTEMPTS, failed_id),
+                (1.0, sqlite_queue.MAX_ATTEMPTS, failed_id),
             )
 
         with patch.object(sqlite_queue.time, "time", return_value=1000.0):
