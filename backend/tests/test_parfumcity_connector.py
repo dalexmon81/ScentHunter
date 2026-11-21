@@ -19,6 +19,9 @@ class Tests(unittest.IsolatedAsyncioTestCase):
   self.assertEqual(value,"EUR")
   self.assertEqual(parfumcity_scraper._cart_currency(session,"https://www.parfumcity.nl/products/example"),"EUR")
   self.assertEqual(session.calls,["https://www.parfumcity.nl/cart.js"])
+  localized= parfumcity_scraper._cart_currency(session,"https://www.parfumcity.nl/fr/products/example")
+  self.assertEqual(localized,"EUR")
+  self.assertEqual(session.calls[-1],"https://www.parfumcity.nl/fr/cart.js")
 
  async def test_variants_keep_distinct_ids_and_currency_unverified(self):
   product={"id":20,"title":"Example Eau de Parfum","vendor":"Example","variants":[{"id":201,"title":"50 ml","price":"30.00","available":True},{"id":202,"title":"100 ml","price":"45.00","available":True}]}
