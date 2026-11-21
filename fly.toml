@@ -3,12 +3,20 @@
 app = "scenthunter"
 primary_region = "ams"
 
+[deploy]
+  release_command = "cd /app/backend && /app/.venv/bin/alembic upgrade head"
+
+[processes]
+  app = "sh -c 'cd /app/backend; /app/.venv/bin/python -m catalog_family_coverage & FAMILY_PID=$!; /app/.venv/bin/python -m phase0_baseline_worker & PHASE0_PID=$!; trap \"kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true; exit 143\" TERM INT; trap \"kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true\" EXIT; /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080'"
+  worker = "sh -c 'cd /app/backend && /app/.venv/bin/python -m app.workers.postgres_worker'"
+
 [build]
 
 [env]
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  SCENTHUNTER_QUEUE_BACKEND = "postgres"
 
 [http_service]
   internal_port = 8080
