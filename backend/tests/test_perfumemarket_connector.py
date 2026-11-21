@@ -25,7 +25,10 @@ class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parsed["sku"], "SKU-1")
         self.assertEqual(parsed["gtin"], "1234567890123")
         self.assertFalse(parsed["currency_explicit"])
-        self.assertFalse(connector.validate_offer(parsed).valid)
+        # The shared structural validator checks URL/price/currency/stock only.
+        # Currency provenance is a separate publication gate in connector_ingestion.
+        self.assertTrue(connector.validate_offer(parsed).valid)
+        self.assertFalse(parsed["currency_explicit"])
 
     def test_explicit_currency_flag_and_known_stock_pass_validation(self):
         connector = PerfumeMarketConnector(SimpleNamespace())
