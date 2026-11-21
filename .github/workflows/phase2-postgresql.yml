@@ -24,6 +24,7 @@ on:
       - "backend/tests/test_catalog_ingestion_run.py"
       - "backend/tests/test_notino_worker_runtime.py"
       - "backend/tests/test_legacy_worker_runtime.py"
+      - "backend/tests/test_offer_promotion_idempotency.py"
       - "backend/scripts/seed_catalog.py"
       - "backend/product_catalog.json"
       - "backend/scripts/migrate_canonical_sqlite_to_postgres.py"
@@ -149,6 +150,9 @@ jobs:
       - name: Verify retailer ingestion worker dispatch and matching
         working-directory: backend
         run: pytest -q tests/test_notino_worker_runtime.py tests/test_legacy_worker_runtime.py
+      - name: Verify repeated offer promotion and price history
+        working-directory: backend
+        run: pytest -q tests/test_offer_promotion_idempotency.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify retailer offer price selection regression
