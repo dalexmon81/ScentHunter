@@ -1,0 +1,62 @@
+name: ScentHunter guarded PostgreSQL runtime cutover
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-postgres-runtime-cutover
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl status --app scenthunter >/dev/null
+          echo "Fly authentication verified."
+
+      - name: Set dedicated production PostgreSQL runtime secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          db_url="$(flyctl ssh console --app scenthunter --machine 8654e0da7d7268 --pty=false --quiet -C "printenv SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL")"
+          db_url="$(printf '%s' "$db_url" | tr -d '\r\n')"
+          case "$db_url" in
+            postgresql://*|postgres://*|postgresql+psycopg://*) ;;
+            *) echo "::error::Migration target is not a PostgreSQL URL; refusing runtime cutover."; exit 1 ;;
+          esac
+          echo "::add-mask::$db_url"
+          flyctl secrets set --app scenthunter \
+            SCENTHUNTER_CATALOG_DATABASE_URL="$db_url" \
+            SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1
+          unset db_url
+
+      - name: Verify PostgreSQL from the production machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote='cd /app/backend && /app/.venv/bin/python -c "from sqlalchemy import create_engine, text; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); assert u.get_backend_name()==\"postgresql\"; assert u.drivername==\"postgresql+psycopg\"; e=create_engine(u, pool_pre_ping=True); c=e.connect(); n=c.execute(text(\"select current_database()\")).scalar_one(); assert n==\"scenthunter_offerfirst\"; print(\"CANONICAL_BACKEND=postgresql\"); print(\"CANONICAL_DRIVER=psycopg\"); print(\"DATABASE_NAME=\"+n); c.close(); e.dispose()"'
+          for attempt in $(seq 1 24); do
+            if flyctl ssh console --app scenthunter --machine 8654e0da7d7268 --pty=false --quiet -C "$remote"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Production machine did not pass PostgreSQL runtime verification."
+          exit 1
