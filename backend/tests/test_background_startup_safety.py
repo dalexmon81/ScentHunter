@@ -67,7 +67,8 @@ def test_pilot_container_runs_api_without_starting_ingestion_worker():
     staging = (root / "fly.staging.toml").read_text()
 
     assert "SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP=1" in dockerfile
-    assert "app.workers.sqlite_worker" not in dockerfile
+    assert "SCENTHUNTER_ENABLE_SQLITE_WORKER:-0" in dockerfile
+    assert "python -m app.workers.sqlite_worker" in dockerfile
     assert "exec /app/.venv/bin/uvicorn main:app" in dockerfile
     assert 'SCENTHUNTER_DISABLE_AUTOMATIC_CATALOG_STARTUP = "1"' in staging
 
