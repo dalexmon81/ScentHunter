@@ -25,7 +25,7 @@ class RetailerCapabilityRegistryTests(unittest.TestCase):
         }
         self.assertEqual(
             registered,
-            {"notino", "deloox", "easycosmetic", "parfumzentrum", "sabina"},
+            {"notino", "deloox", "easycosmetic", "parfumzentrum", "sabina", "bplatz"},
         )
         for key in registered:
             self.assertEqual(
@@ -40,7 +40,7 @@ class RetailerCapabilityRegistryTests(unittest.TestCase):
         }
         self.assertEqual(
             adapter_only,
-            {"bplatz", "orioudh", "parfumcity", "perfumemarket"},
+            {"orioudh", "parfumcity", "perfumemarket"},
         )
         for key in adapter_only:
             item = get_retailer_capability(key)
