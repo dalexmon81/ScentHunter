@@ -2,6 +2,9 @@ name: ScentHunter Offer-First PostgreSQL import apply
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
