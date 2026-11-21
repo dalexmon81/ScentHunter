@@ -82,6 +82,12 @@ class StoreConnector(ABC):
     async def fetch_price_and_stock(self, offer_id: str) -> Mapping[str, Any]:
         """Refresh price and availability for one known retailer offer."""
 
+    async def fetch_offer_price_and_stock(
+        self, offer_id: str, product_url: str | None = None
+    ) -> Mapping[str, Any]:
+        """Refresh a persisted offer; legacy adapters remain single-argument compatible."""
+        return await self.fetch_price_and_stock(offer_id)
+
     @abstractmethod
     def parse_raw(self, raw: Mapping[str, Any]) -> Mapping[str, Any]:
         """Convert a retailer-specific raw record into the shared field contract."""
