@@ -60,6 +60,9 @@ class FamilyRegistryCatalogSearchTests(unittest.TestCase):
             self.assertTrue(result["results"][0]["identity_only"])
             self.assertEqual(result["results"][0]["offers"], [])
             self.assertEqual(result["offer_count"], 0)
+            exact = search_catalog(session, "Hawas Fire")
+            self.assertEqual(exact["count"], 1)
+            self.assertEqual(exact["results"][0]["name"], "Hawas Fire")
         finally:
             engine.dispose()
 
