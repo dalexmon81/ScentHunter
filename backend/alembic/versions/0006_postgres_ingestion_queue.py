@@ -29,6 +29,12 @@ def upgrade():
         sa.CheckConstraint("status IN ('queued','running','completed','failed')", name="status"),
         sa.CheckConstraint("attempts >= 0 AND max_attempts > 0", name="attempts"),
     )
+    op.create_table(
+        "ingestion_queue_schedule",
+        sa.Column("schedule_key", sa.String(200), primary_key=True),
+        sa.Column("scheduled_day", sa.String(10), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+    )
     op.create_index(
         "uq_ingestion_queue_active_dedupe",
         "ingestion_queue_jobs",
@@ -49,6 +55,7 @@ def upgrade():
 
 
 def downgrade():
+    op.drop_table("ingestion_queue_schedule")
     op.drop_index("ix_ingestion_queue_stale", table_name="ingestion_queue_jobs")
     op.drop_index("ix_ingestion_queue_ready", table_name="ingestion_queue_jobs")
     op.drop_index("uq_ingestion_queue_active_dedupe", table_name="ingestion_queue_jobs")
