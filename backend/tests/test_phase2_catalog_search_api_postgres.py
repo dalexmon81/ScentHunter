@@ -167,9 +167,12 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
         # Exercise the actual Uvicorn HTTP server and its startup hooks against the
         # disposable PostgreSQL database. API-only mode must make startup fail
         # closed without launching discovery, hydration or Phase 0 job setup.
+        # The existing frontend intentionally points localhost origins at
+        # backend port 8000 during local development. Run the combined app on
+        # that port so Chromium exercises the same-origin backend contract.
+        port = 8000
         with socket.socket() as listener:
-            listener.bind(("127.0.0.1", 0))
-            port = listener.getsockname()[1]
+            listener.bind(("127.0.0.1", port))
         server_env = os.environ.copy()
         server_env["SCENTHUNTER_CATALOG_DATABASE_URL"] = DATABASE_URL
         server_env["SCENTHUNTER_DATABASE_URL"] = DATABASE_URL
@@ -178,7 +181,7 @@ def test_catalog_search_http_reads_validated_offer_from_postgresql():
         server = subprocess.Popen(
             [
                 sys.executable, "-m", "uvicorn", "main:app",
-                "--host", "127.0.0.1", "--port", str(port),
+                "--host", "0.0.0.0", "--port", str(port),
                 "--log-level", "warning",
             ],
             cwd=str(BACKEND),
