@@ -134,6 +134,18 @@ def _availability(value) -> str:
     return "unknown"
 
 
+def _explicit_currency(*records):
+    """Return currency only when the retailer payload names it explicitly."""
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        for key in ("priceCurrency", "currency_code", "currency"):
+            value = record.get(key)
+            if isinstance(value, str) and re.fullmatch(r"[A-Za-z]{3}", value.strip()):
+                return value.strip().upper()
+    return None
+
+
 def _image(data: Dict[str, Any]) -> Optional[str]:
     image = data.get("featured_image")
     if isinstance(image, dict):
@@ -367,6 +379,7 @@ def _raw_offer(
     concentration = _concentration(variant_name, product_name)
     gender = _gender(variant_name, product_name)
     price = _price(variant.get("price"))
+    explicit_currency = _explicit_currency(variant, product)
 
     return {
         "store": STORE,
@@ -401,7 +414,8 @@ def _raw_offer(
         },
         "offer": {
             "price": price,
-            "currency": "EUR",
+            "currency": explicit_currency,
+            "currency_explicit": explicit_currency is not None,
             "availability": _availability(variant.get("available")),
         },
         "provenance": {
