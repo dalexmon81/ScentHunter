@@ -86,7 +86,7 @@ jobs:
           for path in \
             "/search-start?q=Dior" \
             "/diagnostic/deloox-pipeline?url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123" \
-            "/catalog/refresh-store-url?store=deloox%26url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do
+            "/catalog/refresh-store-url?store=deloox&url=https%3A%2F%2Fwww.deloox.be%2Fproduct%2F123"; do not shell-split the ampersand
             code="$(curl --silent --output /tmp/blocked-body.json --write-out '%{http_code}' "http://127.0.0.1:18080$path")"
             test "$code" = 503 || {
               echo "API-only pilot unexpectedly allowed $path (HTTP $code)"
@@ -96,14 +96,14 @@ jobs:
           done
           echo "Legacy search and live retailer operations are blocked: PASS"
 
-          docker exec scenthunter-pilot-smoke python - <<'PY'
+          docker exec -i scenthunter-pilot-smoke python - <<'PY'
           from pathlib import Path
           commands = []
           for entry in Path("/proc").iterdir():
               if not entry.name.isdigit():
                   continue
               try:
-                  raw = (entry / "cmdline").read_bytes().replace(b"\\0", b" ").decode("utf-8", "replace")
+                  raw = (entry / "cmdline").read_bytes().replace(b"\x00", b" ").decode("utf-8", "replace")
               except OSError:
                   continue
               if raw.strip():
