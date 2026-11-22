@@ -32,12 +32,12 @@ STORE_CONFIG = {
     "easycosmetic": ("easycosmetic-de", "Easycosmetic", "www.easycosmetic.de", "DE"),
     "parfumzentrum": ("parfumzentrum-de", "ParfumZentrum", "www.parfum-zentrum.de", "DE"),
 }
-# Deloox's registered scraper supports these four storefronts. Keep the
-# queue-seed allowlist aligned with its actual fetcher rather than silently
-# dropping valid .nl/.com/.lu product URLs.
+# The canonical Deloox store row is deloox-be. Other Deloox storefronts
+# require their own Store rows/domains before their offers can pass the
+# public-search URL gate; do not enqueue them under the Belgian store identity.
 STORE_URL_DOMAINS = {
     "bplatz": ("en.bplatz.de",),
-    "deloox": ("www.deloox.be", "www.deloox.nl", "www.deloox.com", "www.deloox.lu"),
+    "deloox": ("www.deloox.be",),
     "sabina": ("www.sabina.com",),
     "easycosmetic": ("www.easycosmetic.de",),
     "parfumzentrum": ("www.parfum-zentrum.de",),
