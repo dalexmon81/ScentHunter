@@ -19,11 +19,9 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP: scenthunter
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$COMMIT_MESSAGE" = "ops: break down PostgreSQL ingestion queue by retailer"
           test -n "$FLY_API_TOKEN"
           flyctl machines list --app "$FLY_APP" --json > /tmp/machines.json
           MACHINE_ID="$(python -c 'import json; m=json.load(open("/tmp/machines.json")); p=[x.get("id") for x in m if ((x.get("config") or {}).get("metadata") or {}).get("fly_process_group")=="app"]; o=[x.get("id") for x in m if x.get("id") not in p]; print(next((x for x in p+o if x), ""))')"
