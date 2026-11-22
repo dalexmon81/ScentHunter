@@ -30,7 +30,16 @@ jobs:
           test -n "$MACHINE_ID"
           inspector_b64="$(base64 -w0 backend/scripts/inspect_postgres_legacy_seed_target.py)"
           health_b64="$(base64 -w0 backend/scripts/inspect_postgres_catalog_health.py)"
-          remote_command="sh -lc 'set -e; test -x /app/.venv/bin/python; mkdir -p /tmp/shim/backend/scripts; trap \"rm -f /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py\" EXIT; printf %s ${inspector_b64} | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py; printf %s ${health_b64} | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py; export PYTHONPATH=/app/backend; timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py; timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py'
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
-
-# one-shot read-only inspection run
+          cat > /tmp/remote-inspect.sh <<EOF
+          set -e
+          test -x /app/.venv/bin/python
+          mkdir -p /tmp/shim/backend/scripts
+          trap 'rm -f /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py' EXIT
+          printf %s $inspector_b64 | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py
+          printf %s $health_b64 | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py
+          export PYTHONPATH=/app/backend
+          timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py
+          timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py
+          EOF
+          remote_b64="$(base64 -w0 /tmp/remote-inspect.sh)"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "printf %s $remote_b64 | base64 -d > /tmp/run-inspect.sh && sh /tmp/run-inspect.sh"
