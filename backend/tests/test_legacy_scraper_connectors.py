@@ -38,11 +38,47 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.connector = LegacyScraperConnector("deloox", self.scraper)
 
     async def test_factory_loads_all_existing_retailer_scraper_modules(self):
-        for store_key in ("deloox", "sabina", "easycosmetic", "parfumzentrum"):
+        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum"):
             with self.subTest(store_key=store_key):
                 connector = build_legacy_connector(store_key)
                 self.assertEqual(connector.store_key, store_key)
                 self.assertTrue(callable(getattr(connector._scraper, "search_stream", None)))
+
+    async def test_bplatz_discovery_and_refresh_use_product_url_and_explicit_currency(self):
+        url = "https://en.bplatz.de/products/liquid-brun-eau-de-parfum-100ml"
+        raw = {
+            "name": "Liquid Brun Eau de Parfum 100 ml",
+            "brand": "French Avenue",
+            "url": url,
+            "price_num": 24.90,
+            "currency": "EUR",
+            "currency_explicit": True,
+            "availability": "in_stock",
+            "size_ml": 100,
+            "offer": {"price": 24.90, "currency": "EUR", "currency_explicit": True,
+                      "availability": "in_stock"},
+            "identity": {"gtin": "54015243419916", "sku": "54015243419916"},
+            "attributes": {"size_ml": {"value": 100}, "concentration": {"value": "Eau de Parfum"}},
+            "raw_data": {"jsonld": {"offers": {"priceCurrency": "EUR", "price": "24.90"}}},
+        }
+        scraper = SimpleNamespace(
+            search_stream=lambda query: {
+                "status": "success", "verified": True, "results": [raw],
+                "error": None, "details": {},
+            },
+            extract_product_page=lambda session, product_url, query: dict(raw),
+        )
+        connector = LegacyScraperConnector("bplatz", scraper)
+        with patch.dict(os.environ, {"SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ": "Liquid Brun"}):
+            products = await connector.discover_products(limit=10)
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0].external_product_id, url)
+        observation = await connector.fetch_price_and_stock(products[0].external_product_id)
+        self.assertEqual(observation["external_product_id"], url)
+        self.assertEqual(observation["currency"], "EUR")
+        self.assertTrue(observation["currency_explicit"])
+        self.assertEqual(observation["availability"], "in_stock")
+        self.assertEqual(observation["product_url"], url)
 
     async def test_discovery_uses_operator_seed_and_stable_product_url(self):
         with patch.dict(os.environ, {
