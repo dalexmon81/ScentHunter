@@ -79,7 +79,15 @@ def main():
             counts = dict.fromkeys(STORE_CONFIG, 0)
             for store_key, url in src.execute(query, {"stores": list(STORE_CONFIG)}):
                 parsed = urlparse(str(url))
-                if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                expected_domain = STORE_CONFIG[store_key][2].lower()
+                hostname = (parsed.hostname or "").lower()
+                if (
+                    parsed.scheme not in {"http", "https"}
+                    or not hostname
+                    or parsed.username is not None
+                    or parsed.password is not None
+                    or not (hostname == expected_domain or hostname.endswith("." + expected_domain))
+                ):
                     continue
                 counts[store_key] += 1
             report["stores"] = counts
@@ -108,6 +116,11 @@ def main():
                             session.flush()
                         elif store.domain and store.domain.lower() != domain.lower():
                             raise RuntimeError(f"Store domain conflict for {slug}: {store.domain}")
+                        elif store.status != "active":
+                            raise RuntimeError(
+                                f"Store {slug} is {store.status!r}; refusing to enqueue work "
+                                "for an inactive or quarantined connector"
+                            )
                         stores[key] = store.id
 
                 from sqlalchemy import bindparam
@@ -122,7 +135,15 @@ def main():
                     for store_key, url in src.execute(read_query, {"stores": list(STORE_CONFIG)}):
                         url = str(url).strip()
                         parsed = urlparse(url)
-                        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                        expected_domain = STORE_CONFIG[store_key][2].lower()
+                        hostname = (parsed.hostname or "").lower()
+                        if (
+                            parsed.scheme not in {"http", "https"}
+                            or not hostname
+                            or parsed.username is not None
+                            or parsed.password is not None
+                            or not (hostname == expected_domain or hostname.endswith("." + expected_domain))
+                        ):
                             continue
                         slug = STORE_CONFIG[store_key][0]
                         store_id = stores[store_key]
