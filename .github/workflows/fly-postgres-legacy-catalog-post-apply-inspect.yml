@@ -1,0 +1,48 @@
+name: Read-only PostgreSQL queue post-apply inspection
+on:
+  push:
+    branches:
+      - fix/public-postgres-catalog-ingestion-2026-11-22
+    paths:
+      - .github/workflows/fly-postgres-legacy-catalog-post-apply-inspect.yml
+
+jobs:
+  inspect-production-postgres:
+    if: github.event.head_commit.message == 'ops: inspect PostgreSQL queue after interrupted apply'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Run read-only inspector on app machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$COMMIT_MESSAGE" = "ops: inspect PostgreSQL queue after interrupted apply"
+          test -n "$FLY_API_TOKEN"
+          flyctl machines list --app "$FLY_APP" --json > /tmp/machines.json
+          MACHINE_ID="$(python - <<'PY'
+          import json
+          machines=json.load(open("/tmp/machines.json"))
+          preferred=[m.get("id") for m in machines if ((m.get("config") or {}).get("metadata") or {}).get("fly_process_group")=="app"]
+          other=[m.get("id") for m in machines if m.get("id") not in preferred]
+          print(next((x for x in preferred+other if x), ""))
+          PY
+          )"
+          test -n "$MACHINE_ID"
+          inspector_b64="$(base64 -w0 backend/scripts/inspect_postgres_legacy_seed_target.py)"
+          remote_command="sh -lc 'set -e
+          test -x /app/.venv/bin/python
+          mkdir -p /tmp/shim/backend/scripts
+          trap \"rm -f /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py\" EXIT
+          printf %s ${inspector_b64} | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py
+          export PYTHONPATH=/app/backend
+          timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py
+          '"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
