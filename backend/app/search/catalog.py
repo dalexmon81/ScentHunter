@@ -129,6 +129,42 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             if token_exists:
                 statement = statement.where(token_condition)
     rows = session.execute(statement.order_by(Brand.name, Fragrance.name, ProductVariant.size_ml, ProductVariant.id)).all()
+    # Canonical fragrance identities are searchable even when no commercial
+    # variant has been declared yet. This is essential for catalog-first
+    # discovery: retailer coverage must never determine catalog membership.
+    identity_statement = select(Fragrance, Brand).join(
+        Brand, Fragrance.brand_id == Brand.id
+    )
+    identity_ignored = {"ml", "eau", "spray", "vap", "vaporisateur"}
+    for token in tokens:
+        if token in identity_ignored or token.isdecimal() or token in {
+            "edp", "edt", "tester", "refill", "gift", "set", "mini", "miniature"
+        }:
+            continue
+        identity_condition = or_(
+            func.lower(Brand.name).contains(token, autoescape=True),
+            func.lower(Fragrance.name).contains(token, autoescape=True),
+        )
+        identity_exists = session.scalar(select(exists(
+            select(1).select_from(Brand)
+            .join(Fragrance, Fragrance.brand_id == Brand.id)
+            .where(identity_condition)
+        )))
+        if identity_exists:
+            identity_statement = identity_statement.where(identity_condition)
+    identity_rows = session.execute(
+        identity_statement.order_by(Brand.name, Fragrance.name)
+    ).all()
+    represented_fragrance_ids = {fragrance.id for _, fragrance, _ in rows}
+    identities_without_variants = [
+        (fragrance, brand) for fragrance, brand in identity_rows
+        if fragrance.id not in represented_fragrance_ids
+        and not session.scalar(select(exists(
+            select(1).select_from(ProductVariant)
+            .where(ProductVariant.fragrance_id == fragrance.id)
+        )))
+    ]
+
     variant_ids = [variant.id for variant, _, _ in rows]
     sizes = {variant.id: variant.size_ml for variant, _, _ in rows}
     offers_by_variant: dict = {}
@@ -162,6 +198,17 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             "image": fragrance.image_url,
             "offers": offers_by_variant.get(variant.id, []),
         })
+    for fragrance, brand in identities_without_variants:
+        results.append({
+            "catalog_id": str(fragrance.id),
+            "variant_id": None,
+            "brand": brand.name,
+            "name": " ".join(filter(None, (fragrance.name, "Identità catalogo"))),
+            "image": fragrance.image_url,
+            "offers": [],
+        })
+    results.sort(key=lambda item: (item["brand"].casefold(), item["name"].casefold()))
+
     return {
         "query": query, "count": len(results),
         "offer_count": sum(len(result["offers"]) for result in results),
