@@ -19,6 +19,7 @@ import requests
 from app.connectors.base import ConnectorUnavailable, DiscoveredProduct, StoreConnector
 
 STORE_SLUGS = {
+    "bplatz": "bplatz",
     "deloox-be": "deloox",
     "sabina-es": "sabina",
     "easycosmetic-de": "easycosmetic",
@@ -26,6 +27,7 @@ STORE_SLUGS = {
 }
 
 SCRAPER_MODULES = {
+    "bplatz": "scrapers.bplatz.scraper",
     "deloox": "scrapers.deloox.scraper",
     "sabina": "scrapers.sabina.scraper",
     "easycosmetic": "scrapers.easycosmetic.scraper",
