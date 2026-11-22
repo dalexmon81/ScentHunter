@@ -48,6 +48,11 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
     app.include_router(catalog_search.router)
     with TestClient(app) as client:
         response = client.get("/api/catalog/search", params={"q": "French Avenue Liquid Brun EDP 100ml"})
+        public_response = client.get("/search", params={"q": "French Avenue Liquid Brun EDP 100ml"})
+        assert public_response.status_code == 200
+        public_data = public_response.json()
+        assert public_data["count"] == public_data["offer_count"] == 1
+        assert public_data["results"][0]["offers"][0]["store"] == "Bplatz"
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == data["offer_count"] == 1
@@ -98,6 +103,7 @@ def test_search_route_is_registered_on_production_app():
 
     paths = {route.path for route in main.app.routes}
     assert "/api/catalog/search" in paths
+    assert "/search" in paths
     assert "/api/catalog/status" in paths
 
 
