@@ -152,7 +152,13 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
         )))
         if identity_exists:
             identity_statement = identity_statement.where(identity_condition)
-    identity_rows = session.execute(
+    # Identity-only rows cannot satisfy explicit commercial variant selectors
+    # (size, concentration, tester/refill/set/mini). Keep those searches strict.
+    has_variant_selector = any(
+        token.isdecimal() or token in {"edp", "edt", "tester", "refill", "gift", "set", "mini", "miniature"}
+        for token in tokens
+    )
+    identity_rows = [] if has_variant_selector else session.execute(
         identity_statement.order_by(Brand.name, Fragrance.name)
     ).all()
     represented_fragrance_ids = {fragrance.id for _, fragrance, _ in rows}
