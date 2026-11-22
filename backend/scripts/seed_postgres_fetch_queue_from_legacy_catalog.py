@@ -27,17 +27,29 @@ from app.models import Store  # noqa: E402
 
 STORE_CONFIG = {
     "bplatz": ("bplatz", "Bplatz", "en.bplatz.de", "DE"),
-    "deloox": ("deloox-be", "Deloox", "www.deloox.be", "BE"),
+    "deloox-be": ("deloox-be", "Deloox Belgium", "www.deloox.be", "BE"),
+    "deloox-nl": ("deloox-nl", "Deloox Netherlands", "www.deloox.nl", "NL"),
+    "deloox-com": ("deloox-com", "Deloox International", "www.deloox.com", None),
+    "deloox-lu": ("deloox-lu", "Deloox Luxembourg", "www.deloox.lu", "LU"),
+    "deloox-es": ("deloox-es", "Deloox Spain", "www.deloox.es", "ES"),
     "sabina": ("sabina-es", "Sabina", "www.sabina.com", "ES"),
     "easycosmetic": ("easycosmetic-de", "Easycosmetic", "www.easycosmetic.de", "DE"),
     "parfumzentrum": ("parfumzentrum-de", "ParfumZentrum", "www.parfum-zentrum.de", "DE"),
 }
-# The canonical Deloox store row is deloox-be. Other Deloox storefronts
-# require their own Store rows/domains before their offers can pass the
-# public-search URL gate; do not enqueue them under the Belgian store identity.
+SOURCE_STORE_KEYS = {
+    "bplatz": ("bplatz",),
+    "deloox": ("deloox-be", "deloox-nl", "deloox-com", "deloox-lu", "deloox-es"),
+    "sabina": ("sabina",),
+    "easycosmetic": ("easycosmetic",),
+    "parfumzentrum": ("parfumzentrum",),
+}
 STORE_URL_DOMAINS = {
     "bplatz": ("en.bplatz.de",),
-    "deloox": ("www.deloox.be",),
+    "deloox-be": ("www.deloox.be",),
+    "deloox-nl": ("www.deloox.nl",),
+    "deloox-com": ("www.deloox.com",),
+    "deloox-lu": ("www.deloox.lu",),
+    "deloox-es": ("www.deloox.es",),
     "sabina": ("www.sabina.com",),
     "easycosmetic": ("www.easycosmetic.de",),
     "parfumzentrum": ("www.parfum-zentrum.de",),
@@ -99,23 +111,26 @@ def _read_candidates(connection):
     """).bindparams(bindparam("stores", expanding=True))
 
     accepted = []
-    rejected = dict.fromkeys(STORE_CONFIG, 0)
-    rejected_domains = {store_key: {} for store_key in STORE_CONFIG}
+    rejected = dict.fromkeys(SOURCE_STORE_KEYS, 0)
+    rejected_domains = {store_key: {} for store_key in SOURCE_STORE_KEYS}
     seen = set()
     duplicate_count = 0
     for store_key, raw_url in connection.execute(
         query, {"stores": list(STORE_CONFIG)}
     ):
         url = str(raw_url or "").strip()
-        domains = STORE_URL_DOMAINS[store_key]
-        if not is_allowed_product_url(url, domains):
+        market_key = next((
+            key for key in SOURCE_STORE_KEYS[store_key]
+            if is_allowed_product_url(url, STORE_URL_DOMAINS[key])
+        ), None)
+        if market_key is None:
             rejected[store_key] += 1
             hostname = (urlparse(url).hostname or "(missing)").lower().rstrip(".")
             rejected_domains[store_key][hostname] = (
                 rejected_domains[store_key].get(hostname, 0) + 1
             )
             continue
-        candidate = (store_key, url)
+        candidate = (market_key, url)
         if candidate in seen:
             duplicate_count += 1
             continue
