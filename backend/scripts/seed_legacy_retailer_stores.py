@@ -26,6 +26,8 @@ def provision(session: Session, *, apply: bool) -> dict:
     created = []
     already_active = []
     blocked = []
+    # Validate the complete retailer set before adding any rows. A blocked
+    # retailer must not leave a partially provisioned set in the session.
     for data in RETAILERS:
         row = session.scalar(select(Store).where(Store.slug == data["slug"]))
         if row is not None:
@@ -35,10 +37,12 @@ def provision(session: Session, *, apply: bool) -> dict:
                 already_active.append(data["slug"])
             continue
         created.append(data["slug"])
-        if apply:
-            session.add(Store(**data, status="active"))
     if blocked:
         raise RuntimeError("Existing retailer rows need manual review; refusing to reactivate or overwrite: " + json.dumps(blocked))
+    if apply:
+        for data in RETAILERS:
+            if data["slug"] in created:
+                session.add(Store(**data, status="active"))
     return {
         "status": "provisioned" if apply else "validated",
         "created": created,
