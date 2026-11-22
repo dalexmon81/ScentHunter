@@ -1248,8 +1248,8 @@ async function searchPerfume(){
     // store snapshots while searching, but do not redraw the product list for
     // each partial poll; render the final, deduplicated payload once all stores
     // have finished so results do not flicker in progressively.
-    // Catalog-first is the default on the pilot and for the new search flow.
-    // Keep the legacy progressive path available only as an explicit diagnostic opt-out.
+    // Public search always uses the canonical PostgreSQL catalog API.
+    // Legacy progressive endpoints remain internal diagnostics, not a public fallback.
     const data=await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000);
     renderData(data,true);
   } catch (e) {
