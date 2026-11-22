@@ -1,5 +1,8 @@
 """Seed the PostgreSQL fetch queue from the existing retailer URL catalog.
 
+Operational verification note: this revision is also used to trigger the read-only
+production dry-run workflow; it does not change seed behavior.
+
 Dry-run by default. The SQLite source is opened read-only. Applying only
 creates/queues fetch work; it never copies stale SQLite prices into live offers.
 """
