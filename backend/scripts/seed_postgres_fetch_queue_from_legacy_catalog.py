@@ -98,7 +98,9 @@ def main():
             if args.apply and args.confirm_target != db_name:
                 raise ValueError("--confirm-target must exactly match target database name")
             existing_tables = set(__import__("sqlalchemy").inspect(conn).get_table_names())
-            if "ingestion_queue_jobs" not in existing_tables:
+            # A dry-run must remain useful before the queue migration is deployed:
+            # it reports source coverage without requiring any destination writes/schema.
+            if args.apply and "ingestion_queue_jobs" not in existing_tables:
                 raise RuntimeError("PostgreSQL ingestion_queue_jobs table is missing; run the approved Alembic migration first")
             if args.apply:
                 metadata = MetaData()
