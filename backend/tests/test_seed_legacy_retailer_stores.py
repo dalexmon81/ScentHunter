@@ -27,6 +27,7 @@ class LegacyRetailerSeedTests(unittest.TestCase):
         self.assertEqual(report["status"], "validated")
         self.assertEqual(report["created"], [row["slug"] for row in RETAILERS])
         self.assertFalse(report["database_written"])
+        # A blocked seed must not leave the remaining retailers partially added.
         self.assertEqual(session.added, [])
 
     def test_apply_creates_only_missing_rows(self):
