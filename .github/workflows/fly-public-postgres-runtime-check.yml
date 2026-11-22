@@ -40,7 +40,7 @@ jobs:
               config = machine.get("config") or {}
               metadata = config.get("metadata") or {}
               group = metadata.get("fly_process_group") or metadata.get("process_group")
-              if group == "app" and machine.get("state") == "started":
+              if group == "app":
                   candidates.insert(0, machine.get("id"))
           print("machine_id=" + (candidates[0] if candidates else ""))
           PY
