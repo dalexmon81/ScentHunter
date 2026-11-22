@@ -7,6 +7,7 @@ from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, fun
 
 from app.models import Store
 from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
+    STORE_CONFIG,
     _apply_candidates,
     is_allowed_product_url,
 )
@@ -81,10 +82,7 @@ class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
                 committed = connection.scalar(
                     select(func.count()).select_from(Store.__table__)
                 )
-            self.assertEqual(committed, len(__import__(
-                "scripts.seed_postgres_fetch_queue_from_legacy_catalog",
-                fromlist=["STORE_CONFIG"],
-            ).STORE_CONFIG))
+            self.assertEqual(committed, len(STORE_CONFIG))
         finally:
             engine.dispose()
 
