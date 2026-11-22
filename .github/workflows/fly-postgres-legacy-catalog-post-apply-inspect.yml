@@ -30,3 +30,5 @@ jobs:
           inspector_b64="$(base64 -w0 backend/scripts/inspect_postgres_legacy_seed_target.py)"
           remote_command="sh -lc 'set -e; test -x /app/.venv/bin/python; mkdir -p /tmp/shim/backend/scripts; trap \"rm -f /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py\" EXIT; printf %s ${inspector_b64} | base64 -d > /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py; export PYTHONPATH=/app/backend; timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py'"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
+
+# one-shot read-only inspection run
