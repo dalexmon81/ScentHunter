@@ -16,10 +16,11 @@ def _engine():
     from app.db import database_url, make_engine
 
     url = make_url(database_url())
-    if url.get_backend_name() == "sqlite" and (
-        not url.database or url.database == ":memory:" or not Path(url.database).is_file()
-    ):
-        raise HTTPException(status_code=503, detail="Canonical catalog is not provisioned")
+    if url.get_backend_name() != "postgresql":
+        raise HTTPException(
+            status_code=503,
+            detail="Canonical public search requires the PostgreSQL catalog",
+        )
     return make_engine()
 
 
