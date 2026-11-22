@@ -11,14 +11,10 @@ class FakeSession:
         self.added = []
 
     def scalar(self, statement):
-        # The script issues one slug lookup per configured retailer. SQL text
-        # is intentionally not coupled to SQLAlchemy internals in this test.
-        from sqlalchemy import inspect
-        compiled = str(statement)
-        for slug, row in self.existing.items():
-            if slug in compiled:
-                return row
-        return None
+        # Read the bound slug value from the SQLAlchemy expression.
+        params = statement.compile().params
+        slug = next(iter(params.values()))
+        return self.existing.get(slug)
 
     def add(self, row):
         self.added.append(row)
