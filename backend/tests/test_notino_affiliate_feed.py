@@ -464,10 +464,10 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "catalog.sqlite"
-            with patch.object(catalog_engine, "DB_PATH", path), \\
-                 patch.object(catalog_engine, "_SCHEMA_READY", False), \\
-                 patch.object(catalog_engine, "ACTIVE_STORES", ("notino",)), \\
-                 patch.object(catalog_engine, "_schedule_easycosmetic_missing_size_repairs"), \\
+            with patch.object(catalog_engine, "DB_PATH", path), \
+                 patch.object(catalog_engine, "_SCHEMA_READY", False), \
+                 patch.object(catalog_engine, "ACTIVE_STORES", ("notino",)), \
+                 patch.object(catalog_engine, "_schedule_easycosmetic_missing_size_repairs"), \
                  patch.object(catalog_engine, "_schedule_stale_price_repairs"):
                 catalog_engine.db().close()
                 report = feed.import_feed_bytes(xml)
