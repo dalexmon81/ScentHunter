@@ -148,6 +148,39 @@ def _queue_rows(connection, queue, candidates, stores):
     return inserted
 
 
+def _apply_candidates(connection, candidates):
+    """Create/lock Store rows and enqueue candidates on one outer transaction."""
+    metadata = MetaData()
+    queue = Table("ingestion_queue_jobs", metadata, autoload_with=connection)
+    stores = {}
+    with Session(bind=connection) as session:
+        for key, (slug, name, domain, country) in STORE_CONFIG.items():
+            store = session.scalar(
+                select(Store).where(Store.slug == slug).with_for_update()
+            )
+            if store is None:
+                store = Store(
+                    id=uuid.uuid4(), name=name, slug=slug, domain=domain,
+                    country=country, currency="EUR", status="active",
+                )
+                session.add(store)
+                session.flush()
+            else:
+                if store.domain and store.domain.lower() != domain.lower():
+                    raise RuntimeError(
+                        f"Store domain conflict for {slug}: {store.domain}"
+                    )
+                if store.status != "active":
+                    raise RuntimeError(
+                        f"Store {slug} is {store.status!r}; refusing "
+                        "to enqueue work for an inactive or quarantined connector"
+                    )
+            stores[key] = store.id
+        session.flush()
+        return _queue_rows(connection, queue, candidates, stores)
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
@@ -210,45 +243,7 @@ def main():
                         + "; run the approved Alembic migration first"
                     )
 
-                metadata = MetaData()
-                queue = Table(
-                    "ingestion_queue_jobs", metadata, autoload_with=conn
-                )
-                stores = {}
-                with Session(bind=conn) as session:
-                    # Session participates in the outer connection transaction.
-                    for key, (slug, name, domain, country) in STORE_CONFIG.items():
-                        store = session.scalar(
-                            select(Store)
-                            .where(Store.slug == slug)
-                            .with_for_update()
-                        )
-                        if store is None:
-                            store = Store(
-                                id=uuid.uuid4(),
-                                name=name,
-                                slug=slug,
-                                domain=domain,
-                                country=country,
-                                currency="EUR",
-                                status="active",
-                            )
-                            session.add(store)
-                            session.flush()
-                        else:
-                            if store.domain and store.domain.lower() != domain.lower():
-                                raise RuntimeError(
-                                    f"Store domain conflict for {slug}: {store.domain}"
-                                )
-                            if store.status != "active":
-                                raise RuntimeError(
-                                    f"Store {slug} is {store.status!r}; refusing "
-                                    "to enqueue work for an inactive or quarantined connector"
-                                )
-                        stores[key] = store.id
-                    session.flush()
-
-                    inserted = _queue_rows(conn, queue, candidates, stores)
+                inserted = _apply_candidates(conn, candidates)
 
                 report["new_jobs_inserted"] = inserted
                 report["destination_written"] = True
