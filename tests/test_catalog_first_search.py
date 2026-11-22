@@ -105,6 +105,8 @@ def test_search_route_is_registered_on_production_app():
     assert "/api/catalog/search" in paths
     assert "/search" in paths
     assert "/api/catalog/status" in paths
+    public_search_routes = [route for route in main.app.routes if route.path == "/search"]
+    assert public_search_routes[0].endpoint.__module__ == "app.api.catalog_search"
 
 
 def test_publication_gate_and_freshness(pilot):
