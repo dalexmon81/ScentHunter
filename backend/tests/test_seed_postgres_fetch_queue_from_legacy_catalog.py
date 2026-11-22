@@ -10,6 +10,7 @@ from app.models import Store
 from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
     STORE_CONFIG,
     _apply_candidates,
+    _read_candidates,
     is_allowed_product_url,
 )
 
@@ -28,6 +29,35 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
         self.assertFalse(is_allowed_product_url(
             "https://www.deloox.lu/product/123", "www.deloox.be"
         ))
+
+
+    def test_reports_rejected_urls_by_exact_hostname(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:")
+        try:
+            with engine.begin() as connection:
+                connection.exec_driver_sql(
+                    "CREATE TABLE store_urls (store TEXT, url TEXT, active INTEGER)"
+                )
+                connection.exec_driver_sql(
+                    "INSERT INTO store_urls (store, url, active) VALUES (?, ?, ?)",
+                    [
+                        ("deloox", "https://www.deloox.be/product/1", 1),
+                        ("deloox", "https://www.deloox.nl/product/2", 1),
+                        ("deloox", "https://www.deloox.lu/product/3", 1),
+                        ("deloox", "https://www.deloox.nl/product/4", 0),
+                    ],
+                )
+                accepted, rejected, duplicates, rejected_domains = _read_candidates(connection)
+
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(rejected["deloox"], 2)
+            self.assertEqual(duplicates, 0)
+            self.assertEqual(rejected_domains["deloox"], {
+                "www.deloox.nl": 1,
+                "www.deloox.lu": 1,
+            })
+        finally:
+            engine.dispose()
 
     def test_rejects_lookalike_hosts_and_unexpected_domains(self):
         self.assertFalse(is_allowed_product_url(
