@@ -191,7 +191,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
-    connector = build_legacy_connector(connector_key)
+    connector = build_legacy_connector(connector_key, allowed_domain=store.domain)
     try:
         observation = asyncio.run(connector.fetch_price_and_stock(external_id))
         raw_record = observation.get("raw_record")
