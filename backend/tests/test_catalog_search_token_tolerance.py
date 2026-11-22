@@ -53,3 +53,29 @@ def test_variant_attributes_remain_strict_filters():
     finally:
         session.close()
         engine.dispose()
+
+
+def test_canonical_identity_without_variant_remains_searchable_without_offers():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    try:
+        brand = Brand(name="Rasasi", slug="rasasi", normalized_name="rasasi")
+        session.add(brand)
+        session.flush()
+        session.add(Fragrance(
+            brand_id=brand.id, name="Hawas Atlantis", slug="hawas-atlantis",
+            image_url=None,
+        ))
+        session.commit()
+
+        result = search_catalog(session, "Rasasi Hawas")
+        assert result["count"] == 1
+        assert result["offer_count"] == 0
+        assert result["results"][0]["brand"] == "Rasasi"
+        assert result["results"][0]["name"] == "Hawas Atlantis Identità catalogo"
+        assert result["results"][0]["offers"] == []
+        assert result["results"][0]["variant_id"] is None
+    finally:
+        session.close()
+        engine.dispose()
