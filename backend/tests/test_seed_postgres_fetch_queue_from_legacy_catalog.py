@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select
+from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select\nfrom sqlalchemy.orm import Session
 
 from app.models import Store
 from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
@@ -52,6 +52,40 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
 
 
 class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
+    def test_existing_store_missing_domain_is_completed(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:")
+        try:
+            Store.__table__.create(engine)
+            metadata = MetaData()
+            Table(
+                "ingestion_queue_jobs", metadata,
+                Column("stage", String(24), nullable=False),
+                Column("dedupe_key", String(64), nullable=False),
+                Column("payload", JSON, nullable=False),
+                Column("status", String(16), nullable=False),
+            ).create(engine)
+            store_id = __import__("uuid").uuid4()
+            with engine.begin() as connection:
+                with patch(
+                    "scripts.seed_postgres_fetch_queue_from_legacy_catalog._queue_rows",
+                    return_value=0,
+                ):
+                    with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
+                        session.add(Store(
+                            id=store_id, name="Deloox", slug="deloox-be",
+                            domain=None, country=None, currency="EUR", status="active",
+                        ))
+                        session.commit()
+                _apply_candidates(connection, [])
+            with engine.connect() as connection:
+                store = connection.execute(
+                    select(Store.domain, Store.country).where(Store.id == store_id)
+                ).one()
+            self.assertEqual(store.domain, "www.deloox.be")
+            self.assertEqual(store.country, "BE")
+        finally:
+            engine.dispose()
+
     def test_store_creation_rolls_back_when_queue_insert_fails(self):
         engine = create_engine("sqlite+pysqlite:///:memory:")
         try:
