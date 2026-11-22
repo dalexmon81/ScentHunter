@@ -36,7 +36,7 @@ def main():
                 out["ingestion_error_counts"]=[dict(r) for r in c.execute(text("""
                     SELECT s.slug, err.message AS error, count(*) AS runs
                     FROM ingestion_runs r JOIN stores s ON s.id=r.store_id
-                    CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(r.errors, '[]'::jsonb)) AS err(message)
+                    CROSS JOIN LATERAL json_array_elements_text(COALESCE(r.errors, '[]'::json)) AS err(message)
                     WHERE r.status IN ('partial','failed')
                     GROUP BY s.slug, err.message ORDER BY runs DESC LIMIT 40
                 """)).mappings()]
