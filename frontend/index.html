@@ -1250,11 +1250,7 @@ async function searchPerfume(){
     // have finished so results do not flicker in progressively.
     // Catalog-first is the default on the pilot and for the new search flow.
     // Keep the legacy progressive path available only as an explicit diagnostic opt-out.
-    const searchParams=new URLSearchParams(window.location.search);
-    const catalogFirst=searchParams.get("catalog_first")!=="0";
-    const data=catalogFirst
-      ? await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000)
-      : await searchStoresProgressive(q,()=>{});
+    const data=await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000);
     renderData(data,true);
   } catch (e) {
   console.error(e);

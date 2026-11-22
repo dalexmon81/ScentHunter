@@ -23,6 +23,7 @@ def _engine():
     return make_engine()
 
 
+@router.get("/search")
 @router.get("/api/catalog/search")
 def catalog_search(q: str = Query(min_length=1, max_length=120)):
     from sqlalchemy.orm import Session
