@@ -20,7 +20,7 @@ def main():
             out={"database":c.execute(text("select current_database()")).scalar_one(),
                  "tables_present":sorted(tables),
                  "counts":{},"offers_by_status":[],"ingestion_raw_by_status":[],
-                 "ingestion_runs_by_status":[],"offers_by_store":[],"raw_by_store_status":[],"queue_failures_by_error":[],"recent_problem_runs":[]}
+                 "ingestion_runs_by_status":[],"offers_by_store":[],"raw_by_store_status":[],"queue_failures_by_error":[],"queue_by_store_stage_status":[],"recent_problem_runs":[]}
             for table in ("brands","fragrances","product_variants","stores","offers","price_history","match_audit","ingestion_raw","ingestion_runs","ingestion_queue_jobs"):
                 if table in tables:
                     out["counts"][table]=c.execute(text(f'SELECT count(*) FROM "{table}"')).scalar_one()
@@ -51,6 +51,16 @@ def main():
                     GROUP BY s.slug, ir.status ORDER BY s.slug, ir.status
                 """)).mappings()]
             if "ingestion_queue_jobs" in tables:
+                out["queue_by_store_stage_status"]=[dict(r) for r in c.execute(text("""
+                    SELECT coalesce(s.slug,'<unknown-store>') AS store_slug,
+                           q.stage,q.status,count(*) AS jobs,
+                           min(q.created_at) AS oldest_created,
+                           max(q.created_at) AS newest_created
+                    FROM ingestion_queue_jobs q
+                    LEFT JOIN stores s ON s.id::text=q.payload->>'store_id'
+                    GROUP BY coalesce(s.slug,'<unknown-store>'),q.stage,q.status
+                    ORDER BY store_slug,q.stage,q.status
+                """)).mappings()]
                 out["queue_failures_by_error"]=[dict(r) for r in c.execute(text("""
                     SELECT stage, left(coalesce(last_error,'<no error>'),240) AS error, count(*) AS jobs
                     FROM ingestion_queue_jobs WHERE status='failed'
