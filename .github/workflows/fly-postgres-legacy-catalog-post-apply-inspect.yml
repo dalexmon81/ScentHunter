@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$COMMIT_MESSAGE" = "ops: inspect PostgreSQL queue after interrupted apply"
+          test "$COMMIT_MESSAGE" = "ops: inspect PostgreSQL catalog health after queue seed"
           test -n "$FLY_API_TOKEN"
           flyctl machines list --app "$FLY_APP" --json > /tmp/machines.json
           MACHINE_ID="$(python -c 'import json; m=json.load(open("/tmp/machines.json")); p=[x.get("id") for x in m if ((x.get("config") or {}).get("metadata") or {}).get("fly_process_group")=="app"]; o=[x.get("id") for x in m if x.get("id") not in p]; print(next((x for x in p+o if x), ""))')"
