@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.connectors.base import ConnectorUnavailable
 from app.connectors.legacy_scrapers import (
@@ -205,9 +205,9 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
             record_connector_success(session, store_id=store_id)
             offer = session.scalar(select(Offer).where(
                 Offer.store_id == store_id,
-                Offer.external_product_id == external_id,
                 Offer.status == "active",
-            ))
+                or_(Offer.external_product_id == external_id, Offer.url == external_id),
+            ).order_by(Offer.captured_at.desc()).limit(1))
             if offer is None:
                 raise LookupError("active_offer_not_found_for_refresh")
             refresh_offer_observation(
