@@ -273,6 +273,39 @@ def main():
                 text("SELECT current_database()")
             ).scalar_one()
             report["target_database"] = db_name
+            if {"ingestion_queue_jobs", "stores"}.issubset(set(inspect(conn).get_table_names())):
+                active_keys = set(conn.execute(text("""
+                    SELECT dedupe_key
+                    FROM ingestion_queue_jobs
+                    WHERE stage = 'fetch' AND status IN ('queued','running')
+                """)).scalars())
+                slugs = [item[0] for item in STORE_CONFIG.values()]
+                store_id_by_slug = dict(conn.execute(
+                    text("SELECT slug, id FROM stores WHERE slug IN :slugs").bindparams(
+                        bindparam("slugs", expanding=True)
+                    ),
+                    {"slugs": slugs},
+                ).all())
+                candidate_keys = set()
+                candidates_without_store = 0
+                for store_key, url in candidates:
+                    slug = STORE_CONFIG[store_key][0]
+                    store_id = store_id_by_slug.get(slug)
+                    if store_id is None:
+                        candidates_without_store += 1
+                        continue
+                    payload = {
+                        "store_id": str(store_id),
+                        "external_product_id": url,
+                    }
+                    serialized = json.dumps(
+                        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    )
+                    candidate_keys.add(hashlib.sha256(serialized.encode("utf-8")).hexdigest())
+                already_active = len(candidate_keys & active_keys)
+                would_insert = len(candidate_keys - active_keys) + candidates_without_store
+                report["already_active_candidates"] = already_active
+                report["would_insert_candidates"] = would_insert
             if args.apply and args.confirm_target != db_name:
                 raise ValueError(
                     "--confirm-target must exactly match target database name"
