@@ -157,7 +157,7 @@ jobs:
           echo "=== CURRENT MACHINES ==="
           flyctl machines list --app scenthunter --json || true
 
-      - name: Initialize and verify isolated Phase 2 SQLite catalog
+      - name: Seed and verify canonical PostgreSQL catalog and retailer stores
         if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -165,7 +165,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py && /app/.venv/bin/python scripts/verify_catalog.py'"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store --seed-deloox-store --seed-sabina-store --seed-easycosmetic-store --seed-parfumzentrum-store && /app/.venv/bin/python scripts/verify_catalog.py'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
       - name: Verify production health and catalog API
