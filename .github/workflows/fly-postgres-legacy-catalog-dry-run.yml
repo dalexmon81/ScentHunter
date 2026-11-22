@@ -76,5 +76,5 @@ jobs:
         run: |
           set -euo pipefail
           script_b64="$(base64 -w0 backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py)"
-          remote_command="sh -lc 'set -e; trap \"rm -f /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py\" EXIT; printf %s ${script_b64} | base64 -d > /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py; PYTHONPATH=/app/backend /app/.venv/bin/python /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3'"
+          remote_command="sh -lc 'set -e; mkdir -p /tmp/shim/backend/scripts; trap \"rm -f /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py\" EXIT; printf %s ${script_b64} | base64 -d > /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py; PYTHONPATH=/app/backend /app/.venv/bin/python /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3'"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
