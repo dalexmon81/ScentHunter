@@ -32,6 +32,21 @@ STORE_CONFIG = {
 BATCH_SIZE = 500
 
 
+def is_allowed_product_url(url: str, expected_domain: str) -> bool:
+    """Accept only HTTP(S) product URLs hosted by the configured retailer domain."""
+    parsed = urlparse(str(url).strip())
+    hostname = (parsed.hostname or "").lower()
+    domain = str(expected_domain).strip().lower()
+    return bool(
+        parsed.scheme.lower() in {"http", "https"}
+        and hostname
+        and parsed.username is None
+        and parsed.password is None
+        and domain
+        and (hostname == domain or hostname.endswith("." + domain))
+    )
+
+
 def source_engine(path: Path):
     path = path.expanduser().resolve(strict=True)
     url = URL.create(
@@ -78,16 +93,8 @@ def main():
             """).bindparams(bindparam("stores", expanding=True))
             counts = dict.fromkeys(STORE_CONFIG, 0)
             for store_key, url in src.execute(query, {"stores": list(STORE_CONFIG)}):
-                parsed = urlparse(str(url))
-                expected_domain = STORE_CONFIG[store_key][2].lower()
-                hostname = (parsed.hostname or "").lower()
-                if (
-                    parsed.scheme not in {"http", "https"}
-                    or not hostname
-                    or parsed.username is not None
-                    or parsed.password is not None
-                    or not (hostname == expected_domain or hostname.endswith("." + expected_domain))
-                ):
+                expected_domain = STORE_CONFIG[store_key][2]
+                if not is_allowed_product_url(str(url), expected_domain):
                     continue
                 counts[store_key] += 1
             report["stores"] = counts
@@ -136,16 +143,8 @@ def main():
                 with source.connect() as src, target.begin() as conn:
                     for store_key, url in src.execute(read_query, {"stores": list(STORE_CONFIG)}):
                         url = str(url).strip()
-                        parsed = urlparse(url)
-                        expected_domain = STORE_CONFIG[store_key][2].lower()
-                        hostname = (parsed.hostname or "").lower()
-                        if (
-                            parsed.scheme not in {"http", "https"}
-                            or not hostname
-                            or parsed.username is not None
-                            or parsed.password is not None
-                            or not (hostname == expected_domain or hostname.endswith("." + expected_domain))
-                        ):
+                        expected_domain = STORE_CONFIG[store_key][2]
+                        if not is_allowed_product_url(url, expected_domain):
                             continue
                         slug = STORE_CONFIG[store_key][0]
                         store_id = stores[store_key]
