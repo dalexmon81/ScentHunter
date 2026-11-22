@@ -280,6 +280,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          machine_id="$(flyctl machine list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="app"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started app machine found for Bplatz queue verification." >&2; exit 1; }
+
           python_script="$(cat <<'PY'
           import os
           from sqlalchemy import text
@@ -295,26 +298,27 @@ jobs:
 
           factory = make_session_factory()
           _schedule_active_offer_refresh(factory)
-          with factory() as session:
-              store_id = session.execute(
-                  text("SELECT id::text FROM stores WHERE slug='bplatz' AND status='active'")
-              ).scalar_one()
-              count = session.execute(
-                  text("""
-                      SELECT count(*) FROM ingestion_queue_jobs
-                      WHERE stage='refresh'
-                        AND payload->>'store_id'=:store_id
-                        AND created_at >= now() - interval '10 minutes'
-                  """),
-                  {"store_id": store_id},
-              ).scalar_one()
-              print("BPLATZ_REFRESH_JOBS_SCHEDULED=" + str(count))
-              assert count >= 1, "No Bplatz PostgreSQL refresh jobs were scheduled"
+          session = factory()
+          store_id = session.execute(
+              text("SELECT id::text FROM stores WHERE slug='bplatz' AND status='active'")
+          ).scalar_one()
+          count = session.execute(
+              text("""
+                  SELECT count(*) FROM ingestion_queue_jobs
+                  WHERE stage='refresh'
+                    AND payload->>'store_id'=:store_id
+                    AND created_at >= now() - interval '10 minutes'
+              """),
+              {"store_id": store_id},
+          ).scalar_one()
+          session.close()
+          print("BPLATZ_REFRESH_JOBS_SCHEDULED=" + str(count))
+          assert count >= 1, "No Bplatz PostgreSQL refresh jobs were scheduled"
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
-          remote_command="cd /app/backend && printf '%s' '$encoded' | base64 -d | /app/.venv/bin/python"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+          remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
+          flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
 
       - name: Force-refresh and verify the affected Deloox offer directly on Fly
         if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
