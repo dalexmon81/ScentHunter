@@ -452,6 +452,34 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 feed.import_configured_feed()
         self.assertNotIn("secret-canary-value", str(raised.exception))
 
+    def test_search_feed_keeps_priced_out_of_stock_notino_listing_unavailable(self):
+        import catalog_engine
+
+        product = "https://www.notino.fr/rasasi/hawas-eau-de-parfum/"
+        xml = f"""<rss xmlns:g="http://base.google.com/ns/1.0"><channel>
+          <item><g:id>HAWAS-OOS-100</g:id><g:title>Rasasi Hawas Eau de Parfum 100 ml</g:title>
+          <g:brand>Rasasi</g:brand><g:price>42.90 EUR</g:price>
+          <g:availability>out of stock</g:availability><g:link>{product}</g:link>
+          <g:size>100 ml</g:size></item></channel></rss>""".encode()
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.sqlite"
+            with patch.object(catalog_engine, "DB_PATH", path), \\
+                 patch.object(catalog_engine, "_SCHEMA_READY", False), \\
+                 patch.object(catalog_engine, "ACTIVE_STORES", ("notino",)), \\
+                 patch.object(catalog_engine, "_schedule_easycosmetic_missing_size_repairs"), \\
+                 patch.object(catalog_engine, "_schedule_stale_price_repairs"):
+                catalog_engine.db().close()
+                report = feed.import_feed_bytes(xml)
+                self.assertEqual(report["imported_offers"], 1)
+
+                result = feed.search_feed("Rasasi Hawas")
+                self.assertEqual(result["status"], "success")
+                self.assertEqual(len(result["results"]), 1)
+                self.assertEqual(result["results"][0]["availability"], "out_of_stock")
+                self.assertFalse(result["results"][0]["available"])
+                self.assertEqual(result["results"][0]["price_num"], 42.90)
+
     def test_default_cj_subscription_url_is_configured(self):
         self.assertIn("/324587/", feed.DEFAULT_CJ_FEED_URL)
         self.assertTrue(feed.DEFAULT_CJ_FEED_URL.endswith(".xml.zip"))
