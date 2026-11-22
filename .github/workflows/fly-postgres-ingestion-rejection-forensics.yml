@@ -2,6 +2,11 @@ name: Read-only PostgreSQL ingestion rejection forensics
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/public-postgres-catalog-ingestion-2026-11-22
+    paths:
+      - .github/workflows/fly-postgres-ingestion-rejection-forensics.yml
 
 permissions:
   contents: read
