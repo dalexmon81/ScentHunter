@@ -62,13 +62,19 @@ def _schedule_active_offer_refresh(session_factory) -> None:
         return
     try:
         with session_factory() as session:
-            rows = session.execute(select(Offer.store_id, Offer.external_product_id).join(Store).where(
+            rows = session.execute(select(
+                Store.slug, Offer.store_id, Offer.external_product_id, Offer.url
+            ).join(Store).where(
                 Store.status == "active", Store.slug.in_(("notino-fr", *tuple(STORE_SLUGS))),
                 Offer.status == "active",
                 Offer.external_product_id.is_not(None)
             ).order_by(Offer.captured_at.asc()).limit(200)).all()
-        for store_id, external_product_id in rows:
-            enqueue_offer_refresh(store_id, external_product_id)
+        for store_slug, store_id, external_product_id, product_url in rows:
+            # Bplatz legacy rows use GTIN as external_product_id; its parser fetches
+            # by product URL. Keep canonical identity unchanged and refresh by URL.
+            refresh_id = product_url if store_slug == "bplatz" and product_url else external_product_id
+            if refresh_id:
+                enqueue_offer_refresh(store_id, refresh_id)
     except Exception:
         log.exception("Unable to schedule PostgreSQL active-offer refresh")
 
