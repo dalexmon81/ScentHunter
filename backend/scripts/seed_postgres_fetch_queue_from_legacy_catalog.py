@@ -181,6 +181,13 @@ def _apply_candidates(connection, candidates):
                     raise RuntimeError(
                         f"Store domain conflict for {slug}: {store.domain}"
                     )
+                # Existing placeholder Store rows may have been created before
+                # a connector domain was assigned. Fill only missing metadata;
+                # never overwrite a conflicting non-empty domain.
+                if not store.domain:
+                    store.domain = domain
+                if not store.country:
+                    store.country = country
                 if store.status != "active":
                     raise RuntimeError(
                         f"Store {slug} is {store.status!r}; refusing "
