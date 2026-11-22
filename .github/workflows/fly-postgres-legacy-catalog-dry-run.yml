@@ -44,10 +44,12 @@ jobs:
               elif machine.get("id"):
                   candidates.append(machine["id"])
           seen = set()
+          ordered = []
           for machine_id in candidates:
               if machine_id and machine_id not in seen:
-                  print(f"machine_id={machine_id}")
+                  ordered.append(machine_id)
                   seen.add(machine_id)
+          print("machine_ids=" + " ".join(ordered))
           PY
 
       - name: Verify mounted SQLite source and PostgreSQL target configuration
@@ -55,15 +57,14 @@ jobs:
         run: |
           set -euo pipefail
           found=0
-          while IFS= read -r machine_id; do
-            [ -n "$machine_id" ] || continue
+          for machine_id in ${{ steps.machine.outputs.machine_ids }}; do
             if flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -r /data/store_catalog.sqlite3 && test -x /app/.venv/bin/python && test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\" && echo SCENTHUNTER_PREFLIGHT=PASS" ; then
               echo "SCENTHUNTER_APP_MACHINE=$machine_id"
               echo "SCENTHUNTER_APP_MACHINE=$machine_id" >> "$GITHUB_ENV"
               found=1
               break
             fi
-          done < <(sed -n 's/^machine_id=//p' "$GITHUB_OUTPUT")
+          done
           test "$found" -eq 1
 
       - name: Run read-only SQLite to PostgreSQL queue dry-run
