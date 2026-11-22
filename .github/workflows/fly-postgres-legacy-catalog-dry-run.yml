@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           found=0
           for machine_id in ${{ steps.machine.outputs.machine_ids }}; do
-            if flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -r /data/store_catalog.sqlite3 && test -x /app/.venv/bin/python && test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\" && echo SCENTHUNTER_PREFLIGHT=PASS" ; then
+            if flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "sh -lc 'test -r /data/store_catalog.sqlite3 && test -x /app/.venv/bin/python && test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\" && echo SCENTHUNTER_PREFLIGHT=PASS'" ; then
               echo "SCENTHUNTER_APP_MACHINE=$machine_id"
               echo "SCENTHUNTER_APP_MACHINE=$machine_id" >> "$GITHUB_ENV"
               found=1
@@ -73,4 +73,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app "$FLY_APP" --machine "$SCENTHUNTER_APP_MACHINE" -C "/app/.venv/bin/python /app/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3"
+          flyctl ssh console --app "$FLY_APP" --machine "$SCENTHUNTER_APP_MACHINE" -C "sh -lc '/app/.venv/bin/python /app/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3'"
