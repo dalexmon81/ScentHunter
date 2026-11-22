@@ -6,9 +6,10 @@ from unittest.mock import patch
 from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select
 
 from app.models import Store
-from scripts.seed_postgres_fetch_queue_from_legacy_catalog import _apply_candidates
-
-from scripts.seed_postgres_fetch_queue_from_legacy_catalog import is_allowed_product_url
+from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
+    _apply_candidates,
+    is_allowed_product_url,
+)
 
 
 class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
@@ -70,8 +71,31 @@ class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
                     select(func.count()).select_from(Store.__table__)
                 )
             self.assertEqual(remaining, 0)
+
+            # The savepoint release must preserve successful writes until the
+            # caller commits its outer transaction.
+            with engine.begin() as connection:
+                inserted = _apply_candidates_with_queue_success(connection)
+            self.assertEqual(inserted, 7)
+            with engine.connect() as connection:
+                committed = connection.scalar(
+                    select(func.count()).select_from(Store.__table__)
+                )
+            self.assertEqual(committed, len(__import__(
+                "scripts.seed_postgres_fetch_queue_from_legacy_catalog",
+                fromlist=["STORE_CONFIG"],
+            ).STORE_CONFIG))
         finally:
             engine.dispose()
+
+
+
+def _apply_candidates_with_queue_success(connection):
+    with patch(
+        "scripts.seed_postgres_fetch_queue_from_legacy_catalog._queue_rows",
+        return_value=7,
+    ):
+        return _apply_candidates(connection, [])
 
 
 if __name__ == "__main__":
