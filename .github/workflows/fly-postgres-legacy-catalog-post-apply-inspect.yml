@@ -41,5 +41,4 @@ jobs:
           timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py
           timeout 180 /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_catalog_health.py
           EOF
-          remote_b64="$(base64 -w0 /tmp/remote-inspect.sh)"
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "printf %s $remote_b64 | base64 -d > /tmp/run-inspect.sh && sh /tmp/run-inspect.sh"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
