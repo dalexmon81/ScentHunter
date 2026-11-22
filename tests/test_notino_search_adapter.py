@@ -191,6 +191,35 @@ def test_public_offer_normalisation_rejects_foreign_urls_and_missing_prices():
     ) is None
 
 
+def test_public_offer_normalisation_rejects_unknown_stock_state():
+    offer = {
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "brand": "Dior",
+        "price": "89,90 €",
+        "size_ml": 100,
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+        "availability": "unknown",
+        "available": None,
+    }
+    assert scraper._normalise_public_offer(offer, "Dior Sauvage") is None
+
+
+def test_public_offer_normalisation_keeps_explicit_out_of_stock_as_unavailable():
+    offer = {
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "brand": "Dior",
+        "price": "89,90 €",
+        "size_ml": 100,
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+        "availability": "out_of_stock",
+        "available": False,
+    }
+    normalized = scraper._normalise_public_offer(offer, "Dior Sauvage")
+    assert normalized is not None
+    assert normalized["availability"] == "out_of_stock"
+    assert normalized["available"] is False
+
+
 def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypatch):
     html = """
     <html><head><title>Bioderma Pigmentbio H2O</title></head>
