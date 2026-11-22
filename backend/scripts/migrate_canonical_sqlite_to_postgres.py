@@ -31,7 +31,7 @@ TABLE_ORDER = (
     "offers", "price_history", "match_audit", "ingestion_runs",
 )
 EXPECTED_REVISION = "0005_connector_quarantine"
-SUPPORTED_SOURCE_REVISIONS = {EXPECTED_REVISION}
+SUPPORTED_SOURCE_REVISIONS = {EXPECTED_REVISION, "0006_postgres_ingestion_queue"}
 SUPPORTED_TARGET_REVISIONS = {EXPECTED_REVISION, "0006_postgres_ingestion_queue"}
 
 
@@ -205,7 +205,7 @@ def inspect_and_import(source_path: Path, target_engine, *, apply=False, confirm
             ).scalar_one()
             if source_revision not in SUPPORTED_SOURCE_REVISIONS:
                 raise RuntimeError(
-                    f"Source Alembic revision must be one of {sorted(SUPPORTED_TARGET_REVISIONS)}; "
+                    f"Source Alembic revision must be one of {sorted(SUPPORTED_SOURCE_REVISIONS)}; "
                     f"found {source_revision}."
                 )
             report["source_alembic_revision"] = source_revision
