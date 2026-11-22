@@ -1003,7 +1003,7 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             continue
         if requested_size is not None and size is not None and abs(float(size) - requested_size) > 0.01:
             continue
-        if str(row["availability"] or "").lower() not in {"in_stock", "preorder"}:
+        if str(row["availability"] or "").lower() not in {"in_stock", "preorder", "out_of_stock"}:
             continue
         offer_url = _notino_variant_url(row["variant_url"], row["url"])
         if not offer_url:
@@ -1021,7 +1021,7 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
             "price": f"{price:.2f} €",
             "price_num": price,
             "currency": "EUR",
-            "available": True,
+            "available": str(row["availability"] or "").lower() in {"in_stock", "preorder"},
             "availability": row["availability"],
             "image": row["image"],
             "size_ml": size,
