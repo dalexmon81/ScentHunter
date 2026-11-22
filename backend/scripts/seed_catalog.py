@@ -445,8 +445,23 @@ def main() -> int:
                     if store is None:
                         session.add(Store(**store_config))
                     else:
-                        for field, value in store_config.items():
-                            setattr(store, field, value)
+                        # A deployment seed must never reactivate a quarantined
+                        # connector or overwrite its operator-managed metadata.
+                        if store.status != "active":
+                            raise RuntimeError(
+                                f"Store {store.slug!r} exists with status={store.status!r}; "
+                                "refusing automatic reactivation."
+                            )
+                        mismatches = {
+                            field: {"existing": getattr(store, field), "expected": value}
+                            for field, value in store_config.items()
+                            if field != "status" and getattr(store, field) != value
+                        }
+                        if mismatches:
+                            raise RuntimeError(
+                                f"Store {store.slug!r} metadata mismatch; refusing overwrite: "
+                                + json.dumps(mismatches, ensure_ascii=False, default=str)
+                            )
 
         inspector = inspect(engine)
         expected_tables = {

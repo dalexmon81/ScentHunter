@@ -67,6 +67,11 @@ jobs:
             "NOTINO_CJ_FEED_USERNAME=${CJ_HTTP_USERNAME}" \
             "NOTINO_CJ_FEED_PASSWORD=${CJ_HTTP_PASSWORD}" \
             "SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_SABINA=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_PARFUMZENTRUM=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             --app scenthunter
           echo "Notino CJ feed URL and credentials staged for the production release."
 
@@ -153,7 +158,7 @@ jobs:
           echo "=== CURRENT MACHINES ==="
           flyctl machines list --app scenthunter --json || true
 
-      - name: Initialize and verify isolated Phase 2 SQLite catalog
+      - name: Seed and verify canonical PostgreSQL catalog and retailer stores
         if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -161,7 +166,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py && /app/.venv/bin/python scripts/verify_catalog.py'"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store --seed-deloox-store --seed-sabina-store --seed-easycosmetic-store --seed-parfumzentrum-store && /app/.venv/bin/python scripts/verify_catalog.py'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
       - name: Verify production health and catalog API
@@ -314,6 +319,61 @@ jobs:
           session.close()
           print("BPLATZ_REFRESH_JOBS_SCHEDULED=" + str(count))
           assert count >= 1, "No Bplatz PostgreSQL refresh jobs were scheduled"
+          PY
+          )"
+          encoded="$(printf '%s' "$python_script" | base64 -w0)"
+          remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
+          flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
+
+      - name: Queue and verify daily PostgreSQL discovery for all legacy retailers
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="app"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started app machine found for retailer discovery verification." >&2; exit 1; }
+
+          python_script="$(cat <<'PY'
+          import os
+          from sqlalchemy import text
+          from app.db import make_session_factory
+          from app.workers.postgres_worker import _schedule_daily_discovery
+
+          retailers = {
+              "bplatz": "BPLATZ",
+              "deloox-be": "DELOOX",
+              "sabina-es": "SABINA",
+              "easycosmetic-de": "EASYCOSMETIC",
+              "parfumzentrum-de": "PARFUMZENTRUM",
+          }
+          for slug, suffix in retailers.items():
+              key = "SCENTHUNTER_DISCOVERY_QUERIES_" + suffix
+              queries = [item.strip() for item in os.environ.get(key, "").split(";") if item.strip()]
+              print(key + "_COUNT=" + str(len(queries)))
+              assert len(queries) >= 5, "Missing approved discovery query seeds for " + slug
+
+          factory = make_session_factory()
+          _schedule_daily_discovery(factory)
+          session = factory()
+          for slug in retailers:
+              store_id = session.execute(
+                  text("SELECT id::text FROM stores WHERE slug=:slug AND status='active'"),
+                  {"slug": slug},
+              ).scalar_one()
+              count = session.execute(
+                  text("""
+                      SELECT count(*) FROM ingestion_queue_jobs
+                      WHERE stage='discover'
+                        AND payload->>'store_id'=:store_id
+                        AND created_at >= now() - interval '10 minutes'
+                  """),
+                  {"store_id": store_id},
+              ).scalar_one()
+              print("DISCOVERY_JOBS_" + slug.upper().replace("-", "_") + "=" + str(count))
+              assert count >= 1, "No PostgreSQL discovery job scheduled for " + slug
+          session.close()
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
