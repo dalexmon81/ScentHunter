@@ -223,6 +223,55 @@ jobs:
               raise SystemExit(f"Production smoke test failed after retries: {last_error}")
           PY
 
+      - name: Verify public search is served by the canonical PostgreSQL catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          query = "Dior Sauvage"
+
+          def get_json(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-postgres-search-smoke/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          status = get_json("/api/catalog/status")
+          if status.get("status") != "ready" or int(status.get("published_offers") or 0) < 1:
+              raise RuntimeError("Canonical PostgreSQL catalog is not ready or has no publishable offers")
+
+          encoded = urllib.parse.quote(query)
+          canonical = get_json("/api/catalog/search?q=" + encoded)
+          public = get_json("/search?q=" + encoded)
+
+          for label, payload in (("canonical", canonical), ("public", public)):
+              if payload.get("status") != "completed" or not payload.get("completed"):
+                  raise RuntimeError(f"{label} search did not complete")
+              if int(payload.get("offer_count") or 0) < 1:
+                  raise RuntimeError(f"{label} search returned no publishable offers")
+              for product in payload.get("results") or []:
+                  for offer in product.get("offers") or []:
+                      if offer.get("currency") != "EUR" or not offer.get("url"):
+                          raise RuntimeError(f"{label} search exposed an invalid offer")
+
+          if public.get("results") != canonical.get("results"):
+              raise RuntimeError("Public /search does not return the canonical PostgreSQL search result")
+
+          print("PUBLIC_SEARCH_BACKEND=postgresql")
+          print("PUBLIC_SEARCH_ROUTE=PASS")
+          print("CANONICAL_API=PASS")
+          print("PUBLISHED_OFFERS=" + str(public["offer_count"]))
+          PY
+
       - name: Force-refresh and verify the affected Deloox offer directly on Fly
         if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
         env:
