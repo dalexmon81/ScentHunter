@@ -1,7 +1,7 @@
 name: Fly PostgreSQL legacy catalog dry-run
 # This workflow performs inspection only; it never enqueues or mutates data.
 # Host-level rejection counts are emitted to preserve visibility into skipped storefronts.
-# This run validates the expanded Deloox market mapping without writing to PostgreSQL.
+# This run validates retailer market mapping and store-domain alignment without writing to PostgreSQL.
 # The target inspection is self-contained so it can run on the existing Fly image.
 
 on:
@@ -10,6 +10,8 @@ on:
       - fix/public-postgres-catalog-ingestion-2026-11-22
     paths:
       - .github/workflows/fly-postgres-legacy-catalog-dry-run.yml
+      - backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py
+      - backend/scripts/inspect_postgres_legacy_seed_target.py
 
 jobs:
   legacy-catalog-dry-run:
