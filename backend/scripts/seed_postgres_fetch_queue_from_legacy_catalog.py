@@ -100,6 +100,7 @@ def _read_candidates(connection):
 
     accepted = []
     rejected = dict.fromkeys(STORE_CONFIG, 0)
+    rejected_domains = {store_key: {} for store_key in STORE_CONFIG}
     seen = set()
     duplicate_count = 0
     for store_key, raw_url in connection.execute(
@@ -109,6 +110,10 @@ def _read_candidates(connection):
         domains = STORE_URL_DOMAINS[store_key]
         if not is_allowed_product_url(url, domains):
             rejected[store_key] += 1
+            hostname = (urlparse(url).hostname or "(missing)").lower().rstrip(".")
+            rejected_domains[store_key][hostname] = (
+                rejected_domains[store_key].get(hostname, 0) + 1
+            )
             continue
         candidate = (store_key, url)
         if candidate in seen:
@@ -118,7 +123,7 @@ def _read_candidates(connection):
         accepted.append(candidate)
 
     accepted.sort(key=lambda item: (item[0], item[1]))
-    return accepted, rejected, duplicate_count
+    return accepted, rejected, duplicate_count, rejected_domains
 
 
 def _queue_rows(connection, queue, candidates, stores):
@@ -231,13 +236,14 @@ def main():
         # SQLite read transaction gives dry-run and apply a consistent view.
         with source.connect() as src:
             with src.begin():
-                candidates, rejected, duplicate_count = _read_candidates(src)
+                candidates, rejected, duplicate_count, rejected_domains = _read_candidates(src)
         counts = dict.fromkeys(STORE_CONFIG, 0)
         for store_key, _url in candidates:
             counts[store_key] += 1
         report.update({
             "stores": counts,
             "rejected_by_store": rejected,
+            "rejected_domains_by_store": rejected_domains,
             "duplicate_candidates": duplicate_count,
             "queued_candidates": len(candidates),
         })
