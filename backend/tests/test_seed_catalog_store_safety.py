@@ -126,6 +126,7 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
         from sqlalchemy.orm import Session
         from app.models import Base, Store
 
+        store_slug = store.slug
         with tempfile.TemporaryDirectory() as temp:
             database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
             engine = create_engine(database_url)
