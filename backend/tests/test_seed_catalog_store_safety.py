@@ -177,7 +177,7 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stdout + "\\n" + completed.stderr)
         self.assertEqual(persisted["status"], "active")
         self.assertEqual(persisted["domain"], "www.deloox.be")
-        self.assertEqual(persisted["reliability_score"], 0.93)
+        self.assertEqual(float(persisted["reliability_score"]), 0.93)
         self.assertEqual(persisted["last_successful_sync_at"], synced_at)
 
 
