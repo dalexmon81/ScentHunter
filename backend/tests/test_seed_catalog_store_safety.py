@@ -118,7 +118,68 @@ def test_seed_stops_when_normalized_name_and_slug_point_to_different_brands():
 
 
 
-class CanonicalGtinImportTests(unittest.TestCase):
+
+
+class ExistingRetailerStateSafetyTests(unittest.TestCase):
+    def _run_with_store(self, store, retailer_flag="--seed-deloox-store"):
+        from sqlalchemy import create_engine, select
+        from sqlalchemy.orm import Session
+        from app.models import Base, Store
+
+        with tempfile.TemporaryDirectory() as temp:
+            database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
+            engine = create_engine(database_url)
+            try:
+                Base.metadata.create_all(engine)
+                with Session(engine) as session, session.begin():
+                    session.add(store)
+                env = os.environ.copy()
+                env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+                completed = subprocess.run(
+                    [sys.executable, str(SEED), "--catalog", str(CATALOG),
+                     "--apply", retailer_flag],
+                    cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+                )
+                with Session(engine) as session:
+                    persisted = session.scalar(select(Store).where(Store.slug == store.slug))
+                    snapshot = {
+                        "status": persisted.status,
+                        "domain": persisted.domain,
+                        "name": persisted.name,
+                        "reliability_score": persisted.reliability_score,
+                        "last_successful_sync_at": persisted.last_successful_sync_at,
+                    }
+                return completed, snapshot
+            finally:
+                engine.dispose()
+
+    def test_existing_inactive_store_is_not_reactivated(self):
+        from app.models import Store
+
+        completed, persisted = self._run_with_store(Store(
+            name="Deloox.be", slug="deloox-be", domain="www.deloox.be",
+            country="BE", currency="EUR", status="inactive",
+        ))
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("refusing automatic reactivation", completed.stderr)
+        self.assertEqual(persisted["status"], "inactive")
+
+    def test_existing_active_store_metadata_and_health_state_are_preserved(self):
+        from datetime import datetime, timezone
+        from app.models import Store
+
+        synced_at = datetime(2026, 11, 21, 12, 0, tzinfo=timezone.utc)
+        completed, persisted = self._run_with_store(Store(
+            name="Deloox.be", slug="deloox-be", domain="www.deloox.be",
+            country="BE", currency="EUR", status="active",
+            reliability_score=0.93, last_successful_sync_at=synced_at,
+        ))
+        self.assertEqual(completed.returncode, 0, completed.stdout + "\\n" + completed.stderr)
+        self.assertEqual(persisted["status"], "active")
+        self.assertEqual(persisted["domain"], "www.deloox.be")
+        self.assertEqual(persisted["reliability_score"], 0.93)
+        self.assertEqual(persisted["last_successful_sync_at"], synced_at)
+\n\nclass CanonicalGtinImportTests(unittest.TestCase):
     def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit(self):
         from scripts.seed_catalog import extract_variant_gtin
 
