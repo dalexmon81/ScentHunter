@@ -29,6 +29,9 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
         self.assertFalse(is_allowed_product_url(
             "https://www.deloox.lu/product/123", "www.deloox.be"
         ))
+        self.assertTrue(is_allowed_product_url(
+            "https://www.deloox.es/product/123", "www.deloox.es"
+        ))
 
 
     def test_reports_rejected_urls_by_exact_hostname(self):
@@ -44,17 +47,21 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
                         ("deloox", "https://www.deloox.be/product/1", 1),
                         ("deloox", "https://www.deloox.nl/product/2", 1),
                         ("deloox", "https://www.deloox.lu/product/3", 1),
-                        ("deloox", "https://www.deloox.nl/product/4", 0),
+                        ("deloox", "https://www.deloox.com/product/4", 1),
+                        ("deloox", "https://www.deloox.es/product/5", 1),
+                        ("deloox", "https://www.deloox.be.evil.example/product/6", 1),
+                        ("deloox", "https://www.deloox.nl/product/7", 0),
                     ],
                 )
                 accepted, rejected, duplicates, rejected_domains = _read_candidates(connection)
 
-            self.assertEqual(len(accepted), 1)
-            self.assertEqual(rejected["deloox"], 2)
+            self.assertEqual({key for key, _url in accepted}, {
+                "deloox-be", "deloox-nl", "deloox-lu", "deloox-com", "deloox-es",
+            })
+            self.assertEqual(rejected["deloox"], 1)
             self.assertEqual(duplicates, 0)
             self.assertEqual(rejected_domains["deloox"], {
-                "www.deloox.nl": 1,
-                "www.deloox.lu": 1,
+                "www.deloox.be.evil.example": 1,
             })
         finally:
             engine.dispose()
@@ -148,7 +155,7 @@ class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
             # caller commits its outer transaction.
             with engine.begin() as connection:
                 inserted = _apply_candidates_with_queue_success(connection)
-            self.assertEqual(inserted, 7)
+            self.assertEqual(inserted, len(STORE_CONFIG))
             with engine.connect() as connection:
                 committed = connection.scalar(
                     select(func.count()).select_from(Store.__table__)
