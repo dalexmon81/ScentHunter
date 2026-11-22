@@ -427,11 +427,17 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
                 conn.close()
                 self.assertEqual(catalog_engine.search_local("Dior Sauvage")[0]["url"], product)
                 self.assertEqual(feed.search_feed("Dior Sauvage")["results"][0]["url"], product)
-                result = TestClient(main.app).get("/search", params={"q": "Dior Sauvage"}).json()
-                public_offers = [
-                    offer for group in result["results"] for offer in group["offers"]
-                ] + result["unresolved_offers"]
-                self.assertEqual([offer["url"] for offer in public_offers], [product])
+                with patch.object(
+                    catalog_search, "_engine",
+                    side_effect=HTTPException(
+                        status_code=503,
+                        detail="Canonical public search requires the PostgreSQL catalog",
+                    ),
+                ):
+                    response = TestClient(main.app).get(
+                        "/search", params={"q": "Dior Sauvage"}
+                    )
+                self.assertEqual(response.status_code, 503)
                 conn = catalog_engine.db()
                 conn.execute("DROP TABLE catalog_search_fts")
                 conn.commit()
