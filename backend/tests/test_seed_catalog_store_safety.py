@@ -179,7 +179,9 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
         self.assertEqual(persisted["domain"], "www.deloox.be")
         self.assertEqual(persisted["reliability_score"], 0.93)
         self.assertEqual(persisted["last_successful_sync_at"], synced_at)
-\n\nclass CanonicalGtinImportTests(unittest.TestCase):
+
+
+class CanonicalGtinImportTests(unittest.TestCase):
     def test_extract_variant_gtin_reads_plural_catalog_field_and_checks_digit(self):
         from scripts.seed_catalog import extract_variant_gtin
 
