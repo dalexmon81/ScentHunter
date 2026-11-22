@@ -2,12 +2,34 @@
 from __future__ import annotations
 
 import json
-from sqlalchemy import bindparam, inspect, text
+import os
 
-from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
-    STORE_CONFIG,
-    target_engine,
-)
+from sqlalchemy import bindparam, create_engine, inspect, text
+from sqlalchemy.engine import make_url
+
+STORE_CONFIG = {
+    "bplatz": ("bplatz", "Bplatz", "en.bplatz.de", "DE"),
+    "deloox-be": ("deloox-be", "Deloox Belgium", "www.deloox.be", "BE"),
+    "deloox-nl": ("deloox-nl", "Deloox Netherlands", "www.deloox.nl", "NL"),
+    "deloox-com": ("deloox-com", "Deloox International", "www.deloox.com", None),
+    "deloox-lu": ("deloox-lu", "Deloox Luxembourg", "www.deloox.lu", "LU"),
+    "deloox-es": ("deloox-es", "Deloox Spain", "www.deloox.es", "ES"),
+    "sabina": ("sabina-es", "Sabina", "www.sabina.com", "ES"),
+    "easycosmetic": ("easycosmetic-de", "Easycosmetic", "www.easycosmetic.de", "DE"),
+    "parfumzentrum": ("parfumzentrum-de", "ParfumZentrum", "www.parfum-zentrum.de", "DE"),
+}
+
+
+def target_engine():
+    raw = os.environ.get("SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL", "").strip()
+    if not raw:
+        raise ValueError("SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL is required")
+    url = make_url(raw)
+    if url.drivername == "postgresql":
+        url = url.set(drivername="postgresql+psycopg")
+    if url.drivername != "postgresql+psycopg":
+        raise ValueError("Target must be PostgreSQL using psycopg 3")
+    return create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=0)
 
 
 def main() -> None:
