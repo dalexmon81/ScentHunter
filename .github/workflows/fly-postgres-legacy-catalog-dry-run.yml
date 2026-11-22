@@ -1,0 +1,73 @@
+name: Fly PostgreSQL legacy catalog dry-run
+
+on:
+  push:
+    branches:
+      - fix/public-postgres-catalog-ingestion-2026-11-22
+
+jobs:
+  legacy-catalog-dry-run:
+    if: github.event.head_commit.message == 'ops: run Fly PostgreSQL legacy seed dry-run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter
+
+    steps:
+      - name: Check out exact pushed commit
+        uses: actions/checkout@v4
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Find the app machine with the mounted legacy catalog
+        id: machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl machines list --app "$FLY_APP" --json > /tmp/fly-machines.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          with open("/tmp/fly-machines.json", encoding="utf-8") as handle:
+              machines = json.load(handle)
+          candidates = []
+          for machine in machines:
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              group = metadata.get("fly_process_group") or metadata.get("process_group")
+              if group == "app":
+                  candidates.insert(0, machine.get("id"))
+              elif machine.get("id"):
+                  candidates.append(machine["id"])
+          seen = set()
+          for machine_id in candidates:
+              if machine_id and machine_id not in seen:
+                  print(f"machine_id={machine_id}")
+                  seen.add(machine_id)
+          PY
+
+      - name: Verify mounted SQLite source and PostgreSQL target configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r machine_id; do
+            [ -n "$machine_id" ] || continue
+            if flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "test -r /data/store_catalog.sqlite3 && test -x /app/.venv/bin/python && test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\" && echo SCENTHUNTER_PREFLIGHT=PASS" ; then
+              echo "SCENTHUNTER_APP_MACHINE=$machine_id"
+              echo "SCENTHUNTER_APP_MACHINE=$machine_id" >> "$GITHUB_ENV"
+              found=1
+              break
+            fi
+          done < <(sed -n 's/^machine_id=//p' "$GITHUB_OUTPUT")
+          test "$found" -eq 1
+
+      - name: Run read-only SQLite to PostgreSQL queue dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app "$FLY_APP" --machine "$SCENTHUNTER_APP_MACHINE" -C "/app/.venv/bin/python /app/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3"
