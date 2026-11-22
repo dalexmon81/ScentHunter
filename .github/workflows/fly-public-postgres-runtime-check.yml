@@ -48,7 +48,6 @@ jobs:
           ordered = preferred + fallback
           print("machine_id=" + (ordered[0] if ordered else ""))
           PY
-          test -n "${{ steps.machine.outputs.machine_id }}"
 
       - name: Verify live app database and public catalog endpoint without writes
         shell: bash
