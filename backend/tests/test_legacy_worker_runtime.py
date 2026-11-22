@@ -38,6 +38,13 @@ class FakeLegacyConnector:
 
 
 class LegacyWorkerRuntimeTests(unittest.TestCase):
+    def test_fetch_rejects_cross_market_product_urls_before_network_access(self):
+        connector = legacy_runtime.build_legacy_connector(
+            "deloox", scraper_module=object(), allowed_domain="www.deloox.be"
+        )
+        with self.assertRaisesRegex(ValueError, "registered store domain"):
+            connector._fetch_product_sync("https://www.deloox.nl/product/123")
+
     def setUp(self):
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
@@ -113,6 +120,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         self.assertEqual(result["status"], "promoted")
         self.assertEqual(result["store"], "deloox-be")
         persist.assert_called_once()
+        connector_factory = started[2]
+        connector_factory.assert_called_once_with(
+            "deloox", allowed_domain="www.deloox.be"
+        )
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
             self.assertEqual(run.status, "completed")
