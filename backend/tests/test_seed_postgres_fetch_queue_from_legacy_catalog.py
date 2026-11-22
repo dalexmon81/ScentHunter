@@ -3,7 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select\nfrom sqlalchemy.orm import Session
+from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select
+from sqlalchemy.orm import Session
 
 from app.models import Store
 from scripts.seed_postgres_fetch_queue_from_legacy_catalog import (
