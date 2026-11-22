@@ -55,14 +55,14 @@ jobs:
           PY
 
       - name: Verify mounted SQLite source and PostgreSQL target configuration
+        id: preflight
         shell: bash
         run: |
           set -euo pipefail
           found=0
           for machine_id in ${{ steps.machine.outputs.machine_ids }}; do
             if flyctl ssh console --app "$FLY_APP" --machine "$machine_id" -C "sh -lc 'test -r /data/store_catalog.sqlite3 && test -x /app/.venv/bin/python && test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\" && echo SCENTHUNTER_PREFLIGHT=PASS'" ; then
-              echo "SCENTHUNTER_APP_MACHINE=$machine_id"
-              echo "SCENTHUNTER_APP_MACHINE=$machine_id" >> "$GITHUB_ENV"
+              echo "machine_id=$machine_id" >> "$GITHUB_OUTPUT"
               found=1
               break
             fi
@@ -71,6 +71,10 @@ jobs:
 
       - name: Run read-only SQLite to PostgreSQL queue dry-run
         shell: bash
+        env:
+          MACHINE_ID: ${{ steps.preflight.outputs.machine_id }}
         run: |
           set -euo pipefail
-          flyctl ssh console --app "$FLY_APP" --machine "$SCENTHUNTER_APP_MACHINE" -C "sh -lc '/app/.venv/bin/python /app/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3'"
+          script_b64="$(base64 -w0 backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py)"
+          remote_command="sh -lc 'set -e; trap \"rm -f /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py\" EXIT; printf %s ${script_b64} | base64 -d > /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py; PYTHONPATH=/app/backend /app/.venv/bin/python /tmp/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3'"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
