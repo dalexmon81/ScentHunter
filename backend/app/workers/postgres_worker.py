@@ -56,6 +56,12 @@ def _schedule_daily_discovery(session_factory) -> None:
         log.exception("Unable to schedule daily PostgreSQL discovery")
 
 
+def _refresh_external_id(store_slug: str, external_product_id: str | None, product_url: str | None) -> str:
+    """Choose the stable fetch key; Bplatz requires its product URL, not its GTIN."""
+    value = product_url if store_slug == "bplatz" else external_product_id
+    return str(value or "").strip()
+
+
 def _schedule_active_offer_refresh(session_factory) -> None:
     enabled = os.environ.get("SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED", "1").strip().lower()
     if enabled not in {"1", "true", "yes", "on"}:
@@ -72,7 +78,7 @@ def _schedule_active_offer_refresh(session_factory) -> None:
         for store_slug, store_id, external_product_id, product_url in rows:
             # Bplatz legacy rows use GTIN as external_product_id; its parser fetches
             # by product URL. Keep canonical identity unchanged and refresh by URL.
-            refresh_id = product_url if store_slug == "bplatz" and product_url else external_product_id
+            refresh_id = _refresh_external_id(store_slug, external_product_id, product_url)
             if refresh_id:
                 enqueue_offer_refresh(store_id, refresh_id)
     except Exception:
