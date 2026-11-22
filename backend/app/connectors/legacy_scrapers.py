@@ -227,6 +227,13 @@ class LegacyScraperConnector(StoreConnector):
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("external_product_id must be an absolute product URL")
+        if self.allowed_domain:
+            hostname = (parsed.hostname or "").lower().rstrip(".")
+            if not (
+                hostname == self.allowed_domain
+                or hostname.endswith("." + self.allowed_domain)
+            ):
+                raise ValueError("external_product_id host does not match the registered store domain")
         session = requests.Session()
         try:
             parser = getattr(self._scraper, "extract_product_page", None)
