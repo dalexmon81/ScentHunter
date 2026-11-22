@@ -169,7 +169,7 @@ class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
 def _apply_candidates_with_queue_success(connection):
     with patch(
         "scripts.seed_postgres_fetch_queue_from_legacy_catalog._queue_rows",
-        return_value=7,
+        return_value=len(STORE_CONFIG),
     ):
         return _apply_candidates(connection, [])
 
