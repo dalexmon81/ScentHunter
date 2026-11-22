@@ -141,7 +141,7 @@ def handle_legacy_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
-    connector = build_legacy_connector(connector_key)
+    connector = build_legacy_connector(connector_key, allowed_domain=store.domain)
     try:
         record = asyncio.run(connector.fetch_product(external_id))
         if not isinstance(record, Mapping):
