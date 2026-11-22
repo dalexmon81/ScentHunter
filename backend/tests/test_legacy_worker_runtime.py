@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.connectors.base import DiscoveredProduct
+from app.connectors.legacy_scrapers import LegacyScraperConnector
 from app.models import Base, IngestionRun, Store
 from app.services.connector_ingestion import ConnectorIngestionResult
 from app.workers import legacy_runtime, notino_runtime
@@ -39,7 +40,7 @@ class FakeLegacyConnector:
 
 class LegacyWorkerRuntimeTests(unittest.TestCase):
     def test_fetch_rejects_cross_market_product_urls_before_network_access(self):
-        connector = legacy_runtime.build_legacy_connector(
+        connector = LegacyScraperConnector(
             "deloox", scraper_module=object(), allowed_domain="www.deloox.be"
         )
         with self.assertRaisesRegex(ValueError, "registered store domain"):
