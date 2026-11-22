@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 from app.models import Store  # noqa: E402
 
 STORE_CONFIG = {
-    "bplatz": ("bplatz", "Bplatz", "en.bplatz.de", "DE"),
+    "bplatz": ("bplatz", "Bplatz", "bplatz.de", "DE"),
     "deloox-be": ("deloox-be", "Deloox Belgium", "www.deloox.be", "BE"),
     "deloox-nl": ("deloox-nl", "Deloox Netherlands", "www.deloox.nl", "NL"),
     "deloox-com": ("deloox-com", "Deloox International", "www.deloox.com", None),
@@ -44,7 +44,7 @@ SOURCE_STORE_KEYS = {
     "parfumzentrum": ("parfumzentrum",),
 }
 STORE_URL_DOMAINS = {
-    "bplatz": ("en.bplatz.de",),
+    "bplatz": ("bplatz.de",),
     "deloox-be": ("www.deloox.be",),
     "deloox-nl": ("www.deloox.nl",),
     "deloox-com": ("www.deloox.com",),
