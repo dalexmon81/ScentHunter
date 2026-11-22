@@ -48,9 +48,9 @@ jobs:
           test -x /app/.venv/bin/python
           test -n \"\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL\"
           mkdir -p /tmp/scenthunter-readonly-inspect
-          trap \"rm -f /tmp/scenthunter-readonly-inspect/inspect.py\" EXIT
-          printf %s ${script_b64} | base64 -d > /tmp/scenthunter-readonly-inspect/inspect.py
+          trap \"rm -f /tmp/scenthunter-readonly-inspect/pg_rejection_report.py\" EXIT
+          printf %s ${script_b64} | base64 -d > /tmp/scenthunter-readonly-inspect/pg_rejection_report.py
           export PYTHONPATH=/app/backend
-          timeout 240 /app/.venv/bin/python /tmp/scenthunter-readonly-inspect/inspect.py
+          timeout 240 /app/.venv/bin/python /tmp/scenthunter-readonly-inspect/pg_rejection_report.py
           '"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
