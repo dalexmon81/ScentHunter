@@ -165,10 +165,10 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
         self.assertEqual(persisted["status"], "inactive")
 
     def test_existing_active_store_metadata_and_health_state_are_preserved(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
         from app.models import Store
 
-        synced_at = datetime(2026, 11, 21, 12, 0, tzinfo=timezone.utc)
+        synced_at = datetime(2026, 11, 21, 12, 0)
         completed, persisted = self._run_with_store(Store(
             name="Deloox.be", slug="deloox-be", domain="www.deloox.be",
             country="BE", currency="EUR", status="active",
