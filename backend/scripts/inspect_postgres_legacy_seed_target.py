@@ -8,7 +8,7 @@ from sqlalchemy import bindparam, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 
 STORE_CONFIG = {
-    "bplatz": ("bplatz", "Bplatz", "en.bplatz.de", "DE"),
+    "bplatz": ("bplatz", "Bplatz", "bplatz.de", "DE"),
     "deloox-be": ("deloox-be", "Deloox Belgium", "www.deloox.be", "BE"),
     "deloox-nl": ("deloox-nl", "Deloox Netherlands", "www.deloox.nl", "NL"),
     "deloox-com": ("deloox-com", "Deloox International", "www.deloox.com", None),
