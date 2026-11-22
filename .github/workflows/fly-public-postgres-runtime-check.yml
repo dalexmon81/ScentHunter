@@ -1,0 +1,57 @@
+name: Read-only public PostgreSQL runtime verification
+
+on:
+  push:
+    branches:
+      - fix/public-postgres-catalog-ingestion-2026-11-22
+    paths:
+      - .github/workflows/fly-public-postgres-runtime-check.yml
+      - backend/scripts/verify_public_catalog_postgres_runtime.py
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter
+    steps:
+      - name: Check out exact pushed commit
+        uses: actions/checkout@v4
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Select running app machine
+        id: machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl machines list --app "$FLY_APP" --json > /tmp/machines.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          machines = json.load(open("/tmp/machines.json", encoding="utf-8"))
+          candidates = []
+          for machine in machines:
+              config = machine.get("config") or {}
+              metadata = config.get("metadata") or {}
+              group = metadata.get("fly_process_group") or metadata.get("process_group")
+              if group == "app" and machine.get("state") == "started":
+                  candidates.insert(0, machine.get("id"))
+          print("machine_id=" + (candidates[0] if candidates else ""))
+          PY
+          test -n "${{ steps.machine.outputs.machine_id }}"
+
+      - name: Verify live app database and public catalog endpoint without writes
+        shell: bash
+        env:
+          MACHINE_ID: ${{ steps.machine.outputs.machine_id }}
+        run: |
+          set -euo pipefail
+          script_b64="$(base64 -w0 backend/scripts/verify_public_catalog_postgres_runtime.py)"
+          remote_command="sh -lc 'set -e; mkdir -p /tmp/scenthunter-runtime-check; trap \"rm -f /tmp/scenthunter-runtime-check/verify.py\" EXIT; printf %s ${script_b64} | base64 -d > /tmp/scenthunter-runtime-check/verify.py; PYTHONPATH=/app/backend timeout 180 /app/.venv/bin/python /tmp/scenthunter-runtime-check/verify.py'"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
