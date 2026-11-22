@@ -131,6 +131,7 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
             engine = create_engine(database_url)
             try:
                 Base.metadata.create_all(engine)
+                store_slug = store.slug
                 with Session(engine) as session, session.begin():
                     session.add(store)
                 env = os.environ.copy()
@@ -141,7 +142,7 @@ class ExistingRetailerStateSafetyTests(unittest.TestCase):
                     cwd=ROOT, env=env, text=True, capture_output=True, check=False,
                 )
                 with Session(engine) as session:
-                    persisted = session.scalar(select(Store).where(Store.slug == store.slug))
+                    persisted = session.scalar(select(Store).where(Store.slug == store_slug))
                     snapshot = {
                         "status": persisted.status,
                         "domain": persisted.domain,
