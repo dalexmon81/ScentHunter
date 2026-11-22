@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           remote_script="$(cat <<'SH'
           set -eu
-          SOURCE="/data/migration-backups/phase2-catalog-20261121T100137Z.sqlite3"
+          SOURCE="/data/migration-backups/phase2-catalog-20261122T044012Z.sqlite3"
           EXPECTED_SHA256="f93bfcf1fefe8be70b37de35ccc276a8626f9edc0473ac27fa6c14fa6cf45415"
           EXPECTED_DATABASE="scenthunter_offerfirst"
           test -f "$SOURCE" || { echo "BACKUP_MISSING=1"; exit 1; }
