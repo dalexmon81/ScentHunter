@@ -65,6 +65,7 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         started = [item.start() for item in patches]
         enqueue_fetch = started[-1]
         candidate_filter = started[2]
+        connector_factory = started[3]
         try:
             result = legacy_runtime.handle_legacy_discovery({
                 "store_id": str(self.store_id), "limit": 10,
@@ -80,6 +81,9 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
             self.store_id, "https://www.deloox.be/product/123"
         )
         self.assertEqual(candidate_filter.call_args.args[1], self.store_id)
+        connector_factory.assert_called_once_with(
+            "deloox", allowed_domain="www.deloox.be"
+        )
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
             self.assertEqual(run.status, "completed")
