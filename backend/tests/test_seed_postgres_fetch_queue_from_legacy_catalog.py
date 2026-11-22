@@ -21,13 +21,11 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
         self.assertTrue(is_allowed_product_url(
             "https://shop.www.deloox.be/product/123", "www.deloox.be"
         ))
-        self.assertTrue(is_allowed_product_url(
-            "https://www.deloox.nl/product/123",
-            ("www.deloox.be", "www.deloox.nl", "www.deloox.com", "www.deloox.lu"),
+        self.assertFalse(is_allowed_product_url(
+            "https://www.deloox.nl/product/123", "www.deloox.be"
         ))
-        self.assertTrue(is_allowed_product_url(
-            "https://www.deloox.lu/product/123",
-            ("www.deloox.be", "www.deloox.nl", "www.deloox.com", "www.deloox.lu"),
+        self.assertFalse(is_allowed_product_url(
+            "https://www.deloox.lu/product/123", "www.deloox.be"
         ))
 
     def test_rejects_lookalike_hosts_and_unexpected_domains(self):
