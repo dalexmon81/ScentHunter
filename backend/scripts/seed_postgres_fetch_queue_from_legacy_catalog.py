@@ -69,11 +69,6 @@ def main():
             required = {"store_urls"}
             if not required.issubset(tables):
                 raise RuntimeError("Source is not the legacy retailer catalog: store_urls table missing")
-            rows = src.execute(text("""
-                SELECT store, url FROM store_urls
-                WHERE active = 1 AND store IN :stores
-                ORDER BY store, url
-            """).bindparams()).fetchall() if False else None
             # Bound parameters are expanded safely by SQLAlchemy's expanding bind.
             from sqlalchemy import bindparam
             query = text("""
