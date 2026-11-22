@@ -56,7 +56,12 @@ def build_report(parsed: dict, worker_item: dict, captured_at: datetime) -> dict
     if offer.currency != "EUR":
         raise RuntimeError("Bplatz offer currency is not EUR")
     if offer.availability != "in_stock":
-        raise RuntimeError("Bplatz page did not confirm in-stock availability")
+        raise RuntimeError(
+            "Bplatz page did not confirm in-stock availability "
+            f"(normalized={offer.availability!r}, parsed={parsed.get('availability')!r}, "
+            f"worker_available={worker_item.get('available')!r}, "
+            f"worker_availability={worker_item.get('availability')!r})"
+        )
 
     parsed_url = urlsplit(offer.product_url or "")
     host = (parsed_url.hostname or "").lower().rstrip(".")
