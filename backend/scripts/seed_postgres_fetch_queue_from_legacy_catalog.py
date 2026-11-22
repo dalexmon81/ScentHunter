@@ -153,7 +153,7 @@ def _apply_candidates(connection, candidates):
     metadata = MetaData()
     queue = Table("ingestion_queue_jobs", metadata, autoload_with=connection)
     stores = {}
-    with Session(bind=connection) as session:
+    with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
         for key, (slug, name, domain, country) in STORE_CONFIG.items():
             store = session.scalar(
                 select(Store).where(Store.slug == slug).with_for_update()
@@ -177,7 +177,11 @@ def _apply_candidates(connection, candidates):
                     )
             stores[key] = store.id
         session.flush()
-        return _queue_rows(connection, queue, candidates, stores)
+        inserted = _queue_rows(connection, queue, candidates, stores)
+        # Release only the Session savepoint; the caller owns the outer
+        # transaction and commits Store rows and queue jobs together.
+        session.commit()
+        return inserted
 
 
 
