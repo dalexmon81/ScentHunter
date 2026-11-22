@@ -69,6 +69,20 @@ def main() -> None:
     except Exception as exc:
         raise SystemExit(f"FAIL: public catalog status endpoint unavailable: {type(exc).__name__}") from None
 
+    search_request = urllib.request.Request(
+        "http://127.0.0.1:8080/api/catalog/search?q=Dior%20Sauvage",
+        headers={"Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(search_request, timeout=20) as response:
+            if response.status != 200:
+                raise SystemExit(f"FAIL: public catalog search returned HTTP {response.status}")
+            search_payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise SystemExit(f"FAIL: public catalog search unavailable: {type(exc).__name__}") from None
+    if search_payload.get("status") != "completed" or not isinstance(search_payload.get("results"), list):
+        raise SystemExit("FAIL: public catalog search returned an invalid response")
+
     print(json.dumps({
         "status": "PASS",
         "database": database,
@@ -78,6 +92,10 @@ def main() -> None:
         "catalog_rows": counts,
         "public_status_endpoint": "HTTP 200",
         "public_status_keys": sorted(status_payload) if isinstance(status_payload, dict) else [],
+        "live_search_query": "Dior Sauvage",
+        "live_search_status": search_payload.get("status"),
+        "live_search_result_count": search_payload.get("count"),
+        "live_search_offer_count": search_payload.get("offer_count"),
     }, sort_keys=True))
 
 
