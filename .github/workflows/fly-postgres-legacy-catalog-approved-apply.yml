@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$COMMIT_MESSAGE" != "ops: execute approved PostgreSQL queue seed final guarded run" ]]; then echo "Not the explicitly approved one-shot commit; no action."; exit 0; fi
+          if [[ "$COMMIT_MESSAGE" != "ops: execute approved PostgreSQL queue seed machine selection fix" ]]; then echo "Not the explicitly approved one-shot commit; no action."; exit 0; fi
           test -n "$FLY_API_TOKEN"
           flyctl machines list --app "$FLY_APP" --json > /tmp/fly-machines.json
           MACHINE_ID="$(python - <<'PY'
@@ -48,7 +48,7 @@ jobs:
               if value and value not in seen:
                   seen.add(value)
                   ordered.append(value)
-          print(" ".join(ordered))
+          print(ordered[0] if ordered else "")
           PY
           )"
           test -n "$MACHINE_ID"
