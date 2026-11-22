@@ -67,8 +67,12 @@ jobs:
             "NOTINO_CJ_FEED_USERNAME=${CJ_HTTP_USERNAME}" \
             "NOTINO_CJ_FEED_PASSWORD=${CJ_HTTP_PASSWORD}" \
             "SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX=Dior;Chanel;Armani;Versace;Yves Saint Laurent;Jean Paul Gaultier;Prada;Valentino;Guerlain;Hugo Boss" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_SABINA=Dior;Chanel;Armani;Versace;Yves Saint Laurent;Jean Paul Gaultier;Prada;Valentino;Guerlain;Hugo Boss" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC=Dior;Chanel;Armani;Versace;Yves Saint Laurent;Jean Paul Gaultier;Prada;Valentino;Guerlain;Hugo Boss" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_PARFUMZENTRUM=Dior;Chanel;Armani;Versace;Yves Saint Laurent;Jean Paul Gaultier;Prada;Valentino;Guerlain;Hugo Boss" \
             --app scenthunter
-          echo "Notino CJ feed URL and credentials staged for the production release."
+          echo "Notino CJ feed and four PostgreSQL retailer discovery configurations staged for the production release."
 
       - name: Ensure catalog volume exists
         env:
@@ -162,6 +166,16 @@ jobs:
         run: |
           set -euo pipefail
           remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py && /app/.venv/bin/python scripts/verify_catalog.py'"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Provision missing PostgreSQL legacy retailer rows
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/seed_legacy_retailer_stores.py --apply'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
       - name: Verify production health and catalog API
