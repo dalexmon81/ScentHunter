@@ -2,6 +2,11 @@ name: ScentHunter guarded PostgreSQL runtime cutover
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/scenthunter-postgres-runtime-cutover.yml"
 
 permissions:
   contents: read
