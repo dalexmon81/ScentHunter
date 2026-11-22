@@ -5,7 +5,9 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.connectors.legacy_scrapers import LegacyScraperConnector, build_legacy_connector
+from app.connectors.legacy_scrapers import (
+    LegacyScraperConnector, build_legacy_connector, connector_key_for_store_slug,
+)
 
 
 class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
@@ -88,6 +90,41 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(products), 1)  # duplicate product URLs across seed queries collapse
         self.assertEqual(products[0].external_product_id, "https://shop.example/product/123")
         self.assertEqual(products[0].product_url, products[0].external_product_id)
+
+    async def test_discovery_is_scoped_to_the_registered_store_domain(self):
+        rows = [
+            {"name": "Belgium", "url": "https://www.deloox.be/product/1"},
+            {"name": "Netherlands", "url": "https://www.deloox.nl/product/2"},
+            {"name": "Spain", "url": "https://www.deloox.es/product/3"},
+            {"name": "Lookalike", "url": "https://www.deloox.nl.evil.example/product/4"},
+        ]
+        scraper = SimpleNamespace(search_stream=lambda query: {
+            "status": "success", "verified": True, "results": rows,
+            "error": None, "details": {},
+        })
+        connector = LegacyScraperConnector(
+            "deloox", scraper, allowed_domain="www.deloox.nl",
+        )
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX": "Dior Sauvage"
+        }):
+            products = await connector.discover_products(limit=10)
+        self.assertEqual(
+            [item.external_product_id for item in products],
+            ["https://www.deloox.nl/product/2"],
+        )
+
+    async def test_deloox_market_store_slugs_share_parser_but_keep_market_identity(self):
+        expected = {
+            "deloox-be": "deloox",
+            "deloox-nl": "deloox",
+            "deloox-com": "deloox",
+            "deloox-lu": "deloox",
+            "deloox-es": "deloox",
+        }
+        for slug, connector_key in expected.items():
+            with self.subTest(slug=slug):
+                self.assertEqual(connector_key_for_store_slug(slug), connector_key)
 
     async def test_discovery_fails_closed_without_operator_seed_queries(self):
         with patch.dict(os.environ, {"SCENTHUNTER_DISCOVERY_QUERIES_DELOOX": ""}):
