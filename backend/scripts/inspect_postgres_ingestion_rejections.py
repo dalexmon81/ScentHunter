@@ -6,11 +6,50 @@ not a count of rows whose status is 'rejected'.
 """
 from __future__ import annotations
 
+import ast
 import json
 import os
+from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
+
+
+
+def _runtime_call_sites() -> list[dict]:
+    """Read deployed Python source and report identity/matcher call sites without importing it."""
+    root = Path("/app/backend")
+    targets = (
+        "app/services/canonical_matching.py",
+        "app/services/connector_ingestion.py",
+        "app/services/bplatz_phase2_adapter.py",
+        "app/workers/legacy_runtime.py",
+        "app/workers/notino_runtime.py",
+        "app/workers/tasks.py",
+    )
+    found = []
+    for relative in targets:
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (OSError, SyntaxError) as exc:
+            found.append({"file": relative, "parse_error": str(exc)})
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = node.func.id if isinstance(node.func, ast.Name) else (
+                node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            )
+            if name in {"resolve_canonical_variant", "persist_connector_record", "_is_unique_canonical_candidate"}:
+                found.append({
+                    "file": relative,
+                    "line": getattr(node, "lineno", None),
+                    "call": ast.unparse(node),
+                })
+    return found
 
 
 def main() -> None:
@@ -49,6 +88,7 @@ def main() -> None:
                 "recent_problem_runs": [],
                 "queue_by_store_stage_status": [],
                 "offers_by_store_status": [],
+                "deployed_runtime_call_sites": _runtime_call_sites(),
             }
 
             for table in ("brands", "fragrances", "product_variants", "stores",
