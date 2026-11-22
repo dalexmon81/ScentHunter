@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
+
+from sqlalchemy import Column, JSON, MetaData, String, Table, create_engine, func, select
+
+from app.models import Store
+from scripts.seed_postgres_fetch_queue_from_legacy_catalog import _apply_candidates
 
 from scripts.seed_postgres_fetch_queue_from_legacy_catalog import is_allowed_product_url
 
@@ -35,6 +41,37 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
         ):
             with self.subTest(url=url):
                 self.assertFalse(is_allowed_product_url(url, "www.deloox.be"))
+
+
+class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
+    def test_store_creation_rolls_back_when_queue_insert_fails(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:")
+        try:
+            Store.__table__.create(engine)
+            metadata = MetaData()
+            Table(
+                "ingestion_queue_jobs", metadata,
+                Column("stage", String(24), nullable=False),
+                Column("dedupe_key", String(64), nullable=False),
+                Column("payload", JSON, nullable=False),
+                Column("status", String(16), nullable=False),
+            ).create(engine)
+
+            with self.assertRaisesRegex(RuntimeError, "simulated queue failure"):
+                with engine.begin() as connection:
+                    with patch(
+                        "scripts.seed_postgres_fetch_queue_from_legacy_catalog._queue_rows",
+                        side_effect=RuntimeError("simulated queue failure"),
+                    ):
+                        _apply_candidates(connection, [])
+
+            with engine.connect() as connection:
+                remaining = connection.scalar(
+                    select(func.count()).select_from(Store.__table__)
+                )
+            self.assertEqual(remaining, 0)
+        finally:
+            engine.dispose()
 
 
 if __name__ == "__main__":
