@@ -17,25 +17,15 @@ from sqlalchemy.engine import make_url
 
 
 def _runtime_call_sites() -> list[dict]:
-    """Read deployed Python source and report identity/matcher call sites without importing it."""
+    """Scan deployed backend Python files for canonical matcher call sites."""
     root = Path("/app/backend")
-    targets = (
-        "app/services/canonical_matching.py",
-        "app/services/connector_ingestion.py",
-        "app/services/bplatz_phase2_adapter.py",
-        "app/workers/legacy_runtime.py",
-        "app/workers/notino_runtime.py",
-        "app/workers/tasks.py",
-    )
     found = []
-    for relative in targets:
-        path = root / relative
-        if not path.is_file():
-            continue
+    for path in root.rglob("*.py"):
         try:
+            relative = str(path.relative_to(root))
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         except (OSError, SyntaxError) as exc:
-            found.append({"file": relative, "parse_error": str(exc)})
+            found.append({"file": str(path), "parse_error": str(exc)})
             continue
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
