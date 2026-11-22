@@ -207,7 +207,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                 Offer.store_id == store_id,
                 Offer.status == "active",
                 or_(Offer.external_product_id == external_id, Offer.url == external_id),
-            ).limit(1))
+            ).order_by(Offer.captured_at.desc()).limit(1))
             if offer is None:
                 raise LookupError("active_offer_not_found_for_refresh")
             refresh_offer_observation(
