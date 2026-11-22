@@ -32,21 +32,32 @@ STORE_CONFIG = {
     "easycosmetic": ("easycosmetic-de", "Easycosmetic", "www.easycosmetic.de", "DE"),
     "parfumzentrum": ("parfumzentrum-de", "ParfumZentrum", "www.parfum-zentrum.de", "DE"),
 }
+# Deloox's registered scraper supports these four storefronts. Keep the
+# queue-seed allowlist aligned with its actual fetcher rather than silently
+# dropping valid .nl/.com/.lu product URLs.
+STORE_URL_DOMAINS = {
+    "bplatz": ("en.bplatz.de",),
+    "deloox": ("www.deloox.be", "www.deloox.nl", "www.deloox.com", "www.deloox.lu"),
+    "sabina": ("www.sabina.com",),
+    "easycosmetic": ("www.easycosmetic.de",),
+    "parfumzentrum": ("www.parfum-zentrum.de",),
+}
 BATCH_SIZE = 500
 
 
-def is_allowed_product_url(url: str, expected_domain: str) -> bool:
-    """Accept only HTTP(S) product URLs hosted by the configured retailer domain."""
+def is_allowed_product_url(url: str, expected_domain: str | tuple[str, ...]) -> bool:
+    """Accept only HTTP(S) product URLs hosted by a registered retailer domain."""
     parsed = urlparse(str(url).strip())
-    hostname = (parsed.hostname or "").lower()
-    domain = str(expected_domain).strip().lower()
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    domains = (expected_domain,) if isinstance(expected_domain, str) else tuple(expected_domain)
+    allowed = tuple(str(domain).strip().lower().rstrip(".") for domain in domains if str(domain).strip())
     return bool(
         parsed.scheme.lower() in {"http", "https"}
         and hostname
         and parsed.username is None
         and parsed.password is None
-        and domain
-        and (hostname == domain or hostname.endswith("." + domain))
+        and allowed
+        and any(hostname == domain or hostname.endswith("." + domain) for domain in allowed)
     )
 
 
@@ -95,8 +106,8 @@ def _read_candidates(connection):
         query, {"stores": list(STORE_CONFIG)}
     ):
         url = str(raw_url or "").strip()
-        domain = STORE_CONFIG[store_key][2]
-        if not is_allowed_product_url(url, domain):
+        domains = STORE_URL_DOMAINS[store_key]
+        if not is_allowed_product_url(url, domains):
             rejected[store_key] += 1
             continue
         candidate = (store_key, url)
