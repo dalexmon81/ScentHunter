@@ -61,6 +61,13 @@ jobs:
           backend/tests/test_bplatz_live_offer_check.py
           tests/test_bplatz_persistence_service.py
 
+      - name: Run PostgreSQL legacy URL queue seed safety tests
+        env:
+          PYTHONPATH: backend
+        run: >-
+          python -m pytest -q
+          backend/tests/test_seed_postgres_fetch_queue_from_legacy_catalog.py
+
       - name: Probe public Notino storefront fallback (read-only, 5 products)
         id: notino-public-smoke
         continue-on-error: true
