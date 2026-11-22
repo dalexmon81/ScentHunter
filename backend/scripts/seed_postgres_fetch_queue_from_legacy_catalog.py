@@ -116,7 +116,7 @@ def _read_candidates(connection):
     seen = set()
     duplicate_count = 0
     for store_key, raw_url in connection.execute(
-        query, {"stores": list(STORE_CONFIG)}
+        query, {"stores": list(SOURCE_STORE_KEYS)}
     ):
         url = str(raw_url or "").strip()
         market_key = next((
