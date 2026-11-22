@@ -5,10 +5,11 @@ on:
   push:
     branches:
       - fix/public-postgres-catalog-ingestion-2026-11-22
+    paths:
+      - .github/workflows/fly-postgres-legacy-catalog-dry-run.yml
 
 jobs:
   legacy-catalog-dry-run:
-    if: github.event.head_commit.message == 'ops: run Fly PostgreSQL legacy seed dry-run'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
