@@ -6,13 +6,16 @@ creates/queues fetch work; it never copies stale SQLite prices into live offers.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from sqlalchemy import MetaData, Table, select, text
+from sqlalchemy import MetaData, Table, bindparam, inspect, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import URL, create_engine, make_url
 from sqlalchemy.orm import Session
@@ -68,112 +71,189 @@ def target_engine():
     return create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=0)
 
 
+def _read_candidates(connection):
+    """Read and validate one stable candidate snapshot from the source DB."""
+    tables = set(connection.exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).scalars())
+    if "store_urls" not in tables:
+        raise RuntimeError(
+            "Source is not the legacy retailer catalog: store_urls table missing"
+        )
+
+    query = text("""
+        SELECT store, url FROM store_urls
+        WHERE active = 1 AND store IN :stores
+        ORDER BY store, url
+    """).bindparams(bindparam("stores", expanding=True))
+
+    accepted = []
+    rejected = dict.fromkeys(STORE_CONFIG, 0)
+    seen = set()
+    duplicate_count = 0
+    for store_key, raw_url in connection.execute(
+        query, {"stores": list(STORE_CONFIG)}
+    ):
+        url = str(raw_url or "").strip()
+        domain = STORE_CONFIG[store_key][2]
+        if not is_allowed_product_url(url, domain):
+            rejected[store_key] += 1
+            continue
+        candidate = (store_key, url)
+        if candidate in seen:
+            duplicate_count += 1
+            continue
+        seen.add(candidate)
+        accepted.append(candidate)
+
+    accepted.sort(key=lambda item: (item[0], item[1]))
+    return accepted, rejected, duplicate_count
+
+
+def _queue_rows(connection, queue, candidates, stores):
+    """Insert queue jobs using the caller's transaction and return new row count."""
+    inserted = 0
+    now = datetime.now(timezone.utc)
+    for offset in range(0, len(candidates), BATCH_SIZE):
+        batch = []
+        for store_key, url in candidates[offset:offset + BATCH_SIZE]:
+            payload = {
+                "store_id": str(stores[store_key]),
+                "external_product_id": url,
+            }
+            serialized = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+            )
+            digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+            batch.append({
+                "id": uuid.uuid4(),
+                "stage": "fetch",
+                "payload": payload,
+                "dedupe_key": digest,
+                "status": "queued",
+                "attempts": 0,
+                "max_attempts": 5,
+                "available_at": now,
+                "created_at": now,
+            })
+        if not batch:
+            continue
+        result = connection.execute(
+            pg_insert(queue).values(batch).on_conflict_do_nothing(
+                index_elements=[queue.c.stage, queue.c.dedupe_key],
+                index_where=text("status IN ('queued','running')"),
+            )
+        )
+        inserted += max(0, result.rowcount or 0)
+    return inserted
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
-    parser.add_argument("--apply", action="store_true", help="Create missing stores and enqueue fetch jobs")
-    parser.add_argument("--confirm-target", help="Must exactly match the PostgreSQL database name")
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="Create missing stores and enqueue fetch jobs",
+    )
+    parser.add_argument(
+        "--confirm-target",
+        help="Must exactly match the PostgreSQL database name",
+    )
     args = parser.parse_args()
 
     source = source_engine(args.source)
     target = target_engine()
-    report = {"mode": "apply" if args.apply else "dry_run", "stores": {}, "queued_candidates": 0}
+    report = {
+        "mode": "apply" if args.apply else "dry_run",
+        "stores": {},
+        "rejected_by_store": {},
+        "duplicate_candidates": 0,
+        "queued_candidates": 0,
+        "new_jobs_inserted": 0,
+        "destination_written": False,
+    }
     try:
+        # SQLite read transaction gives dry-run and apply a consistent view.
         with source.connect() as src:
-            tables = set(src.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'").scalars())
-            required = {"store_urls"}
-            if not required.issubset(tables):
-                raise RuntimeError("Source is not the legacy retailer catalog: store_urls table missing")
-            # Bound parameters are expanded safely by SQLAlchemy's expanding bind.
-            from sqlalchemy import bindparam
-            query = text("""
-                SELECT store, url FROM store_urls
-                WHERE active = 1 AND store IN :stores
-                ORDER BY store, url
-            """).bindparams(bindparam("stores", expanding=True))
-            counts = dict.fromkeys(STORE_CONFIG, 0)
-            for store_key, url in src.execute(query, {"stores": list(STORE_CONFIG)}):
-                expected_domain = STORE_CONFIG[store_key][2]
-                if not is_allowed_product_url(str(url), expected_domain):
-                    continue
-                counts[store_key] += 1
-            report["stores"] = counts
-            report["queued_candidates"] = sum(counts.values())
+            with src.begin():
+                candidates, rejected, duplicate_count = _read_candidates(src)
+        counts = dict.fromkeys(STORE_CONFIG, 0)
+        for store_key, _url in candidates:
+            counts[store_key] += 1
+        report.update({
+            "stores": counts,
+            "rejected_by_store": rejected,
+            "duplicate_candidates": duplicate_count,
+            "queued_candidates": len(candidates),
+        })
 
-        with target.connect() as conn:
-            db_name = conn.execute(text("SELECT current_database()")).scalar_one()
+        # One PostgreSQL transaction includes Store creation and every queue
+        # insert. Any failure rolls back both, so no orphan Store rows remain.
+        with target.begin() as conn:
+            db_name = conn.execute(
+                text("SELECT current_database()")
+            ).scalar_one()
+            report["target_database"] = db_name
             if args.apply and args.confirm_target != db_name:
-                raise ValueError("--confirm-target must exactly match target database name")
-            existing_tables = set(__import__("sqlalchemy").inspect(conn).get_table_names())
-            # A dry-run must remain useful before the queue migration is deployed:
-            # it reports source coverage without requiring any destination writes/schema.
-            if args.apply and "ingestion_queue_jobs" not in existing_tables:
-                raise RuntimeError("PostgreSQL ingestion_queue_jobs table is missing; run the approved Alembic migration first")
+                raise ValueError(
+                    "--confirm-target must exactly match target database name"
+                )
+
+            existing_tables = set(inspect(conn).get_table_names())
             if args.apply:
+                required = {"ingestion_queue_jobs", "stores"}
+                missing = required - existing_tables
+                if missing:
+                    raise RuntimeError(
+                        "Required PostgreSQL tables are missing: "
+                        + ", ".join(sorted(missing))
+                        + "; run the approved Alembic migration first"
+                    )
+
                 metadata = MetaData()
-                queue = Table("ingestion_queue_jobs", metadata, autoload_with=conn)
-                with Session(bind=conn) as session, session.begin():
-                    stores = {}
+                queue = Table(
+                    "ingestion_queue_jobs", metadata, autoload_with=conn
+                )
+                stores = {}
+                with Session(bind=conn) as session:
+                    # Session participates in the outer connection transaction.
                     for key, (slug, name, domain, country) in STORE_CONFIG.items():
-                        store = session.scalar(select(Store).where(Store.slug == slug))
+                        store = session.scalar(
+                            select(Store)
+                            .where(Store.slug == slug)
+                            .with_for_update()
+                        )
                         if store is None:
                             store = Store(
-                                id=uuid.uuid4(), name=name, slug=slug, domain=domain,
-                                country=country, currency="EUR", status="active",
+                                id=uuid.uuid4(),
+                                name=name,
+                                slug=slug,
+                                domain=domain,
+                                country=country,
+                                currency="EUR",
+                                status="active",
                             )
                             session.add(store)
                             session.flush()
-                        elif store.domain and store.domain.lower() != domain.lower():
-                            raise RuntimeError(f"Store domain conflict for {slug}: {store.domain}")
-                        elif store.status != "active":
-                            raise RuntimeError(
-                                f"Store {slug} is {store.status!r}; refusing to enqueue work "
-                                "for an inactive or quarantined connector"
-                            )
+                        else:
+                            if store.domain and store.domain.lower() != domain.lower():
+                                raise RuntimeError(
+                                    f"Store domain conflict for {slug}: {store.domain}"
+                                )
+                            if store.status != "active":
+                                raise RuntimeError(
+                                    f"Store {slug} is {store.status!r}; refusing "
+                                    "to enqueue work for an inactive or quarantined connector"
+                                )
                         stores[key] = store.id
+                    session.flush()
 
-                from sqlalchemy import bindparam
-                read_query = text("""
-                    SELECT store, url FROM store_urls
-                    WHERE active = 1 AND store IN :stores
-                    ORDER BY store, url
-                """).bindparams(bindparam("stores", expanding=True))
-                batch = []
-                inserted = 0
-                with source.connect() as src, target.begin() as conn:
-                    for store_key, url in src.execute(read_query, {"stores": list(STORE_CONFIG)}):
-                        url = str(url).strip()
-                        expected_domain = STORE_CONFIG[store_key][2]
-                        if not is_allowed_product_url(url, expected_domain):
-                            continue
-                        slug = STORE_CONFIG[store_key][0]
-                        store_id = stores[store_key]
-                        payload = {"store_id": str(store_id), "external_product_id": url}
-                        import hashlib, json
-                        serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
-                        batch.append({
-                            "id": uuid.uuid4(), "stage": "fetch", "payload": payload,
-                            "dedupe_key": hashlib.sha256(serialized.encode()).hexdigest(),
-                            "status": "queued", "attempts": 0, "max_attempts": 5,
-                            "available_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
-                            "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
-                        })
-                        if len(batch) >= BATCH_SIZE:
-                            result = conn.execute(pg_insert(queue).values(batch).on_conflict_do_nothing(
-                                index_elements=[queue.c.stage, queue.c.dedupe_key],
-                                index_where=text("status IN ('queued','running')"),
-                            ))
-                            inserted += max(0, result.rowcount or 0)
-                            batch.clear()
-                    if batch:
-                        result = conn.execute(pg_insert(queue).values(batch).on_conflict_do_nothing(
-                            index_elements=[queue.c.stage, queue.c.dedupe_key],
-                            index_where=text("status IN ('queued','running')"),
-                        ))
-                        inserted += max(0, result.rowcount or 0)
+                    inserted = _queue_rows(conn, queue, candidates, stores)
+
                 report["new_jobs_inserted"] = inserted
                 report["destination_written"] = True
-            report["target_database"] = db_name
+            # Dry-run deliberately checks the database identity but does not
+            # require the queue schema to have been applied.
         print(report)
     finally:
         source.dispose()
