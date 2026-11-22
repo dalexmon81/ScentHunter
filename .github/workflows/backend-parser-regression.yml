@@ -87,7 +87,8 @@ jobs:
       - name: Verify live Bplatz Liquid Brun offer (read-only pilot)
         if: >-
           github.event_name == 'pull_request' &&
-          github.event.pull_request.head.ref == 'feat/catalog-first-liquid-brun'
+          github.event.pull_request.head.ref == 'feat/catalog-first-liquid-brun' ||
+          github.event.pull_request.head.ref == 'fix/public-postgres-catalog-ingestion-2026-11-22'
         env:
           PYTHONPATH: backend
           PYTHONDONTWRITEBYTECODE: "1"
