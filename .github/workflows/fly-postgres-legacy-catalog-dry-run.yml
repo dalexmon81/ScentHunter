@@ -1,5 +1,6 @@
 name: Fly PostgreSQL legacy catalog dry-run
 # This workflow performs inspection only; it never enqueues or mutates data.
+# Host-level rejection counts are emitted to preserve visibility into skipped storefronts.
 
 on:
   push:
