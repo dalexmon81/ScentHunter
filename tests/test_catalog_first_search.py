@@ -109,6 +109,20 @@ def test_search_route_is_registered_on_production_app():
     assert public_search_routes[0].endpoint.__module__ == "app.api.catalog_search"
 
 
+def test_public_search_refuses_sqlite_even_when_database_exists(tmp_path, monkeypatch):
+    database = tmp_path / "legacy-catalog.sqlite3"
+    database.touch()
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", f"sqlite:///{database}")
+    catalog_search._engine.cache_clear()
+    app = FastAPI()
+    app.include_router(catalog_search.router)
+    with TestClient(app) as client:
+        response = client.get("/api/catalog/search", params={"q": "Dior Sauvage"})
+        assert response.status_code == 503
+        assert "requires the PostgreSQL catalog" in response.json()["detail"]
+    catalog_search._engine.cache_clear()
+
+
 def test_publication_gate_and_freshness(pilot):
     engine, result = pilot
     now = datetime.now(timezone.utc)
