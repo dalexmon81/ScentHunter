@@ -67,6 +67,7 @@ jobs:
             "NOTINO_CJ_FEED_USERNAME=${CJ_HTTP_USERNAME}" \
             "NOTINO_CJ_FEED_PASSWORD=${CJ_HTTP_PASSWORD}" \
             "SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_SABINA=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
@@ -341,6 +342,7 @@ jobs:
           from app.workers.postgres_worker import _schedule_daily_discovery
 
           retailers = {
+              "bplatz": "BPLATZ",
               "deloox-be": "DELOOX",
               "sabina-es": "SABINA",
               "easycosmetic-de": "EASYCOSMETIC",
