@@ -80,10 +80,9 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
 
         queued = skipped = 0
         errors: list[str] = []
-        matcher = notino_runtime._matcher()
         for product in products:
             if not notino_runtime._is_unique_canonical_candidate(
-                connector, matcher, product.raw_payload
+                connector, store_id, product.raw_payload
             ):
                 skipped += 1
                 continue
