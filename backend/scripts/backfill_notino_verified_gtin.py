@@ -70,6 +70,23 @@ def _valid_gtin13(value: str) -> bool:
     return (10 - weighted_sum % 10) % 10 == int(value[-1])
 
 
+def _payload_identity_matches(payload: dict, expected: dict) -> bool:
+    title = str(payload.get("title") or "").casefold()
+    brand = str(payload.get("brand") or "").strip().casefold()
+    concentration = str(payload.get("concentration") or "").casefold()
+    try:
+        size_ml = int(payload.get("size_ml") or 0)
+    except (TypeError, ValueError):
+        return False
+    return (
+        brand == "dior"
+        and "sauvage" in title
+        and "eau de parfum" in title
+        and "eau de parfum" in concentration
+        and size_ml == int(expected["size_ml"])
+    )
+
+
 async def _fetch_current_feed_records(connector) -> dict[str, dict]:
     """Fetch only the four reviewed IDs from one freshly loaded feed snapshot."""
     records = {}
@@ -101,9 +118,17 @@ def backfill_verified_notino_gtins(
     # then four indexed lookups. No full-feed pagination or fetch-job fan-out.
     connector = feed_connector or NotinoAffiliateFeedConnector()
     records = asyncio.run(_fetch_current_feed_records(connector))
-    # Loading the catalog validates the file and keeps the pilot tied to the
-    # deployed canonical catalogue; reviewed GTIN mappings below are explicit.
-    CatalogRepository.from_file(catalog_path)
+    # Validate every reviewed legacy variant ID and size against the deployed catalog.
+    catalog = CatalogRepository.from_file(catalog_path)
+    canonical_product = catalog.get(CANONICAL_PRODUCT_ID)
+    if canonical_product is None:
+        raise RuntimeError("Reviewed Dior Sauvage canonical product is missing from catalog")
+    catalog_variants = {variant.variant_id: variant.size_ml for variant in canonical_product.variants}
+    for expected in VERIFIED_GTINS.values():
+        if catalog_variants.get(expected["variant_id"]) != expected["size_ml"]:
+            raise RuntimeError(
+                "Reviewed GTIN registry does not match the canonical catalog variant sizes"
+            )
 
     candidates = {}
     skipped = Counter()
@@ -125,23 +150,14 @@ def backfill_verified_notino_gtins(
             skipped["source_not_authorized_feed"] += 1
             continue
 
-        title = str(payload.get("title") or "").casefold()
-        brand = str(payload.get("brand") or "").strip().casefold()
-        concentration = str(payload.get("concentration") or "").casefold()
-        if brand != "dior" or "sauvage" not in title:
-            skipped["brand_or_fragrance_identity_mismatch"] += 1
-            continue
-        if "eau de parfum" not in title or "eau de parfum" not in concentration:
-            skipped["concentration_identity_mismatch"] += 1
+        if not _payload_identity_matches(payload, expected):
+            skipped["brand_concentration_or_size_identity_mismatch"] += 1
             continue
 
         try:
             offer = normalize_offer(payload, retailer="Notino", currency_default="EUR")
         except (TypeError, ValueError):
             skipped["normalization_failed"] += 1
-            continue
-        if offer.size_ml != expected["size_ml"]:
-            skipped["explicit_size_mismatch"] += 1
             continue
         if offer.size_ml != expected["size_ml"]:
             skipped["explicit_size_mismatch"] += 1
