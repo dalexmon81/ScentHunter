@@ -48,7 +48,7 @@ jobs:
           test -x /app/.venv/bin/python
           test -n "\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL"
           mkdir -p /tmp/shim/backend/scripts
-          trap "rm -f /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py" EXIT
+          trap 'rm -f /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py' EXIT
           printf %s ${diagnostic_b64} | base64 -d > /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
           printf %s ${seed_b64} | base64 -d > /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py
           export PYTHONPATH=/app/backend
