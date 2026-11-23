@@ -835,6 +835,8 @@ function shGroupData(data){
       image,
       fallback_image,
       fallback_images,
+      formats:Array.isArray(group.formats)?group.formats:[],
+      variant_ids:Array.isArray(group.variant_ids)?group.variant_ids:[],
       offers
     };
   }).filter(group=>group.catalog_id&&group.name);
@@ -895,16 +897,16 @@ function formatLabel(size){return size?`${size} ml`:"Formato non specificato"}
 
 function getSizeGroups(g){
   const map=new Map();
-  // Formats come from canonical ProductVariant rows, including sizes with no
-  // published offer yet. Offers are then attached to their matching size.
+  // Keep catalog-known formats visible even when no retailer has a verified
+  // offer yet. Retailer offers are attached to their exact size below.
   (g?.formats||[]).forEach(format=>{
-    const raw=format?.size_ml??format?.size;
+    const raw=format?.size_ml;
     const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\\d+(?:[.,]\\d+)?/)?.[0]?.replace(",",".")||"";
     if(size&&!map.has(size))map.set(size,[]);
   });
   (g?.offers||[]).forEach(o=>{
     const raw=o?.size_ml;
-    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
+    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\\d+(?:[.,]\\d+)?/)?.[0]?.replace(",",".")||"";
     const key=size||"";
     if(!map.has(key))map.set(key,[]);
     map.get(key).push(o);
@@ -923,7 +925,6 @@ function getSizeGroups(g){
     return Number(a.size)-Number(b.size);
   });
 }
-
 // Le schede .product-choice usano il normale click/tap del browser.
 // Il precedente intercettore globale pointerdown/pointerup poteva
 // sopprimere il tap su iPhone quando Safari rilevava un piccolo movimento.
