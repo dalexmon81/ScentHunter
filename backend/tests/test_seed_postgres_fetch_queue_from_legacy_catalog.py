@@ -90,6 +90,66 @@ class LegacyCatalogQueueSeedUrlTests(unittest.TestCase):
 
 
 class LegacyCatalogQueueSeedAtomicityTests(unittest.TestCase):
+    def test_completed_and_failed_fetch_history_is_not_requeued(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:")
+        try:
+            Store.__table__.create(engine)
+            metadata = MetaData()
+            queue = Table(
+                "ingestion_queue_jobs", metadata,
+                Column("stage", String(24), nullable=False),
+                Column("dedupe_key", String(64), nullable=False),
+                Column("payload", JSON, nullable=False),
+                Column("status", String(16), nullable=False),
+            )
+            queue.create(engine)
+            store_id = __import__("uuid").uuid4()
+            urls = [
+                ("https://bplatz.de/product/completed", "completed"),
+                ("https://bplatz.de/product/failed", "failed"),
+            ]
+            with engine.begin() as connection:
+                with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
+                    session.add(Store(
+                        id=store_id, name="Bplatz", slug="bplatz",
+                        domain="bplatz.de", country="DE", currency="EUR", status="active",
+                    ))
+                    session.commit()
+                for url, status in urls:
+                    payload = {
+                        "store_id": str(store_id),
+                        "external_product_id": url,
+                    }
+                    serialized = __import__("json").dumps(
+                        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    )
+                    digest = __import__("hashlib").sha256(
+                        serialized.encode("utf-8")
+                    ).hexdigest()
+                    connection.execute(queue.insert().values(
+                        stage="fetch", dedupe_key=digest,
+                        payload=payload, status=status,
+                    ))
+
+                captured = []
+                def capture_pending(_connection, _queue, candidates, _stores):
+                    captured.extend(candidates)
+                    return len(candidates)
+
+                with patch(
+                    "scripts.seed_postgres_fetch_queue_from_legacy_catalog._queue_rows",
+                    side_effect=capture_pending,
+                ):
+                    inserted = _apply_candidates(connection, [
+                        ("bplatz", urls[0][0]),
+                        ("bplatz", urls[1][0]),
+                    ])
+
+            self.assertEqual(inserted, 0)
+            self.assertEqual(captured, [])
+        finally:
+            engine.dispose()
+
     def test_existing_store_missing_domain_is_completed(self):
         engine = create_engine("sqlite+pysqlite:///:memory:")
         try:
