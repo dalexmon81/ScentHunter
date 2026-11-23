@@ -21,7 +21,7 @@ from scripts.backfill_notino_verified_gtin import backfill_verified_notino_gtins
 
 def _find_recent_discovery_job(conn, store_id, now: datetime):
     """Adopt the oldest recent Notino discovery page instead of restarting page one."""
-    cutoff = now - timedelta(minutes=30)
+    cutoff = now - timedelta(hours=2)
     rows = conn.execute(
         text("""
             SELECT id, payload
@@ -63,7 +63,7 @@ def _discovery_batch_started_at(conn, task_id, bootstrap_started_at: datetime) -
         created_at = created_at.astimezone(timezone.utc)
     if (
         row["status"] in {"queued", "running"}
-        and created_at < bootstrap_started_at - timedelta(minutes=30)
+        and created_at < bootstrap_started_at - timedelta(hours=2)
     ):
         raise RuntimeError(
             "An old Notino discovery job is still active; refusing to enqueue "
