@@ -17,6 +17,8 @@ on:
       - "backend/tests/test_notino_sauvage_catalog_additions.py"
       - "backend/scripts/bootstrap_notino_postgres.py"
       - "backend/tests/test_notino_bootstrap_batch.py"
+      - "backend/scripts/backfill_notino_verified_gtin.py"
+      - "backend/tests/test_notino_verified_gtin_backfill.py"
       - "backend/scenthunter_next_engine/notino_verified_catalog_additions.json"
       - "backend/tests/test_phase2_postgres_schema.py"
       - "backend/tests/test_postgres_queue_cutover.py"
@@ -121,6 +123,10 @@ jobs:
         run: pytest -q backend/tests/test_postgres_queue_cutover.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
+      - name: Verify four reviewed Notino Dior Sauvage GTINs
+        # Exact GTIN checksum, expected canonical variant ID and size must agree.
+        working-directory: backend
+        run: pytest -q tests/test_notino_verified_gtin_backfill.py
       - name: Verify resumed Notino discovery batch
         working-directory: backend
         run: pytest -q tests/test_notino_bootstrap_batch.py
