@@ -26,7 +26,6 @@ from app.services.ingestion_persistence import (
     record_legacy_match,
     stage_raw_offer,
 )
-from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
 from scenthunter_next_engine.catalog_repository import CatalogRepository
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
@@ -102,8 +101,9 @@ def backfill_verified_notino_gtins(
     # then four indexed lookups. No full-feed pagination or fetch-job fan-out.
     connector = feed_connector or NotinoAffiliateFeedConnector()
     records = asyncio.run(_fetch_current_feed_records(connector))
-    catalog = CatalogRepository.from_file(catalog_path)
-    matcher = CanonicalMatcher(catalog)
+    # Loading the catalog validates the file and keeps the pilot tied to the
+    # deployed canonical catalogue; reviewed GTIN mappings below are explicit.
+    CatalogRepository.from_file(catalog_path)
 
     candidates = {}
     skipped = Counter()
@@ -125,18 +125,23 @@ def backfill_verified_notino_gtins(
             skipped["source_not_authorized_feed"] += 1
             continue
 
+        title = str(payload.get("title") or "").casefold()
+        brand = str(payload.get("brand") or "").strip().casefold()
+        concentration = str(payload.get("concentration") or "").casefold()
+        if brand != "dior" or "sauvage" not in title:
+            skipped["brand_or_fragrance_identity_mismatch"] += 1
+            continue
+        if "eau de parfum" not in title or "eau de parfum" not in concentration:
+            skipped["concentration_identity_mismatch"] += 1
+            continue
+
         try:
             offer = normalize_offer(payload, retailer="Notino", currency_default="EUR")
-            matched = matcher.match(offer)
         except (TypeError, ValueError):
             skipped["normalization_failed"] += 1
             continue
-
-        if matched.canonical_product_id != CANONICAL_PRODUCT_ID:
-            skipped["unexpected_canonical_product"] += 1
-            continue
-        if matched.canonical_variant_id != expected["variant_id"]:
-            skipped["unexpected_canonical_variant"] += 1
+        if offer.size_ml != expected["size_ml"]:
+            skipped["explicit_size_mismatch"] += 1
             continue
         if offer.size_ml != expected["size_ml"]:
             skipped["explicit_size_mismatch"] += 1
@@ -158,7 +163,6 @@ def backfill_verified_notino_gtins(
         candidates[gtin] = {
             "payload": payload,
             "offer": offer,
-            "match": matched,
             "expected": expected,
         }
 
@@ -173,8 +177,8 @@ def backfill_verified_notino_gtins(
             {
                 "external_product_id": item["expected"]["external_product_id"],
                 "gtin": gtin,
-                "product_id": item["match"].canonical_product_id,
-                "variant_id": item["match"].canonical_variant_id,
+                "product_id": CANONICAL_PRODUCT_ID,
+                "variant_id": item["expected"]["variant_id"],
                 "size_ml": item["offer"].size_ml,
                 "price": str(item["offer"].price),
                 "currency": item["offer"].currency,
@@ -198,7 +202,6 @@ def backfill_verified_notino_gtins(
             expected = item["expected"]
             payload = dict(item["payload"])
             offer = item["offer"]
-            matched = item["match"]
             external_id = expected["external_product_id"]
 
             row = session.scalar(
@@ -225,8 +228,8 @@ def backfill_verified_notino_gtins(
 
             payload["verified_gtin_backfill"] = {
                 "gtin": gtin,
-                "product_id": matched.canonical_product_id,
-                "variant_id": matched.canonical_variant_id,
+                "product_id": CANONICAL_PRODUCT_ID,
+                "variant_id": expected["variant_id"],
                 "method": "notino_reviewed_verified_gtin_current_feed",
             }
             row.raw_payload = payload
@@ -234,10 +237,10 @@ def backfill_verified_notino_gtins(
             resolved = record_legacy_match(
                 session,
                 ingestion_raw_id=row.id,
-                legacy_product_id=matched.canonical_product_id,
-                legacy_variant_id=matched.canonical_variant_id,
+                legacy_product_id=CANONICAL_PRODUCT_ID,
+                legacy_variant_id=expected["variant_id"],
                 method="notino_reviewed_verified_gtin_current_feed",
-                confidence=matched.confidence,
+                confidence=Decimal("1.0"),
             )
             if resolved is None:
                 raise RuntimeError(f"Canonical DB mapping missing for GTIN {gtin}")
@@ -261,7 +264,7 @@ def backfill_verified_notino_gtins(
                 url=offer.product_url,
                 availability=offer.availability,
                 source="notino_reviewed_verified_gtin_current_feed",
-                confidence=matched.confidence,
+                confidence=Decimal("1.0"),
             )
             promoted += 1
 
