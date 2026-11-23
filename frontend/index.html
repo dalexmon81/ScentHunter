@@ -828,6 +828,10 @@ function shGroupData(data){
       canonical_name:String(group.canonical_name||group.name||"").trim(),
       family:String(group.family||"").trim(),
       variant:String(group.variant||"").trim(),
+      formats:Array.isArray(group.formats)?group.formats.map(item=>({
+        size_ml:item?.size_ml??item?.size??null,
+        variant_id:String(item?.variant_id||"")
+      })).filter(item=>item.size_ml!==null&&item.size_ml!==undefined):[],
       image,
       fallback_image,
       fallback_images,
@@ -891,6 +895,13 @@ function formatLabel(size){return size?`${size} ml`:"Formato non specificato"}
 
 function getSizeGroups(g){
   const map=new Map();
+  // Formats come from canonical ProductVariant rows, including sizes with no
+  // published offer yet. Offers are then attached to their matching size.
+  (g?.formats||[]).forEach(format=>{
+    const raw=format?.size_ml??format?.size;
+    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\\d+(?:[.,]\\d+)?/)?.[0]?.replace(",",".")||"";
+    if(size&&!map.has(size))map.set(size,[]);
+  });
   (g?.offers||[]).forEach(o=>{
     const raw=o?.size_ml;
     const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
