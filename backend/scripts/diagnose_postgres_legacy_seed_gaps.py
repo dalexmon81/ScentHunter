@@ -101,6 +101,32 @@ def main() -> None:
                         )
 
             report["matching_queue_rows"] = sum(len(v) for v in statuses.values())
+
+            # Read-only failure analysis across all fetch jobs, not just the
+            # current legacy candidates. Group exact errors to identify the
+            # dominant failure causes without exposing full product URLs.
+            failure_rows = conn.execute(
+                select(
+                    queue.c.status,
+                    queue.c.last_error,
+                    text("count(*)"),
+                )
+                .where(queue.c.stage == "fetch")
+                .group_by(queue.c.status, queue.c.last_error)
+                .order_by(text("count(*) DESC"))
+            ).all()
+            report["fetch_queue_status_totals"] = {}
+            report["fetch_failure_reasons"] = []
+            for status, last_error, count in failure_rows:
+                report["fetch_queue_status_totals"][status] = (
+                    report["fetch_queue_status_totals"].get(status, 0) + int(count)
+                )
+                if status == "failed":
+                    report["fetch_failure_reasons"].append({
+                        "count": int(count),
+                        "last_error": (last_error or "<no error recorded>")[:1000],
+                    })
+
             report["missing_count"] = len(report["missing_candidates"])
             report["stores_missing"] = sorted(set(report["stores_missing"]))
             print(json.dumps(report, sort_keys=True, indent=2))
