@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
@@ -37,6 +38,25 @@ _schedule = Table(
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def queue_min_created_at(environ=None) -> datetime | None:
+    """Optional production cutover boundary; older queued jobs remain untouched."""
+    env = os.environ if environ is None else environ
+    raw = str(env.get("SCENTHUNTER_QUEUE_MIN_CREATED_AT") or "").strip()
+    if not raw:
+        return None
+    try:
+        value = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        raise RuntimeError(
+            "SCENTHUNTER_QUEUE_MIN_CREATED_AT must be an ISO-8601 timestamp with timezone"
+        ) from None
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise RuntimeError(
+            "SCENTHUNTER_QUEUE_MIN_CREATED_AT must include a timezone"
+        )
+    return value.astimezone(timezone.utc)
 
 
 def _require_postgresql() -> None:
@@ -125,10 +145,16 @@ def claim_next(worker_id: str) -> dict[str, Any] | None:
     engine = make_engine()
     try:
         with engine.begin() as conn:
-            row = conn.execute(select(_jobs).where(
-                _jobs.c.status == "queued", _jobs.c.available_at <= _now()
-            ).order_by(_jobs.c.available_at, _jobs.c.created_at, _jobs.c.id)
-             .with_for_update(skip_locked=True).limit(1)).mappings().first()
+            conditions = [
+                _jobs.c.status == "queued",
+                _jobs.c.available_at <= _now(),
+            ]
+            minimum_created_at = queue_min_created_at()
+            if minimum_created_at is not None:
+                conditions.append(_jobs.c.created_at >= minimum_created_at)
+            row = conn.execute(select(_jobs).where(*conditions)
+                .order_by(_jobs.c.available_at, _jobs.c.created_at, _jobs.c.id)
+                .with_for_update(skip_locked=True).limit(1)).mappings().first()
             if row is None:
                 return None
             now = _now()
