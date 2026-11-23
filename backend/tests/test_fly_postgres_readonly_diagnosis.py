@@ -61,7 +61,7 @@ def machine(id, state, group):
     return {"id": id, "state": state, "config": {"metadata": {"fly_process_group": group}}}
 
 
-def test_selects_started_app_and_packages_both_checked_out_scripts(runner):
+def test_selects_started_app_and_packages_both_checked_out_scripts(runner, tmp_path):
     result, calls = runner([
         machine("worker", "started", "worker"),
         machine("stopped", "stopped", "app"),
@@ -80,6 +80,30 @@ def test_selects_started_app_and_packages_both_checked_out_scripts(runner):
     for name in ("diagnose_postgres_legacy_seed_gaps.py", "seed_postgres_fetch_queue_from_legacy_catalog.py"):
         expected = base64.b64encode((ROOT / "backend/scripts" / name).read_bytes()).decode()
         assert expected in payload
+    fake_python = tmp_path / "fake-python"
+    fake_python.write_text(textwrap.dedent("""\
+        #!/usr/bin/env python3
+        import importlib.util
+        from pathlib import Path
+        import sys
+        seed = Path(sys.argv[-1]).with_name("seed_postgres_fetch_queue_from_legacy_catalog.py")
+        spec = importlib.util.spec_from_file_location("seed", seed)
+        spec.loader.exec_module(importlib.util.module_from_spec(spec))
+        """))
+    fake_python.chmod(0o755)
+    seed = ROOT / "backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py"
+    payload = payload.replace(base64.b64encode(seed.read_bytes()).decode(), base64.b64encode(b"value = 1\n").decode())
+    payload = payload.replace("test -r /data/store_catalog.sqlite3", ":")
+    payload = payload.replace("test -x /app/.venv/bin/python", ":")
+    payload = payload.replace("/app/.venv/bin/python -u", f"{shlex.quote(str(fake_python))} -u")
+    payload = payload.replace("/tmp/scenthunter-diagnosis.XXXXXX", str(tmp_path / "remote.XXXXXX"))
+    completed = subprocess.run(
+        ["sh"], input=payload, text=True, capture_output=True,
+        env=os.environ | {"SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL": "test"},
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "SCENTHUNTER_DIAGNOSIS_COMPLETED" in completed.stdout
+    assert not list(tmp_path.glob("remote.*"))
 
 
 def test_rejects_missing_started_app(runner):

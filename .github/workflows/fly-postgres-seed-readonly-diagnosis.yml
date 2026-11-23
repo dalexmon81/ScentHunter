@@ -63,9 +63,12 @@ jobs:
             printf "printf %%s '%s' | base64 -d > \"\$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py\"\n" "$diagnostic_b64"
             printf "printf %%s '%s' | base64 -d > \"\$dir/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py\"\n" "$seed_b64"
             cat <<'SH'
-          export PYTHONPATH=/app/backend
+          export PYTHONPATH=/app/backend PYTHONDONTWRITEBYTECODE=1
           echo "Remote diagnostic started (480s limit)" >&2
           /app/.venv/bin/python -u "$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py"
+          rm -f "$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py" "$dir/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py"
+          rmdir "$dir/backend/scripts" "$dir/backend" "$dir"
+          trap - EXIT
           echo "SCENTHUNTER_DIAGNOSIS_COMPLETED"
           SH
           } > "$RUNNER_TEMP/diagnostic-remote.sh"
