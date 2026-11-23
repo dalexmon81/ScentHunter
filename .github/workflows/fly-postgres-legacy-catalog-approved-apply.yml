@@ -73,11 +73,11 @@ jobs:
               assert d["mode"] == "dry_run" and d["destination_written"] is False, d
               assert d["target_database"] == "scenthunter_offerfirst", d
               assert d["queued_candidates"] == 127977, d
-              assert d["already_active_candidates"] == 123816, d
+              assert d["already_present_candidates"] == 123816, d
               assert d["would_insert_candidates"] == 4161, d
               assert d["duplicate_candidates"] == 0, d
               assert all(v == 0 for v in d["rejected_by_store"].values()), d
-              print("DRY_RUN_VERIFIED candidates=127977 already_active=123816 to_insert=4161")
+              print("DRY_RUN_VERIFIED candidates=127977 already_present=123816 to_insert=4161")
           elif mode == "apply":
               d = ast.literal_eval(open(path).read().strip())
               assert d["mode"] == "apply" and d["destination_written"] is True, d
