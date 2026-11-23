@@ -16,6 +16,7 @@ sys.path.insert(0, "/app/backend")
 from app.db import make_engine
 from app.models import Offer, Store
 from app.workers.queueing import enqueue_discovery
+from scripts.backfill_notino_verified_gtin import backfill_verified_notino_gtins
 
 
 def _discovery_batch_started_at(conn, task_id, bootstrap_started_at: datetime) -> datetime:
@@ -178,6 +179,21 @@ def main() -> None:
                 flush=True,
             )
             if int(offer_count) > 0 and int(completed_fetches) > 0:
+                with Session(engine) as session:
+                    store = session.scalar(select(Store).where(Store.id == store_id))
+                    if store is None:
+                        raise RuntimeError("Notino store disappeared during GTIN backfill")
+                    gtin_backfill = backfill_verified_notino_gtins(
+                        session, store,
+                        catalog_path="/app/backend/product_catalog.json",
+                        apply=True,
+                    )
+                    session.commit()
+                print(
+                    "NOTINO_VERIFIED_GTIN_BACKFILL="
+                    + json.dumps(gtin_backfill, ensure_ascii=False, sort_keys=True),
+                    flush=True,
+                )
                 print("NOTINO_POSTGRES_INGESTION=PASS", flush=True)
                 return
             if int(failed_discovery) > 0 and int(completed_fetches) == 0:
