@@ -1,7 +1,8 @@
-"""PostgreSQL-only producer helpers for canonical catalog ingestion."""
+"""Typed producer helpers for implemented catalog worker tasks."""
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Mapping
 from uuid import UUID
 
@@ -16,12 +17,28 @@ class QueueNotConfigured(RuntimeError):
     pass
 
 
+def _backend() -> str:
+    value = os.environ.get("SCENTHUNTER_QUEUE_BACKEND", "redis").strip().lower()
+    if value not in {"sqlite", "redis", "postgres"}:
+        raise RuntimeError("SCENTHUNTER_QUEUE_BACKEND must be sqlite, redis or postgres")
+    return value
+
+
 def _enqueue(stage: str, payload: Mapping[str, Any]):
     if stage not in TASKS:
         raise ValueError(f"unsupported ingestion stage: {stage}")
-    from app.workers.postgres_queue import enqueue
     safe_payload = json.loads(json.dumps(dict(payload), allow_nan=False))
-    return enqueue(stage, safe_payload)
+    backend = _backend()
+    if backend == "sqlite":
+        from app.workers.sqlite_queue import enqueue
+        return enqueue(stage, safe_payload)
+    if backend == "postgres":
+        from app.workers.postgres_queue import enqueue
+        return enqueue(stage, safe_payload)
+    from app.workers.celery_app import celery_app, queue_is_configured
+    if not queue_is_configured():
+        raise QueueNotConfigured("SCENTHUNTER_REDIS_URL is not configured")
+    return celery_app.send_task(TASKS[stage], kwargs={"payload": safe_payload})
 
 
 def enqueue_discovery(store_id: UUID | str, *, cursor: str | None = None, limit: int = 100):
