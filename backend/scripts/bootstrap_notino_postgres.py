@@ -18,6 +18,36 @@ from app.models import Offer, Store
 from app.workers.queueing import enqueue_discovery
 
 
+def _discovery_batch_started_at(conn, task_id, bootstrap_started_at: datetime) -> datetime:
+    """Reuse the creation time of a deduplicated in-flight discovery batch."""
+    row = conn.execute(
+        text("""
+            SELECT created_at, status
+            FROM ingestion_queue_jobs
+            WHERE CAST(id AS text) = :job_id
+        """),
+        {"job_id": str(task_id)},
+    ).mappings().one_or_none()
+    if row is None:
+        raise RuntimeError(f"Notino discovery queue job was not persisted: {task_id}")
+    created_at = row["created_at"]
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+    if created_at.tzinfo is None or created_at.utcoffset() is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    else:
+        created_at = created_at.astimezone(timezone.utc)
+    if (
+        row["status"] in {"queued", "running"}
+        and created_at < bootstrap_started_at - timedelta(minutes=30)
+    ):
+        raise RuntimeError(
+            "An old Notino discovery job is still active; refusing to enqueue "
+            "a duplicate batch."
+        )
+    return created_at
+
+
 def main() -> None:
     engine = make_engine()
     try:
@@ -43,20 +73,23 @@ def main() -> None:
 
         bootstrap_started_at = datetime.now(timezone.utc)
         task_id = enqueue_discovery(store_id, limit=1000)
-        priority_at = bootstrap_started_at - timedelta(hours=24)
         with engine.begin() as conn:
+            batch_started_at = _discovery_batch_started_at(
+                conn, task_id, bootstrap_started_at
+            )
+            priority_at = batch_started_at - timedelta(hours=24)
             conn.execute(
                 text("""
                     UPDATE ingestion_queue_jobs
                     SET available_at = :priority_at
-                    WHERE id = CAST(:job_id AS uuid) AND status = 'queued'
+                    WHERE CAST(id AS text) = :job_id AND status = 'queued'
                 """),
-                {"priority_at": priority_at, "job_id": task_id},
+                {"priority_at": priority_at, "job_id": str(task_id)},
             )
         print(
             "NOTINO_DISCOVERY_ENQUEUED="
             + json.dumps(
-                {"store_id": str(store_id), "task_id": str(task_id), "limit": 1000}
+                {"store_id": str(store_id), "task_id": str(task_id), "limit": 1000, "batch_started_at": batch_started_at.isoformat()}
             ),
             flush=True,
         )
@@ -81,7 +114,7 @@ def main() -> None:
                     {
                         "priority_at": priority_at,
                         "store_id": str(store_id),
-                        "started_at": bootstrap_started_at,
+                        "started_at": batch_started_at,
                     },
                 )
                 counts = conn.execute(
@@ -96,7 +129,7 @@ def main() -> None:
                 offer_count = conn.execute(
                     select(func.count()).select_from(Offer).where(
                         Offer.store_id == store_id,
-                        Offer.captured_at >= bootstrap_started_at,
+                        Offer.captured_at >= batch_started_at,
                     )
                 ).scalar_one()
                 completed_fetches = conn.execute(
