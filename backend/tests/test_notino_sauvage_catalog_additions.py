@@ -47,6 +47,21 @@ def test_notino_sauvage_edp_supplement_completes_four_known_sizes():
     }
 
 
+
+def test_sauvage_parfum_has_officially_verified_four_formats():
+    raw = json.loads(CATALOG.read_text(encoding="utf-8"))
+    merged = merge_supplemental_catalog(raw, CATALOG)
+    products, variants_by_product, blocked = validate_catalog(merged)
+
+    assert blocked == []
+    product = next(row for row in products if row["product_id"] == "SH-AUTO-0179")
+    variants = variants_by_product[product["product_id"]]
+    assert product["canonical_name"] == "Sauvage Parfum"
+    assert sorted(int(row["size_ml"]) for row in variants) == [30, 60, 100, 200]
+    assert all(not (row.get("gtin") or row.get("gtins")) for row in variants)
+    assert "https://www.dior.com/fr_fr/beauty/products/sauvage-parfum-C099600456.html" in product["verification_sources"]
+
+
 def test_search_title_does_not_repeat_concentration_and_keeps_families_separate():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -153,6 +168,7 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
                 expected_families = {
                     "SH-0039": ("Eau de Toilette", [30, 60, 100, 200]),
                     "SH-0040": ("Elixir", [60, 100, 150]),
+                    "SH-AUTO-0179": ("Parfum", [30, 60, 100, 200]),
                 }
                 for product_id, (concentration, expected_sizes) in expected_families.items():
                     family_map = session.get(LegacyProductIdMap, product_id)
@@ -169,8 +185,10 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
                 edp = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Parfum")
                 edt = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Toilette")
                 elixir = next(row for row in result["results"] if row["name"] == "Sauvage Elixir")
+                parfum = next(row for row in result["results"] if row["name"] == "Sauvage Parfum")
                 assert [item["size_ml"] for item in edp["formats"]] == [30, 60, 100, 200]
                 assert [item["size_ml"] for item in edt["formats"]] == [30, 60, 100, 200]
                 assert [item["size_ml"] for item in elixir["formats"]] == [60, 100, 150]
+                assert [item["size_ml"] for item in parfum["formats"]] == [30, 60, 100, 200]
         finally:
             engine.dispose()
