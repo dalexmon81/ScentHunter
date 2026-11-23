@@ -16,6 +16,17 @@ def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
+def _display_fragrance_name(name: str, concentration: str | None) -> str:
+    """Avoid repeating a concentration already embedded in the fragrance name."""
+    display = " ".join((name or "").split())
+    suffix = " ".join((concentration or "").split())
+    if suffix and display.casefold().endswith(suffix.casefold()):
+        base = display[: -len(suffix)].rstrip(" -–—").strip()
+        if base:
+            return base
+    return display
+
+
 def _offer_url_valid(url: str, domain: str | None) -> bool:
     try:
         parsed = urlsplit(url)
@@ -210,7 +221,8 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
                 "concentration_group_key": suffix,
                 "brand": brand.name,
                 "name": " ".join(filter(None, (
-                    fragrance.name, variant.concentration,
+                    _display_fragrance_name(fragrance.name, variant.concentration),
+                    variant.concentration,
                     "Tester" if variant.is_tester is True else None,
                     "Refill" if variant.is_refill is True else None,
                     "Gift set" if variant.is_gift_set is True else None,
