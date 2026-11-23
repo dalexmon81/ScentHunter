@@ -79,3 +79,38 @@ def test_canonical_identity_without_variant_remains_searchable_without_offers():
     finally:
         session.close()
         engine.dispose()
+
+
+
+def test_search_groups_sizes_inside_each_fragrance_concentration():
+    engine, session = _session()
+    try:
+        fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
+        session.add_all([
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=30, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=60, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
+            ),
+        ])
+        session.commit()
+
+        result = search_catalog(session, "Dior Sauvage")
+        assert result["count"] == 2
+        edt = next(item for item in result["results"] if "Toilette" in item["name"])
+        edp = next(item for item in result["results"] if "Parfum" in item["name"])
+
+        assert [item["size_ml"] for item in edt["formats"]] == [30, 60]
+        assert len(edt["variant_ids"]) == 2
+        assert [item["size_ml"] for item in edp["formats"]] == [100]
+        assert all(" ml" not in item["name"] for item in result["results"])
+    finally:
+        session.close()
+        engine.dispose()
