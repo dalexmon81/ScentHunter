@@ -218,7 +218,24 @@ def _apply_candidates(connection, candidates):
                     )
             stores[key] = store.id
         session.flush()
-        inserted = _queue_rows(connection, queue, candidates, stores)
+        # A completed or failed fetch is still historical work for this exact
+        # store+URL. Never enqueue it again as part of a catalog seed.
+        existing_keys = set(connection.execute(
+            select(queue.c.dedupe_key).where(queue.c.stage == "fetch")
+        ).scalars())
+        pending = []
+        for store_key, url in candidates:
+            payload = {
+                "store_id": str(stores[store_key]),
+                "external_product_id": url,
+            }
+            serialized = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+            )
+            digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+            if digest not in existing_keys:
+                pending.append((store_key, url))
+        inserted = _queue_rows(connection, queue, pending, stores)
         # Release only the Session savepoint; the caller owns the outer
         # transaction and commits Store rows and queue jobs together.
         session.commit()
@@ -274,11 +291,22 @@ def main():
             ).scalar_one()
             report["target_database"] = db_name
             if {"ingestion_queue_jobs", "stores"}.issubset(set(inspect(conn).get_table_names())):
-                active_keys = set(conn.execute(text("""
-                    SELECT dedupe_key
+                history_rows = conn.execute(text("""
+                    SELECT dedupe_key, status
                     FROM ingestion_queue_jobs
-                    WHERE stage = 'fetch' AND status IN ('queued','running')
-                """)).scalars())
+                    WHERE stage = 'fetch'
+                """)).all()
+                all_history_keys = {row[0] for row in history_rows}
+                active_keys = {
+                    row[0] for row in history_rows
+                    if row[1] in ("queued", "running")
+                }
+                completed_keys = {
+                    row[0] for row in history_rows if row[1] == "completed"
+                }
+                failed_keys = {
+                    row[0] for row in history_rows if row[1] == "failed"
+                }
                 slugs = [item[0] for item in STORE_CONFIG.values()]
                 store_id_by_slug = dict(conn.execute(
                     text("SELECT slug, id FROM stores WHERE slug IN :slugs").bindparams(
@@ -303,8 +331,14 @@ def main():
                     )
                     candidate_keys.add(hashlib.sha256(serialized.encode("utf-8")).hexdigest())
                 already_active = len(candidate_keys & active_keys)
-                would_insert = len(candidate_keys - active_keys) + candidates_without_store
+                already_completed = len(candidate_keys & completed_keys)
+                already_failed = len(candidate_keys & failed_keys)
+                already_present = len(candidate_keys & all_history_keys)
+                would_insert = len(candidate_keys - all_history_keys) + candidates_without_store
                 report["already_active_candidates"] = already_active
+                report["already_completed_candidates"] = already_completed
+                report["already_failed_candidates"] = already_failed
+                report["already_present_candidates"] = already_present
                 report["would_insert_candidates"] = would_insert
             if args.apply and args.confirm_target != db_name:
                 raise ValueError(
