@@ -69,15 +69,21 @@ def main() -> None:
                 digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
                 keys[digest] = (slug, url)
 
-            rows = conn.execute(
-                select(queue.c.dedupe_key, queue.c.status).where(
-                    queue.c.stage == "fetch",
-                    queue.c.dedupe_key.in_(list(keys)) if keys else text("1=0"),
-                )
-            ).all()
+            # Keep each SELECT below PostgreSQL's 65,535 bind-parameter limit.
+            # This is a read-only lookup; batching does not alter queue rows.
             statuses = {}
-            for digest, status in rows:
-                statuses.setdefault(digest, []).append(status)
+            key_list = list(keys)
+            batch_size = 5000
+            for offset in range(0, len(key_list), batch_size):
+                batch_keys = key_list[offset:offset + batch_size]
+                rows = conn.execute(
+                    select(queue.c.dedupe_key, queue.c.status).where(
+                        queue.c.stage == "fetch",
+                        queue.c.dedupe_key.in_(batch_keys),
+                    )
+                ).all()
+                for digest, status in rows:
+                    statuses.setdefault(digest, []).append(status)
 
             for digest, (slug, url) in keys.items():
                 found = statuses.get(digest, [])
