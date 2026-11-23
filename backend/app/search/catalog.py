@@ -246,7 +246,22 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
         group["offers"].extend(offers_by_variant.get(variant.id, []))
 
     results = list(grouped.values())
+    # Public search is a shopping surface: never show catalog-only products
+    # or bottle sizes unless at least one currently verified offer exists.
+    # Canonical variants remain stored in PostgreSQL and become visible as soon
+    # as a fresh, validated retailer offer is promoted.
+    visible_results = []
     for group in results:
+        verified_sizes = {
+            offer.get("size_ml") for offer in group["offers"]
+            if offer.get("size_ml") is not None
+        }
+        group["formats"] = [
+            item for item in group["formats"]
+            if item.get("size_ml") in verified_sizes
+        ]
+        if not group["offers"] or not group["formats"]:
+            continue
         group["formats"].sort(key=lambda item: item["size_ml"])
         group["offers"].sort(key=lambda item: (
             item.get("size_ml") is None,
@@ -254,17 +269,11 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             float(item["price"]),
             item.get("store") or "",
         ))
+        visible_results.append(group)
 
-    for fragrance, brand in identities_without_variants:
-        results.append({
-            "catalog_id": str(fragrance.id),
-            "variant_id": None,
-            "brand": brand.name,
-            "name": " ".join(filter(None, (fragrance.name, "Identità catalogo"))),
-            "image": fragrance.image_url,
-            "formats": [],
-            "offers": [],
-        })
+    # Identity-only catalog entries are intentionally not public search hits.
+    # They remain in the canonical database for future matching and ingestion.
+    results = visible_results
     results.sort(key=lambda item: (item["brand"].casefold(), item["name"].casefold()))
 
     return {
