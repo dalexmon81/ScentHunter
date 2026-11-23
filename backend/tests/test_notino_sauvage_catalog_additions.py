@@ -126,8 +126,28 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
                     ).order_by(ProductVariant.size_ml)
                 ).all()
                 assert [variant.size_ml for variant in variants] == [30, 60, 100, 200]
+
+                expected_families = {
+                    "SH-0039": ("Eau de Toilette", [30, 60, 100, 200]),
+                    "SH-0040": ("Elixir", [60, 100, 150]),
+                }
+                for product_id, (concentration, expected_sizes) in expected_families.items():
+                    family_map = session.get(LegacyProductIdMap, product_id)
+                    assert family_map is not None
+                    family_variants = session.scalars(
+                        select(ProductVariant).where(
+                            ProductVariant.fragrance_id == family_map.fragrance_id,
+                            ProductVariant.concentration == concentration,
+                        ).order_by(ProductVariant.size_ml)
+                    ).all()
+                    assert [variant.size_ml for variant in family_variants] == expected_sizes
+
                 result = search_catalog(session, "Dior Sauvage")
                 edp = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Parfum")
+                edt = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Toilette")
+                elixir = next(row for row in result["results"] if row["name"] == "Sauvage Elixir")
                 assert [item["size_ml"] for item in edp["formats"]] == [30, 60, 100, 200]
+                assert [item["size_ml"] for item in edt["formats"]] == [30, 60, 100, 200]
+                assert [item["size_ml"] for item in elixir["formats"]] == [60, 100, 150]
         finally:
             engine.dispose()
