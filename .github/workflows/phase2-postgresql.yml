@@ -39,6 +39,7 @@ on:
       - "tests/test_bplatz_persistence_service.py"
       - "frontend/index.html"
       - ".github/workflows/phase2-postgresql.yml"
+      - ".github/workflows/notino-cj-feed-import.yml"
 
 permissions:
   contents: read
@@ -128,6 +129,7 @@ jobs:
         working-directory: backend
         run: pytest -q tests/test_notino_verified_gtin_backfill.py
       - name: Verify resumed Notino discovery batch
+        # Reuse discovery pages from the last two hours and never restart the full first page on deploy.
         working-directory: backend
         run: pytest -q tests/test_notino_bootstrap_batch.py
       - name: Verify Dior Sauvage Notino formats and concentration titles

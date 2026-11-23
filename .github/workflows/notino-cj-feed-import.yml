@@ -1,13 +1,6 @@
 name: Notino CJ Feed Import
 
 on:
-  workflow_run:
-    workflows:
-      - Fly Deploy
-    types:
-      - completed
-    branches:
-      - main
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
@@ -22,14 +15,9 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed into PostgreSQL
-    # A deploy whose commit message explicitly requested the bootstrap already
-    # ran the same PostgreSQL script in the Fly deploy workflow. Avoid a
-    # duplicate discovery/fetch batch for that one deployment.
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch'
-          || github.event_name == 'schedule'
-          || (github.event.workflow_run.conclusion == 'success'
-              && !contains(github.event.workflow_run.head_commit.message, 'Notino PostgreSQL bootstrap')) }}
+    # Ingestion runs on its daily schedule or an explicit manual request,
+    # never as a side effect of an unrelated application deployment.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
 
