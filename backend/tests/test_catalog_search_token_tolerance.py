@@ -114,3 +114,36 @@ def test_search_groups_sizes_inside_each_fragrance_concentration():
     finally:
         session.close()
         engine.dispose()
+
+
+def test_search_does_not_merge_edp_edt_or_tester_packaging():
+    engine, session = _session()
+    try:
+        fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
+        session.add_all([
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Parfum",
+                size_ml=50, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edp|50|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Parfum",
+                size_ml=100, is_tester=True, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edp|100|tester|standard|single|standard",
+            ),
+        ])
+        session.commit()
+
+        result = search_catalog(session, "Dior Sauvage")
+        assert result["count"] == 3
+        edp = next(item for item in result["results"] if "Eau de Parfum" in item["name"] and "Tester" not in item["name"])
+        edt = next(item for item in result["results"] if "Eau de Toilette" in item["name"])
+        tester = next(item for item in result["results"] if "Tester" in item["name"])
+        assert [item["size_ml"] for item in edp["formats"]] == [50, 100]
+        assert [item["size_ml"] for item in edt["formats"]] == [30, 60]
+        assert [item["size_ml"] for item in tester["formats"]] == [100]
+    finally:
+        session.close()
+        engine.dispose()
