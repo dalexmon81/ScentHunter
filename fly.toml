@@ -18,7 +18,7 @@ primary_region = "ams"
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
   SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
   # Preserve all pre-pilot queue rows but do not claim them; only newly created post-cutover jobs are eligible.
-  SCENTHUNTER_QUEUE_MIN_CREATED_AT = "2026-11-23T08:10:00Z"
+  SCENTHUNTER_QUEUE_MIN_CREATED_AT = "2026-11-23T08:27:00Z"
 
 [http_service]
   internal_port = 8080
