@@ -118,27 +118,48 @@ def test_current_feed_lookup_rejects_external_id_and_gtin_mismatches():
 
 
 def test_backfill_uses_prefetched_feed_records_without_network_io(monkeypatch, tmp_path):
+    from types import SimpleNamespace
     from scripts import backfill_notino_verified_gtin as module
 
-    expected_records = {"3348901368247": {"external_product_id": "CHDSVGM_AEDP10"}}
+    expected_records = {}
+    for gtin, expected in VERIFIED_GTINS.items():
+        expected_records[gtin] = {
+            "external_product_id": expected["external_product_id"],
+            "title": f"DIOR Sauvage Eau de Parfum {expected['size_ml']} ml",
+            "brand": "DIOR",
+            "gtin": gtin,
+            "size_ml": expected["size_ml"],
+            "concentration": "Eau de Parfum",
+            "price": "69.70",
+            "currency": "EUR",
+            "currency_explicit": True,
+            "availability": "in_stock",
+            "product_url": "https://www.notino.fr" + expected["path"],
+            "url": "https://www.notino.fr" + expected["path"],
+            "source": "authorized_cj_viv_xml_feed",
+        }
+
+    class StubCatalog:
+        def get(self, product_id):
+            assert product_id == CANONICAL_PRODUCT_ID
+            return SimpleNamespace(variants=[
+                SimpleNamespace(variant_id=item["variant_id"], size_ml=item["size_ml"])
+                for item in VERIFIED_GTINS.values()
+            ])
+
+    monkeypatch.setattr(module.CatalogRepository, "from_file", lambda _path: StubCatalog())
 
     def unexpected_fetch(_connector):
-        raise AssertionError("feed fetch must not run when records were prefetched")
+        raise AssertionError("prefetched records must prevent remote feed access")
 
     monkeypatch.setattr(module, "_fetch_current_feed_records", unexpected_fetch)
+    summary = module.backfill_verified_notino_gtins(
+        object(),
+        SimpleNamespace(slug="notino-fr", status="active", domain="notino.fr"),
+        catalog_path=tmp_path / "unused.json",
+        apply=False,
+        feed_records=expected_records,
+    )
 
-    # Exercise the early validation path with an inactive store: feed records are
-    # accepted as an already-fetched input, and no connector/network call is made.
-    class StoreStub:
-        slug = "notino-fr"
-        status = "inactive"
-
-    try:
-        module.backfill_verified_notino_gtins(
-            object(), StoreStub(), catalog_path=tmp_path / "unused.json",
-            apply=False, feed_records=expected_records,
-        )
-    except ValueError as exc:
-        assert "must be active" in str(exc)
-    else:
-        raise AssertionError("inactive store must be rejected before catalog access")
+    assert summary["gtin_candidates"] == 4
+    assert summary["database_written"] is False
