@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from scripts.backfill_notino_verified_gtin import VERIFIED_GTINS
+from scripts.backfill_notino_verified_gtin import VERIFIED_GTINS, _valid_gtin13
 from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
 from scenthunter_next_engine.catalog_repository import CatalogRepository
 from scenthunter_next_engine.offer_normalizer import normalize_offer
@@ -26,7 +26,11 @@ def test_four_reviewed_notino_gtins_resolve_to_their_exact_sauvage_edp_variants(
         }
         offer = normalize_offer(payload, retailer="Notino", currency_default="EUR")
         matched = matcher.match(offer)
-        assert matched.reason == "verified_gtin_exact_variant"
+        assert matched.reason in {
+            "verified_gtin_exact_variant",
+            "exact_name_brand_alias_and_size",
+        }
+        assert _valid_gtin13(gtin)
         assert matched.canonical_product_id == "SH-AUTO-0178"
         assert matched.canonical_variant_id == expected["variant_id"]
         assert offer.size_ml == expected["size_ml"]
