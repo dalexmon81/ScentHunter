@@ -169,64 +169,43 @@ jobs:
           remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store --seed-deloox-store --seed-sabina-store --seed-easycosmetic-store --seed-parfumzentrum-store && /app/.venv/bin/python scripts/verify_catalog.py'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
-      - name: Verify production health and catalog API
+      - name: Verify production health and PostgreSQL catalog API
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           import time
-          import urllib.error
           import urllib.request
 
           base = "https://scenthunter.fly.dev"
-          endpoints = ("/health", "/catalog-status")
-          last_error = None
-
           for attempt in range(1, 13):
               try:
-                  payloads = {}
-                  for endpoint in endpoints:
+                  def get(path):
                       request = urllib.request.Request(
-                          base + endpoint,
-                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-deploy-smoke-test/1.0"},
+                          base + path,
+                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-postgres-health/2.0"},
                       )
-                      with urllib.request.urlopen(request, timeout=12) as response:
+                      with urllib.request.urlopen(request, timeout=15) as response:
                           if response.status != 200:
-                              raise RuntimeError(f"{endpoint} returned HTTP {response.status}")
-                          payloads[endpoint] = json.loads(response.read().decode("utf-8"))
+                              raise RuntimeError(f"{path} returned HTTP {response.status}")
+                          return json.loads(response.read().decode("utf-8"))
 
-                  health = payloads["/health"]
-                  if health.get("status") != "healthy":
-                      raise RuntimeError(f"Unexpected health payload: {health}")
-                  if not health.get("architecture"):
-                      raise RuntimeError("Health payload is missing architecture")
-
-                  catalog = payloads["/catalog-status"]
-                  if not isinstance(catalog.get("stores"), dict):
-                      raise RuntimeError("Catalog status is missing the stores object")
-                  for field in ("bootstrap_started", "bootstrap_running", "bootstrap_done"):
-                      if field not in catalog:
-                          raise RuntimeError(f"Catalog status is missing {field}")
-
-                  print("Production health check: PASS")
-                  print(f"Architecture: {health['architecture']}")
-                  print(f"Catalog API: PASS ({len(catalog['stores'])} store status entries)")
-                  print("Bootstrap: " + json.dumps({
-                      key: catalog.get(key) for key in (
-                          "bootstrap_started", "bootstrap_running", "bootstrap_done", "bootstrap_error"
-                      )
-                  }, ensure_ascii=False))
-                  if catalog.get("bootstrap_error"):
-                      print("WARNING: catalog bootstrap reports an error; inspect /catalog-status.")
+                  health = get("/health")
+                  catalog = get("/api/catalog/status")
+                  if health.get("status") != "healthy" or health.get("architecture") != "postgresql-catalog-only":
+                      raise RuntimeError("Production app is not the PostgreSQL-only runtime: " + json.dumps(health))
+                  if catalog.get("status") != "ready":
+                      raise RuntimeError("Canonical PostgreSQL catalog is not ready: " + json.dumps(catalog))
+                  print("Production health: PASS")
+                  print("Runtime architecture: postgresql-catalog-only")
+                  print("Canonical PostgreSQL catalog: READY")
                   break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = exc
-                  print(f"Attempt {attempt}/12 failed: {type(exc).__name__}: {exc}", flush=True)
-                  if attempt < 12:
-                      time.sleep(5)
-          else:
-              raise SystemExit(f"Production smoke test failed after retries: {last_error}")
+              except Exception as exc:
+                  if attempt == 12:
+                      raise
+                  print(f"Health attempt {attempt}/12 failed: {type(exc).__name__}: {exc}")
+                  time.sleep(5)
           PY
 
       - name: Verify public search is served by the canonical PostgreSQL catalog
@@ -379,186 +358,6 @@ jobs:
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
           remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
           flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
-
-      - name: Force-refresh and verify the affected Deloox offer directly on Fly
-        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import shlex
-          import subprocess
-          import sys
-
-          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
-          remote_python = r"""
-          import json, sys, time
-          sys.path.insert(0, "/app/backend")
-          import catalog_engine
-          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
-          started = time.time()
-          item = None
-          error = None
-          attempts = 0
-          for attempts in range(1, 3):
-              try:
-                  item = catalog_engine.refresh_url("deloox", target)
-                  error = None
-              except Exception as exc:
-                  error = type(exc).__name__ + ":" + str(exc)
-                  item = None
-              try:
-                  item_price = float((item or {}).get("price_num"))
-              except (TypeError, ValueError):
-                  item_price = 0.0
-              if item and item.get("name") and item_price > 0:
-                  break
-              if attempts < 2:
-                  time.sleep(5)
-          conn = catalog_engine.db()
-          try:
-              row = conn.execute(
-                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
-                  ("deloox", target),
-              ).fetchone()
-              persisted = dict(row) if row else None
-          finally:
-              conn.close()
-          print("DELOOX_TARGETED_REFRESH=" + json.dumps({
-              "item_ok": bool(item and item.get("name")),
-              "item_name": (item or {}).get("name"),
-              "item_price": (item or {}).get("price_num"),
-              "refresh_error": error,
-              "attempts": attempts,
-              "store_product": persisted,
-              "started_at": started,
-          }, ensure_ascii=False, default=str), flush=True)
-          """
-          remote_command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
-          try:
-              result = subprocess.run(
-                  ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", remote_command],
-                  capture_output=True, text=True, timeout=210,
-              )
-          except subprocess.TimeoutExpired as exc:
-              raise SystemExit("Timed out while running the targeted refresh directly on the Fly machine.") from exc
-          if result.stdout:
-              print(result.stdout, end="")
-          if result.stderr:
-              print(result.stderr, file=sys.stderr, end="")
-          marker = "DELOOX_TARGETED_REFRESH="
-          line = next((line for line in result.stdout.splitlines() if marker in line), None)
-          if result.returncode != 0:
-              raise SystemExit(f"Fly SSH refresh command failed with exit code {result.returncode}")
-          if not line:
-              raise SystemExit("Fly SSH refresh returned no structured result.")
-          payload = json.loads(line.split(marker, 1)[1])
-          row = payload.get("store_product")
-          if not payload.get("item_ok") or not isinstance(row, dict):
-              raise SystemExit("Deloox refresh did not persist a validated product: " + json.dumps(payload, ensure_ascii=False))
-          try:
-              price = float(row.get("price"))
-              fetched_at = float(row.get("fetched_at"))
-              started_at = float(payload.get("started_at"))
-          except (TypeError, ValueError):
-              raise SystemExit("Deloox refresh returned no explicit price/fetch timestamp: " + json.dumps(payload, ensure_ascii=False))
-          if price <= 0:
-              raise SystemExit(f"Deloox refreshed price is not positive: {price}")
-          import time
-          if fetched_at < started_at - 5 or fetched_at > time.time() + 5:
-              raise SystemExit(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started_at}")
-          try:
-              parsed_price = float(payload.get("item_price"))
-              size_ml = float(row.get("size_ml"))
-          except (TypeError, ValueError):
-              raise SystemExit("Deloox refresh returned no parsed price or product size: " + json.dumps(payload, ensure_ascii=False))
-          # Compare against the live parser result, never against a historical hard-coded retail price.
-          if abs(price - parsed_price) > 0.01:
-              raise SystemExit(f"Persisted Deloox price EUR {price:.2f} differs from freshly parsed price EUR {parsed_price:.2f}.")
-          if abs(size_ml - 150.0) > 0.01 or "liquid brun" not in str(row.get("name") or "").lower():
-              raise SystemExit("Deloox refreshed the wrong product/size: " + json.dumps(row, ensure_ascii=False))
-          if row.get("fetch_status") != "OK":
-              raise SystemExit(f"Deloox product fetch status is not OK: {row.get('fetch_status')}")
-          print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; size_ml={size_ml:g}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
-          PY
-
-      - name: Force-refresh and verify Valentino Born in Roma Donna 50 ml on the Luxembourg storefront
-        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json, shlex, subprocess, sys
-          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
-          remote_python = r"""
-          import json, sys, time
-          sys.path.insert(0, "/app/backend")
-          import catalog_engine
-          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
-          started = time.time()
-          item = catalog_engine.refresh_url("deloox", target)
-          conn = catalog_engine.db()
-          try:
-              row = conn.execute(
-                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
-                  ("deloox", target),
-              ).fetchone()
-              persisted = dict(row) if row else None
-          finally:
-              conn.close()
-          print("DELOOX_VALENTINO_50ML=" + json.dumps({
-              "item": item, "store_product": persisted, "started_at": started
-          }, ensure_ascii=False, default=str), flush=True)
-          """
-          command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
-          result = subprocess.run(
-              ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", command],
-              capture_output=True, text=True, timeout=210,
-          )
-          print(result.stdout, end="")
-          if result.stderr:
-              print(result.stderr, file=sys.stderr, end="")
-          if result.returncode:
-              raise SystemExit(f"Fly SSH Valentino refresh failed: {result.returncode}")
-          marker = "DELOOX_VALENTINO_50ML="
-          line = next((x for x in result.stdout.splitlines() if marker in x), None)
-          if not line:
-              raise SystemExit("No structured Valentino refresh result returned.")
-          payload = json.loads(line.split(marker, 1)[1])
-          item, row = payload.get("item") or {}, payload.get("store_product") or {}
-          try:
-              parsed_price = float(item.get("price_num"))
-              saved_price = float(row.get("price"))
-              size_ml = float(row.get("size_ml"))
-              fetched_at = float(row.get("fetched_at"))
-              started_at = float(payload.get("started_at"))
-          except (TypeError, ValueError):
-              raise SystemExit("Valentino refresh missing validated price/size/timestamp: " + json.dumps(payload, ensure_ascii=False))
-          if "valentino" not in str(row.get("name") or "").lower() or "born in roma" not in str(row.get("name") or "").lower():
-              raise SystemExit("Wrong product persisted: " + json.dumps(row, ensure_ascii=False))
-          if abs(size_ml - 50.0) > 0.01:
-              raise SystemExit("Wrong Valentino size persisted: " + json.dumps(row, ensure_ascii=False))
-          if abs(parsed_price - saved_price) > 0.01:
-              raise SystemExit(f"Valentino parsed price EUR {parsed_price:.2f} differs from saved price EUR {saved_price:.2f}")
-          if fetched_at < started_at - 5 or row.get("fetch_status") != "OK":
-              raise SystemExit("Valentino offer was not freshly and successfully persisted: " + json.dumps(row, ensure_ascii=False))
-          print(f"DELOOX_VALENTINO_50ML_VERIFIED=EUR {saved_price:.2f}; size={size_ml:g}ml; fetched_at={fetched_at}")
-          PY
-
-      - name: Capture Fly logs if the targeted Deloox refresh fails
-        if: ${{ failure() && (contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition')) }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          timeout 25s flyctl logs --app scenthunter --no-tail || true
 
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
         shell: bash
