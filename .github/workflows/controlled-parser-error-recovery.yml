@@ -1,4 +1,4 @@
-name: Controlled stale parser error recovery
+name: PostgreSQL ingestion runtime audit
 
 on:
   push:
@@ -9,15 +9,11 @@ permissions:
   actions: read
 
 jobs:
-  recover:
-    if: ${{ contains(github.event.head_commit.message, 'trigger guarded parser error recovery') }}
+  audit_state:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Wait for this revision's deploy
+      - name: Wait for this revision's successful PostgreSQL deploy
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -30,80 +26,36 @@ jobs:
             CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
             echo "Waiting for Fly Deploy for $GITHUB_SHA: $STATUS / $CONCLUSION (attempt $attempt/90)"
             if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
-            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then echo 'Deploy failed; recovery blocked.' >&2; exit 1; fi
-            sleep 10
-          done
-          if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time; recovery blocked.' >&2; exit 1; fi
-
-      - name: Dry-run bounded recovery
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          SCRIPT='/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py'
-          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
-          printf '%s\n' "$RESULT"
-          printf '%s\n' "$RESULT" | grep -Eq '"status": "DRY_RUN"'
-          printf '%s\n' "$RESULT" | grep -Eq '"read_only": true'
-
-      - name: Apply capped recovery and verify
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          SCRIPT='/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py'
-          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --limit-per-store 10")"
-          printf '%s\n' "$RESULT"
-          printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
-          printf '%s\n' "$RESULT" | grep -Eq '"database_mutated": true'
-          printf '%s\n' "$RESULT" | grep -Eq '"updated_rows": [1-9][0-9]*'
-
-          # Recovery is deliberately capped at ten URLs per store. Other
-          # eligible rows may remain for a later, separately guarded batch;
-          # verify that none of the URLs in this batch is still eligible.
-          RESULT_JSON="$(printf '%s\n' "$RESULT" | sed -n '/^{/,$p')"
-          APPLIED_URLS="$(printf '%s\n' "$RESULT_JSON" | python -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(x["url"] for x in d.get("items", [])))')"
-          POSTCHECK="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
-          printf '%s\n' "$POSTCHECK"
-          printf '%s\n' "$POSTCHECK" | grep -Eq '"status": "DRY_RUN"'
-          POSTCHECK_JSON="$(printf '%s\n' "$POSTCHECK" | sed -n '/^{/,$p')"
-          while IFS= read -r url; do
-            [ -n "$url" ] || continue
-            if printf '%s\n' "$POSTCHECK_JSON" | grep -Fq "$url"; then
-              echo "Recovery postcheck: URL remains eligible after apply: $url" >&2
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then
+              echo 'Deploy failed; PostgreSQL audit blocked.' >&2
               exit 1
             fi
-          done <<< "$APPLIED_URLS"
-
-  audit_state:
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Wait for this revision's deploy
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          READY=0
-          for attempt in $(seq 1 90); do
-            DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
-            STATUS="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
-            CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
-            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
-            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then exit 1; fi
             sleep 10
           done
           if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time.' >&2; exit 1; fi
-      - name: Read-only production recovery preview
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify PostgreSQL catalog health and public search (read-only)
         shell: bash
         run: |
           set -euo pipefail
-          timeout 30s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python /app/tools/diagnostics/recover_stale_parser_errors.py"
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          def get(path):
+              request = urllib.request.Request(base + path, headers={"Accept": "application/json"})
+              with urllib.request.urlopen(request, timeout=25) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          status = get("/api/catalog/status")
+          if status.get("status") != "ready":
+              raise SystemExit("PostgreSQL catalog is not ready: " + json.dumps(status))
+          result = get("/api/catalog/search?" + urllib.parse.urlencode({"q": "Dior Sauvage"}))
+          if not isinstance(result.get("results"), list):
+              raise SystemExit("Canonical PostgreSQL search returned an invalid response")
+          print("POSTGRES_CATALOG_AUDIT=PASS")
+          print("PUBLIC_SEARCH_PRODUCTS=" + str(len(result["results"])))
+          print("PUBLIC_SEARCH_OFFERS=" + str(int(result.get("offer_count", 0) or 0)))
+          PY
