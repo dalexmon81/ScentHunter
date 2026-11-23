@@ -41,7 +41,7 @@ def _now() -> datetime:
 
 
 def queue_min_created_at(environ=None) -> datetime | None:
-    """Optional production cutover boundary; older queued jobs remain untouched."""
+    """Cut off legacy discovery/fetch work while keeping known-offer refreshes eligible."""
     env = os.environ if environ is None else environ
     raw = str(env.get("SCENTHUNTER_QUEUE_MIN_CREATED_AT") or "").strip()
     if not raw:
