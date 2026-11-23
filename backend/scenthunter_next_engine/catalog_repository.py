@@ -110,33 +110,6 @@ def merge_supplemental_catalog(
             *_list_of_mappings(supplemental_variants),
         ]
     return merged
-    try:
-        with supplement_path.open("r", encoding="utf-8") as handle:
-            supplement = json.load(handle)
-    except OSError as exc:
-        raise CatalogFormatError(
-            f"Cannot read supplemental canonical catalog: {supplement_path}"
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise CatalogFormatError(
-            f"Supplemental canonical catalog is not valid JSON: {supplement_path}"
-        ) from exc
-    if not isinstance(supplement, Mapping) or supplement.get("schema_version") != 1:
-        raise CatalogFormatError("Supplemental canonical catalog has an unsupported schema")
-    supplemental_products = supplement.get("products")
-    supplemental_variants = supplement.get("variants")
-    if not isinstance(supplemental_products, list) or not isinstance(supplemental_variants, list):
-        raise CatalogFormatError("Supplemental canonical catalog requires products[] and variants[]")
-    merged["products"] = [
-        *_list_of_mappings(merged.get("products")),
-        *_list_of_mappings(supplemental_products),
-    ]
-    merged["variants"] = [
-        *_list_of_mappings(merged.get("variants")),
-        *_list_of_mappings(supplemental_variants),
-    ]
-    return merged
-
 
 class CatalogRepository:
     """Immutable in-memory view of canonical products and explicit variants."""
