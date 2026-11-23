@@ -196,22 +196,24 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
     for variant, fragrance, brand in rows:
         concentration = " ".join((variant.concentration or "").casefold().split())
         flags = (
-            bool(variant.is_tester), bool(variant.is_refill),
-            bool(variant.is_gift_set), bool(variant.is_mini),
+            variant.is_tester, variant.is_refill,
+            variant.is_gift_set, variant.is_mini,
         )
         key = (fragrance.id, concentration, *flags)
         group = grouped.get(key)
         if group is None:
-            suffix = "|".join((concentration or "unspecified", *(str(int(flag)) for flag in flags)))
+            suffix = "|".join((concentration or "unspecified", *(
+                "u" if flag is None else ("1" if flag else "0") for flag in flags
+            )))
             group = {
                 "catalog_id": f"{fragrance.id}:{suffix}",
                 "brand": brand.name,
                 "name": " ".join(filter(None, (
                     fragrance.name, variant.concentration,
-                    "Tester" if variant.is_tester else None,
-                    "Refill" if variant.is_refill else None,
-                    "Gift set" if variant.is_gift_set else None,
-                    "Mini" if variant.is_mini else None,
+                    "Tester" if variant.is_tester is True else None,
+                    "Refill" if variant.is_refill is True else None,
+                    "Gift set" if variant.is_gift_set is True else None,
+                    "Mini" if variant.is_mini is True else None,
                 ))),
                 "image": fragrance.image_url,
                 "formats": [],
