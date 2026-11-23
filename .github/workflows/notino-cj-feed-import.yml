@@ -21,443 +21,72 @@ concurrency:
 
 jobs:
   import:
-    name: Import authorized Notino CJ feed
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event.workflow_run.conclusion == 'success' }}
+    name: Import authorized Notino CJ feed into PostgreSQL
+    # A deploy whose commit message explicitly requested the bootstrap already
+    # ran the same PostgreSQL script in the Fly deploy workflow. Avoid a
+    # duplicate discovery/fetch batch for that one deployment.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+          || github.event_name == 'schedule'
+          || (github.event.workflow_run.conclusion == 'success'
+              && !contains(github.event.workflow_run.head_commit.message, 'Notino PostgreSQL bootstrap')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 22
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Import latest CJ offers into the persistent production catalog
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run the canonical PostgreSQL Notino ingestion bootstrap
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 40
+        timeout-minutes: 20
         shell: bash
         run: |
           set -euo pipefail
-          remote_python=$(cat <<'PY'
-          import json
-          import glob
-          import inspect
-          import os
-          import sqlite3
-          import sys
-          import time
+          worker_id="$(flyctl machines list --app scenthunter --json | python -c 'import json,sys; rows=json.load(sys.stdin); matches=[m for m in rows if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="worker"]; print(matches[0]["id"] if matches else "")')"
+          if [[ -z "$worker_id" ]]; then
+            echo "::error::No started PostgreSQL worker machine found."
+            flyctl machines list --app scenthunter --json
+            exit 1
+          fi
+          echo "Using PostgreSQL worker machine: $worker_id"
+          flyctl machine status "$worker_id" --app scenthunter
 
-          sys.path.insert(0, "/app/backend")
-          import catalog_engine
+          remote_script="$(cat <<'REMOTE'
+          set -eu
+          rm -f /tmp/notino_postgres_bootstrap.exit /tmp/notino_postgres_bootstrap.log
+          nohup /bin/sh -c '
+            /app/.venv/bin/python /app/backend/scripts/bootstrap_notino_postgres.py
+            result=$?
+            echo "$result" > /tmp/notino_postgres_bootstrap.exit
+          ' </dev/null >/tmp/notino_postgres_bootstrap.log 2>&1 &
+          echo NOTINO_POSTGRES_BOOTSTRAP_STARTED
+          REMOTE
+          )"
+          encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
+          flyctl machine exec "$worker_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app scenthunter --timeout 30
 
-          def state():
-              uri = "file:" + str(catalog_engine.DB_PATH) + "?mode=ro"
-              conn = sqlite3.connect(uri, uri=True, timeout=45)
-              conn.row_factory = sqlite3.Row
-              try:
-                  row = conn.execute(
-                      "SELECT status,started_at,finished_at,discovered_count,error "
-                      "FROM sync_state WHERE store=?",
-                      ("notino",),
-                  ).fetchone()
-                  return dict(row) if row else None
-              finally:
-                  conn.close()
-
-          def is_fresh_feed(value):
-              return bool(
-                  value
-                  and value.get("status") == "FEED_IMPORTED"
-                  and value.get("finished_at") is not None
-                  and 0 <= time.time() - float(value["finished_at"]) < 23 * 60 * 60
-                  and int(value.get("discovered_count") or 0) > 0
-              )
-
-          # Fail closed unless the deployed runtime can both parse the
-          # allowlisted CJ wrapper and preserve it in catalog search.
-          from scrapers.notino import affiliate_feed as notino_feed
-          product_url = "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
-          click_url = (
-              "https://www.anrdoezrs.net/click-123-456?url="
-              "https%3A%2F%2Fwww.notino.fr%2Fdior%2Fsauvage-eau-de-parfum%2F"
-          )
-          resolve_product_link = getattr(notino_feed, "_resolve_product_link", None)
-          parsed_product, affiliate = (
-              resolve_product_link(click_url)
-              if callable(resolve_product_link) else (None, None)
-          )
-          offer_url = getattr(catalog_engine, "_notino_variant_url", None)
-          search_impl = getattr(catalog_engine, "_search_local_impl", None)
-          try:
-              import main as scenthunter_main
-              public_offer = getattr(scenthunter_main, "_public_offer", None)
-              public_offer_source = inspect.getsource(public_offer) if callable(public_offer) else ""
-          except (ImportError, OSError, TypeError):
-              public_offer_source = ""
-          runtime_ready = bool(
-              parsed_product == product_url and affiliate == click_url
-              and callable(offer_url) and callable(search_impl)
-              and 'public_offer["product_url"]' in public_offer_source
-          )
-          if runtime_ready:
-              try:
-                  runtime_ready = (
-                      offer_url(click_url, product_url) == click_url
-                      and "_notino_variant_url" in inspect.getsource(search_impl)
-                  )
-              except (OSError, TypeError, ValueError):
-                  runtime_ready = False
-
-          # Check read-only integrity and report only aggregate persistent state.
-          read_only_uri = "file:" + str(catalog_engine.DB_PATH) + "?mode=ro"
-          read_only = sqlite3.connect(read_only_uri, uri=True, timeout=5)
-          try:
-              integrity = read_only.execute("PRAGMA quick_check").fetchone()[0]
-              if integrity != "ok":
-                  raise SystemExit("Preflight failed: catalog SQLite integrity check failed.")
-              before = state()
-              counts = read_only.execute(
-                  "SELECT (SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1), "
-                  "(SELECT COUNT(*) FROM store_product_variants WHERE store=?)",
-                  ("notino", "notino"),
-              ).fetchone()
-          finally:
-              read_only.close()
-          print("NOTINO_PREFLIGHT_CATALOG=" + json.dumps({
-              "integrity": integrity,
-              "active_product_urls": int(counts[0] or 0),
-              "persisted_variants": int(counts[1] or 0),
-              "feed_status": before.get("status") if before else None,
-              "feed_age_seconds": (
-                  round(time.time() - float(before["finished_at"]), 1)
-                  if before and before.get("finished_at") else None
-              ),
-              "deployed_cj_search": "ready" if runtime_ready else "not_ready",
-          }), flush=True)
-
-          # Detect in-flight import staging or an active importer process before
-          # attempting even the short SQLite writer-lock probe.
-          stale_after = 45 * 60
-          now = time.time()
-          active_staging = [
-              path for path in glob.glob("/tmp/notino-feed-*")
-              if now - os.stat(path).st_mtime < stale_after
-          ]
-          active_import_processes = []
-          for entry in os.listdir("/proc"):
-              if not entry.isdigit() or int(entry) == os.getpid():
-                  continue
-              try:
-                  with open(f"/proc/{entry}/cmdline", "rb") as process:
-                      command = process.read().lower()
-              except OSError:
-                  continue
-              if any(marker in command for marker in (
-                  b"notino_feed.import_configured_feed",
-                  b"_persist_staged_offers",
-                  b"notino_cj_import_active",
-              )):
-                  active_import_processes.append(entry)
-          if active_staging or active_import_processes:
-              raise SystemExit(
-                  "Preflight failed: another Notino feed import appears active."
-              )
-          if (
-              before and before.get("started_at") and before.get("finished_at")
-              and float(before["started_at"]) > float(before["finished_at"])
-              and now - float(before["started_at"]) < stale_after
-          ):
-              raise SystemExit("Preflight failed: catalog reports an unfinished Notino import.")
-
-          # Inspect the shared advisory lock before probing SQLite. Catalog
-          # writers coordinate through <database>.writer.lock; a raw sqlite3
-          # BEGIN IMMEDIATE can race a normal short-lived catalog transaction.
-          from catalog_writer_lock import connect as coordinated_connect
-
-          db_path = os.path.realpath(catalog_engine.DB_PATH)
-          writer_lock_path = db_path + ".writer.lock"
-          owner_path = writer_lock_path + ".owner.json"
-          try:
-              with open(owner_path, "r", encoding="utf-8") as owner_file:
-                  owner_diagnostic = json.load(owner_file)
-          except (OSError, ValueError):
-              owner_diagnostic = None
-          print("NOTINO_WRITER_LOCK_OWNER_DETAIL=" + json.dumps(
-              owner_diagnostic, ensure_ascii=False, sort_keys=True
-          ), flush=True)
-
-          def process_label(pid):
-              try:
-                  with open(f"/proc/{pid}/comm", "r", encoding="utf-8") as stream:
-                      comm = stream.read().strip()
-                  with open(f"/proc/{pid}/cmdline", "rb") as stream:
-                      argv = [part.decode("utf-8", "replace") for part in stream.read().split(b"\\0") if part]
-                  if len(argv) > 2 and argv[1] == "-m":
-                      script = argv[2]
-                  elif len(argv) > 1 and argv[1] == "-c":
-                      script = "python -c"
-                  elif len(argv) > 1:
-                      script = os.path.basename(argv[1])
-                  else:
-                      script = comm
-                  return {"pid": int(pid), "comm": comm, "program": script}
-              except (OSError, ValueError):
-                  return {"pid": int(pid), "comm": "unavailable", "program": "unavailable"}
-
-          def lock_owners(path):
-              try:
-                  info = os.stat(path)
-              except FileNotFoundError:
-                  return []
-              device_inode = (
-                  f"{os.major(info.st_dev):02x}:"
-                  f"{os.minor(info.st_dev):02x}:{info.st_ino}"
-              )
-              owners = []
-              try:
-                  with open("/proc/locks", "r", encoding="utf-8") as stream:
-                      for line in stream:
-                          fields = line.split()
-                          if len(fields) < 6 or fields[5] != device_inode:
-                              continue
-                          try:
-                              pid = int(fields[4])
-                          except ValueError:
-                              continue
-                          owners.append(process_label(pid))
-              except OSError:
-                  pass
-              return owners
-
-          writer_owners = lock_owners(writer_lock_path)
-          print("NOTINO_WRITER_LOCK_OWNER=" + json.dumps({
-              "lock_file_present": os.path.exists(writer_lock_path),
-              "owners": writer_owners,
-          }, sort_keys=True), flush=True)
-
-          # If the SQLite lock remains busy after the coordinated wait, report
-          # processes holding the database/WAL/SHM open. Do not kill processes
-          # or start a second importer automatically.
-          def database_openers():
-              openers = {}
-              for entry in os.listdir("/proc"):
-                  if not entry.isdigit() or int(entry) == os.getpid():
-                      continue
-                  pid = int(entry)
-                  try:
-                      fd_dir = f"/proc/{entry}/fd"
-                      for fd in os.listdir(fd_dir):
-                          try:
-                              target = os.readlink(os.path.join(fd_dir, fd))
-                          except OSError:
-                              continue
-                          if target == db_path or target.startswith(db_path + "-"):
-                              openers[pid] = process_label(pid)
-                              break
-                  except OSError:
-                      continue
-              return list(openers.values())[:30]
-
-          lock_probe = None
-          try:
-              # Use the same cross-process flock as normal catalog writers.
-              # A normal in-flight transaction can finish during this wait.
-              lock_probe = coordinated_connect(catalog_engine.DB_PATH, timeout=45)
-              lock_probe.execute("BEGIN IMMEDIATE")
-              lock_probe.rollback()
-          except sqlite3.OperationalError as exc:
-              print("NOTINO_SQLITE_LOCK_DIAGNOSTIC=" + json.dumps({
-                  "error_type": type(exc).__name__,
-                  "error": str(exc)[:200],
-                  "writer_lock_owners": lock_owners(writer_lock_path),
-                  "database_openers": database_openers(),
-              }, sort_keys=True), flush=True)
-              raise SystemExit(
-                  "Preflight failed: catalog writer/SQLite lock did not clear; "
-                  "inspect NOTINO_SQLITE_LOCK_DIAGNOSTIC before retrying."
-              )
-          finally:
-              if lock_probe is not None:
-                  lock_probe.close()
-          print("NOTINO_PREFLIGHT_WRITER_LOCK=clear", flush=True)
-          if not runtime_ready:
-              raise SystemExit(
-                  "Preflight failed: deployed runtime cannot preserve validated Notino CJ links."
-              )
-
-          before = state()
-          print("NOTINO_IMPORT_BEFORE=" + json.dumps({
-              key: before.get(key) for key in (
-                  "status", "started_at", "finished_at", "discovered_count", "error"
-              )
-          }, ensure_ascii=False, default=str) if before else "NOTINO_IMPORT_BEFORE=null", flush=True)
-
-          result = None
-          if is_fresh_feed(before):
-              result = {
-                  "status": "FEED_RECENT",
-                  "count": int(before.get("discovered_count") or 0),
-                  "source": "cj_viv_authorized_xml",
-              }
-          else:
-              import resource
-              started = time.monotonic()
-              try:
-                  report = notino_feed.import_configured_feed()
-                  imported = int(report.get("imported_offers") or 0)
-                  if imported <= 0:
-                      raise RuntimeError("CJ parser returned zero imported offers")
-                  result = {"status": "FEED_IMPORTED", **report}
-              except Exception as exc:
-                  print(
-                      "NOTINO_IMPORT_FAILED="
-                      + json.dumps({
-                          "type": type(exc).__name__,
-                          "detail": str(exc)[:400],
-                      }, ensure_ascii=False),
-                      flush=True,
-                  )
-                  raise
-              finally:
-                  print("NOTINO_IMPORT_RESOURCES=" + json.dumps({
-                      "elapsed_seconds": round(time.monotonic() - started, 2),
-                      "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-                  }), flush=True)
-
-          after = state()
-          print("NOTINO_IMPORT_RESULT=" + json.dumps(result, ensure_ascii=False, default=str), flush=True)
-          print("NOTINO_IMPORT_AFTER=" + json.dumps({
-              key: after.get(key) for key in (
-                  "status", "started_at", "finished_at", "discovered_count", "error"
-              )
-          } if after else None, ensure_ascii=False, default=str), flush=True)
-
-          if not is_fresh_feed(after):
-              raise SystemExit("Notino CJ feed import did not reach a fresh FEED_IMPORTED state.")
-
-          # Independently verify persisted rows, not only the sync_state marker.
-          verify = sqlite3.connect("file:" + str(catalog_engine.DB_PATH) + "?mode=ro", uri=True, timeout=45)
-          try:
-              persisted = verify.execute(
-                  "SELECT COUNT(*) FROM store_product_variants "
-                  "WHERE store=? AND fetched_at>=?",
-                  ("notino", float(after["started_at"])),
-              ).fetchone()[0]
-              totals = verify.execute(
-                  "SELECT COUNT(*), "
-                  "SUM(CASE WHEN COALESCE(TRIM(name),'')='' OR COALESCE(TRIM(brand),'')='' "
-                  "OR price IS NULL OR price<=0 OR COALESCE(currency,'')!='EUR' "
-                  "OR COALESCE(availability,'') NOT IN ('in_stock','out_of_stock','preorder') "
-                  "OR url NOT LIKE 'https://www.notino.fr/%' THEN 1 ELSE 0 END), "
-                  "SUM(CASE WHEN size_ml IS NOT NULL THEN 1 ELSE 0 END) "
-                  "FROM store_product_variants WHERE store=? AND fetched_at>=?",
-                  ("notino", float(after["started_at"])),
-              ).fetchone()
-              all_variants = verify.execute(
-                  "SELECT COUNT(*) FROM store_product_variants WHERE store=?", ("notino",)
-              ).fetchone()[0]
-              urls = verify.execute(
-                  "SELECT COUNT(*) FROM store_urls WHERE store=? AND active=1",
-                  ("notino",),
-              ).fetchone()[0]
-          finally:
-              verify.close()
-          print("NOTINO_PERSISTED_VERIFY=" + json.dumps({
-              "fresh_variant_rows": int(persisted),
-              "all_variant_rows": int(all_variants),
-              "invalid_fresh_variants": int(totals[1] or 0),
-              "fresh_variants_with_size": int(totals[2] or 0),
-              "active_product_urls": int(urls),
-              "reported_imported_offers": int(after.get("discovered_count") or 0),
-          }), flush=True)
-          if (int(persisted) != int(after.get("discovered_count") or 0)
-                  or int(urls) <= 0 or int(totals[1] or 0)):
-              raise SystemExit("Notino import state exists but no persisted variant/product rows were verified.")
-          results = catalog_engine._search_local_impl("Dior Sauvage", per_store=64)
-          matches = [item for item in results if item.get("store_key") == "notino"
-                     and float(item.get("fetched_at") or 0) >= float(after["started_at"])]
-          affiliate_matches = [
-              item for item in matches
-              if item.get("url") != item.get("product_url")
-              and catalog_engine._notino_variant_url(
-                  item.get("url"), item.get("product_url")
-              ) == item.get("url")
-          ]
-          print("NOTINO_CATALOG_SEARCH=" + json.dumps({
-              "query": "Dior Sauvage",
-              "matches": len(matches),
-              "validated_cj_links": len(affiliate_matches),
-          }), flush=True)
-          if not matches:
-              raise SystemExit("Catalog search did not return a newly imported Notino offer.")
-          if not affiliate_matches:
-              raise SystemExit("Catalog search returned no newly imported validated CJ link.")
-          print("NOTINO_CJ_PRODUCTION_IMPORT=PASS", flush=True)
-          PY
-          )
-          remote_script_b64=$(printf '%s' "$remote_python" | base64 -w0)
-          remote_command="/bin/sh -lc 'cd /app/backend && printf \"%s\" \"$remote_script_b64\" | base64 -d | /app/.venv/bin/python'"
-          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
-
-      - name: Verify the public ScentHunter search result
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import re
-          import urllib.parse
-          import urllib.request
-
-          request = urllib.request.Request(
-              "https://scenthunter.fly.dev/search?q=Dior%20Sauvage",
-              headers={"Accept": "application/json"},
-          )
-          with urllib.request.urlopen(request, timeout=45) as response:
-              if response.status != 200:
-                  raise RuntimeError("public search returned a non-200 response")
-              payload = json.loads(response.read().decode("utf-8"))
-
-          offers = []
-          for group in payload.get("results") or []:
-              offers.extend(group.get("offers") or [])
-          offers.extend(payload.get("unresolved_offers") or [])
-          notino = [
-              offer for offer in offers
-              if str(offer.get("store") or offer.get("shop") or "").casefold() == "notino"
-          ]
-          valid = 0
-          for offer in notino:
-              click = str(offer.get("url") or "")
-              product = str(offer.get("product_url") or "")
-              parsed = urllib.parse.urlparse(click)
-              pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-              destinations = [value for key, value in pairs if key.casefold() == "url"]
-              if (
-                  parsed.scheme == "https"
-                  and parsed.username is None
-                  and parsed.password is None
-                  and parsed.port in (None, 443)
-                  and parsed.hostname in {
-                      "anrdoezrs.net", "www.anrdoezrs.net",
-                      "dpbolvw.net", "www.dpbolvw.net",
-                      "jdoqocy.com", "www.jdoqocy.com",
-                      "kqzyfj.com", "www.kqzyfj.com",
-                      "tkqlhce.com", "www.tkqlhce.com",
-                  }
-                  and re.fullmatch(r"/click-\d+-\d+/?", parsed.path, re.I)
-                  and len(pairs) == 1
-                  and len(destinations) == 1
-                  and urllib.parse.urlparse(destinations[0]).hostname in {
-                      "notino.fr", "www.notino.fr",
-                  }
-                  and destinations[0].split("?", 1)[0].rstrip("/")
-                      == product.split("?", 1)[0].rstrip("/")
-              ):
-                  valid += 1
-          print(json.dumps({
-              "query": "Dior Sauvage",
-              "notino_offers": len(notino),
-              "validated_cj_links": valid,
-          }), flush=True)
-          if not valid:
-              raise SystemExit("Public search did not return a matching Notino CJ link.")
-          PY
+          for attempt in $(seq 1 190); do
+            poll="$(flyctl machine exec "$worker_id" "sh -c 'if [ -f /tmp/notino_postgres_bootstrap.exit ]; then echo NOTINO_BOOTSTRAP_EXIT=\$(cat /tmp/notino_postgres_bootstrap.exit); else echo NOTINO_BOOTSTRAP_RUNNING; fi'" --app scenthunter --timeout 30 2>&1)" || {
+              echo "Notino PostgreSQL bootstrap poll failed ($attempt/190): $poll"
+              sleep 5
+              continue
+            }
+            printf '%s\\n' "$poll"
+            if printf '%s\\n' "$poll" | grep -q 'NOTINO_BOOTSTRAP_EXIT=0'; then
+              flyctl machine exec "$worker_id" "tail -n 120 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30
+              echo "NOTINO_POSTGRES_INGESTION=PASS"
+              break
+            fi
+            if printf '%s\\n' "$poll" | grep -Eq 'NOTINO_BOOTSTRAP_EXIT=[1-9]'; then
+              flyctl machine exec "$worker_id" "tail -n 160 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
+              exit 1
+            fi
+            if [ "$attempt" -eq 190 ]; then
+              echo "Notino PostgreSQL bootstrap did not finish within 16 minutes." >&2
+              flyctl machine exec "$worker_id" "tail -n 160 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
+              exit 1
+            fi
+            sleep 5
+          done
