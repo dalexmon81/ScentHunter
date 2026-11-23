@@ -111,13 +111,12 @@ def test_search_title_does_not_repeat_concentration_and_keeps_families_separate(
                 ),
             ])
 
+            # Catalog identities without a currently verified offer must
+            # not appear as shopping results, even when canonical variants exist.
             result = search_catalog(session, "Dior Sauvage")
-            names = {row["name"] for row in result["results"]}
-            assert "Sauvage Eau de Parfum" in names
-            assert "Sauvage Eau de Toilette" in names
-            assert "Sauvage Elixir" in names
-            assert "Sauvage Eau de Parfum Eau de Parfum" not in names
-            assert "Sauvage Elixir Elixir" not in names
+            assert result["results"] == []
+            assert result["count"] == 0
+            assert result["offer_count"] == 0
     finally:
         engine.dispose()
 
@@ -181,14 +180,11 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
                     ).all()
                     assert [variant.size_ml for variant in family_variants] == expected_sizes
 
+                # Seeding must preserve canonical bottle sizes, but public
+                # search must not advertise them until offers pass validation.
                 result = search_catalog(session, "Dior Sauvage")
-                edp = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Parfum")
-                edt = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Toilette")
-                elixir = next(row for row in result["results"] if row["name"] == "Sauvage Elixir")
-                parfum = next(row for row in result["results"] if row["name"] == "Sauvage Parfum")
-                assert [item["size_ml"] for item in edp["formats"]] == [30, 60, 100, 200]
-                assert [item["size_ml"] for item in edt["formats"]] == [30, 60, 100, 200]
-                assert [item["size_ml"] for item in elixir["formats"]] == [60, 100, 150]
-                assert [item["size_ml"] for item in parfum["formats"]] == [30, 60, 100, 200]
+                assert result["results"] == []
+                assert result["count"] == 0
+                assert result["offer_count"] == 0
         finally:
             engine.dispose()
