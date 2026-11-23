@@ -141,7 +141,7 @@ def test_does_not_adopt_discovery_job_older_than_two_hours():
         connection.execute(text("""
             INSERT INTO ingestion_queue_jobs (id,stage,status,created_at,payload)
             VALUES ('old','discover','queued',:created_at,'{"store_id":"notino-fr"}')
-        """), {"created_at": datetime(2026, 11, 23, 7, 0, tzinfo=timezone.utc)})
+        """), {"created_at": datetime(2026, 11, 23, 5, 0, tzinfo=timezone.utc)})
     try:
         with engine.connect() as connection:
             job_id = _find_recent_discovery_job(
