@@ -19,6 +19,29 @@ from app.workers.queueing import enqueue_discovery
 from scripts.backfill_notino_verified_gtin import backfill_verified_notino_gtins
 
 
+def _find_recent_discovery_job(conn, store_id, now: datetime):
+    """Adopt the oldest recent Notino discovery page instead of restarting page one."""
+    cutoff = now - timedelta(minutes=30)
+    rows = conn.execute(
+        text("""
+            SELECT id, payload
+            FROM ingestion_queue_jobs
+            WHERE stage = 'discover'
+              AND status IN ('queued', 'running', 'completed')
+              AND created_at >= :cutoff
+            ORDER BY created_at ASC, id ASC
+        """),
+        {"cutoff": cutoff},
+    ).mappings().all()
+    for row in rows:
+        payload = row["payload"]
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        if isinstance(payload, dict) and str(payload.get("store_id")) == str(store_id):
+            return row["id"]
+    return None
+
+
 def _discovery_batch_started_at(conn, task_id, bootstrap_started_at: datetime) -> datetime:
     """Reuse the creation time of a deduplicated in-flight discovery batch."""
     row = conn.execute(
@@ -73,7 +96,13 @@ def main() -> None:
             store_id = store.id
 
         bootstrap_started_at = datetime.now(timezone.utc)
-        task_id = enqueue_discovery(store_id, limit=1000)
+        with engine.connect() as conn:
+            task_id = _find_recent_discovery_job(
+                conn, store_id, bootstrap_started_at
+            )
+        adopted_existing_batch = task_id is not None
+        if task_id is None:
+            task_id = enqueue_discovery(store_id, limit=1000)
         with engine.begin() as conn:
             batch_started_at = _discovery_batch_started_at(
                 conn, task_id, bootstrap_started_at
@@ -90,7 +119,7 @@ def main() -> None:
         print(
             "NOTINO_DISCOVERY_ENQUEUED="
             + json.dumps(
-                {"store_id": str(store_id), "task_id": str(task_id), "limit": 1000, "batch_started_at": batch_started_at.isoformat()}
+                {"store_id": str(store_id), "task_id": str(task_id), "limit": 1000, "batch_started_at": batch_started_at.isoformat(), "adopted_existing_batch": adopted_existing_batch}
             ),
             flush=True,
         )
