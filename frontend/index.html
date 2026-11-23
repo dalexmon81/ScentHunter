@@ -752,19 +752,29 @@ function hasValidOfferPrice(o){
   return Number.isFinite(parsed)&&parsed>0;
 }
 function storeKey(o){return String(o?.store||o?.shop||"").normalize("NFKC").trim().toLocaleLowerCase("it");}
+function offerSizeKey(o){
+  const raw=o?.size_ml??o?.format_ml??"";
+  return String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
+}
 function dedupeStoreOffers(offers){
-  const byStore=new Map();
+  // A retailer may have one valid offer for every size of the same fragrance.
+  // Deduplicate repeated rows only within the same store AND format; using
+  // store alone silently discarded every other size from that retailer.
+  const byStoreAndSize=new Map();
   (Array.isArray(offers)?offers:[]).forEach(offer=>{
-    const key=storeKey(offer);if(!key)return;
-    const previous=byStore.get(key);
-    if(!previous){byStore.set(key,offer);return;}
+    const store=storeKey(offer);if(!store)return;
+    const key=store+"|"+offerSizeKey(offer);
+    const previous=byStoreAndSize.get(key);
+    if(!previous){byStoreAndSize.set(key,offer);return;}
     const score=item=>[hasValidOfferPrice(item)&&!isOfferOutOfStock(item)?0:hasValidOfferPrice(item)?1:2,shNum(item),-(Date.parse(item?.captured_at||"")||0)];
     const a=score(offer),b=score(previous);
-    if(a[0]<b[0]||(a[0]===b[0]&&(a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))))byStore.set(key,offer);
+    if(a[0]<b[0]||(a[0]===b[0]&&(a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))))byStoreAndSize.set(key,offer);
   });
-  return [...byStore.values()].sort((a,b)=>{
+  return [...byStoreAndSize.values()].sort((a,b)=>{
     const aa=!hasValidOfferPrice(a)||isOfferOutOfStock(a),bb=!hasValidOfferPrice(b)||isOfferOutOfStock(b);
-    if(aa!==bb)return aa?1:-1;return shNum(a)-shNum(b);
+    if(aa!==bb)return aa?1:-1;
+    const size=Number(offerSizeKey(a)||Infinity)-Number(offerSizeKey(b)||Infinity);
+    return size||shNum(a)-shNum(b);
   });
 }
 function shNum(o){
