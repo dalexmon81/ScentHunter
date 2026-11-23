@@ -206,7 +206,8 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
                 "u" if flag is None else ("1" if flag else "0") for flag in flags
             )))
             group = {
-                "catalog_id": f"{fragrance.id}:{suffix}",
+                "catalog_id": str(variant.id),
+                "concentration_group_key": suffix,
                 "brand": brand.name,
                 "name": " ".join(filter(None, (
                     fragrance.name, variant.concentration,
