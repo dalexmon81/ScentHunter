@@ -6,6 +6,7 @@ deployment workflow. Keeping it as a file avoids nested-shell quoting issues.
 import json
 import sys
 import time
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -40,6 +41,7 @@ def main() -> None:
                 )
             store_id = store.id
 
+        bootstrap_started_at = datetime.now(timezone.utc)
         task_id = enqueue_discovery(store_id, limit=1000)
         print(
             "NOTINO_DISCOVERY_ENQUEUED="
@@ -64,7 +66,8 @@ def main() -> None:
                 ).mappings().all()
                 offer_count = conn.execute(
                     select(func.count()).select_from(Offer).where(
-                        Offer.store_id == store_id
+                        Offer.store_id == store_id,
+                        Offer.captured_at >= bootstrap_started_at,
                     )
                 ).scalar_one()
                 completed_fetches = conn.execute(
@@ -73,8 +76,9 @@ def main() -> None:
                         SELECT count(*) FROM ingestion_queue_jobs
                         WHERE stage='fetch' AND status='completed'
                           AND payload->>'store_id' = :store_id
+                          AND created_at >= :started_at
                         """
-                    ), {"store_id": str(store_id)}
+                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
                 ).scalar_one()
                 failed_discovery = conn.execute(
                     text(
@@ -82,8 +86,9 @@ def main() -> None:
                         SELECT count(*) FROM ingestion_queue_jobs
                         WHERE stage='discover' AND status='failed'
                           AND payload->>'store_id' = :store_id
+                          AND created_at >= :started_at
                         """
-                    ), {"store_id": str(store_id)}
+                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
                 ).scalar_one()
                 last_errors = conn.execute(
                     text(
@@ -91,10 +96,11 @@ def main() -> None:
                         SELECT stage, last_error FROM ingestion_queue_jobs
                         WHERE status='failed'
                           AND payload->>'store_id' = :store_id
+                          AND created_at >= :started_at
                         ORDER BY finished_at DESC NULLS LAST
                         LIMIT 3
                         """
-                    ), {"store_id": str(store_id)}
+                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
                 ).mappings().all()
 
             last = {
