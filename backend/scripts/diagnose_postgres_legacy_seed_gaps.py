@@ -18,12 +18,14 @@ SPEC.loader.exec_module(SEED)
 
 
 def main() -> None:
+    print("Reading legacy catalog candidates...", file=sys.stderr, flush=True)
     source = SEED.source_engine(Path("/data/store_catalog.sqlite3"))
     target = SEED.target_engine()
     try:
         with source.connect() as src:
             with src.begin():
                 candidates, rejected, duplicates, rejected_domains = SEED._read_candidates(src)
+        print(f"Read {len(candidates)} candidates; checking PostgreSQL queue...", file=sys.stderr, flush=True)
 
         report = {
             "mode": "read_only_diagnosis",
@@ -75,6 +77,11 @@ def main() -> None:
             key_list = list(keys)
             batch_size = 5000
             for offset in range(0, len(key_list), batch_size):
+                print(
+                    f"Checking candidate batch {offset // batch_size + 1} of "
+                    f"{(len(key_list) + batch_size - 1) // batch_size}...",
+                    file=sys.stderr, flush=True,
+                )
                 batch_keys = key_list[offset:offset + batch_size]
                 rows = conn.execute(
                     select(queue.c.dedupe_key, queue.c.status).where(
@@ -106,6 +113,7 @@ def main() -> None:
             # values: sample a bounded number of failed fetch rows and group
             # their normalized messages in Python. This remains read-only.
             report["fetch_queue_status_totals"] = {}
+            print("Counting fetch statuses and sampling failures...", file=sys.stderr, flush=True)
             status_rows = conn.execute(
                 select(queue.c.status, text("count(*)"))
                 .where(queue.c.stage == "fetch")

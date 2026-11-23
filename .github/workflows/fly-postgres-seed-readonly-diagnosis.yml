@@ -9,12 +9,12 @@ permissions:
 jobs:
   read-only-diagnosis:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter
     steps:
-      - name: Check out branch
+      - name: Check out diagnostic branch
         uses: actions/checkout@v4
 
       - name: Install Fly CLI
@@ -25,29 +25,64 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
-          flyctl machines list --app "$FLY_APP" --json > /tmp/fly-machines.json
+          echo "Diagnostic commit: $(git rev-parse HEAD)"
+          timeout --kill-after=5s 30s flyctl machines list --app "$FLY_APP" --json > "$RUNNER_TEMP/fly-machines.json"
           MACHINE_ID="$(python - <<'PY'
-          import json
-          machines = json.load(open("/tmp/fly-machines.json", encoding="utf-8"))
-          preferred, other = [], []
+          import json, os, sys
+          from pathlib import Path
+
+          machines = json.loads((Path(os.environ["RUNNER_TEMP"]) / "fly-machines.json").read_text())
+          candidates = []
           for machine in machines:
               meta = (machine.get("config") or {}).get("metadata") or {}
               group = meta.get("fly_process_group") or meta.get("process_group")
-              (preferred if group == "app" else other).append(machine.get("id"))
-          ids = [value for value in preferred + other if value]
-          print(ids[0] if ids else "")
+              print(f"Machine {machine.get('id')} state={machine.get('state')} group={group}", file=sys.stderr)
+              if group == "app" and machine.get("state") == "started" and machine.get("id"):
+                  candidates.append(machine["id"])
+          if not candidates:
+              raise SystemExit("No started app machine available for the read-only diagnosis")
+          print(sorted(candidates)[0])
           PY
           )"
-          test -n "$MACHINE_ID"
+          echo "Selected started app machine: $MACHINE_ID"
+          echo "Checking SSH connection (30s limit)..."
+          timeout --kill-after=5s 30s flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "true"
+
           diagnostic_b64="$(base64 -w0 backend/scripts/diagnose_postgres_legacy_seed_gaps.py)"
-          remote_command="sh -lc 'set -e
+          seed_b64="$(base64 -w0 backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py)"
+          {
+            cat <<'SH'
+          set -eu
           test -r /data/store_catalog.sqlite3
           test -x /app/.venv/bin/python
-          test -n "\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL"
-          mkdir -p /tmp/shim/backend/scripts
-          trap "rm -f /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py" EXIT
-          printf %s ${diagnostic_b64} | base64 -d > /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
+          test -n "${SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL:-}"
+          dir="$(mktemp -d /tmp/scenthunter-diagnosis.XXXXXX)"
+          mkdir -p "$dir/backend/scripts"
+          trap 'rm -f "$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py" "$dir/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py"; rmdir "$dir/backend/scripts" "$dir/backend" "$dir"' EXIT
+          SH
+            printf "printf %%s '%s' | base64 -d > \"\$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py\"\n" "$diagnostic_b64"
+            printf "printf %%s '%s' | base64 -d > \"\$dir/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py\"\n" "$seed_b64"
+            cat <<'SH'
           export PYTHONPATH=/app/backend
-          /app/.venv/bin/python /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
-          '"
-          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
+          echo "Remote diagnostic started (480s limit)" >&2
+          /app/.venv/bin/python -u "$dir/backend/scripts/diagnose_postgres_legacy_seed_gaps.py"
+          echo "SCENTHUNTER_DIAGNOSIS_COMPLETED"
+          SH
+          } > "$RUNNER_TEMP/diagnostic-remote.sh"
+          payload="$(base64 -w0 "$RUNNER_TEMP/diagnostic-remote.sh")"
+          echo "Running remote diagnosis (SSH limit 540s)..."
+          set +e
+          timeout --kill-after=10s 540s flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" \
+            -C "sh -c 'printf %s $payload | base64 -d | timeout -k 10s 480s sh'" \
+            | tee "$RUNNER_TEMP/diagnostic-output.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Diagnosis or SSH failed (exit $status; 124 indicates a timeout)."
+            exit "$status"
+          fi
+          if ! grep -Fxq 'SCENTHUNTER_DIAGNOSIS_COMPLETED' "$RUNNER_TEMP/diagnostic-output.log"; then
+            echo "::error::SSH returned without the remote diagnostic success marker."
+            exit 1
+          fi
+          echo "Diagnosis and SSH completed successfully."
