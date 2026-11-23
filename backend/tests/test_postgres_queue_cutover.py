@@ -37,7 +37,7 @@ def test_queue_cutover_rejects_invalid_timestamp():
         })
 
 
-def test_claim_next_leaves_pre_cutover_jobs_queued(monkeypatch):
+def test_claim_next_skips_legacy_fetch_but_allows_existing_offer_refresh(monkeypatch):
     import uuid
     from datetime import timedelta
 
@@ -70,12 +70,18 @@ def test_claim_next_leaves_pre_cutover_jobs_queued(monkeypatch):
     metadata.create_all(engine)
     try:
         now = datetime(2026, 11, 23, 8, 0, tzinfo=timezone.utc)
-        old_id, new_id = uuid.uuid4(), uuid.uuid4()
+        old_id, old_refresh_id, new_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
         with engine.begin() as connection:
             connection.execute(insert(jobs), [
                 {
                     "id": old_id, "stage": "fetch", "payload": {"store_id": "legacy"},
                     "dedupe_key": "old", "status": "queued", "attempts": 0,
+                    "max_attempts": 5, "available_at": now - timedelta(days=1),
+                    "created_at": now - timedelta(days=1),
+                },
+                {
+                    "id": old_refresh_id, "stage": "refresh", "payload": {"store_id": "bplatz"},
+                    "dedupe_key": "old-refresh", "status": "queued", "attempts": 0,
                     "max_attempts": 5, "available_at": now - timedelta(days=1),
                     "created_at": now - timedelta(days=1),
                 },
@@ -92,14 +98,15 @@ def test_claim_next_leaves_pre_cutover_jobs_queued(monkeypatch):
         monkeypatch.setattr(queue, "make_engine", lambda: engine)
         claimed = queue.claim_next("cutover-test-worker")
         assert claimed is not None
-        assert claimed["id"] == new_id
+        assert claimed["id"] == old_refresh_id
 
         with engine.connect() as connection:
             statuses = dict(connection.execute(
                 select(jobs.c.id, jobs.c.status)
             ).all())
         assert statuses[old_id] == "queued"
-        assert statuses[new_id] == "running"
+        assert statuses[old_refresh_id] == "running"
+        assert statuses[new_id] == "queued"
     finally:
         metadata.drop_all(engine)
         engine.dispose()

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
-from sqlalchemy import Column, DateTime, Integer, JSON, MetaData, String, Table, Text, Uuid, select, text
+from sqlalchemy import Column, DateTime, Integer, JSON, MetaData, String, Table, Text, Uuid, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db import database_url, make_engine
@@ -41,7 +41,7 @@ def _now() -> datetime:
 
 
 def queue_min_created_at(environ=None) -> datetime | None:
-    """Optional production cutover boundary; older queued jobs remain untouched."""
+    """Cut off legacy discovery/fetch work while keeping known-offer refreshes eligible."""
     env = os.environ if environ is None else environ
     raw = str(env.get("SCENTHUNTER_QUEUE_MIN_CREATED_AT") or "").strip()
     if not raw:
@@ -151,7 +151,13 @@ def claim_next(worker_id: str) -> dict[str, Any] | None:
             ]
             minimum_created_at = queue_min_created_at()
             if minimum_created_at is not None:
-                conditions.append(_jobs.c.created_at >= minimum_created_at)
+                # Keep current-offer refreshes flowing across the cutover. The
+                # legacy backlog consists of discovery/fetch work; refresh jobs
+                # target already-known canonical offers and are safe to drain.
+                conditions.append(or_(
+                    _jobs.c.created_at >= minimum_created_at,
+                    _jobs.c.stage == "refresh",
+                ))
             row = conn.execute(select(_jobs).where(*conditions)
                 .order_by(_jobs.c.available_at, _jobs.c.created_at, _jobs.c.id)
                 .with_for_update(skip_locked=True).limit(1)).mappings().first()
