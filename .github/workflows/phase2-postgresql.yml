@@ -13,8 +13,9 @@ on:
       - "backend/alembic/**"
       - "backend/alembic.ini"
       - "backend/tests/test_phase2_database_backends.py"
-      - "backend/tests/test_postgres_queue_cutover.py"
+      - "backend/tests/test_catalog_search_token_tolerance.py"
       - "backend/tests/test_phase2_postgres_schema.py"
+      - "backend/tests/test_postgres_queue_cutover.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
       - "backend/app/services/canonical_matching.py"
       - "backend/app/services/connector_ingestion.py"
@@ -116,5 +117,7 @@ jobs:
         run: pytest -q backend/tests/test_postgres_queue_cutover.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
+      - name: Verify concentration and format grouping in catalog search
+        run: pytest -q backend/tests/test_catalog_search_token_tolerance.py
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
