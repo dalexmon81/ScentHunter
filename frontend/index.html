@@ -835,7 +835,6 @@ function shGroupData(data){
       image,
       fallback_image,
       fallback_images,
-      formats:Array.isArray(group.formats)?group.formats:[],
       variant_ids:Array.isArray(group.variant_ids)?group.variant_ids:[],
       offers
     };
@@ -901,12 +900,12 @@ function getSizeGroups(g){
   // offer yet. Retailer offers are attached to their exact size below.
   (g?.formats||[]).forEach(format=>{
     const raw=format?.size_ml;
-    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\\d+(?:[.,]\\d+)?/)?.[0]?.replace(",",".")||"";
+    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
     if(size&&!map.has(size))map.set(size,[]);
   });
   (g?.offers||[]).forEach(o=>{
     const raw=o?.size_ml;
-    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\\d+(?:[.,]\\d+)?/)?.[0]?.replace(",",".")||"";
+    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
     const key=size||"";
     if(!map.has(key))map.set(key,[]);
     map.get(key).push(o);
