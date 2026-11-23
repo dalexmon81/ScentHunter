@@ -17,6 +17,8 @@ primary_region = "ams"
 [env]
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
   SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
+  # Ignore the migrated 118k-job legacy backlog; only post-cutover jobs are claimable.
+  SCENTHUNTER_QUEUE_MIN_CREATED_AT = "2026-11-23T07:00:00Z"
 
 [http_service]
   internal_port = 8080
