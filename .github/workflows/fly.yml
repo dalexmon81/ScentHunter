@@ -83,7 +83,9 @@ jobs:
           set -uo pipefail
           for attempt in 1 2 3 4 5; do
             echo "Fly deploy attempt $attempt/5"
-            flyctl deploy --remote-only 2>&1 | tee /tmp/fly-deploy.log
+            # PostgreSQL-only runtime intentionally retires the legacy SQLite volume mount.
+            # Confirm Fly's replacement of machines that still carry that obsolete mount.
+            flyctl deploy --remote-only --yes 2>&1 | tee /tmp/fly-deploy.log
             status=${PIPESTATUS[0]}
             if [ "$status" -eq 0 ]; then
               exit 0
