@@ -124,6 +124,7 @@ jobs:
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify four reviewed Notino Dior Sauvage GTINs
+        # Exact GTIN checksum, expected canonical variant ID and size must agree.
         working-directory: backend
         run: pytest -q tests/test_notino_verified_gtin_backfill.py
       - name: Verify resumed Notino discovery batch
