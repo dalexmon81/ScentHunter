@@ -72,26 +72,29 @@ def main() -> None:
                         """
                         SELECT count(*) FROM ingestion_queue_jobs
                         WHERE stage='fetch' AND status='completed'
+                          AND payload->>'store_id' = :store_id
                         """
-                    )
+                    ), {"store_id": str(store_id)}
                 ).scalar_one()
                 failed_discovery = conn.execute(
                     text(
                         """
                         SELECT count(*) FROM ingestion_queue_jobs
                         WHERE stage='discover' AND status='failed'
+                          AND payload->>'store_id' = :store_id
                         """
-                    )
+                    ), {"store_id": str(store_id)}
                 ).scalar_one()
                 last_errors = conn.execute(
                     text(
                         """
                         SELECT stage, last_error FROM ingestion_queue_jobs
                         WHERE status='failed'
+                          AND payload->>'store_id' = :store_id
                         ORDER BY finished_at DESC NULLS LAST
                         LIMIT 3
                         """
-                    )
+                    ), {"store_id": str(store_id)}
                 ).mappings().all()
 
             last = {
