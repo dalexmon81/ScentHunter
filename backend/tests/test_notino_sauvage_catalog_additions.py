@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -80,12 +84,50 @@ def test_search_title_does_not_repeat_concentration_and_keeps_families_separate(
                 ),
             ])
 
-        result = search_catalog(session, "Dior Sauvage")
-        names = {row["name"] for row in result["results"]}
-        assert "Sauvage Eau de Parfum" in names
-        assert "Sauvage Eau de Toilette" in names
-        assert "Sauvage Elixir" in names
-        assert "Sauvage Eau de Parfum Eau de Parfum" not in names
-        assert "Sauvage Elixir Elixir" not in names
+            result = search_catalog(session, "Dior Sauvage")
+            names = {row["name"] for row in result["results"]}
+            assert "Sauvage Eau de Parfum" in names
+            assert "Sauvage Eau de Toilette" in names
+            assert "Sauvage Elixir" in names
+            assert "Sauvage Eau de Parfum Eau de Parfum" not in names
+            assert "Sauvage Elixir Elixir" not in names
     finally:
         engine.dispose()
+
+
+def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
+    from sqlalchemy import select
+    from app.models import LegacyProductIdMap, Fragrance, ProductVariant
+
+    with tempfile.TemporaryDirectory() as temp:
+        database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
+        env = os.environ.copy()
+        env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+        completed = subprocess.run(
+            [
+                sys.executable, str(BACKEND / "scripts" / "seed_catalog.py"),
+                "--catalog", str(CATALOG), "--apply",
+            ],
+            cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+        )
+        assert completed.returncode == 0, completed.stdout + "\\n" + completed.stderr
+
+        engine = create_engine(database_url)
+        try:
+            with Session(engine) as session:
+                mapping = session.get(LegacyProductIdMap, "SH-AUTO-0178")
+                assert mapping is not None
+                fragrance = session.get(Fragrance, mapping.fragrance_id)
+                assert fragrance is not None
+                variants = session.scalars(
+                    select(ProductVariant).where(
+                        ProductVariant.fragrance_id == fragrance.id,
+                        ProductVariant.concentration == "Eau de Parfum",
+                    ).order_by(ProductVariant.size_ml)
+                ).all()
+                assert [variant.size_ml for variant in variants] == [30, 60, 100, 200]
+                result = search_catalog(session, "Dior Sauvage")
+                edp = next(row for row in result["results"] if row["name"] == "Sauvage Eau de Parfum")
+                assert [item["size_ml"] for item in edp["formats"]] == [30, 60, 100, 200]
+        finally:
+            engine.dispose()
