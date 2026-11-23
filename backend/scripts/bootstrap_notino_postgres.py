@@ -6,7 +6,7 @@ deployment workflow. Keeping it as a file avoids nested-shell quoting issues.
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -43,6 +43,16 @@ def main() -> None:
 
         bootstrap_started_at = datetime.now(timezone.utc)
         task_id = enqueue_discovery(store_id, limit=1000)
+        priority_at = bootstrap_started_at - timedelta(hours=24)
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    UPDATE ingestion_queue_jobs
+                    SET available_at = :priority_at
+                    WHERE id = CAST(:job_id AS uuid) AND status = 'queued'
+                """),
+                {"priority_at": priority_at, "job_id": task_id},
+            )
         print(
             "NOTINO_DISCOVERY_ENQUEUED="
             + json.dumps(
@@ -54,7 +64,26 @@ def main() -> None:
         deadline = time.monotonic() + 900
         last = {}
         while time.monotonic() < deadline:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
+                # Prioritize only this bootstrap's Notino jobs ahead of the
+                # migrated legacy backlog. No existing jobs are deleted or
+                # rewritten; only newly queued Notino work gets an earlier
+                # availability timestamp.
+                conn.execute(
+                    text("""
+                        UPDATE ingestion_queue_jobs
+                        SET available_at = :priority_at
+                        WHERE status = 'queued'
+                          AND stage IN ('discover', 'fetch')
+                          AND payload->>'store_id' = :store_id
+                          AND created_at >= :started_at
+                    """),
+                    {
+                        "priority_at": priority_at,
+                        "store_id": str(store_id),
+                        "started_at": bootstrap_started_at,
+                    },
+                )
                 counts = conn.execute(
                     text(
                         """
