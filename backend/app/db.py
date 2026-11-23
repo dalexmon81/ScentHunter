@@ -1,8 +1,8 @@
-"""Database engine for the isolated Phase 2 canonical catalog.
+"""Database engine for the canonical catalog.
 
-SQLite remains the default until the separately approved PostgreSQL cutover.
-The legacy retailer catalog is managed independently and must not use this
-engine or its database URL.
+PostgreSQL is mandatory in the production runtime. SQLite is available only
+when a caller explicitly supplies a SQLite URL (tests/local isolated tools);
+there is no implicit local-database fallback.
 """
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 
-DEFAULT_DATABASE_URL = "sqlite:////data/catalog/catalog.sqlite3"
 _ENV_KEYS = ("SCENTHUNTER_CATALOG_DATABASE_URL", "SCENTHUNTER_DATABASE_URL")
 _REQUIRE_POSTGRESQL_ENV = "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL"
 _TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -29,54 +28,46 @@ def _postgresql_required(env) -> bool:
         return True
     if value in _FALSE_VALUES:
         return False
-    raise RuntimeError(
-        f"Invalid {_REQUIRE_POSTGRESQL_ENV} value: expected a boolean "
-        "(1/0, true/false, yes/no, on/off)."
-    )
+    raise RuntimeError(f"Invalid {_REQUIRE_POSTGRESQL_ENV} value: expected a boolean.")
 
 
 def database_url(environ=None) -> str:
-    """Return a validated SQLAlchemy URL without logging or exposing it."""
+    """Return a validated explicitly configured database URL."""
     env = os.environ if environ is None else environ
-    value = next((env.get(key) for key in _ENV_KEYS if env.get(key)), DEFAULT_DATABASE_URL).strip()
+    value = next((env.get(key) for key in _ENV_KEYS if env.get(key)), None)
+    if not value or not value.strip():
+        raise RuntimeError(
+            "PostgreSQL catalog is mandatory. Configure SCENTHUNTER_CATALOG_DATABASE_URL."
+        )
     try:
-        url = make_url(value)
+        url = make_url(value.strip())
     except Exception:
-        raise RuntimeError("Invalid Phase 2 database URL configuration.") from None
+        raise RuntimeError("Invalid catalog database URL configuration.") from None
 
-    # SQLAlchemy reports the legacy postgres:// scheme as backend "postgres";
-    # normalize it before backend validation and force the installed psycopg 3.
     if url.drivername in {"postgres", "postgresql"}:
         url = url.set(drivername="postgresql+psycopg")
 
     backend = url.get_backend_name()
-    if backend == "sqlite":
-        resolved_url = url.render_as_string(hide_password=False)
-    elif backend == "postgresql":
+    if backend == "postgresql":
         if url.drivername != "postgresql+psycopg":
-            raise RuntimeError("Unsupported PostgreSQL driver for Phase 2; use psycopg 3.")
+            raise RuntimeError("Unsupported PostgreSQL driver; use psycopg 3.")
         if not url.database:
-            raise RuntimeError("PostgreSQL Phase 2 database name is missing.")
-        resolved_url = url.render_as_string(hide_password=False)
+            raise RuntimeError("PostgreSQL catalog database name is missing.")
+    elif backend == "sqlite":
+        if _postgresql_required(env):
+            raise RuntimeError(
+                f"{_REQUIRE_POSTGRESQL_ENV}=1 requires PostgreSQL; SQLite is restricted to isolated tests/local tools."
+            )
     else:
-        raise RuntimeError("Unsupported Phase 2 database dialect; use SQLite or PostgreSQL.")
+        raise RuntimeError("Unsupported catalog database dialect; use PostgreSQL.")
 
-    if _postgresql_required(env) and backend != "postgresql":
-        raise RuntimeError(
-            f"{_REQUIRE_POSTGRESQL_ENV}=1 requires a PostgreSQL catalog URL; "
-            f"the resolved backend is {backend}. Configure "
-            "SCENTHUNTER_CATALOG_DATABASE_URL before starting this service."
-        )
-
-    return resolved_url
+    return url.render_as_string(hide_password=False)
 
 
 def make_engine() -> Engine:
     url = database_url()
     parsed = make_url(url)
-    backend = parsed.get_backend_name()
-
-    if backend == "sqlite":
+    if parsed.get_backend_name() == "sqlite":
         if parsed.database and parsed.database != ":memory:":
             Path(parsed.database).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
         connect_args = {"timeout": 30}
@@ -93,16 +84,10 @@ def make_engine() -> Engine:
                 cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
-
         return engine
 
-    # Keep PostgreSQL connections bounded for the current single-machine setup.
     return create_engine(
-        url,
-        pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=2,
-        pool_recycle=1800,
+        url, pool_pre_ping=True, pool_size=5, max_overflow=2, pool_recycle=1800
     )
 
 

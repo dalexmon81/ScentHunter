@@ -54,11 +54,9 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
     def tearDown(self):
         self.engine.dispose()
 
-    def test_legacy_discovery_queues_only_canonical_candidates(self):
+    def test_legacy_discovery_stages_candidates_for_shared_canonical_gate(self):
         patches = [
             patch.object(notino_runtime, "_sessions", return_value=self.sessions),
-            patch.object(notino_runtime, "_matcher", return_value=object()),
-            patch.object(notino_runtime, "_is_unique_canonical_candidate", return_value=True),
             patch.object(legacy_runtime, "build_legacy_connector", return_value=FakeLegacyConnector()),
             patch.object(legacy_runtime, "enqueue_offer_fetch"),
         ]
@@ -75,6 +73,7 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         self.assertEqual(result["store"], "deloox-be")
         self.assertEqual(result["products_discovered"], 1)
         self.assertEqual(result["fetch_jobs_queued"], 1)
+        self.assertNotIn("canonical_candidates_skipped", result)
         enqueue_fetch.assert_called_once_with(
             self.store_id, "https://www.deloox.be/product/123"
         )

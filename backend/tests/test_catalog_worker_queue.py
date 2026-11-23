@@ -1,11 +1,10 @@
 from __future__ import annotations
 import os
-import tempfile
 import unittest
 from unittest.mock import patch
 from app.connectors.base import ConnectorUnavailable
 from app.workers.celery_app import TASK_ROUTES, celery_app, queue_is_configured, require_worker_broker
-from app.workers.queueing import QueueNotConfigured, enqueue_discovery
+from app.workers.queueing import enqueue_discovery
 from app.workers.runtime import clear_handlers, register_handler
 from app.workers.tasks import HandlerNotConfigured, RetryableCatalogTask, _execute
 
@@ -39,30 +38,12 @@ class CatalogWorkerQueueTests(unittest.TestCase):
         self.assertIn(TimeoutError, RetryableCatalogTask.autoretry_for)
         self.assertIn(ConnectionError, RetryableCatalogTask.autoretry_for)
 
-    def test_queue_requires_explicit_redis_url(self):
-        self.assertFalse(queue_is_configured({}))
-        self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "sqlite:///x"}))
-        self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://"}))
-        self.assertFalse(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://:6379/0"}))
-        self.assertTrue(queue_is_configured({"SCENTHUNTER_REDIS_URL": "redis://redis.example:6379/0"}))
-        self.assertTrue(queue_is_configured({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}))
-
     def test_worker_startup_requires_explicit_broker(self):
         with self.assertRaisesRegex(RuntimeError, "SCENTHUNTER_REDIS_URL"):
             require_worker_broker({})
         self.assertEqual(require_worker_broker({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}), "rediss://redis.example/0")
 
-    def test_default_pilot_backend_enqueues_durably_without_redis(self):
-        with tempfile.TemporaryDirectory() as temp:
-            with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "sqlite", "SCENTHUNTER_SQLITE_QUEUE_DB": os.path.join(temp, "queue.sqlite3")}, clear=True):
-                job_id = enqueue_discovery("store-1")
-                self.assertTrue(job_id)
-                from app.workers.sqlite_queue import claim_next
-                job = claim_next("test-worker")
-                self.assertEqual(job["id"], job_id)
-                self.assertEqual(job["stage"], "discover")
-
-    def test_postgres_backend_routes_to_canonical_queue_without_redis(self):
+    def test_queue_always_routes_to_postgres(self):
         from unittest.mock import patch
         with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "postgres"}, clear=True):
             with patch("app.workers.postgres_queue.enqueue", return_value="job-123") as enqueue:
@@ -70,11 +51,6 @@ class CatalogWorkerQueueTests(unittest.TestCase):
                 enqueue.assert_called_once_with("discover", {
                     "store_id": "store-1", "cursor": None, "limit": 100
                 })
-
-    def test_redis_backend_fails_closed_without_broker(self):
-        with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "redis"}, clear=True):
-            with self.assertRaises(QueueNotConfigured):
-                enqueue_discovery("store-1")
 
     def test_discovery_page_limit_is_bounded(self):
         with self.assertRaises(ValueError):

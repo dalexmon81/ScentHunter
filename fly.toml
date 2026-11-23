@@ -9,16 +9,14 @@ primary_region = "ams"
   release_command = "/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head'"
 
 [processes]
-  app = "sh -c 'cd /app/backend; /app/.venv/bin/python -m catalog_family_coverage & FAMILY_PID=$!; /app/.venv/bin/python -m phase0_baseline_worker & PHASE0_PID=$!; trap \"kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true; exit 143\" TERM INT; trap \"kill $FAMILY_PID $PHASE0_PID 2>/dev/null || true\" EXIT; /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080'"
+  app = "sh -c 'cd /app/backend && /app/.venv/bin/uvicorn postgres_main:app --host 0.0.0.0 --port 8080'"
   worker = "sh -c 'cd /app/backend && /app/.venv/bin/python -m app.workers.postgres_worker'"
 
 [build]
 
 [env]
-  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
-  # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
-  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
+  SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
 
 [http_service]
   internal_port = 8080
@@ -28,13 +26,6 @@ primary_region = "ams"
   min_machines_running = 1
   processes = ["app"]
 
-[mounts]
-  source = "scenthunter_data"
-  destination = "/data"
-  processes = ["app"]
-  auto_extend_size_threshold = 70
-  auto_extend_size_increment = "1GB"
-  auto_extend_size_limit = "5GB"
 
 [[vm]]
   memory = "2gb"

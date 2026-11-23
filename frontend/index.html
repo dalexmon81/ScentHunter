@@ -1097,75 +1097,8 @@ function renderStoreDiagnostics(data){
   errorsBox.innerHTML=`<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Problemi tecnici durante la ricerca</div>${rows}`;
 }
 
-async function searchStoresProgressive(term,onPartial){
-  const query=String(term||"").trim();
-  const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{},stores:{}};
-  if(!query)return empty;
-  let lastData=empty;
-  const startedAt=Date.now();
-  let jobId="";
-  try{
-    while(Date.now()-startedAt<180000){
-      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
-      if(start?.status==="busy"){
-        lastData=start;
-        await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
-        continue;
-      }
-      if(start?.status==="error" || start?.completed===true){
-        return start;
-      }
-      jobId=String(start?.job_id||"").trim();
-      if(!jobId)throw new Error("Il backend non ha restituito il job_id");
-      lastData=start;
-      break;
-    }
-    if(!jobId)throw new Error("Il backend non ha liberato la ricerca precedente entro il tempo previsto");
-    while(Date.now()-startedAt<180000){
-      let status;
-      try{
-        status=await fetchJSONWithTimeout(backend()+"/search-status?job_id="+encodeURIComponent(jobId),15000);
-      }catch(pollError){
-        lastData={...lastData,errors:{...(lastData.errors||{}),_poll:String(pollError?.message||pollError)}};
-        await new Promise(resolve=>setTimeout(resolve,700));
-        continue;
-      }
-      lastData=status||lastData;
-      if(typeof onPartial==="function")onPartial(status||lastData,Boolean(status?.completed));
-      // The backend's completed flag is authoritative. Do not keep polling
-      // for three minutes just because a deployment introduces a new final
-      // status string unknown to this frontend version.
-      if (status?.completed === true) {
-        return status || lastData;
-      }
-      // Avoid a tight polling loop: every status request rebuilds and filters
-      // a snapshot on the backend while the search worker is competing for CPU.
-      // A short fixed interval keeps the UI responsive without hammering the API.
-      await new Promise(resolve=>setTimeout(resolve,300));
-    }
-    throw new Error("Timeout ricerca: il backend non ha completato il job");
-  } catch (error) {
-  const safe = typeof lastData === 'object' ? lastData : empty;
-  const failed = {
-    ...safe,
-    query: safe.query || query,
-    errors: {
-      ...(safe.errors || {}),
-      search: error?.message || 'Errore ricerca'
-    },
-    completed: false,
-    status: 'error'
-  };
-  if (typeof onPartial === 'function') onPartial(failed, true);
-  return failed;
-}
-}
-
 async function searchPerfume(){
-  // Prevent a second Enter/click from starting another job while the current
-  // search is still active. /search-start intentionally cancels an older job,
-  // so duplicate client requests can otherwise cancel a valid search and leave
-  // its already-rendered results labelled as "Ricerca cancellata".
+  // Keep the canonical PostgreSQL catalog request single-flight.
   if(searchButton.disabled)return;
   const q=queryInput.value.trim();
   if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";return;}
@@ -1248,8 +1181,7 @@ async function searchPerfume(){
     // store snapshots while searching, but do not redraw the product list for
     // each partial poll; render the final, deduplicated payload once all stores
     // have finished so results do not flicker in progressively.
-    // Public search always uses the canonical PostgreSQL catalog API.
-    // Legacy progressive endpoints remain internal diagnostics, not a public fallback.
+    // Public search uses only the canonical PostgreSQL catalog API.
     const data=await fetchJSONWithTimeout(backend()+"/api/catalog/search?q="+encodeURIComponent(q),30000);
     renderData(data,true);
   } catch (e) {

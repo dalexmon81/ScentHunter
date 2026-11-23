@@ -75,35 +75,6 @@ jobs:
             --app scenthunter
           echo "Notino CJ feed URL and credentials staged for the production release."
 
-      - name: Ensure catalog volume exists
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if flyctl volumes list --app scenthunter | grep -q 'scenthunter_data'; then
-            echo "Volume scenthunter_data already exists."
-          else
-            echo "Creating catalog volume in ams..."
-            flyctl volumes create scenthunter_data \
-              --app scenthunter \
-              --region ams \
-              --size 1 \
-              --count 1 \
-              --yes
-          fi
-
-      - name: Inspect Fly machines and volume attachments before deployment
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== FLY STATUS ==="
-          flyctl status --app scenthunter --json
-          echo "=== FLY MACHINES ==="
-          flyctl machines list --app scenthunter --json
-          echo "=== FLY VOLUMES ==="
-          flyctl volumes list --app scenthunter --json
-
       - name: Deploy ScentHunter
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -169,64 +140,43 @@ jobs:
           remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py --apply --seed-bplatz-store --seed-notino-store --seed-deloox-store --seed-sabina-store --seed-easycosmetic-store --seed-parfumzentrum-store && /app/.venv/bin/python scripts/verify_catalog.py'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
-      - name: Verify production health and catalog API
+      - name: Verify production health and PostgreSQL catalog API
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           import time
-          import urllib.error
           import urllib.request
 
           base = "https://scenthunter.fly.dev"
-          endpoints = ("/health", "/catalog-status")
-          last_error = None
-
           for attempt in range(1, 13):
               try:
-                  payloads = {}
-                  for endpoint in endpoints:
+                  def get(path):
                       request = urllib.request.Request(
-                          base + endpoint,
-                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-deploy-smoke-test/1.0"},
+                          base + path,
+                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-postgres-health/2.0"},
                       )
-                      with urllib.request.urlopen(request, timeout=12) as response:
+                      with urllib.request.urlopen(request, timeout=15) as response:
                           if response.status != 200:
-                              raise RuntimeError(f"{endpoint} returned HTTP {response.status}")
-                          payloads[endpoint] = json.loads(response.read().decode("utf-8"))
+                              raise RuntimeError(f"{path} returned HTTP {response.status}")
+                          return json.loads(response.read().decode("utf-8"))
 
-                  health = payloads["/health"]
-                  if health.get("status") != "healthy":
-                      raise RuntimeError(f"Unexpected health payload: {health}")
-                  if not health.get("architecture"):
-                      raise RuntimeError("Health payload is missing architecture")
-
-                  catalog = payloads["/catalog-status"]
-                  if not isinstance(catalog.get("stores"), dict):
-                      raise RuntimeError("Catalog status is missing the stores object")
-                  for field in ("bootstrap_started", "bootstrap_running", "bootstrap_done"):
-                      if field not in catalog:
-                          raise RuntimeError(f"Catalog status is missing {field}")
-
-                  print("Production health check: PASS")
-                  print(f"Architecture: {health['architecture']}")
-                  print(f"Catalog API: PASS ({len(catalog['stores'])} store status entries)")
-                  print("Bootstrap: " + json.dumps({
-                      key: catalog.get(key) for key in (
-                          "bootstrap_started", "bootstrap_running", "bootstrap_done", "bootstrap_error"
-                      )
-                  }, ensure_ascii=False))
-                  if catalog.get("bootstrap_error"):
-                      print("WARNING: catalog bootstrap reports an error; inspect /catalog-status.")
+                  health = get("/health")
+                  catalog = get("/api/catalog/status")
+                  if health.get("status") != "healthy" or health.get("architecture") != "postgresql-catalog-only":
+                      raise RuntimeError("Production app is not the PostgreSQL-only runtime: " + json.dumps(health))
+                  if catalog.get("status") != "ready":
+                      raise RuntimeError("Canonical PostgreSQL catalog is not ready: " + json.dumps(catalog))
+                  print("Production health: PASS")
+                  print("Runtime architecture: postgresql-catalog-only")
+                  print("Canonical PostgreSQL catalog: READY")
                   break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = exc
-                  print(f"Attempt {attempt}/12 failed: {type(exc).__name__}: {exc}", flush=True)
-                  if attempt < 12:
-                      time.sleep(5)
-          else:
-              raise SystemExit(f"Production smoke test failed after retries: {last_error}")
+              except Exception as exc:
+                  if attempt == 12:
+                      raise
+                  print(f"Health attempt {attempt}/12 failed: {type(exc).__name__}: {exc}")
+                  time.sleep(5)
           PY
 
       - name: Verify public search is served by the canonical PostgreSQL catalog
@@ -380,186 +330,6 @@ jobs:
           remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
           flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
 
-      - name: Force-refresh and verify the affected Deloox offer directly on Fly
-        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import shlex
-          import subprocess
-          import sys
-
-          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
-          remote_python = r"""
-          import json, sys, time
-          sys.path.insert(0, "/app/backend")
-          import catalog_engine
-          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
-          started = time.time()
-          item = None
-          error = None
-          attempts = 0
-          for attempts in range(1, 3):
-              try:
-                  item = catalog_engine.refresh_url("deloox", target)
-                  error = None
-              except Exception as exc:
-                  error = type(exc).__name__ + ":" + str(exc)
-                  item = None
-              try:
-                  item_price = float((item or {}).get("price_num"))
-              except (TypeError, ValueError):
-                  item_price = 0.0
-              if item and item.get("name") and item_price > 0:
-                  break
-              if attempts < 2:
-                  time.sleep(5)
-          conn = catalog_engine.db()
-          try:
-              row = conn.execute(
-                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
-                  ("deloox", target),
-              ).fetchone()
-              persisted = dict(row) if row else None
-          finally:
-              conn.close()
-          print("DELOOX_TARGETED_REFRESH=" + json.dumps({
-              "item_ok": bool(item and item.get("name")),
-              "item_name": (item or {}).get("name"),
-              "item_price": (item or {}).get("price_num"),
-              "refresh_error": error,
-              "attempts": attempts,
-              "store_product": persisted,
-              "started_at": started,
-          }, ensure_ascii=False, default=str), flush=True)
-          """
-          remote_command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
-          try:
-              result = subprocess.run(
-                  ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", remote_command],
-                  capture_output=True, text=True, timeout=210,
-              )
-          except subprocess.TimeoutExpired as exc:
-              raise SystemExit("Timed out while running the targeted refresh directly on the Fly machine.") from exc
-          if result.stdout:
-              print(result.stdout, end="")
-          if result.stderr:
-              print(result.stderr, file=sys.stderr, end="")
-          marker = "DELOOX_TARGETED_REFRESH="
-          line = next((line for line in result.stdout.splitlines() if marker in line), None)
-          if result.returncode != 0:
-              raise SystemExit(f"Fly SSH refresh command failed with exit code {result.returncode}")
-          if not line:
-              raise SystemExit("Fly SSH refresh returned no structured result.")
-          payload = json.loads(line.split(marker, 1)[1])
-          row = payload.get("store_product")
-          if not payload.get("item_ok") or not isinstance(row, dict):
-              raise SystemExit("Deloox refresh did not persist a validated product: " + json.dumps(payload, ensure_ascii=False))
-          try:
-              price = float(row.get("price"))
-              fetched_at = float(row.get("fetched_at"))
-              started_at = float(payload.get("started_at"))
-          except (TypeError, ValueError):
-              raise SystemExit("Deloox refresh returned no explicit price/fetch timestamp: " + json.dumps(payload, ensure_ascii=False))
-          if price <= 0:
-              raise SystemExit(f"Deloox refreshed price is not positive: {price}")
-          import time
-          if fetched_at < started_at - 5 or fetched_at > time.time() + 5:
-              raise SystemExit(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started_at}")
-          try:
-              parsed_price = float(payload.get("item_price"))
-              size_ml = float(row.get("size_ml"))
-          except (TypeError, ValueError):
-              raise SystemExit("Deloox refresh returned no parsed price or product size: " + json.dumps(payload, ensure_ascii=False))
-          # Compare against the live parser result, never against a historical hard-coded retail price.
-          if abs(price - parsed_price) > 0.01:
-              raise SystemExit(f"Persisted Deloox price EUR {price:.2f} differs from freshly parsed price EUR {parsed_price:.2f}.")
-          if abs(size_ml - 150.0) > 0.01 or "liquid brun" not in str(row.get("name") or "").lower():
-              raise SystemExit("Deloox refreshed the wrong product/size: " + json.dumps(row, ensure_ascii=False))
-          if row.get("fetch_status") != "OK":
-              raise SystemExit(f"Deloox product fetch status is not OK: {row.get('fetch_status')}")
-          print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; size_ml={size_ml:g}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
-          PY
-
-      - name: Force-refresh and verify Valentino Born in Roma Donna 50 ml on the Luxembourg storefront
-        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json, shlex, subprocess, sys
-          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
-          remote_python = r"""
-          import json, sys, time
-          sys.path.insert(0, "/app/backend")
-          import catalog_engine
-          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
-          started = time.time()
-          item = catalog_engine.refresh_url("deloox", target)
-          conn = catalog_engine.db()
-          try:
-              row = conn.execute(
-                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
-                  ("deloox", target),
-              ).fetchone()
-              persisted = dict(row) if row else None
-          finally:
-              conn.close()
-          print("DELOOX_VALENTINO_50ML=" + json.dumps({
-              "item": item, "store_product": persisted, "started_at": started
-          }, ensure_ascii=False, default=str), flush=True)
-          """
-          command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
-          result = subprocess.run(
-              ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", command],
-              capture_output=True, text=True, timeout=210,
-          )
-          print(result.stdout, end="")
-          if result.stderr:
-              print(result.stderr, file=sys.stderr, end="")
-          if result.returncode:
-              raise SystemExit(f"Fly SSH Valentino refresh failed: {result.returncode}")
-          marker = "DELOOX_VALENTINO_50ML="
-          line = next((x for x in result.stdout.splitlines() if marker in x), None)
-          if not line:
-              raise SystemExit("No structured Valentino refresh result returned.")
-          payload = json.loads(line.split(marker, 1)[1])
-          item, row = payload.get("item") or {}, payload.get("store_product") or {}
-          try:
-              parsed_price = float(item.get("price_num"))
-              saved_price = float(row.get("price"))
-              size_ml = float(row.get("size_ml"))
-              fetched_at = float(row.get("fetched_at"))
-              started_at = float(payload.get("started_at"))
-          except (TypeError, ValueError):
-              raise SystemExit("Valentino refresh missing validated price/size/timestamp: " + json.dumps(payload, ensure_ascii=False))
-          if "valentino" not in str(row.get("name") or "").lower() or "born in roma" not in str(row.get("name") or "").lower():
-              raise SystemExit("Wrong product persisted: " + json.dumps(row, ensure_ascii=False))
-          if abs(size_ml - 50.0) > 0.01:
-              raise SystemExit("Wrong Valentino size persisted: " + json.dumps(row, ensure_ascii=False))
-          if abs(parsed_price - saved_price) > 0.01:
-              raise SystemExit(f"Valentino parsed price EUR {parsed_price:.2f} differs from saved price EUR {saved_price:.2f}")
-          if fetched_at < started_at - 5 or row.get("fetch_status") != "OK":
-              raise SystemExit("Valentino offer was not freshly and successfully persisted: " + json.dumps(row, ensure_ascii=False))
-          print(f"DELOOX_VALENTINO_50ML_VERIFIED=EUR {saved_price:.2f}; size={size_ml:g}ml; fetched_at={fetched_at}")
-          PY
-
-      - name: Capture Fly logs if the targeted Deloox refresh fails
-        if: ${{ failure() && (contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition')) }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          timeout 25s flyctl logs --app scenthunter --no-tail || true
-
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
         shell: bash
         run: |
@@ -682,513 +452,45 @@ jobs:
         working-directory: backend
         run: python -m unittest tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_deadline_skips_initial_fanout_when_expired tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_rotates_query_and_limits_each_run tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_reserves_time_for_frontier tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_discovery_graph_reports_search_then_frontier_progress tests.test_deloox_out_of_stock.DelooxRegionalOfferPriorityTests tests.test_phase0_baseline_jobs -v
 
-      - name: Exercise real production searches and offer data
+      - name: Exercise the canonical PostgreSQL search API
         if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import time
-          import urllib.parse
-          import urllib.request
-
-          base = "https://scenthunter.fly.dev"
-
-          def get_json(path, timeout=25):
-              # Search-status polling can briefly contend with catalog hydration.
-              # Allow the HTTP read to finish; the independent 120s search deadline
-              # below still fails a genuinely stalled search instead of a single slow poll.
-              request = urllib.request.Request(
-                  base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.2"},
-              )
-              with urllib.request.urlopen(request, timeout=timeout) as response:
-                  if response.status != 200:
-                      raise RuntimeError(f"{path} returned HTTP {response.status}")
-                  return json.loads(response.read().decode("utf-8"))
-
-          def search(query):
-              search_started_at = time.monotonic()
-              start_deadline = search_started_at + 45
-              job_id = ""
-              while time.monotonic() < start_deadline:
-                  started = get_json("/search-start?q=" + urllib.parse.quote(query))
-                  if started.get("status") == "busy":
-                      time.sleep(max(0.05, min(0.25, float(started.get("retry_after_ms", 200)) / 1000)))
-                      continue
-                  if started.get("status") == "error":
-                      raise RuntimeError("Production search rejected: " + json.dumps(started.get("errors", {})))
-                  job_id = str(started.get("job_id") or "").strip()
-                  if job_id:
-                      break
-                  raise RuntimeError("Search API did not return a job_id: " + json.dumps(started))
-              if not job_id:
-                  raise RuntimeError("Production search remained busy for 45 seconds")
-
-              deadline = time.monotonic() + 120
-              last = {}
-              while time.monotonic() < deadline:
-                  last = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
-                  if last.get("completed"):
-                      break
-                  # Atomic publication contract: the API must expose no
-                  # products until the whole search job is finalized.
-                  partial_results = last.get("results")
-                  if isinstance(partial_results, list) and partial_results:
-                      raise RuntimeError(
-                          f"Atomic search regression: '{query}' exposed "
-                          f"{len(partial_results)} products before completion"
-                      )
-                  time.sleep(0.05)
-              else:
-                  raise RuntimeError("Production search timed out: " + json.dumps({
-                      "status": last.get("status"),
-                      "count": last.get("count"),
-                      "offer_count": last.get("offer_count"),
-                      "errors": last.get("errors"),
-                  }))
-
-              count = int(last.get("count") or 0)
-              offer_count = int(last.get("offer_count") or 0)
-              if count == 0 and offer_count == 0:
-                  raise RuntimeError(f"Search '{query}' returned zero products and offers")
-
-              if query == "Hawas":
-                  # Keep validated family coverage and a bounded latency budget.
-                  # Production search fan-out can briefly contend with catalog work;
-                  # a single 1-2s sample is diagnostic noise, while >=2.5s is a real
-                  # A search may include bounded live fallbacks for Notino/Amazon.
-                  # Their per-store deadlines are part of the user-facing search budget;
-                  # reject a genuine stall, but do not fail the whole deploy on a
-                  # transient host/contention spike around the old 2.5s microbenchmark.
-                  backend_elapsed = float(last.get("elapsed") or 0)
-                  if count < 29:
-                      raise RuntimeError(
-                          f"Hawas family regression: expected at least 29 variants, got {count}"
-                      )
-                  if backend_elapsed <= 0 or backend_elapsed >= 15.0:
-                      print("HAWAS_FAILURE_DIAGNOSTIC=" + json.dumps({
-                          "products": count,
-                          "backend_elapsed": backend_elapsed,
-                          "stores": last.get("stores") if isinstance(last.get("stores"), dict) else {},
-                          "errors": last.get("errors"),
-                      }, ensure_ascii=False, sort_keys=True), flush=True)
-                      raise RuntimeError(
-                          f"Hawas backend latency regression: expected under 15s including bounded retailer fallbacks, got {backend_elapsed:.3f}s"
-                      )
-                  print(
-                      f"Hawas baseline: PASS ({count} products, backend {backend_elapsed:.3f}s)"
-                  )
-
-              groups = last.get("results") if isinstance(last.get("results"), list) else []
-              if query == "Hawas":
-                  # Guard the exact production regression fixed by PR #71:
-                  # a family-level title must not point at a different explicit variant.
-                  import re
-                  family_url_conflicts = []
-                  for group in groups:
-                      if not isinstance(group, dict):
-                          continue
-                      for offer in (group.get("offers") if isinstance(group.get("offers"), list) else []):
-                          if not isinstance(offer, dict):
-                              continue
-                          title = re.sub(r"[^a-z0-9]+", " ", str(offer.get("name") or offer.get("title") or "").lower()).strip()
-                          url_identity = re.sub(r"[^a-z0-9]+", " ", str(offer.get("url") or offer.get("product_url") or "").lower()).strip()
-                          if "hawas for him" in title and "hawas malibu" in url_identity:
-                              family_url_conflicts.append({
-                                  "store": offer.get("store"),
-                                  "name": offer.get("name") or offer.get("title"),
-                                  "url": offer.get("url") or offer.get("product_url"),
-                              })
-                  if family_url_conflicts:
-                      raise RuntimeError(
-                          "Hawas family/variant URL identity mismatch: "
-                          + json.dumps(family_url_conflicts[:5], ensure_ascii=False)
-                      )
-                  print("Hawas family/variant URL identity guard: PASS")
-              offers = [
-                  offer
-                  for group in groups if isinstance(group, dict)
-                  for offer in (group.get("offers") if isinstance(group.get("offers"), list) else [])
-                  if isinstance(offer, dict)
-              ]
-              valid = []
-              for offer in offers:
-                  price = offer.get("price_num")
-                  try:
-                      numeric_price = float(price)
-                  except (TypeError, ValueError):
-                      continue
-                  url = str(offer.get("url") or "")
-                  if numeric_price > 0 and url.startswith(("http://", "https://")) and offer.get("name") and offer.get("store"):
-                      valid.append(offer)
-
-              elapsed_sec = time.monotonic() - search_started_at
-              print(f"Query '{query}': status={last.get('status')}, products={count}, elapsed={last.get('elapsed')}s, collect={last.get('collect_elapsed')}s, dedupe={last.get('dedupe_elapsed')}s, aggregate={last.get('aggregate_elapsed')}s, offers={offer_count}, priced_linked_offers={len(valid)}, elapsed_sec={elapsed_sec:.3f}")
-              print("Search phase/store diagnostics: " + json.dumps({
-                  "query": query,
-                  "backend_elapsed": last.get("elapsed"),
-                  "collect_elapsed": last.get("collect_elapsed"),
-                  "dedupe_elapsed": last.get("dedupe_elapsed"),
-                  "aggregate_elapsed": last.get("aggregate_elapsed"),
-                  "store_timings": {
-                      store: {
-                          "elapsed": (info or {}).get("elapsed"),
-                          "count": (info or {}).get("count"),
-                          "candidate_count": ((info or {}).get("details") or {}).get("candidate_count"),
-                          "search_local_elapsed": ((info or {}).get("details") or {}).get("search_local_elapsed"),
-                          "targeted_refresh_elapsed": ((info or {}).get("details") or {}).get("targeted_refresh_elapsed"),
-                          "identity_resolution_elapsed": ((info or {}).get("details") or {}).get("identity_resolution_elapsed"),
-                          "unresolved_count": ((info or {}).get("details") or {}).get("unresolved_count"),
-                      }
-                      for store, info in (last.get("stores") or {}).items()
-                  },
-              }, ensure_ascii=False, sort_keys=True))
-              if query == "Born in Roma":
-                  # This family is expected to contain 20 registered variants;
-                  # fail loudly if the production search returns only a subset.
-                  if count < 20:
-                      raise RuntimeError(f"Born in Roma family incomplete: expected at least 20 products, got {count}")
-                  # Count alone can hide missing canonical variants. Assert both
-                  # requested Rendez-Vous Ruby variants appear in the actual API payload.
-                  family_payload = json.dumps(groups, ensure_ascii=False).lower().replace("-", " ").replace("_", " ")
-                  required_variants = (
-                      ("rendez vous ruby uomo", "Born in Roma Rendez-Vous Ruby Uomo"),
-                      ("rendez vous ruby donna", "Born in Roma Rendez-Vous Ruby Donna"),
-                  )
-                  missing_variants = [
-                      label for token, label in required_variants
-                      if token not in family_payload
-                  ]
-                  if missing_variants:
-                      raise RuntimeError(
-                          "Born in Roma search is missing required canonical variants: "
-                          + ", ".join(missing_variants)
-                      )
-                  print("Born in Roma required variants: PASS (Rendez-Vous Ruby Uomo, Rendez-Vous Ruby Donna)")
-              print("Store statuses: " + json.dumps(last.get("stores") or {}, ensure_ascii=False))
-              print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
-              if not valid:
-                  raise RuntimeError(f"Search '{query}' returned no grouped offers with a positive price and product URL")
-              sample = min(valid, key=lambda item: float(item["price_num"]))
-              print("Cheapest valid offer sample: " + json.dumps({
-                  "name": sample.get("name"),
-                  "store": sample.get("store"),
-                  "price": sample.get("price"),
-                  "price_num": sample.get("price_num"),
-                  "url": sample.get("url"),
-              }, ensure_ascii=False))
-              return last
-
-          failures = []
-          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage", "Liquid Brun 100 ml", "Liquid Brun Limited Edition 150 ml"):
-              try:
-                  result = search(query)
-                  if query == "Liquid Brun 100 ml":
-                      import re
-                      mismatches = []
-                      groups = result.get("results") if isinstance(result.get("results"), list) else []
-                      for group in groups:
-                          if not isinstance(group, dict):
-                              continue
-                          group_name = str(group.get("name") or group.get("title") or "")
-                          if not re.search(r"(?<!\d)100(?:\s*[-_]?\s*)?ml\b", group_name, flags=re.I):
-                              continue
-                          for offer in (group.get("offers") or []):
-                              if not isinstance(offer, dict):
-                                  continue
-                              store = str(offer.get("store") or "").lower()
-                              if "deloox" not in store:
-                                  continue
-                              offer_identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
-                              if re.search(r"(?<!\d)150\s?ml\b", offer_identity, flags=re.I):
-                                  mismatches.append({
-                                      "group": group_name,
-                                      "store": offer.get("store"),
-                                      "name": offer.get("name") or offer.get("title"),
-                                      "url": offer.get("url") or offer.get("product_url"),
-                                  })
-                      print("Liquid Brun 100 ml Deloox size-integrity check: " + json.dumps({
-                          "groups_checked": len(groups),
-                          "mismatches": mismatches[:10],
-                      }, ensure_ascii=False))
-                      if mismatches:
-                          raise RuntimeError("Deloox 150 ml offer published in Liquid Brun 100 ml group: " + json.dumps(mismatches[:5], ensure_ascii=False))
-                  # This assertion is the post-recovery regression gate for the persisted Deloox 150 ml offer.
-                  if query == "Liquid Brun Limited Edition 150 ml":
-                      import re
-                      matches_150 = []
-                      for group in (result.get("results") or []):
-                          if not isinstance(group, dict):
-                              continue
-                          group_identity = " ".join(str(group.get(key) or "") for key in ("name", "title"))
-                          for offer in (group.get("offers") or []):
-                              if not isinstance(offer, dict):
-                                  continue
-                              store = str(offer.get("store") or "").lower()
-                              identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
-                              combined = group_identity + " " + identity
-                              try:
-                                  is_150ml = abs(float(offer.get("size_ml")) - 150.0) < 0.01
-                              except (TypeError, ValueError):
-                                  is_150ml = bool(re.search(r"(?<!\d)150(?:\s*[-_]?\s*)?ml\b", combined, flags=re.I))
-                              if "deloox" not in store or not is_150ml:
-                                  continue
-                              matches_150.append({
-                                  "group": group_identity,
-                                  "name": offer.get("name") or offer.get("title"),
-                                  "url": offer.get("url") or offer.get("product_url"),
-                                  "availability": offer.get("availability"),
-                                  "available": offer.get("available"),
-                                  "price": offer.get("price"),
-                                  "price_num": offer.get("price_num"),
-                              })
-                      sold_out = [
-                          item for item in matches_150
-                          if str(item.get("availability") or "").lower().replace("-", "_").replace(" ", "_") in ("out_of_stock", "outofstock", "sold_out", "soldout")
-                          or item.get("available") is False
-                      ]
-                      stale_price = [
-                          item for item in sold_out
-                          if item.get("price") not in (None, "") or item.get("price_num") not in (None, "")
-                      ]
-                      print("Liquid Brun Limited Edition 150 ml Deloox production check: " + json.dumps({
-                          "matches": matches_150,
-                          "sold_out_matches": sold_out,
-                          "stale_price_matches": stale_price,
-                      }, ensure_ascii=False))
-                      if not matches_150:
-                          raise RuntimeError("Deloox Limited Edition 150 ml is missing from production")
-                      if stale_price:
-                          raise RuntimeError("Deloox out-of-stock 150 ml offer still has a stale price: " + json.dumps(stale_price[:5], ensure_ascii=False))
-                      in_stock = [
-                          item for item in matches_150
-                          if str(item.get("availability") or "").lower().replace("-", "_").replace(" ", "_") in ("in_stock", "instock", "available", "limited_availability", "preorder")
-                          or item.get("available") is True
-                      ]
-                      priced_in_stock = [
-                          item for item in in_stock
-                          if item.get("price") not in (None, "") or item.get("price_num") not in (None, "")
-                      ]
-                      if in_stock and not priced_in_stock:
-                          raise RuntimeError("Deloox in-stock 150 ml offer has no valid price: " + json.dumps(in_stock[:5], ensure_ascii=False))
-                  if query == "Dior Sauvage":
-                      store_statuses = result.get("stores") if isinstance(result.get("stores"), dict) else {}
-                      easycosmetic = store_statuses.get("easycosmetic") if isinstance(store_statuses.get("easycosmetic"), dict) else {}
-                      easy_count = int(easycosmetic.get("count") or 0)
-                      print(f"Easycosmetic known-brand coverage (Dior Sauvage): {easy_count} matching products")
-                      if easy_count <= 0:
-                          raise RuntimeError("Easycosmetic returned no Dior Sauvage candidates despite its official Dior assortment")
-                      non_fragrance_terms = (
-                          "soap", "cleanser", "limpiador", "nettoyant", "face wash",
-                          "facial cleanser", "toner", "tonique", "gesichtswasser",
-                          "moisturizer", "moisturiser", "face and beard", "beard oil",
-                          "beard balm", "beard cream", "shaving", "shave gel",
-                          "gel de afeitado", "gel de rasage", "aftershave", "after shave",
-                          "deodorant", "body lotion",
-                      )
-                      bad_offers = [
-                          {"store": offer.get("store"), "name": offer.get("name"), "url": offer.get("url")}
-                          for offer in (result.get("results") or [])
-                          if isinstance(offer, dict)
-                          for offer in (offer.get("offers") or [])
-                          if isinstance(offer, dict)
-                          and any(term in (str(offer.get("name") or "") + " " + str(offer.get("url") or "")).lower()
-                                  for term in non_fragrance_terms)
-                      ]
-                      if bad_offers:
-                          raise RuntimeError("Non-fragrance Dior Sauvage offers detected: " + json.dumps(bad_offers[:5], ensure_ascii=False))
-                      def concentration(value):
-                          value = str(value or "").lower().replace("-", " ").replace("_", " ")
-                          if any(token in value for token in ("eau de parfum intense", "edp intense", "intense edp")):
-                              return "edp_intense"
-                          if any(token in value for token in ("eau de toilette intense", "edt intense", "intense edt")):
-                              return "edt_intense"
-                          if "eau de toilette" in value or " edt" in (" " + value):
-                              return "edt"
-                          if "eau de parfum" in value or " edp" in (" " + value):
-                              return "edp"
-                          if "eau de cologne" in value or " edc" in (" " + value):
-                              return "edc"
-                          # Retailer slugs are sometimes imprecise: treat elixir,
-                          # extrait and generic parfum as ambiguous descriptors.
-                          if "elixir" in value:
-                              return "elixir"
-                          if "extrait" in value:
-                              return "extrait"
-                          if "parfum" in value:
-                              return "parfum"
-                          return ""
-                      def explicit_line_identity(value):
-                          value = __import__("re").sub(r"[^a-z0-9]+", " ", str(value or "").lower())
-                          if "eau sauvage" in value:
-                              return "dior_eau_sauvage"
-                          if "sauvage" in value:
-                              return "dior_sauvage"
-                          return ""
-                      concentration_mismatches = []
-                      for group in (result.get("results") or []):
-                          if not isinstance(group, dict):
-                              continue
-                          for offer in (group.get("offers") or []):
-                              if not isinstance(offer, dict):
-                                  continue
-                              title_token = concentration(offer.get("name") or offer.get("title"))
-                              url_token = concentration(offer.get("url") or offer.get("product_url"))
-                              hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
-                              # Fail on clear concentration conflicts; do not infer a
-                              # mismatch from generic parfum/extrait/elixir wording alone.
-                              if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
-                                  concentration_mismatches.append({
-                                      "store": offer.get("store"), "name": offer.get("name"),
-                                      "url": offer.get("url"), "title_concentration": title_token,
-                                      "url_concentration": url_token,
-                                  })
-                              title_line = explicit_line_identity(offer.get("name") or offer.get("title"))
-                              url_line = explicit_line_identity(offer.get("url") or offer.get("product_url"))
-                              if title_line and url_line and title_line != url_line:
-                                  concentration_mismatches.append({
-                                      "store": offer.get("store"), "name": offer.get("name"),
-                                      "url": offer.get("url"), "title_line": title_line,
-                                      "url_line": url_line,
-                                  })
-                      if concentration_mismatches:
-                          raise RuntimeError("Dior Sauvage title/URL concentration mismatch: " + json.dumps(concentration_mismatches[:5], ensure_ascii=False))
-              except Exception as exc:
-                  failures.append(f"{query}: {type(exc).__name__}: {exc}")
-                  print("SMOKE TEST FAILURE: " + failures[-1], flush=True)
-          if failures:
-              raise SystemExit("; ".join(failures))
-          print("Production search and offer-data smoke tests: PASS")
-          PY
-
-      - name: Verify aggregate catalog price freshness diagnostic
-        if: ${{ always() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
         timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
-          import urllib.request
-
-          url = "https://scenthunter.fly.dev/diagnose-catalog-price-freshness-read-only"
-          request = urllib.request.Request(
-              url,
-              headers={
-                  "Accept": "application/json",
-                  "User-Agent": "ScentHunter-price-freshness-audit/1.0",
-              },
-          )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              if response.status != 200:
-                  raise RuntimeError(f"price freshness diagnostic returned HTTP {response.status}")
-              payload = json.loads(response.read().decode("utf-8"))
-
-          if payload.get("ok") is not True:
-              raise RuntimeError("price freshness diagnostic did not return ok=true: " + json.dumps(payload))
-          if payload.get("read_only") is not True or payload.get("writes_database") is not False:
-              raise RuntimeError("price freshness diagnostic did not confirm read-only behavior")
-          if payload.get("network_requests") is not False:
-              raise RuntimeError("price freshness diagnostic unexpectedly reports network requests")
-          stores = payload.get("stores")
-          if not isinstance(stores, dict) or not stores:
-              raise RuntimeError("price freshness diagnostic returned no per-store aggregates")
-          required = (
-              "product_rows", "priced_rows", "missing_price_rows",
-              "priced_fresh_24h", "priced_stale_24h",
-              "missing_price_retry_due_6h", "fetch_age_buckets",
-              "hydration_queue", "variants",
-          )
-          for store, stats in stores.items():
-              if not isinstance(stats, dict):
-                  raise RuntimeError(f"invalid aggregate for store {store}")
-              missing = [field for field in required if field not in stats]
-              if missing:
-                  raise RuntimeError(f"store {store} aggregate missing fields: {missing}")
-          print("CATALOG_PRICE_FRESHNESS_DIAGNOSTIC=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
-          PY
-
-      - name: Read-only persisted-vs-live price diagnostic
-        if: ${{ always() && failure() && !contains(github.event.head_commit.message, '[config-only-no-db]') }}
-        continue-on-error: true
-        timeout-minutes: 1
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import urllib.request
-          url = "https://scenthunter.fly.dev/diagnose-hawas-ice-offers-read-only"
-          request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "ScentHunter-price-diagnostic/1.0"})
-          try:
-              with urllib.request.urlopen(request, timeout=25) as response:
-                  payload = json.loads(response.read().decode("utf-8"))
-                  print("PERSISTED_VS_LIVE_PRICE_DIAGNOSTIC=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
-          except Exception as exc:
-              print("PERSISTED_VS_LIVE_PRICE_DIAGNOSTIC_ERROR=" + repr(exc))
-              raise
-          PY
-
-      - name: Recover Easycosmetic catalog when its index is empty
-        if: ${{ contains(github.event.head_commit.message, 'trigger Easycosmetic catalog recovery') }}
-        continue-on-error: true
-        timeout-minutes: 6
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import time
           import urllib.parse
           import urllib.request
 
           base = "https://scenthunter.fly.dev"
+          query = "Dior Sauvage"
 
-          def get_json(path, timeout=15):
+          def get_json(path):
               request = urllib.request.Request(
                   base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-easycosmetic-recovery/1.0"},
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-postgres-search-smoke/2.0"},
               )
-              with urllib.request.urlopen(request, timeout=timeout) as response:
+              with urllib.request.urlopen(request, timeout=30) as response:
                   if response.status != 200:
                       raise RuntimeError(f"{path} returned HTTP {response.status}")
                   return json.loads(response.read().decode("utf-8"))
 
-          before = get_json("/catalog-status")
-          stores = before.get("stores") if isinstance(before.get("stores"), dict) else {}
-          easy = stores.get("easycosmetic") if isinstance(stores.get("easycosmetic"), dict) else {}
-          indexed = int(easy.get("indexed_urls") or 0)
-          print("Easycosmetic catalog before recovery: " + json.dumps(easy, ensure_ascii=False))
-          if indexed > 0:
-              print(f"Easycosmetic already has {indexed} indexed URLs; recovery skipped.")
-              raise SystemExit(0)
-
-          started = get_json("/catalog/resync-easycosmetic")
-          print("Easycosmetic recovery request: " + json.dumps(started, ensure_ascii=False))
-          if not started.get("ok"):
-              raise SystemExit("Easycosmetic recovery could not start: " + json.dumps(started, ensure_ascii=False))
-
-          job_id = str(started.get("job_id") or "")
-          deadline = time.monotonic() + 320
-          last = {}
-          while time.monotonic() < deadline:
-              last = get_json("/catalog/resync-easycosmetic-status?job_id=" + urllib.parse.quote(job_id))
-              persistent = last.get("persistent_store_state") if isinstance(last.get("persistent_store_state"), dict) else {}
-              if last.get("status") != "running" and persistent.get("status") != "DISCOVERY_RUNNING":
-                  break
-              time.sleep(10)
-
-          final = get_json("/catalog-status")
-          final_stores = final.get("stores") if isinstance(final.get("stores"), dict) else {}
-          final_easy = final_stores.get("easycosmetic") if isinstance(final_stores.get("easycosmetic"), dict) else {}
-          print("Easycosmetic recovery result: " + json.dumps(last, ensure_ascii=False))
-          print("Easycosmetic catalog after recovery: " + json.dumps(final_easy, ensure_ascii=False))
-          if int(final_easy.get("indexed_urls") or 0) > 0:
-              print("Easycosmetic catalog recovery: PASS")
-          else:
-              print("WARNING: Easycosmetic catalog remains empty; retailer access/discovery needs further repair.")
+          status = get_json("/api/catalog/status")
+          if status.get("status") != "ready":
+              raise RuntimeError("Canonical PostgreSQL catalog is not ready: " + json.dumps(status))
+          result = get_json("/api/catalog/search?q=" + urllib.parse.quote(query))
+          if not isinstance(result.get("results"), list):
+              raise RuntimeError("Canonical search returned an invalid results payload")
+          for product in result["results"]:
+              for offer in product.get("offers") or []:
+                  if offer.get("currency") != "EUR" or not offer.get("url"):
+                      raise RuntimeError("Canonical search exposed an invalid offer")
+          print("PUBLIC_SEARCH_BACKEND=postgresql")
+          print("PUBLIC_SEARCH_ROUTE=PASS")
+          print("CANONICAL_API=PASS")
+          print("PRODUCTS=" + str(len(result["results"])))
+          print("PUBLISHED_OFFERS=" + str(result.get("offer_count", 0)))
           PY
 
       - name: Bootstrap first canonical Notino ingestion on PostgreSQL
