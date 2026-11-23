@@ -95,7 +95,7 @@ jobs:
               if float(offer.get("price") or 0) <= 0:
                   raise SystemExit("Notino EDP offer has an invalid price")
               parsed = urlparse(str(offer.get("product_url") or ""))
-              if parsed.scheme not in {"http", "https"} or parsed.hostname != "www.notino.fr":
+              if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"notino.fr", "www.notino.fr"}:
                   raise SystemExit("Notino EDP offer does not expose a direct Notino.fr product URL")
 
           print("NOTINO_PUBLIC_POSTGRES_SEARCH=PASS")
