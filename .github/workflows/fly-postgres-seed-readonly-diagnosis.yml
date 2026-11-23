@@ -55,6 +55,6 @@ jobs:
           /app/.venv/bin/python /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
           diagnostic_status=$?
           rm -f /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py
-          exit "$diagnostic_status"
+          exit "\$diagnostic_status"
           '"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
