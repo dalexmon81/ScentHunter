@@ -109,7 +109,7 @@ jobs:
           /app/.venv/bin/python /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3 --apply --confirm-target scenthunter_offerfirst > /tmp/shim/apply.txt
           cat /tmp/shim/apply.txt
           /app/.venv/bin/python /tmp/shim/guard.py apply /tmp/shim/apply.txt
-          /app/.venv/bin/python /tmp/shim/scripts/inspect_postgres_legacy_seed_target.py > /tmp/shim/postflight.json
+          /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py > /tmp/shim/postflight.json
           /app/.venv/bin/python /tmp/shim/guard.py postflight /tmp/shim/postflight.json
           '"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
