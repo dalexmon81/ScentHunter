@@ -1,4 +1,4 @@
-"""Transactional PostgreSQL queue for canonical catalog ingestion."""
+"""Transactional PostgreSQL queue with an optional safe legacy-backlog cutover."""
 from __future__ import annotations
 
 import hashlib
