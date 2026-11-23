@@ -10,6 +10,8 @@ def test_bootstrap_does_not_enqueue_or_paginate_the_full_notino_feed():
     assert "enqueue_offer_fetch" not in source
     assert "backfill_verified_notino_gtins" in source
     assert "NOTINO_POSTGRES_INGESTION=PASS" in source
+    assert "Offer.external_product_id.in_" in source
+    assert "valid_until=datetime.now(timezone.utc)" in source
 
 
 def test_bootstrap_requires_all_four_reviewed_gtins_before_success():
