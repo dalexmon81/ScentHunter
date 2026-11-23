@@ -283,11 +283,12 @@ class CanonicalGtinImportTests(unittest.TestCase):
                     self.assertIs(variant.is_mini, False)
                     self.assertEqual(session.scalar(select(func.count()).select_from(Offer)), 0)
 
-                    # Canonical identity alone is searchable, but cannot invent
-                    # an offer before a retailer observation has been validated.
+                    # Canonical identity and GTIN matching remain available
+                    # internally, but public shopping search hides this variant
+                    # until a retailer observation has been validated.
                     from app.search.catalog import search_catalog
                     before = search_catalog(session, "Dior Sauvage EDP 100 ml")
-                    self.assertEqual(before["count"], 1)
+                    self.assertEqual(before["count"], 0)
                     self.assertEqual(before["offer_count"], 0)
 
                     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
