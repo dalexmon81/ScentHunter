@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       confirm_production_queue_write:
-        description: 'Type AUTHORIZE_QUEUE_WRITE_4161 to authorize this one-time production queue write'
+        description: 'Type AUTHORIZE_QUEUE_WRITE_33 to authorize this one-time production queue write'
         required: true
         type: string
 
 jobs:
   approved-production-queue-apply:
-    if: ${{ inputs.confirm_production_queue_write == 'AUTHORIZE_QUEUE_WRITE_4161' }}
+    if: ${{ inputs.confirm_production_queue_write == 'AUTHORIZE_QUEUE_WRITE_33' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -73,17 +73,17 @@ jobs:
               assert d["mode"] == "dry_run" and d["destination_written"] is False, d
               assert d["target_database"] == "scenthunter_offerfirst", d
               assert d["queued_candidates"] == 127977, d
-              assert d["already_present_candidates"] == 123816, d
-              assert d["would_insert_candidates"] == 4161, d
+              assert d["already_present_candidates"] == 127944, d
+              assert d["would_insert_candidates"] == 33, d
               assert d["duplicate_candidates"] == 0, d
               assert all(v == 0 for v in d["rejected_by_store"].values()), d
-              print("DRY_RUN_VERIFIED candidates=127977 already_present=123816 to_insert=4161")
+              print("DRY_RUN_VERIFIED candidates=127977 already_present=127944 to_insert=33")
           elif mode == "apply":
               d = ast.literal_eval(open(path).read().strip())
               assert d["mode"] == "apply" and d["destination_written"] is True, d
               assert d["target_database"] == "scenthunter_offerfirst", d
               assert d["queued_candidates"] == 127977, d
-              assert d["new_jobs_inserted"] == 4161, d
+              assert d["new_jobs_inserted"] == 33, d
               print("APPLY_VERIFIED candidates=%s inserted_jobs=%s" % (d["queued_candidates"], d["new_jobs_inserted"]))
           else:
               raise SystemExit("unknown guard mode")
