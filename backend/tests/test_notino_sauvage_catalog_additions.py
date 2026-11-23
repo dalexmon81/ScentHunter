@@ -33,7 +33,7 @@ def test_notino_sauvage_edp_supplement_completes_four_known_sizes():
     assert sorted(
         int(row["size_ml"])
         for row in variants
-        if row.get("concentration") or product.get("concentration") == "Eau de Parfum"
+        if (row.get("concentration") or product.get("concentration")) == "Eau de Parfum"
     ) == [30, 60, 100, 200]
 
 
