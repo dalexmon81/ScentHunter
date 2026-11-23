@@ -1,0 +1,53 @@
+name: Diagnose PostgreSQL legacy seed gaps
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run read-only PostgreSQL diagnosis
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl machines list --app "$FLY_APP" --json > /tmp/fly-machines.json
+          MACHINE_ID="$(python - <<'PY'
+          import json
+          machines = json.load(open("/tmp/fly-machines.json", encoding="utf-8"))
+          preferred, other = [], []
+          for machine in machines:
+              meta = (machine.get("config") or {}).get("metadata") or {}
+              group = meta.get("fly_process_group") or meta.get("process_group")
+              (preferred if group == "app" else other).append(machine.get("id"))
+          ids = [value for value in preferred + other if value]
+          print(ids[0] if ids else "")
+          PY
+          )"
+          test -n "$MACHINE_ID"
+          diagnostic_b64="$(base64 -w0 backend/scripts/diagnose_postgres_legacy_seed_gaps.py)"
+          remote_command="sh -lc 'set -e
+          test -r /data/store_catalog.sqlite3
+          test -x /app/.venv/bin/python
+          test -n "\$SCENTHUNTER_MIGRATION_TARGET_DATABASE_URL"
+          mkdir -p /tmp/shim/backend/scripts
+          trap "rm -f /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py" EXIT
+          printf %s ${diagnostic_b64} | base64 -d > /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
+          export PYTHONPATH=/app/backend
+          /app/.venv/bin/python /tmp/shim/backend/scripts/diagnose_postgres_legacy_seed_gaps.py
+          '"
+          flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
