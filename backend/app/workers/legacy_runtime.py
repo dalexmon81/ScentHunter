@@ -80,13 +80,12 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
 
         queued = skipped = 0
         errors: list[str] = []
-        matcher = notino_runtime._matcher()
+        # Do not pre-filter legacy retailer discoveries with the Notino
+        # feed matcher. That helper has a different signature and performs a
+        # Notino-specific canonical lookup. Every discovered reference is
+        # staged; fetch/persistence applies the shared canonical matching and
+        # publication gates before any offer can become public.
         for product in products:
-            if not notino_runtime._is_unique_canonical_candidate(
-                connector, matcher, product.raw_payload
-            ):
-                skipped += 1
-                continue
             try:
                 enqueue_offer_fetch(store_id, product.external_product_id)
                 queued += 1
@@ -116,7 +115,6 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
             "store": store.slug,
             "run_id": str(run_id),
             "products_discovered": len(products),
-            "canonical_candidates_skipped": skipped,
             "fetch_jobs_queued": queued,
             "next_cursor": next_cursor,
             "errors": errors,
