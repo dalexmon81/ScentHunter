@@ -72,13 +72,44 @@ def merge_supplemental_catalog(
     """
     merged = dict(raw)
     source_path = Path(source).expanduser().resolve()
-    supplement_path = (
-        source_path.parent
-        / "scenthunter_next_engine"
-        / "bplatz_verified_catalog_additions.json"
-    )
-    if not supplement_path.is_file():
-        return merged
+    supplement_dir = source_path.parent / "scenthunter_next_engine"
+    for filename in (
+        "bplatz_verified_catalog_additions.json",
+        "notino_verified_catalog_additions.json",
+    ):
+        supplement_path = supplement_dir / filename
+        if not supplement_path.is_file():
+            continue
+        try:
+            with supplement_path.open("r", encoding="utf-8") as handle:
+                supplement = json.load(handle)
+        except OSError as exc:
+            raise CatalogFormatError(
+                f"Cannot read supplemental canonical catalog: {supplement_path}"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise CatalogFormatError(
+                f"Supplemental canonical catalog is not valid JSON: {supplement_path}"
+            ) from exc
+        if not isinstance(supplement, Mapping) or supplement.get("schema_version") != 1:
+            raise CatalogFormatError(
+                f"Supplemental canonical catalog has an unsupported schema: {filename}"
+            )
+        supplemental_products = supplement.get("products")
+        supplemental_variants = supplement.get("variants")
+        if not isinstance(supplemental_products, list) or not isinstance(supplemental_variants, list):
+            raise CatalogFormatError(
+                f"Supplemental canonical catalog requires products[] and variants[]: {filename}"
+            )
+        merged["products"] = [
+            *_list_of_mappings(merged.get("products")),
+            *_list_of_mappings(supplemental_products),
+        ]
+        merged["variants"] = [
+            *_list_of_mappings(merged.get("variants")),
+            *_list_of_mappings(supplemental_variants),
+        ]
+    return merged
     try:
         with supplement_path.open("r", encoding="utf-8") as handle:
             supplement = json.load(handle)
