@@ -1696,7 +1696,11 @@ def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[s
     elif availability in {"out of stock", "outofstock", "unavailable"}:
         availability = "out_of_stock"
     else:
+        # A priced product page without an explicit stock state is not a
+        # publishable offer. Keep unknown separate from out-of-stock.
         availability = "unknown"
+    if availability == "unknown":
+        return None
 
     size_ml = item.get("size_ml")
     if size_ml is None:

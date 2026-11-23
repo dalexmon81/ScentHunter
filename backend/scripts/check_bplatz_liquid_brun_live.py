@@ -55,8 +55,15 @@ def build_report(parsed: dict, worker_item: dict, captured_at: datetime) -> dict
         raise RuntimeError("Bplatz page did not provide a positive price")
     if offer.currency != "EUR":
         raise RuntimeError("Bplatz offer currency is not EUR")
-    if offer.availability != "in_stock":
-        raise RuntimeError("Bplatz page did not confirm in-stock availability")
+    if offer.availability not in {"in_stock", "out_of_stock"}:
+        raise RuntimeError(
+            "Bplatz page did not provide an explicit stock state "
+            f"(normalized={offer.availability!r}, parsed={parsed.get('availability')!r}, "
+            f"worker_available={worker_item.get('available')!r}, "
+            f"worker_availability={worker_item.get('availability')!r})"
+        )
+    if parsed.get("availability") != worker_item.get("availability"):
+        raise RuntimeError("Bplatz page and worker parser disagree on availability")
 
     parsed_url = urlsplit(offer.product_url or "")
     host = (parsed_url.hostname or "").lower().rstrip(".")
@@ -80,7 +87,8 @@ def build_report(parsed: dict, worker_item: dict, captured_at: datetime) -> dict
         raise RuntimeError("Bplatz offer matched a different canonical product variant")
 
     return {
-        "status": "verified",
+        "status": "verified" if offer.availability == "in_stock" else "unavailable",
+        "publication_eligible": offer.availability == "in_stock",
         "store": "Bplatz",
         "brand": "French Avenue",
         "product": "Liquid Brun",

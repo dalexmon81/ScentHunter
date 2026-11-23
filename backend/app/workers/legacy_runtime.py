@@ -69,7 +69,7 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
-    connector = build_legacy_connector(connector_key)
+    connector = build_legacy_connector(connector_key, allowed_domain=store.domain)
     try:
         products = asyncio.run(connector.discover_products(
             cursor=str(cursor) if cursor is not None else None,
@@ -80,10 +80,9 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
 
         queued = skipped = 0
         errors: list[str] = []
-        matcher = notino_runtime._matcher()
         for product in products:
             if not notino_runtime._is_unique_canonical_candidate(
-                connector, matcher, product.raw_payload
+                connector, store_id, product.raw_payload
             ):
                 skipped += 1
                 continue
@@ -142,7 +141,7 @@ def handle_legacy_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
-    connector = build_legacy_connector(connector_key)
+    connector = build_legacy_connector(connector_key, allowed_domain=store.domain)
     try:
         record = asyncio.run(connector.fetch_product(external_id))
         if not isinstance(record, Mapping):
@@ -192,7 +191,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
     with notino_runtime._sessions()() as session, session.begin():
         run_id = start_ingestion_run(session, store_id=store_id)
 
-    connector = build_legacy_connector(connector_key)
+    connector = build_legacy_connector(connector_key, allowed_domain=store.domain)
     try:
         observation = asyncio.run(connector.fetch_price_and_stock(external_id))
         raw_record = observation.get("raw_record")

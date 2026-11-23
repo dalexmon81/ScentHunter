@@ -21,6 +21,10 @@ from app.connectors.base import ConnectorUnavailable, DiscoveredProduct, StoreCo
 STORE_SLUGS = {
     "bplatz": "bplatz",
     "deloox-be": "deloox",
+    "deloox-nl": "deloox",
+    "deloox-com": "deloox",
+    "deloox-lu": "deloox",
+    "deloox-es": "deloox",
     "sabina-es": "sabina",
     "easycosmetic-de": "easycosmetic",
     "parfumzentrum-de": "parfumzentrum",
@@ -96,10 +100,17 @@ def _availability(raw: Mapping[str, Any]) -> str | None:
 class LegacyScraperConnector(StoreConnector):
     """Thin adapter around one existing scraper module; no scraper rewrite."""
 
-    def __init__(self, store_key: str, scraper_module: Any | None = None, *, cache_ttl_seconds: int = 900):
+    def __init__(
+        self, store_key: str, scraper_module: Any | None = None, *,
+        cache_ttl_seconds: int = 900, allowed_domain: str | None = None,
+    ):
         if store_key not in SCRAPER_MODULES:
             raise ValueError(f"unsupported legacy scraper: {store_key}")
         self.store_key = store_key
+        self.allowed_domain = (
+            str(allowed_domain).strip().lower().rstrip(".")
+            if allowed_domain else None
+        )
         super().__init__()
         if scraper_module is None:
             from importlib import import_module
@@ -153,6 +164,13 @@ class LegacyScraperConnector(StoreConnector):
                 parsed = urlparse(url)
                 if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                     continue
+                if self.allowed_domain:
+                    hostname = (parsed.hostname or "").lower().rstrip(".")
+                    if not (
+                        hostname == self.allowed_domain
+                        or hostname.endswith("." + self.allowed_domain)
+                    ):
+                        continue
                 if len(url) > 240:
                     continue
                 if url in seen:
@@ -209,6 +227,13 @@ class LegacyScraperConnector(StoreConnector):
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("external_product_id must be an absolute product URL")
+        if self.allowed_domain:
+            hostname = (parsed.hostname or "").lower().rstrip(".")
+            if not (
+                hostname == self.allowed_domain
+                or hostname.endswith("." + self.allowed_domain)
+            ):
+                raise ValueError("external_product_id host does not match the registered store domain")
         session = requests.Session()
         try:
             parser = getattr(self._scraper, "extract_product_page", None)
@@ -310,8 +335,10 @@ class LegacyScraperConnector(StoreConnector):
         }
 
 
-def build_legacy_connector(store_key: str) -> LegacyScraperConnector:
-    return LegacyScraperConnector(store_key)
+def build_legacy_connector(
+    store_key: str, *, allowed_domain: str | None = None,
+) -> LegacyScraperConnector:
+    return LegacyScraperConnector(store_key, allowed_domain=allowed_domain)
 
 
 def connector_key_for_store_slug(store_slug: str) -> str | None:

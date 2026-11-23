@@ -56,10 +56,21 @@ class BplatzLiveOfferCheckTests(unittest.TestCase):
         self.assertEqual(report["raw_record"]["product_url"], report["url"])
         self.assertFalse(report["database_written"])
 
-    def test_out_of_stock_offer_fails_closed(self):
+    def test_out_of_stock_is_a_verified_observation_but_not_publishable(self):
         page, worker_item = self.parsed_fixture()
         page["availability"] = "out_of_stock"
-        with self.assertRaisesRegex(RuntimeError, "in-stock"):
+        worker_item["availability"] = "out_of_stock"
+        worker_item["available"] = False
+        report = build_report(page, worker_item, datetime.now(timezone.utc))
+        self.assertEqual(report["status"], "unavailable")
+        self.assertEqual(report["availability"], "out_of_stock")
+        self.assertFalse(report["publication_eligible"])
+        self.assertFalse(report["database_written"])
+
+    def test_disagreeing_stock_parsers_are_rejected(self):
+        page, worker_item = self.parsed_fixture()
+        page["availability"] = "out_of_stock"
+        with self.assertRaisesRegex(RuntimeError, "disagree on availability"):
             build_report(page, worker_item, datetime.now(timezone.utc))
 
     def test_defaulted_currency_is_not_accepted_as_evidence(self):

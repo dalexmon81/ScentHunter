@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.connectors.base import DiscoveredProduct
+from app.connectors.legacy_scrapers import LegacyScraperConnector
 from app.models import Base, IngestionRun, Store
 from app.services.connector_ingestion import ConnectorIngestionResult
 from app.workers import legacy_runtime, notino_runtime
@@ -38,6 +39,13 @@ class FakeLegacyConnector:
 
 
 class LegacyWorkerRuntimeTests(unittest.TestCase):
+    def test_fetch_rejects_cross_market_product_urls_before_network_access(self):
+        connector = LegacyScraperConnector(
+            "deloox", scraper_module=object(), allowed_domain="www.deloox.be"
+        )
+        with self.assertRaisesRegex(ValueError, "registered store domain"):
+            connector._fetch_product_sync("https://www.deloox.nl/product/123")
+
     def setUp(self):
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
@@ -64,6 +72,8 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         ]
         started = [item.start() for item in patches]
         enqueue_fetch = started[-1]
+        candidate_filter = started[2]
+        connector_factory = started[3]
         try:
             result = legacy_runtime.handle_legacy_discovery({
                 "store_id": str(self.store_id), "limit": 10,
@@ -77,6 +87,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         self.assertEqual(result["fetch_jobs_queued"], 1)
         enqueue_fetch.assert_called_once_with(
             self.store_id, "https://www.deloox.be/product/123"
+        )
+        self.assertEqual(candidate_filter.call_args.args[1], self.store_id)
+        connector_factory.assert_called_once_with(
+            "deloox", allowed_domain="www.deloox.be"
         )
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
@@ -107,6 +121,10 @@ class LegacyWorkerRuntimeTests(unittest.TestCase):
         self.assertEqual(result["status"], "promoted")
         self.assertEqual(result["store"], "deloox-be")
         persist.assert_called_once()
+        connector_factory = started[2]
+        connector_factory.assert_called_once_with(
+            "deloox", allowed_domain="www.deloox.be"
+        )
         with self.sessions() as session:
             run = session.get(IngestionRun, __import__("uuid").UUID(result["run_id"]))
             self.assertEqual(run.status, "completed")
