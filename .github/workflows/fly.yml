@@ -264,13 +264,14 @@ jobs:
                   SELECT count(*) FROM ingestion_queue_jobs
                   WHERE stage='refresh'
                     AND payload->>'store_id'=:store_id
-                    AND created_at >= now() - interval '10 minutes'
+                    AND status IN ('queued','running')
+                    AND created_at >= now() - interval '24 hours'
               """),
               {"store_id": store_id},
           ).scalar_one()
           session.close()
-          print("BPLATZ_REFRESH_JOBS_SCHEDULED=" + str(count))
-          assert count >= 1, "No Bplatz PostgreSQL refresh jobs were scheduled"
+          print("BPLATZ_REFRESH_JOBS_AVAILABLE=" + str(count))
+          assert count >= 1, "No eligible Bplatz PostgreSQL refresh jobs were available"
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
