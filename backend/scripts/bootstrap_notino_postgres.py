@@ -189,6 +189,17 @@ def main() -> None:
                         apply=True,
                     )
                     session.commit()
+                covered_gtins = (
+                    int(gtin_backfill.get("promoted_unique_gtins", 0))
+                    + int(gtin_backfill.get("skipped_reasons", {}).get(
+                        "already_active_in_stock_offer", 0
+                    ))
+                )
+                if covered_gtins != 4:
+                    raise RuntimeError(
+                        "Notino verified Dior Sauvage EDP GTIN backfill did not cover "
+                        f"all four sizes: {json.dumps(gtin_backfill, default=str)}"
+                    )
                 print(
                     "NOTINO_VERIFIED_GTIN_BACKFILL="
                     + json.dumps(gtin_backfill, ensure_ascii=False, sort_keys=True),
