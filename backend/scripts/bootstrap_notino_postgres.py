@@ -100,8 +100,8 @@ def main() -> None:
             with engine.begin() as conn:
                 # Prioritize only this bootstrap's Notino jobs ahead of the
                 # migrated legacy backlog. No existing jobs are deleted or
-                # rewritten; only newly queued Notino work gets an earlier
-                # availability timestamp.
+                # rewritten; only jobs belonging to this Notino discovery
+                # batch get an earlier availability timestamp.
                 conn.execute(
                     text("""
                         UPDATE ingestion_queue_jobs
@@ -140,7 +140,7 @@ def main() -> None:
                           AND payload->>'store_id' = :store_id
                           AND created_at >= :started_at
                         """
-                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
+                    ), {"store_id": str(store_id), "started_at": batch_started_at}
                 ).scalar_one()
                 failed_discovery = conn.execute(
                     text(
@@ -150,7 +150,7 @@ def main() -> None:
                           AND payload->>'store_id' = :store_id
                           AND created_at >= :started_at
                         """
-                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
+                    ), {"store_id": str(store_id), "started_at": batch_started_at}
                 ).scalar_one()
                 last_errors = conn.execute(
                     text(
@@ -162,7 +162,7 @@ def main() -> None:
                         ORDER BY finished_at DESC NULLS LAST
                         LIMIT 3
                         """
-                    ), {"store_id": str(store_id), "started_at": bootstrap_started_at}
+                    ), {"store_id": str(store_id), "started_at": batch_started_at}
                 ).mappings().all()
 
             last = {
