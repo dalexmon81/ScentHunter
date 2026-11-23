@@ -16,6 +16,7 @@ primary_region = "ams"
 
 [env]
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
+  SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
 
 [http_service]
   internal_port = 8080
