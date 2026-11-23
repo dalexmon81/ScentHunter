@@ -21,8 +21,10 @@ jobs:
       FLY_APP: scenthunter
 
     steps:
-      - name: Check out branch
+      - name: Check out source scripts from validated ingestion branch
         uses: actions/checkout@v4
+        with:
+          ref: fix/public-postgres-catalog-ingestion-2026-11-22
 
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
