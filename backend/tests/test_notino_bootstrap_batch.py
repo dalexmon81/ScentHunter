@@ -41,7 +41,7 @@ def test_reuses_recent_running_discovery_batch():
 
 
 def test_rejects_stale_running_discovery_instead_of_duplicate_batch():
-    batch_started = datetime(2026, 11, 23, 6, 0, tzinfo=timezone.utc)
+    batch_started = datetime(2026, 11, 23, 4, 0, tzinfo=timezone.utc)
     bootstrap_started = datetime(2026, 11, 23, 7, 0, tzinfo=timezone.utc)
     engine = _engine_with_job(batch_started, "running")
     try:
@@ -100,7 +100,7 @@ def test_adopts_oldest_recent_discovery_page_for_same_store():
             )
         """))
         rows = [
-            ("old", "queued", datetime(2026, 11, 23, 7, 0, tzinfo=timezone.utc),
+            ("old", "queued", datetime(2026, 11, 23, 5, 0, tzinfo=timezone.utc),
              '{"store_id":"notino-fr","cursor":"0","limit":1000}'),
             ("first-page", "completed", datetime(2026, 11, 23, 7, 44, tzinfo=timezone.utc),
              '{"store_id":"notino-fr","cursor":null,"limit":1000}'),
@@ -126,7 +126,7 @@ def test_adopts_oldest_recent_discovery_page_for_same_store():
         engine.dispose()
 
 
-def test_does_not_adopt_discovery_job_older_than_thirty_minutes():
+def test_does_not_adopt_discovery_job_older_than_two_hours():
     engine = create_engine("sqlite:///:memory:")
     with engine.begin() as connection:
         connection.execute(text("""
