@@ -83,8 +83,13 @@ jobs:
               assert d["mode"] == "apply" and d["destination_written"] is True, d
               assert d["target_database"] == "scenthunter_offerfirst", d
               assert d["queued_candidates"] == 127977, d
-              assert d["new_jobs_inserted"] == 33, d
-              print("APPLY_VERIFIED candidates=%s inserted_jobs=%s" % (d["queued_candidates"], d["new_jobs_inserted"]))
+              assert d["final_present_candidates"] == 33, d
+              assert d["missing_after_apply"] == 0, d
+              assert sum(d["final_status_counts"].values()) == 33, d
+              print("APPLY_VERIFIED candidates=%s inserted_by_seed=%s present=%s statuses=%s" % (
+                  d["queued_candidates"], d["new_jobs_inserted"],
+                  d["final_present_candidates"], d["final_status_counts"]
+              ))
           else:
               raise SystemExit("unknown guard mode")
           PY
