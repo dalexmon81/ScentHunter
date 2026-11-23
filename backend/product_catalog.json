@@ -21108,9 +21108,10 @@
         "Christian Dior"
       ],
       "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
+      "source_notes": "Referenza verificata nel catalogo ufficiale Dior. La pagina Dior France espone i formati 30, 60, 100 e 200 ml.",
       "verification_sources": [
-        "https://www.fragrantica.com/designers/Dior.html"
+        "https://www.fragrantica.com/designers/Dior.html",
+        "https://www.dior.com/fr_fr/beauty/products/sauvage-parfum-C099600456.html"
       ],
       "canonical_name": "Sauvage Parfum",
       "canonical_image": "https://www.dior.com/dw/image/v2/BGXS_PRD/on/demandware.static/-/Sites-master_dior/default/dwf0f213e7/Y0998004/Y0998004_C099600456_E01_RHC.jpg?sw=800"
@@ -33742,6 +33743,74 @@
       "is_gift_set": false,
       "is_mini": false,
       "canonical_key": "dior|sauvage|edp|100|regular|standard|single|standard"
+    },
+    {
+      "variant_id": "VAR-SH-AUTO-0179-PARFUM-30",
+      "product_id": "SH-AUTO-0179",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Parfum 30 ml",
+        "Sauvage Parfum 30 ml"
+      ],
+      "store_mappings": [],
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|parfum|30|regular|standard|single|standard"
+    },
+    {
+      "variant_id": "VAR-SH-AUTO-0179-PARFUM-60",
+      "product_id": "SH-AUTO-0179",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Parfum 60 ml",
+        "Sauvage Parfum 60 ml"
+      ],
+      "store_mappings": [],
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|parfum|60|regular|standard|single|standard"
+    },
+    {
+      "variant_id": "VAR-SH-AUTO-0179-PARFUM-100",
+      "product_id": "SH-AUTO-0179",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Parfum 100 ml",
+        "Sauvage Parfum 100 ml"
+      ],
+      "store_mappings": [],
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|parfum|100|regular|standard|single|standard"
+    },
+    {
+      "variant_id": "VAR-SH-AUTO-0179-PARFUM-200",
+      "product_id": "SH-AUTO-0179",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Parfum 200 ml",
+        "Sauvage Parfum 200 ml"
+      ],
+      "store_mappings": [],
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|parfum|200|regular|standard|single|standard"
     }
   ],
   "offers": [],
