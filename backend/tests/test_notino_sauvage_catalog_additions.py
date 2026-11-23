@@ -30,9 +30,11 @@ def test_notino_sauvage_edp_supplement_completes_four_known_sizes():
     assert blocked == []
     product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
     variants = variants_by_product[product["product_id"]]
-    assert sorted(int(row["size_ml"]) for row in variants if row.get("concentration") == "Eau de Parfum") == [
-        30, 60, 100, 200,
-    ]
+    assert sorted(
+        int(row["size_ml"])
+        for row in variants
+        if row.get("concentration") or product.get("concentration") == "Eau de Parfum"
+    ) == [30, 60, 100, 200]
 
 
 def test_search_title_does_not_repeat_concentration_and_keeps_families_separate():
@@ -103,6 +105,11 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
         database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
         env = os.environ.copy()
         env["SCENTHUNTER_CATALOG_DATABASE_URL"] = database_url
+        schema_engine = create_engine(database_url)
+        try:
+            Base.metadata.create_all(schema_engine)
+        finally:
+            schema_engine.dispose()
         completed = subprocess.run(
             [
                 sys.executable, str(BACKEND / "scripts" / "seed_catalog.py"),
