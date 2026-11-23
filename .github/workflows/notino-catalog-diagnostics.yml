@@ -2,7 +2,7 @@ name: Notino.fr PostgreSQL Catalog Diagnostics
 
 on:
   workflow_run:
-    workflows: ["Notino CJ Feed Import"]
+    workflows: ["Fly Deploy"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Verify Notino offers are visible through the canonical PostgreSQL search API
+      - name: Verify Dior Sauvage EDP formats and Notino offers through public PostgreSQL search
         shell: bash
         run: |
           set -euo pipefail
@@ -26,37 +26,85 @@ jobs:
           import json
           import urllib.parse
           import urllib.request
+          from urllib.parse import urlparse
 
           base = "https://scenthunter.fly.dev"
+
           def get(path):
               request = urllib.request.Request(
                   base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Postgres-Notino-Diagnostic/1.0"},
+                  headers={
+                      "Accept": "application/json",
+                      "User-Agent": "ScentHunter-Notino-Postgres-Diagnostic/2.0",
+                  },
               )
               with urllib.request.urlopen(request, timeout=25) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
                   return json.loads(response.read().decode("utf-8"))
 
           status = get("/api/catalog/status")
           if status.get("status") != "ready":
               raise SystemExit("Canonical PostgreSQL catalog is not ready: " + json.dumps(status))
-          query = urllib.parse.urlencode({"q": "Dior Sauvage"})
+
+          query = urllib.parse.urlencode({"q": "Dior Sauvage EDP"})
           result = get("/api/catalog/search?" + query)
           if not isinstance(result.get("results"), list):
               raise SystemExit("Canonical catalog search returned an invalid payload")
+
+          groups = [
+              item for item in result["results"]
+              if str(item.get("brand") or "").casefold() == "dior"
+              and "sauvage" in str(item.get("name") or "").casefold()
+              and "eau de parfum" in str(item.get("name") or "").casefold()
+          ]
+          if not groups:
+              raise SystemExit("Dior Sauvage EDP group is missing from public PostgreSQL search")
+
+          group = groups[0]
+          format_sizes = {
+              int(item["size_ml"]) for item in (group.get("formats") or [])
+              if item.get("size_ml") is not None
+          }
           notino_offers = [
-              offer
-              for product in result["results"]
-              for offer in (product.get("offers") or [])
+              offer for offer in (group.get("offers") or [])
               if "notino" in str(offer.get("store") or "").casefold()
           ]
-          print("NOTINO_POSTGRES_DIAGNOSTIC=" + json.dumps({
-              "catalog_status": status.get("status"),
-              "query": "Dior Sauvage",
-              "products": len(result["results"]),
-              "published_offers": int(result.get("offer_count", 0) or 0),
-              "notino_offers": len(notino_offers),
-          }, sort_keys=True))
-          if not notino_offers:
-              raise SystemExit("No Notino offer is visible in canonical PostgreSQL search.")
+          notino_sizes = {
+              int(offer["size_ml"]) for offer in notino_offers
+              if offer.get("size_ml") is not None
+          }
+
+          expected = {30, 60, 100, 200}
+          if not expected.issubset(format_sizes):
+              raise SystemExit(
+                  "Dior Sauvage EDP canonical formats incomplete: "
+                  + json.dumps(sorted(format_sizes))
+              )
+          if not expected.issubset(notino_sizes):
+              raise SystemExit(
+                  "Notino EDP offers missing reviewed sizes: "
+                  + json.dumps(sorted(notino_sizes))
+              )
+
+          for offer in notino_offers:
+              if int(offer.get("size_ml") or 0) not in expected:
+                  continue
+              if offer.get("currency") != "EUR" or offer.get("availability") != "in_stock":
+                  raise SystemExit("Notino EDP offer has invalid currency or availability")
+              if float(offer.get("price") or 0) <= 0:
+                  raise SystemExit("Notino EDP offer has an invalid price")
+              parsed = urlparse(str(offer.get("product_url") or ""))
+              if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"notino.fr", "www.notino.fr"}:
+                  raise SystemExit("Notino EDP offer does not expose a direct Notino.fr product URL")
+
           print("NOTINO_PUBLIC_POSTGRES_SEARCH=PASS")
+          print(json.dumps({
+              "catalog_status": status.get("status"),
+              "query": "Dior Sauvage EDP",
+              "format_sizes_ml": sorted(format_sizes),
+              "notino_offer_sizes_ml": sorted(notino_sizes),
+              "notino_offer_count": len(notino_offers),
+              "published_offers": int(result.get("offer_count", 0) or 0),
+          }, sort_keys=True))
           PY
