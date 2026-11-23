@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "description": "Notino-verified Dior Sauvage Eau de Parfum size variants. 30/60/200 ml are supported by the authorized Notino CJ feed with exact product URLs and valid GTINs; the existing 100 ml variant and its GTIN remain unchanged.",
+  "products": [],
+  "variants": [
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-30",
+      "size_ml": 30,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|30|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 30 ml",
+        "Dior Sauvage EDP 30ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum-pour-homme/p-16187295/"
+      ],
+      "evidence_note": "Authorized Notino CJ feed record CHDSVGM_AEDP40: DIOR Sauvage Eau de Parfum, 30 ml, GTIN 3348901608053. GTIN check digit validated.",
+      "gtin": "3348901608053"
+    },
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-60",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|60|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 60 ml",
+        "Dior Sauvage EDP 60ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum-pour-homme/p-15676582/"
+      ],
+      "evidence_note": "Authorized Notino CJ feed record CHDSVGM_AEDP20: DIOR Sauvage Eau de Parfum, 60 ml, GTIN 3348901368254. GTIN check digit validated.",
+      "gtin": "3348901368254"
+    },
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-200",
+      "size_ml": 200,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|200|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 200 ml",
+        "Dior Sauvage EDP 200ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum-pour-homme/p-15971107/"
+      ],
+      "evidence_note": "Authorized Notino CJ feed record CHDSVGM_AEDP25: DIOR Sauvage Eau de Parfum, 200 ml, GTIN 3348901428545. GTIN check digit validated.",
+      "gtin": "3348901428545"
+    }
+  ]
+}
