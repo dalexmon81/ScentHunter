@@ -48,8 +48,9 @@ def main() -> None:
                 )
                 .values(valid_until=datetime.now(timezone.utc))
             )
-            session.commit()
-
+            # Keep invalidation and promotion in the same outer transaction.
+            # If any GTIN is missing or fails validation, the exception rolls
+            # back the invalidation too, preserving the previously published offers.
             summary = backfill_verified_notino_gtins(
                 session,
                 store,
