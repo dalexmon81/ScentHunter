@@ -122,6 +122,18 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
         fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
         session.add_all([
             ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=30, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=60, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
+            ),
+            ProductVariant(
                 fragrance_id=fragrance.id, concentration="Eau de Parfum",
                 size_ml=50, is_tester=False, is_refill=False,
                 is_gift_set=False, is_mini=False,
@@ -149,8 +161,12 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
         session.commit()
 
         persisted = session.query(ProductVariant).order_by(ProductVariant.size_ml).all()
-        assert [(item.size_ml, item.is_tester) for item in persisted] == [
-            (50, False), (100, False), (100, True),
+        assert [(item.size_ml, item.concentration, item.is_tester) for item in persisted] == [
+            (30, "Eau de Toilette", False),
+            (50, "Eau de Parfum", False),
+            (60, "Eau de Toilette", False),
+            (100, "Eau de Parfum", False),
+            (100, "Eau de Parfum", True),
         ]
         result = search_catalog(session, "Dior Sauvage")
         assert result["count"] == 3, result["results"]
