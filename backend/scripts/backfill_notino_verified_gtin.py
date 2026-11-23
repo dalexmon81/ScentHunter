@@ -49,6 +49,16 @@ VERIFIED_GTINS = {
 CANONICAL_PRODUCT_ID = "SH-AUTO-0178"
 
 
+def _valid_gtin13(value: str) -> bool:
+    if len(value) != 13 or not value.isdigit():
+        return False
+    weighted_sum = sum(
+        int(digit) * (1 if index % 2 == 0 else 3)
+        for index, digit in enumerate(value[:12])
+    )
+    return (10 - weighted_sum % 10) % 10 == int(value[-1])
+
+
 def backfill_verified_notino_gtins(
     session: Session,
     store: Store,
@@ -89,8 +99,11 @@ def backfill_verified_notino_gtins(
             continue
 
         expected = VERIFIED_GTINS[gtin]
-        if matched.reason != "verified_gtin_exact_variant":
-            skipped[matched.reason or matched.status.value] += 1
+        # The matcher may select its exact name/brand/size path before its
+        # GTIN path. The reviewed registry remains authoritative: require a
+        # valid GTIN checksum plus the exact expected canonical variant ID.
+        if not _valid_gtin13(gtin):
+            skipped["invalid_gtin_checksum"] += 1
             continue
         if matched.canonical_product_id != CANONICAL_PRODUCT_ID:
             skipped["unexpected_canonical_product"] += 1
