@@ -6,6 +6,8 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+  push:
+    branches: ["test/sauvage-parfum-production-smoke"]
   schedule:
     - cron: "47 6 * * *"
 
@@ -18,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Verify Dior Sauvage EDP formats and Notino offers through public PostgreSQL search
+      - name: Verify Dior Sauvage EDP offers and Parfum format grouping through public PostgreSQL search
         shell: bash
         run: |
           set -euo pipefail
@@ -35,7 +37,7 @@ jobs:
                   base + path,
                   headers={
                       "Accept": "application/json",
-                      "User-Agent": "ScentHunter-Notino-Postgres-Diagnostic/2.0",
+                      "User-Agent": "ScentHunter-Notino-Postgres-Diagnostic/3.0",
                   },
               )
               with urllib.request.urlopen(request, timeout=25) as response:
@@ -47,27 +49,28 @@ jobs:
           if status.get("status") != "ready":
               raise SystemExit("Canonical PostgreSQL catalog is not ready: " + json.dumps(status))
 
-          query = urllib.parse.urlencode({"q": "Dior Sauvage EDP"})
-          result = get("/api/catalog/search?" + query)
-          if not isinstance(result.get("results"), list):
-              raise SystemExit("Canonical catalog search returned an invalid payload")
+          expected = {30, 60, 100, 200}
+          edp_query = urllib.parse.urlencode({"q": "Dior Sauvage EDP"})
+          edp_result = get("/api/catalog/search?" + edp_query)
+          if not isinstance(edp_result.get("results"), list):
+              raise SystemExit("Canonical EDP search returned an invalid payload")
 
-          groups = [
-              item for item in result["results"]
+          edp_groups = [
+              item for item in edp_result["results"]
               if str(item.get("brand") or "").casefold() == "dior"
               and "sauvage" in str(item.get("name") or "").casefold()
               and "eau de parfum" in str(item.get("name") or "").casefold()
           ]
-          if not groups:
+          if not edp_groups:
               raise SystemExit("Dior Sauvage EDP group is missing from public PostgreSQL search")
 
-          group = groups[0]
-          format_sizes = {
-              int(item["size_ml"]) for item in (group.get("formats") or [])
+          edp_group = edp_groups[0]
+          edp_format_sizes = {
+              int(item["size_ml"]) for item in (edp_group.get("formats") or [])
               if item.get("size_ml") is not None
           }
           notino_offers = [
-              offer for offer in (group.get("offers") or [])
+              offer for offer in (edp_group.get("offers") or [])
               if "notino" in str(offer.get("store") or "").casefold()
           ]
           notino_sizes = {
@@ -75,17 +78,10 @@ jobs:
               if offer.get("size_ml") is not None
           }
 
-          expected = {30, 60, 100, 200}
-          if not expected.issubset(format_sizes):
-              raise SystemExit(
-                  "Dior Sauvage EDP canonical formats incomplete: "
-                  + json.dumps(sorted(format_sizes))
-              )
+          if not expected.issubset(edp_format_sizes):
+              raise SystemExit("Dior Sauvage EDP canonical formats incomplete: " + json.dumps(sorted(edp_format_sizes)))
           if not expected.issubset(notino_sizes):
-              raise SystemExit(
-                  "Notino EDP offers missing reviewed sizes: "
-                  + json.dumps(sorted(notino_sizes))
-              )
+              raise SystemExit("Notino EDP offers missing reviewed sizes: " + json.dumps(sorted(notino_sizes)))
 
           for offer in notino_offers:
               if int(offer.get("size_ml") or 0) not in expected:
@@ -98,13 +94,44 @@ jobs:
               if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"notino.fr", "www.notino.fr"}:
                   raise SystemExit("Notino EDP offer does not expose a direct Notino.fr product URL")
 
+          parfum_query = urllib.parse.urlencode({"q": "Dior Sauvage Parfum"})
+          parfum_result = get("/api/catalog/search?" + parfum_query)
+          if not isinstance(parfum_result.get("results"), list):
+              raise SystemExit("Canonical Parfum search returned an invalid payload")
+
+          parfum_groups = [
+              item for item in parfum_result["results"]
+              if str(item.get("brand") or "").casefold() == "dior"
+              and "sauvage parfum" in str(item.get("name") or "").casefold()
+          ]
+          if len(parfum_groups) != 1:
+              raise SystemExit(
+                  "Dior Sauvage Parfum must be exactly one canonical search group: "
+                  + json.dumps([item.get("name") for item in parfum_groups])
+              )
+
+          parfum_group = parfum_groups[0]
+          parfum_format_sizes = {
+              int(item["size_ml"]) for item in (parfum_group.get("formats") or [])
+              if item.get("size_ml") is not None
+          }
+          if not expected.issubset(parfum_format_sizes):
+              raise SystemExit(
+                  "Dior Sauvage Parfum formats incomplete: "
+                  + json.dumps(sorted(parfum_format_sizes))
+              )
+          if "identità catalogo" in str(parfum_group.get("name") or "").casefold():
+              raise SystemExit("Dior Sauvage Parfum is still exposed as an identity-only catalog row")
+
           print("NOTINO_PUBLIC_POSTGRES_SEARCH=PASS")
+          print("SAUVAGE_PARFUM_SINGLE_GROUP=PASS")
           print(json.dumps({
               "catalog_status": status.get("status"),
-              "query": "Dior Sauvage EDP",
-              "format_sizes_ml": sorted(format_sizes),
+              "edp_format_sizes_ml": sorted(edp_format_sizes),
               "notino_offer_sizes_ml": sorted(notino_sizes),
               "notino_offer_count": len(notino_offers),
-              "published_offers": int(result.get("offer_count", 0) or 0),
+              "parfum_group_count": len(parfum_groups),
+              "parfum_format_sizes_ml": sorted(parfum_format_sizes),
+              "published_offers": int(edp_result.get("offer_count", 0) or 0),
           }, sort_keys=True))
           PY
