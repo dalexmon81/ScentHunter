@@ -30,11 +30,21 @@ def test_notino_sauvage_edp_supplement_completes_four_known_sizes():
     assert blocked == []
     product = next(row for row in products if row["product_id"] == "SH-AUTO-0178")
     variants = variants_by_product[product["product_id"]]
-    assert sorted(
-        int(row["size_ml"])
-        for row in variants
+    edp_variants = [
+        row for row in variants
         if (row.get("concentration") or product.get("concentration")) == "Eau de Parfum"
-    ) == [30, 60, 100, 200]
+    ]
+    assert sorted(int(row["size_ml"]) for row in edp_variants) == [30, 60, 100, 200]
+    gtins_by_size = {
+        int(row["size_ml"]): row.get("gtin") or (row.get("gtins") or [None])[0]
+        for row in edp_variants
+    }
+    assert gtins_by_size == {
+        30: "3348901608053",
+        60: "3348901368254",
+        100: "3348901368247",
+        200: "3348901428545",
+    }
 
 
 def test_search_title_does_not_repeat_concentration_and_keeps_families_separate():
@@ -133,6 +143,12 @@ def test_seed_imports_all_four_edp_sizes_into_postgres_compatible_catalog():
                     ).order_by(ProductVariant.size_ml)
                 ).all()
                 assert [variant.size_ml for variant in variants] == [30, 60, 100, 200]
+                assert {variant.size_ml: variant.gtin for variant in variants} == {
+                    30: "3348901608053",
+                    60: "3348901368254",
+                    100: "3348901368247",
+                    200: "3348901428545",
+                }
 
                 expected_families = {
                     "SH-0039": ("Eau de Toilette", [30, 60, 100, 200]),
