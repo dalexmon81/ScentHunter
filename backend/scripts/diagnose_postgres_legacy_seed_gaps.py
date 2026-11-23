@@ -102,30 +102,37 @@ def main() -> None:
 
             report["matching_queue_rows"] = sum(len(v) for v in statuses.values())
 
-            # Read-only failure analysis across all fetch jobs, not just the
-            # current legacy candidates. Group exact errors to identify the
-            # dominant failure causes without exposing full product URLs.
-            failure_rows = conn.execute(
-                select(
-                    queue.c.status,
-                    queue.c.last_error,
-                    text("count(*)"),
-                )
-                .where(queue.c.stage == "fetch")
-                .group_by(queue.c.status, queue.c.last_error)
-                .order_by(text("count(*) DESC"))
-            ).all()
+            # Avoid a full-table GROUP BY on potentially large last_error
+            # values: sample a bounded number of failed fetch rows and group
+            # their normalized messages in Python. This remains read-only.
             report["fetch_queue_status_totals"] = {}
-            report["fetch_failure_reasons"] = []
-            for status, last_error, count in failure_rows:
-                report["fetch_queue_status_totals"][status] = (
-                    report["fetch_queue_status_totals"].get(status, 0) + int(count)
+            status_rows = conn.execute(
+                select(queue.c.status, text("count(*)"))
+                .where(queue.c.stage == "fetch")
+                .group_by(queue.c.status)
+            ).all()
+            for status, count in status_rows:
+                report["fetch_queue_status_totals"][status] = int(count)
+
+            failed_total = report["fetch_queue_status_totals"].get("failed", 0)
+            sample_limit = 500
+            sample_rows = conn.execute(
+                select(queue.c.last_error)
+                .where(queue.c.stage == "fetch", queue.c.status == "failed")
+                .limit(sample_limit)
+            ).all()
+            sampled_errors = {}
+            for (last_error,) in sample_rows:
+                message = (last_error or "<no error recorded>").strip()[:500]
+                sampled_errors[message] = sampled_errors.get(message, 0) + 1
+            report["fetch_failed_total"] = failed_total
+            report["fetch_failure_sample_size"] = len(sample_rows)
+            report["fetch_failure_reasons"] = [
+                {"sample_count": count, "last_error": message}
+                for message, count in sorted(
+                    sampled_errors.items(), key=lambda item: item[1], reverse=True
                 )
-                if status == "failed":
-                    report["fetch_failure_reasons"].append({
-                        "count": int(count),
-                        "last_error": (last_error or "<no error recorded>")[:1000],
-                    })
+            ]
 
             report["missing_count"] = len(report["missing_candidates"])
             report["stores_missing"] = sorted(set(report["stores_missing"]))
