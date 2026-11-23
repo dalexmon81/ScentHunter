@@ -33,11 +33,20 @@ class PostgreSQLOnlyDatabaseTests(unittest.TestCase):
                 )
 
     def test_non_postgresql_urls_are_rejected_without_echoing_credentials(self):
-        for value in ("not-a-url", "mysql://user:secret@db.example/catalog", "sqlite:///legacy.db"):
+        for value in ("not-a-url", "mysql://user:secret@db.example/catalog"):
             with self.subTest(value=value):
                 with self.assertRaises(RuntimeError) as caught:
                     database_url({"SCENTHUNTER_DATABASE_URL": value})
                 self.assertNotIn("secret", str(caught.exception))
+
+    def test_explicit_sqlite_is_allowed_only_outside_postgresql_runtime(self):
+        value = "sqlite:////tmp/scenthunter-isolated-test.db"
+        self.assertEqual(database_url({"SCENTHUNTER_DATABASE_URL": value}), value)
+        with self.assertRaisesRegex(RuntimeError, "requires PostgreSQL"):
+            database_url({
+                "SCENTHUNTER_DATABASE_URL": value,
+                "SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL": "1",
+            })
 
     def test_postgres_driver_is_not_silently_replaced(self):
         with self.assertRaisesRegex(RuntimeError, "psycopg 3"):
