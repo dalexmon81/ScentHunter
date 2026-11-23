@@ -119,7 +119,7 @@ def validate_reviewed_gtins(offers):
     }
 
 
-START = b"NOTINO_FEED_DATA_BEGIN\\n"
+START = b"NOTINO_FEED_DATA_BEGIN\n"
 END = b"NOTINO_FEED_DATA_END="
 
 
@@ -134,18 +134,18 @@ with tempfile.TemporaryFile() as source:
     size = feed._download_feed(source, time.monotonic() + 240)
     digest = hashlib.sha256()
     output = sys.stdout.buffer
-    output.write(b"NOTINO_FEED_DATA_BEGIN\\\\n")
+    output.write(b"NOTINO_FEED_DATA_BEGIN\\n")
     while True:
         chunk = source.read(65535)
         if not chunk:
             break
         digest.update(chunk)
-        output.write(base64.b64encode(chunk) + b"\\\\n")
-    output.write(b"NOTINO_FEED_DATA_END=" + str(size).encode() + b":" + digest.hexdigest().encode() + b"\\\\n")
+        output.write(base64.b64encode(chunk) + b"\\n")
+    output.write(b"NOTINO_FEED_DATA_END=" + str(size).encode() + b":" + digest.hexdigest().encode() + b"\\n")
     output.flush()
 """.replace("PARSER_SOURCE", repr(base64.b64encode(parser_source).decode("ascii")))
     encoded = base64.b64encode(remote.encode()).decode("ascii")
-    command = "/bin/sh -lc 'printf \\"%s\\" \\"".replace("\\\\", "\\") + encoded + "\\" | base64 -d | /app/.venv/bin/python'"
+    command = "/bin/sh -lc 'printf \"%s\" \"" + encoded + "\" | base64 -d | /app/.venv/bin/python'"
     with tempfile.TemporaryFile() as transport, tempfile.TemporaryFile() as errors:
         app = os.environ.get("SCENTHUNTER_NOTINO_FEED_APP", "scenthunter-pilot-20261030").strip()
         if not app:
