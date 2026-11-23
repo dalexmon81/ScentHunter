@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "description": "Notino-verified Dior Sauvage Eau de Parfum size variants. The 30/60/200 ml sizes are explicitly visible on the Notino product page; the existing canonical 100 ml variant remains unchanged.",
+  "products": [],
+  "variants": [
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-30",
+      "size_ml": 30,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|30|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 30 ml",
+        "Dior Sauvage EDP 30ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+      ],
+      "evidence_note": "30 ml is one of the four selectable sizes shown on the user's Notino product-page screenshot."
+    },
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-60",
+      "size_ml": 60,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|60|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 60 ml",
+        "Dior Sauvage EDP 60ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+      ],
+      "evidence_note": "60 ml is one of the four selectable sizes shown on the user's Notino product-page screenshot."
+    },
+    {
+      "product_id": "SH-AUTO-0178",
+      "variant_id": "VAR-SH-AUTO-0178-EDP-200",
+      "size_ml": 200,
+      "concentration": "Eau de Parfum",
+      "is_tester": false,
+      "is_refill": false,
+      "is_gift_set": false,
+      "is_mini": false,
+      "canonical_key": "dior|sauvage|edp|200|regular|standard|single|standard",
+      "aliases": [
+        "Dior Sauvage Eau de Parfum 200 ml",
+        "Dior Sauvage EDP 200ml"
+      ],
+      "source_urls": [
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum/"
+      ],
+      "evidence_note": "200 ml is one of the four selectable sizes shown on the user's Notino product-page screenshot."
+    }
+  ]
+}
