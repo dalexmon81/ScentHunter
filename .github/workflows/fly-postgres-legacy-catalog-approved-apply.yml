@@ -1,15 +1,17 @@
 name: Approved PostgreSQL legacy catalog queue apply
-# One-shot production queue write, explicitly authorized on 2026-11-22.
-# Exact commit-message guard prevents unrelated future edits from re-running it.
+# Production queue writes are disabled on push. Manual dispatch requires a fresh,
+# explicit confirmation from an authorized operator after reviewing the dry-run.
 on:
-  push:
-    branches:
-      - fix/public-postgres-catalog-ingestion-2026-11-22
-    paths:
-      - .github/workflows/fly-postgres-legacy-catalog-approved-apply.yml
+  workflow_dispatch:
+    inputs:
+      confirm_production_queue_write:
+        description: 'Type AUTHORIZE_QUEUE_WRITE_4161 to authorize this one-time production queue write'
+        required: true
+        type: string
 
 jobs:
   approved-production-queue-apply:
+    if: ${{ inputs.confirm_production_queue_write == 'AUTHORIZE_QUEUE_WRITE_4161' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -17,10 +19,9 @@ jobs:
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter
-      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
     steps:
-      - name: Check out approved branch commit
+      - name: Check out branch
         uses: actions/checkout@v4
 
       - name: Install Fly CLI
@@ -30,7 +31,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$COMMIT_MESSAGE" != "ops: execute approved PostgreSQL queue seed machine selection fix" ]]; then echo "Not the explicitly approved one-shot commit; no action."; exit 0; fi
           test -n "$FLY_API_TOKEN"
           flyctl machines list --app "$FLY_APP" --json > /tmp/fly-machines.json
           MACHINE_ID="$(python - <<'PY'
@@ -57,19 +57,14 @@ jobs:
           inspect_b64="$(base64 -w0 backend/scripts/inspect_postgres_legacy_seed_target.py)"
           cat > /tmp/guard.py <<'PY'
           import ast, json, sys
-          mode = sys.argv[1]
-          path = sys.argv[2]
+          mode, path = sys.argv[1], sys.argv[2]
           if mode in ("preflight", "postflight"):
               d = json.load(open(path))
               assert d["database"] == "scenthunter_offerfirst", d
               assert d["alembic_revision"] == "0006_postgres_ingestion_queue", d
               assert d["safe_to_apply_preflight"] is True, d
               assert not d["domain_conflicts"] and not d["inactive_stores"], d
-              if mode == "preflight":
-                  assert set(d["missing_store_slugs"]) == {"deloox-nl", "deloox-com", "deloox-lu", "deloox-es"}, d
-                  assert len(d["existing_stores"]) == 5, d
-              else:
-                  assert not d["missing_store_slugs"] and len(d["existing_stores"]) == 9, d
+              assert not d["missing_store_slugs"] and len(d["existing_stores"]) == 9, d
               print(mode.upper() + "_VERIFIED")
               if mode == "postflight":
                   print(json.dumps(d, sort_keys=True))
@@ -77,15 +72,18 @@ jobs:
               d = ast.literal_eval(open(path).read().strip())
               assert d["mode"] == "dry_run" and d["destination_written"] is False, d
               assert d["target_database"] == "scenthunter_offerfirst", d
-              assert d["queued_candidates"] == 127944, d
+              assert d["queued_candidates"] == 127977, d
+              assert d["already_active_candidates"] == 123816, d
+              assert d["would_insert_candidates"] == 4161, d
               assert d["duplicate_candidates"] == 0, d
               assert all(v == 0 for v in d["rejected_by_store"].values()), d
-              print("DRY_RUN_VERIFIED candidates=%s" % d["queued_candidates"])
+              print("DRY_RUN_VERIFIED candidates=127977 already_active=123816 to_insert=4161")
           elif mode == "apply":
               d = ast.literal_eval(open(path).read().strip())
               assert d["mode"] == "apply" and d["destination_written"] is True, d
               assert d["target_database"] == "scenthunter_offerfirst", d
-              assert d["queued_candidates"] == 127944, d
+              assert d["queued_candidates"] == 127977, d
+              assert d["new_jobs_inserted"] == 4161, d
               print("APPLY_VERIFIED candidates=%s inserted_jobs=%s" % (d["queued_candidates"], d["new_jobs_inserted"]))
           else:
               raise SystemExit("unknown guard mode")
@@ -111,7 +109,7 @@ jobs:
           /app/.venv/bin/python /tmp/shim/backend/scripts/seed_postgres_fetch_queue_from_legacy_catalog.py --source /data/store_catalog.sqlite3 --apply --confirm-target scenthunter_offerfirst > /tmp/shim/apply.txt
           cat /tmp/shim/apply.txt
           /app/.venv/bin/python /tmp/shim/guard.py apply /tmp/shim/apply.txt
-          /app/.venv/bin/python /tmp/shim/backend/scripts/inspect_postgres_legacy_seed_target.py > /tmp/shim/postflight.json
+          /app/.venv/bin/python /tmp/shim/scripts/inspect_postgres_legacy_seed_target.py > /tmp/shim/postflight.json
           /app/.venv/bin/python /tmp/shim/guard.py postflight /tmp/shim/postflight.json
           '"
           flyctl ssh console --app "$FLY_APP" --machine "$MACHINE_ID" -C "$remote_command"
