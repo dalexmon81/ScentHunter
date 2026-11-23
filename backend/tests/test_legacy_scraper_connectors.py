@@ -5,7 +5,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.connectors.legacy_scrapers import LegacyScraperConnector, build_legacy_connector
+from app.connectors.legacy_scrapers import (
+    LegacyScraperConnector,
+    build_legacy_connector,
+    connector_key_for_store_slug,
+)
 
 
 class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
@@ -36,6 +40,11 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         self.connector = LegacyScraperConnector("deloox", self.scraper)
+
+    async def test_all_deloox_country_store_slugs_resolve_to_shared_connector(self):
+        for slug in ("deloox-be", "deloox-com", "deloox-lu", "deloox-nl", "deloox-es"):
+            with self.subTest(slug=slug):
+                self.assertEqual(connector_key_for_store_slug(slug), "deloox")
 
     async def test_factory_loads_all_existing_retailer_scraper_modules(self):
         for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum"):

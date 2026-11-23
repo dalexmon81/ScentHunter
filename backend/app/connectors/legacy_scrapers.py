@@ -20,7 +20,12 @@ from app.connectors.base import ConnectorUnavailable, DiscoveredProduct, StoreCo
 
 STORE_SLUGS = {
     "bplatz": "bplatz",
+    # Deloox operates country storefronts backed by the same scraper adapter.
     "deloox-be": "deloox",
+    "deloox-com": "deloox",
+    "deloox-lu": "deloox",
+    "deloox-nl": "deloox",
+    "deloox-es": "deloox",
     "sabina-es": "sabina",
     "easycosmetic-de": "easycosmetic",
     "parfumzentrum-de": "parfumzentrum",
