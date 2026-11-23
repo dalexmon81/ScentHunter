@@ -79,3 +79,93 @@ def test_canonical_identity_without_variant_remains_searchable_without_offers():
     finally:
         session.close()
         engine.dispose()
+
+
+
+def test_search_groups_sizes_inside_each_fragrance_concentration():
+    engine, session = _session()
+    try:
+        fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
+        session.add_all([
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=30, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=60, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
+            ),
+        ])
+        session.commit()
+
+        result = search_catalog(session, "Dior Sauvage")
+        assert result["count"] == 2
+        edt = next(item for item in result["results"] if "Toilette" in item["name"])
+        edp = next(item for item in result["results"] if "Parfum" in item["name"])
+
+        assert [item["size_ml"] for item in edt["formats"]] == [30, 60]
+        assert len(edt["variant_ids"]) == 2
+        assert [item["size_ml"] for item in edp["formats"]] == [100]
+        assert all(" ml" not in item["name"] for item in result["results"])
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_search_does_not_merge_edp_edt_or_tester_packaging():
+    engine, session = _session()
+    try:
+        fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
+        session.add_all([
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=30, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=60, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Parfum",
+                size_ml=50, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edp|50|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Parfum",
+                size_ml=100, is_tester=True, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edp|100|tester|standard|single|standard",
+            ),
+        ])
+        session.commit()
+
+        persisted = session.query(ProductVariant).order_by(
+            ProductVariant.size_ml, ProductVariant.is_tester
+        ).all()
+        assert [(item.size_ml, item.concentration, item.is_tester) for item in persisted] == [
+            (30, "Eau de Toilette", False),
+            (50, "Eau de Parfum", False),
+            (60, "Eau de Toilette", False),
+            (100, "Eau de Parfum", False),
+            (100, "Eau de Parfum", True),
+        ]
+        result = search_catalog(session, "Dior Sauvage")
+        assert result["count"] == 3, result["results"]
+        edp = next(item for item in result["results"] if "Eau de Parfum" in item["name"] and "Tester" not in item["name"])
+        edt = next(item for item in result["results"] if "Eau de Toilette" in item["name"])
+        tester = next(item for item in result["results"] if "Tester" in item["name"])
+        assert [item["size_ml"] for item in edp["formats"]] == [50, 100]
+        assert [item["size_ml"] for item in edt["formats"]] == [30, 60]
+        assert [item["size_ml"] for item in tester["formats"]] == [100]
+    finally:
+        session.close()
+        engine.dispose()

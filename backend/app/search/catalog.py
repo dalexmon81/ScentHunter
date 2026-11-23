@@ -183,27 +183,66 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             "currency": offer.currency,
             "availability": offer.availability,
             "size_ml": sizes[offer.product_variant_id],
+            "variant_id": str(offer.product_variant_id),
             "captured_at": _utc(offer.captured_at).isoformat(),
             "shipping_cost": str(offer.shipping_cost) if offer.shipping_cost is not None else None,
         })
 
-    results = []
+    # One public result represents one fragrance + concentration + packaging
+    # identity. The commercial sizes remain nested formats, never separate
+    # top-level perfume cards. This is the response contract already consumed
+    # by the frontend's product -> format -> retailer-offer navigation.
+    grouped: dict[tuple, dict] = {}
     for variant, fragrance, brand in rows:
-        label = " ".join(filter(None, (
-            fragrance.name, variant.concentration,
-            f"{variant.size_ml} ml" if variant.size_ml else None,
-            "Tester" if variant.is_tester else None,
-            "Refill" if variant.is_refill else None,
-            "Gift set" if variant.is_gift_set else None,
-            "Mini" if variant.is_mini else None,
-        )))
-        results.append({
-            "catalog_id": str(variant.id),
-            "brand": brand.name,
-            "name": label,
-            "image": fragrance.image_url,
-            "offers": offers_by_variant.get(variant.id, []),
-        })
+        concentration = " ".join((variant.concentration or "").casefold().split())
+        flags = (
+            variant.is_tester, variant.is_refill,
+            variant.is_gift_set, variant.is_mini,
+        )
+        key = (fragrance.id, concentration, *flags)
+        group = grouped.get(key)
+        if group is None:
+            suffix = "|".join((concentration or "unspecified", *(
+                "u" if flag is None else ("1" if flag else "0") for flag in flags
+            )))
+            group = {
+                "catalog_id": str(variant.id),
+                "concentration_group_key": suffix,
+                "brand": brand.name,
+                "name": " ".join(filter(None, (
+                    fragrance.name, variant.concentration,
+                    "Tester" if variant.is_tester is True else None,
+                    "Refill" if variant.is_refill is True else None,
+                    "Gift set" if variant.is_gift_set is True else None,
+                    "Mini" if variant.is_mini is True else None,
+                ))),
+                "image": fragrance.image_url,
+                "formats": [],
+                "variant_ids": [],
+                "offers": [],
+            }
+            grouped[key] = group
+
+        variant_id = str(variant.id)
+        group["variant_ids"].append(variant_id)
+        if variant.size_ml is not None:
+            if not any(item["size_ml"] == variant.size_ml for item in group["formats"]):
+                group["formats"].append({
+                    "size_ml": variant.size_ml,
+                    "variant_id": variant_id,
+                })
+        group["offers"].extend(offers_by_variant.get(variant.id, []))
+
+    results = list(grouped.values())
+    for group in results:
+        group["formats"].sort(key=lambda item: item["size_ml"])
+        group["offers"].sort(key=lambda item: (
+            item.get("size_ml") is None,
+            item.get("size_ml") or 0,
+            float(item["price"]),
+            item.get("store") or "",
+        ))
+
     for fragrance, brand in identities_without_variants:
         results.append({
             "catalog_id": str(fragrance.id),
@@ -211,6 +250,7 @@ def search_catalog(session: Session, query: str, *, now: datetime | None = None)
             "brand": brand.name,
             "name": " ".join(filter(None, (fragrance.name, "Identità catalogo"))),
             "image": fragrance.image_url,
+            "formats": [],
             "offers": [],
         })
     results.sort(key=lambda item: (item["brand"].casefold(), item["name"].casefold()))

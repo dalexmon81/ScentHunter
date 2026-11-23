@@ -58,7 +58,8 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert data["count"] == data["offer_count"] == 1
         item = data["results"][0]
         assert item["catalog_id"] == str(result.product_variant_id)
-        assert item["name"] == "Liquid Brun Eau de Parfum 100 ml"
+        assert item["name"] == "Liquid Brun Eau de Parfum"
+        assert item["formats"] == [{"size_ml": 100, "variant_id": str(result.product_variant_id)}]
         offer = item["offers"][0]
         assert offer["store"] == "Bplatz"
         assert offer["availability"] == "in_stock"

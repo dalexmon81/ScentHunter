@@ -828,9 +828,14 @@ function shGroupData(data){
       canonical_name:String(group.canonical_name||group.name||"").trim(),
       family:String(group.family||"").trim(),
       variant:String(group.variant||"").trim(),
+      formats:Array.isArray(group.formats)?group.formats.map(item=>({
+        size_ml:item?.size_ml??item?.size??null,
+        variant_id:String(item?.variant_id||"")
+      })).filter(item=>item.size_ml!==null&&item.size_ml!==undefined):[],
       image,
       fallback_image,
       fallback_images,
+      variant_ids:Array.isArray(group.variant_ids)?group.variant_ids:[],
       offers
     };
   }).filter(group=>group.catalog_id&&group.name);
@@ -891,6 +896,13 @@ function formatLabel(size){return size?`${size} ml`:"Formato non specificato"}
 
 function getSizeGroups(g){
   const map=new Map();
+  // Keep catalog-known formats visible even when no retailer has a verified
+  // offer yet. Retailer offers are attached to their exact size below.
+  (g?.formats||[]).forEach(format=>{
+    const raw=format?.size_ml;
+    const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
+    if(size&&!map.has(size))map.set(size,[]);
+  });
   (g?.offers||[]).forEach(o=>{
     const raw=o?.size_ml;
     const size=(raw===null||raw===undefined||String(raw).trim()==="")?"":String(raw).match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(",",".")||"";
@@ -912,7 +924,6 @@ function getSizeGroups(g){
     return Number(a.size)-Number(b.size);
   });
 }
-
 // Le schede .product-choice usano il normale click/tap del browser.
 // Il precedente intercettore globale pointerdown/pointerup poteva
 // sopprimere il tap su iPhone quando Safari rilevava un piccolo movimento.
@@ -953,7 +964,7 @@ function renderOffersHtml(g,img,offers,saved){
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${offers.length?renderOffersHtml(g,img,offers,saved):'<p class="format-empty">Nessuna offerta verificata disponibile per questo formato.</p>'}</article>`;
 }
 
 function renderFormatChoiceCard(gi,g,sizes){
@@ -1022,7 +1033,7 @@ function openSize(gi,sizeKey){
   if(!selected)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=String(sizeKey);
   const saved=getWishlist(),img=g.image||g.fallback_image||"";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${selected.offers.length?renderOffersHtml(g,img,selected.offers,saved):'<p class="format-empty">Nessuna offerta verificata disponibile per questo formato.</p>'}</article>`;
 }
 
 function chooseOffer(gi,sizeKey,oi){
