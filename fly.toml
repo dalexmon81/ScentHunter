@@ -15,8 +15,6 @@ primary_region = "ams"
 [build]
 
 [env]
-  # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
-  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
 
 [http_service]
@@ -27,15 +25,3 @@ primary_region = "ams"
   min_machines_running = 1
   processes = ["app"]
 
-[mounts]
-  source = "scenthunter_data"
-  destination = "/data"
-  processes = ["app"]
-  auto_extend_size_threshold = 70
-  auto_extend_size_increment = "1GB"
-  auto_extend_size_limit = "5GB"
-
-[[vm]]
-  memory = "2gb"
-  cpu_kind = "shared"
-  cpus = 1
