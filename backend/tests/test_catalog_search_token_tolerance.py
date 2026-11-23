@@ -133,6 +133,18 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
                 is_gift_set=False, is_mini=False,
                 canonical_key="dior|sauvage|edp|100|tester|standard|single|standard",
             ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=30, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
+            ),
+            ProductVariant(
+                fragrance_id=fragrance.id, concentration="Eau de Toilette",
+                size_ml=60, is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
+            ),
         ])
         session.commit()
 
