@@ -20,3 +20,12 @@ def test_bootstrap_requires_all_four_reviewed_gtins_before_success():
     assert 'summary.get("promoted_unique_gtins", 0)' in source
     assert "len(VERIFIED_GTINS)" in source
     assert "Targeted Notino Dior Sauvage EDP pilot" in source
+
+
+def test_bootstrap_commits_only_after_all_four_gtins_are_promoted():
+    backend = Path(__file__).resolve().parents[1]
+    source = (backend / "scripts" / "bootstrap_notino_postgres.py").read_text()
+    promotion = source.index("summary = backfill_verified_notino_gtins(")
+    commit = source.index("session.commit()")
+    assert promotion < commit
+    assert "same outer transaction" in source
