@@ -183,9 +183,17 @@ def _queue_rows(connection, queue, candidates, stores):
 
 
 def _apply_candidates(connection, candidates):
-    """Create/lock Store rows and enqueue candidates on one outer transaction."""
+    """Serialize queue seeding and verify every candidate before commit."""
     metadata = MetaData()
     queue = Table("ingestion_queue_jobs", metadata, autoload_with=connection)
+
+    # The dry-run and apply are separate commands. Other producers/workers may
+    # enqueue the same URL between them. Serialize all queue inserts while this
+    # transaction reconciles history, inserts missing work, and verifies state.
+    connection.execute(text(
+        "LOCK TABLE ingestion_queue_jobs IN SHARE ROW EXCLUSIVE MODE"
+    ))
+
     stores = {}
     with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
         for key, (slug, name, domain, country) in STORE_CONFIG.items():
@@ -204,9 +212,6 @@ def _apply_candidates(connection, candidates):
                     raise RuntimeError(
                         f"Store domain conflict for {slug}: {store.domain}"
                     )
-                # Existing placeholder Store rows may have been created before
-                # a connector domain was assigned. Fill only missing metadata;
-                # never overwrite a conflicting non-empty domain.
                 if not store.domain:
                     store.domain = domain
                 if not store.country:
@@ -218,12 +223,9 @@ def _apply_candidates(connection, candidates):
                     )
             stores[key] = store.id
         session.flush()
-        # A completed or failed fetch is still historical work for this exact
-        # store+URL. Never enqueue it again as part of a catalog seed.
-        existing_keys = set(connection.execute(
-            select(queue.c.dedupe_key).where(queue.c.stage == "fetch")
-        ).scalars())
-        pending = []
+
+        candidate_keys = set()
+        candidate_by_key = {}
         for store_key, url in candidates:
             payload = {
                 "store_id": str(stores[store_key]),
@@ -233,13 +235,54 @@ def _apply_candidates(connection, candidates):
                 payload, sort_keys=True, separators=(",", ":"), allow_nan=False
             )
             digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-            if digest not in existing_keys:
-                pending.append((store_key, url))
+            candidate_keys.add(digest)
+            candidate_by_key[digest] = (store_key, url)
+
+        existing_keys = set(connection.execute(
+            select(queue.c.dedupe_key).where(queue.c.stage == "fetch")
+        ).scalars())
+        pending = [
+            candidate_by_key[digest]
+            for digest in sorted(candidate_keys - existing_keys)
+        ]
         inserted = _queue_rows(connection, queue, pending, stores)
-        # Release only the Session savepoint; the caller owns the outer
-        # transaction and commits Store rows and queue jobs together.
+
+        # Verify the final state while the table lock is still held. A concurrent
+        # producer may have won the race before this transaction acquired the
+        # lock; that is not a failure if all 33 intended jobs are now present.
+        final_rows = connection.execute(
+            select(queue.c.dedupe_key, queue.c.status).where(
+                queue.c.stage == "fetch",
+                queue.c.dedupe_key.in_(candidate_keys),
+            )
+        ).all()
+        status_by_key = {}
+        status_priority = {"queued": 1, "running": 2, "completed": 3, "failed": 4}
+        for digest, status in final_rows:
+            previous = status_by_key.get(digest)
+            if previous is None or status_priority.get(status, 0) > status_priority.get(previous, 0):
+                status_by_key[digest] = status
+        missing = candidate_keys - set(status_by_key)
+        status_counts = dict.fromkeys(("queued", "running", "completed", "failed"), 0)
+        for status in status_by_key.values():
+            if status in status_counts:
+                status_counts[status] += 1
+        if missing:
+            raise RuntimeError(
+                f"PostgreSQL seed verification failed: {len(missing)} candidate jobs missing"
+            )
+        if status_counts["failed"]:
+            raise RuntimeError(
+                f"PostgreSQL seed verification found {status_counts['failed']} failed candidate jobs"
+            )
+
         session.commit()
-        return inserted
+        return {
+            "inserted": inserted,
+            "present": len(status_by_key),
+            "missing": len(missing),
+            "status_counts": status_counts,
+        }
 
 
 
@@ -356,9 +399,12 @@ def main():
                         + "; run the approved Alembic migration first"
                     )
 
-                inserted = _apply_candidates(conn, candidates)
+                apply_result = _apply_candidates(conn, candidates)
 
-                report["new_jobs_inserted"] = inserted
+                report["new_jobs_inserted"] = apply_result["inserted"]
+                report["final_present_candidates"] = apply_result["present"]
+                report["missing_after_apply"] = apply_result["missing"]
+                report["final_status_counts"] = apply_result["status_counts"]
                 report["destination_written"] = True
             # Dry-run deliberately checks the database identity but does not
             # require the queue schema to have been applied.
