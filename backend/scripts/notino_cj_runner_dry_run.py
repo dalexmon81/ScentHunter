@@ -180,7 +180,7 @@ with tempfile.TemporaryFile() as source:
         raise RuntimeError("fly_feed_transfer_incomplete")
 
 
-def stage_feed(source, download_bytes, started):
+def stage_feed(source, download_bytes, started, *, require_reviewed_gtins=True):
     stats = {}
     counts = {"products_read": 0, "valid": 0, "rejected": 0}
     reviewed_offers = []
@@ -235,8 +235,10 @@ def stage_feed(source, download_bytes, started):
         raise RuntimeError("notino_runner_invalid_staging_result")
 
     reviewed = validate_reviewed_gtins(reviewed_offers)
+    reviewed["required"] = require_reviewed_gtins
+    gate_passed = reviewed["passed"] if require_reviewed_gtins else True
     result = {
-        "result": "PASS" if reviewed["passed"] else "FAIL",
+        "result": "PASS" if gate_passed else "FAIL",
         "download_bytes": download_bytes,
         "elapsed_seconds": round(time.monotonic() - started, 2),
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
@@ -247,7 +249,7 @@ def stage_feed(source, download_bytes, started):
         "reviewed_dior_sauvage_edp": reviewed,
     }
     print("NOTINO_RUNNER_DRY_RUN=" + json.dumps(result, ensure_ascii=False), flush=True)
-    if not reviewed["passed"]:
+    if not gate_passed:
         raise RuntimeError("notino_runner_reviewed_four_gtin_gate_failed")
     return result
 
