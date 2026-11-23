@@ -4,6 +4,7 @@ This is intentionally a targeted ingestion, not a full feed pagination job.
 The authorized CJ/VIV snapshot is loaded once and only the four reviewed
 Dior Sauvage EDP product IDs are eligible for promotion.
 """
+import asyncio
 import json
 import sys
 from datetime import datetime, timezone
@@ -15,13 +16,18 @@ from sqlalchemy.orm import Session
 
 from app.db import make_engine
 from app.models import Offer, Store
+from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from scripts.backfill_notino_verified_gtin import (
     VERIFIED_GTINS,
+    _fetch_current_feed_records,
     backfill_verified_notino_gtins,
 )
 
 
 def main() -> None:
+    # Download the current authorized CJ/VIV snapshot before opening a DB session.
+    # Neon enforces idle-in-transaction timeouts; network I/O must not run inside one.
+    feed_records = asyncio.run(_fetch_current_feed_records(NotinoAffiliateFeedConnector()))
     engine = make_engine()
     try:
         with Session(engine) as session:
@@ -42,13 +48,15 @@ def main() -> None:
                 )
                 .values(valid_until=datetime.now(timezone.utc))
             )
-            session.commit()
-
+            # Keep invalidation and promotion in the same outer transaction.
+            # If any GTIN is missing or fails validation, the exception rolls
+            # back the invalidation too, preserving the previously published offers.
             summary = backfill_verified_notino_gtins(
                 session,
                 store,
                 catalog_path="/app/backend/product_catalog.json",
                 apply=True,
+                feed_records=feed_records,
             )
             if int(summary.get("promoted_unique_gtins", 0)) != len(VERIFIED_GTINS):
                 raise RuntimeError(

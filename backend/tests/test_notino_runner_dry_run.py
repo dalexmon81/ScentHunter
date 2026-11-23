@@ -17,7 +17,7 @@ SAMPLE = b"<rss><channel>" + ITEM + ITEM + INVALID + b"</channel></rss>"
 
 class NotinoRunnerDryRunTests(unittest.TestCase):
     def test_stages_valid_offers_without_duplicates(self):
-        result = dry_run.stage_feed(io.BytesIO(SAMPLE), len(SAMPLE), time.monotonic())
+        result = dry_run.stage_feed(io.BytesIO(SAMPLE), len(SAMPLE), time.monotonic(), require_reviewed_gtins=False)
         self.assertEqual(result["parser_stats"]["products_read"], 3)
         self.assertEqual(result["parser_stats"]["valid_items"], 2)
         self.assertEqual(result["parser_stats"]["rejected_items"], 1)

@@ -6,13 +6,117 @@ import os
 import resource
 import sqlite3
 import subprocess
-import sys
 import tempfile
 import time
-import types
+import urllib.parse
 from pathlib import Path
 
 from scrapers.notino import affiliate_feed as feed
+
+
+# Keep this gate aligned with backfill_notino_verified_gtin.VERIFIED_GTINS.
+# The runner intentionally imports only the standalone feed parser: it must not
+# need database credentials, SQLAlchemy, or any catalog-writing application code.
+REVIEWED_GTINS = {
+    "3348901608053": {
+        "external_product_id": "CHDSVGM_AEDP40",
+        "size_ml": 30,
+        "path": "/dior/sauvage-eau-de-parfum-pour-homme/p-16187295/",
+    },
+    "3348901368254": {
+        "external_product_id": "CHDSVGM_AEDP20",
+        "size_ml": 60,
+        "path": "/dior/sauvage-eau-de-parfum-pour-homme/p-15676582/",
+    },
+    "3348901368247": {
+        "external_product_id": "CHDSVGM_AEDP10",
+        "size_ml": 100,
+        "path": "/dior/sauvage-eau-de-parfum-pour-homme/p-15676518/",
+    },
+    "3348901428545": {
+        "external_product_id": "CHDSVGM_AEDP25",
+        "size_ml": 200,
+        "path": "/dior/sauvage-eau-de-parfum-pour-homme/p-15971107/",
+    },
+}
+
+
+def validate_reviewed_gtins(offers):
+    """Require exact live-feed evidence for every reviewed Dior Sauvage EDP size."""
+    by_gtin = {}
+    by_external_id = {}
+    for offer in offers:
+        gtin = str(getattr(offer, "gtin", "") or "").strip()
+        external_id = str(getattr(offer, "external_id", "") or "").strip()
+        if gtin:
+            by_gtin.setdefault(gtin, []).append(offer)
+        if external_id:
+            by_external_id.setdefault(external_id, []).append(offer)
+
+    evidence = []
+    failures = []
+    for gtin, expected in REVIEWED_GTINS.items():
+        matches = by_gtin.get(gtin, [])
+        id_matches = by_external_id.get(expected["external_product_id"], [])
+        if len(matches) != 1 or len(id_matches) != 1 or matches[0] is not id_matches[0]:
+            failures.append({
+                "gtin": gtin,
+                "external_product_id": expected["external_product_id"],
+                "reason": "missing_or_ambiguous_gtin_external_id_pair",
+                "gtin_matches": len(matches),
+                "external_id_matches": len(id_matches),
+            })
+            continue
+
+        offer = matches[0]
+        parsed_url = urllib.parse.urlparse(str(getattr(offer, "url", "") or ""))
+        checks = {
+            "brand": str(getattr(offer, "brand", "") or "").strip().casefold() == "dior",
+            "title": (
+                "sauvage" in str(getattr(offer, "title", "") or "").casefold()
+                and "eau de parfum" in str(getattr(offer, "title", "") or "").casefold()
+            ),
+            "concentration": str(getattr(offer, "concentration", "") or "").casefold() == "eau de parfum",
+            "size_ml": (
+                getattr(offer, "size_ml", None) is not None
+                and abs(float(offer.size_ml) - expected["size_ml"]) < 0.01
+            ),
+            "price": getattr(offer, "price", 0) is not None and float(offer.price) > 0,
+            "currency": str(getattr(offer, "currency", "") or "").upper() == "EUR",
+            "availability": str(getattr(offer, "availability", "") or "") in {"in_stock", "out_of_stock"},
+            "url": (
+                parsed_url.scheme == "https"
+                and parsed_url.hostname == "www.notino.fr"
+                and parsed_url.path == expected["path"]
+                and not parsed_url.query
+                and not parsed_url.fragment
+            ),
+        }
+        failed_checks = [name for name, passed in checks.items() if not passed]
+        row = {
+            "gtin": gtin,
+            "external_product_id": expected["external_product_id"],
+            "expected_size_ml": expected["size_ml"],
+            "actual_size_ml": getattr(offer, "size_ml", None),
+            "price": str(getattr(offer, "price", "")),
+            "currency": getattr(offer, "currency", None),
+            "availability": getattr(offer, "availability", None),
+            "product_url": getattr(offer, "url", None),
+            "checks": checks,
+        }
+        if failed_checks:
+            failures.append({**row, "reason": "identity_or_offer_validation_failed",
+                             "failed_checks": failed_checks})
+        else:
+            evidence.append(row)
+
+    return {
+        "expected_gtins": len(REVIEWED_GTINS),
+        "verified_gtins": len(evidence),
+        "evidence": evidence,
+        "failures": failures,
+        "passed": len(evidence) == len(REVIEWED_GTINS) and not failures,
+    }
 
 
 START = b"NOTINO_FEED_DATA_BEGIN\n"
@@ -76,9 +180,10 @@ with tempfile.TemporaryFile() as source:
         raise RuntimeError("fly_feed_transfer_incomplete")
 
 
-def stage_feed(source, download_bytes, started):
+def stage_feed(source, download_bytes, started, *, require_reviewed_gtins=True):
     stats = {}
     counts = {"products_read": 0, "valid": 0, "rejected": 0}
+    reviewed_offers = []
     original_items = feed._feed_items
     original_parse = feed._parse_item
 
@@ -96,6 +201,13 @@ def stage_feed(source, download_bytes, started):
     def measured_parse(*args, **kwargs):
         offer = original_parse(*args, **kwargs)
         counts["valid" if offer is not None else "rejected"] += 1
+        if offer is not None and (
+            offer.gtin in REVIEWED_GTINS
+            or offer.external_id in {
+                item["external_product_id"] for item in REVIEWED_GTINS.values()
+            }
+        ):
+            reviewed_offers.append(offer)
         return offer
 
     feed._feed_items = measured_items
@@ -118,15 +230,28 @@ def stage_feed(source, download_bytes, started):
     finally:
         feed._feed_items = original_items
         feed._parse_item = original_parse
+
     if not staged or stats["products_read"] != counts["products_read"]:
         raise RuntimeError("notino_runner_invalid_staging_result")
-    return {
-        "result": "PASS", "download_bytes": download_bytes,
+
+    reviewed = validate_reviewed_gtins(reviewed_offers)
+    reviewed["required"] = require_reviewed_gtins
+    gate_passed = reviewed["passed"] if require_reviewed_gtins else True
+    result = {
+        "result": "PASS" if gate_passed else "FAIL",
+        "download_bytes": download_bytes,
         "elapsed_seconds": round(time.monotonic() - started, 2),
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-        "staged_unique_variants": staged, "duplicate_items": stats["valid_items"] - staged,
-        "parser_stats": stats, "catalog_database_touched": False,
+        "staged_unique_variants": staged,
+        "duplicate_items": stats["valid_items"] - staged,
+        "parser_stats": stats,
+        "catalog_database_touched": False,
+        "reviewed_dior_sauvage_edp": reviewed,
     }
+    print("NOTINO_RUNNER_DRY_RUN=" + json.dumps(result, ensure_ascii=False), flush=True)
+    if not gate_passed:
+        raise RuntimeError("notino_runner_reviewed_four_gtin_gate_failed")
+    return result
 
 
 def main():
@@ -136,8 +261,7 @@ def main():
         print("NOTINO_RUNNER_DOWNLOAD=" + json.dumps({
             "download_bytes": size, "elapsed_seconds": round(time.monotonic() - started, 2),
         }), flush=True)
-        result = stage_feed(source, size, started)
-    print("NOTINO_RUNNER_DRY_RUN=" + json.dumps(result), flush=True)
+        stage_feed(source, size, started)
 
 
 if __name__ == "__main__":

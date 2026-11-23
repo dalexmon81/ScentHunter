@@ -110,14 +110,19 @@ def backfill_verified_notino_gtins(
     catalog_path: str | Path,
     apply: bool = False,
     feed_connector=None,
+    feed_records: dict[str, dict] | None = None,
 ) -> dict:
     if store.slug != "notino-fr" or store.status != "active":
         raise ValueError("Notino store must be active before the verified GTIN backfill")
 
     # One connector instance and one event loop mean one current feed download,
     # then four indexed lookups. No full-feed pagination or fetch-job fan-out.
-    connector = feed_connector or NotinoAffiliateFeedConnector()
-    records = asyncio.run(_fetch_current_feed_records(connector))
+    if feed_records is None:
+        connector = feed_connector or NotinoAffiliateFeedConnector()
+        records = asyncio.run(_fetch_current_feed_records(connector))
+    else:
+        # Production bootstrap fetches the remote feed before opening a DB transaction.
+        records = feed_records
     # Validate every reviewed legacy variant ID and size against the deployed catalog.
     catalog = CatalogRepository.from_file(catalog_path)
     canonical_product = catalog.get(CANONICAL_PRODUCT_ID)
