@@ -148,8 +148,12 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
         ])
         session.commit()
 
+        persisted = session.query(ProductVariant).order_by(ProductVariant.size_ml).all()
+        assert [(item.size_ml, item.is_tester) for item in persisted] == [
+            (50, False), (100, False), (100, True),
+        ]
         result = search_catalog(session, "Dior Sauvage")
-        assert result["count"] == 3
+        assert result["count"] == 3, result["results"]
         edp = next(item for item in result["results"] if "Eau de Parfum" in item["name"] and "Tester" not in item["name"])
         edt = next(item for item in result["results"] if "Eau de Toilette" in item["name"])
         tester = next(item for item in result["results"] if "Tester" in item["name"])
