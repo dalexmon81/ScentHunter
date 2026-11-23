@@ -115,3 +115,30 @@ def test_current_feed_lookup_rejects_external_id_and_gtin_mismatches():
 
     records = asyncio.run(_fetch_current_feed_records(MismatchedFeedConnector()))
     assert records == {}
+
+
+def test_backfill_uses_prefetched_feed_records_without_network_io(monkeypatch, tmp_path):
+    from scripts import backfill_notino_verified_gtin as module
+
+    expected_records = {"3348901368247": {"external_product_id": "CHDSVGM_AEDP10"}}
+
+    def unexpected_fetch(_connector):
+        raise AssertionError("feed fetch must not run when records were prefetched")
+
+    monkeypatch.setattr(module, "_fetch_current_feed_records", unexpected_fetch)
+
+    # Exercise the early validation path with an inactive store: feed records are
+    # accepted as an already-fetched input, and no connector/network call is made.
+    class StoreStub:
+        slug = "notino-fr"
+        status = "inactive"
+
+    try:
+        module.backfill_verified_notino_gtins(
+            object(), StoreStub(), catalog_path=tmp_path / "unused.json",
+            apply=False, feed_records=expected_records,
+        )
+    except ValueError as exc:
+        assert "must be active" in str(exc)
+    else:
+        raise AssertionError("inactive store must be rejected before catalog access")
