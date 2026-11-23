@@ -1,154 +1,62 @@
-name: Notino.fr Catalog Discovery Diagnostics
+name: Notino.fr PostgreSQL Catalog Diagnostics
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/notino-catalog-diagnostics.yml'
   workflow_run:
-    workflows: ["Fly Deploy"]
+    workflows: ["Notino CJ Feed Import"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "47 6 * * *"
 
 permissions:
   contents: read
 
 jobs:
-  trace-notino-discovery:
-    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+  verify-notino-postgres:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Trace deployed Notino.fr discovery (read-only)
+      - name: Verify Notino offers are visible through the canonical PostgreSQL search API
         shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
           import json
-          import os
-          import urllib.error
+          import urllib.parse
           import urllib.request
 
-          url = (
-              "https://scenthunter.fly.dev/diagnose-html-discovery-trace"
-              "?store=notino&q=parfum&max_pages=10&max_depth=2&max_events=100"
-          )
-          request = urllib.request.Request(
-              url,
-              headers={
-                  "Accept": "application/json",
-                  "User-Agent": "ScentHunter-Notino-Diagnostic/1.0",
-              },
-          )
-          try:
-              with urllib.request.urlopen(request, timeout=35) as response:
-                  payload = response.read().decode("utf-8", "replace")
-                  print("HTTP_STATUS:", response.status)
-                  parsed = json.loads(payload)
-          except urllib.error.HTTPError as exc:
-              print("HTTP_STATUS:", exc.code)
-              print(exc.read().decode("utf-8", "replace")[:12000])
-              raise SystemExit(f"Diagnostic endpoint returned HTTP {exc.code}")
-          except json.JSONDecodeError as exc:
-              raise SystemExit(f"Diagnostic endpoint did not return JSON: {exc}")
-          except Exception as exc:
-              raise SystemExit(f"Diagnostic request failed: {type(exc).__name__}: {exc}")
+          base = "https://scenthunter.fly.dev"
+          def get(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Postgres-Notino-Diagnostic/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=25) as response:
+                  return json.loads(response.read().decode("utf-8"))
 
-          print(json.dumps(parsed, ensure_ascii=False, indent=2)[:45000])
-          errors = parsed.get("errors", []) if isinstance(parsed, dict) else []
-          events = parsed.get("events", []) if isinstance(parsed, dict) else []
-          successes = int(parsed.get("successes", 0) or 0) if isinstance(parsed, dict) else 0
-          product_urls = int(parsed.get("product_urls_found", 0) or 0) if isinstance(parsed, dict) else 0
-          http_403 = any("HTTP_403" in str(item) for item in errors)
-          if not isinstance(parsed, dict) or parsed.get("ok") is not True:
-              status = "DIAGNOSTIC_ERROR"
-              detail = "Diagnostic response was not marked ok=true."
-          elif http_403 and successes == 0:
-              status = "BLOCKED_BY_RETAILER_HTTP_403"
-              detail = "Notino public HTML returned HTTP 403 for all attempted pages. Catalog discovery is not operational; use an authorized affiliate feed/API. No anti-bot bypass was attempted."
-          elif successes == 0 or product_urls == 0:
-              status = "NO_PRODUCTS_DISCOVERED"
-              detail = "The read-only trace did not discover product URLs. Do not treat Notino as an active catalog."
-          else:
-              status = "TRACE_FOUND_PRODUCT_URLS"
-              detail = f"Read-only trace found {product_urls} product URLs across {successes} successful pages; this does not by itself prove catalog ingestion or live prices are active."
-
-          print(f"NOTINO_INTEGRATION_STATUS: {status}")
-          print(f"NOTINO_INTEGRATION_DETAIL: {detail}")
-          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary_path:
-              with open(summary_path, "a", encoding="utf-8") as summary:
-                  summary.write("## Notino.fr integration status\n\n")
-                  summary.write(f"**{status}**\n\n{detail}\n\n")
-                  summary.write(
-                      f"- Successful pages: {successes}\n"
-                      f"- Product URLs found: {product_urls}\n"
-                      f"- Reported errors: {len(errors)}\n"
-                  )
-          PY
-
-      - name: Probe public Notino.fr sitemap discovery paths (read-only)
-        timeout-minutes: 2
-        shell: bash
-        run: |
-          python - <<'PY'
-          import gzip
-          import json
-          import urllib.error
-          import urllib.request
-          import xml.etree.ElementTree as ET
-
-          base = "https://www.notino.fr"
-          paths = (
-              "/robots.txt",
-              "/sitemap.xml",
-              "/sitemap_index.xml",
-              "/sitemap-index.xml",
-              "/sitemap.xml.gz",
-              "/sitemap/sitemap.xml",
-              "/sitemap_index.xml.gz",
-          )
-          results = []
-          for path in paths:
-              url = base + path
-              req = urllib.request.Request(url, headers={
-                  "User-Agent": "ScentHunter-Notino-Sitemap-Diagnostic/1.0",
-                  "Accept": "application/xml,text/xml,text/plain,*/*",
-              })
-              try:
-                  with urllib.request.urlopen(req, timeout=12) as response:
-                      body = response.read(2_000_000)
-                      status = response.status
-                      content_type = response.headers.get("Content-Type", "")
-                      if body[:2] == b"\\x1f\\x8b":
-                          try:
-                              body = gzip.decompress(body)
-                          except Exception:
-                              pass
-                      item = {"path": path, "status": status, "content_type": content_type, "bytes": len(body)}
-                      if path == "/robots.txt":
-                          text = body.decode("utf-8", "replace")
-                          item["sitemap_directives"] = [line.strip()[:300] for line in text.splitlines() if line.lower().startswith("sitemap:")][:20]
-                      else:
-                          try:
-                              root = ET.fromstring(body)
-                              tag = root.tag.rsplit("}", 1)[-1].lower()
-                              item["xml_root"] = tag
-                              item["loc_count"] = sum(1 for node in root.iter() if node.tag.rsplit("}", 1)[-1].lower() == "loc")
-                              item["sample_locs"] = [(node.text or "").strip()[:300] for node in root.iter() if node.tag.rsplit("}", 1)[-1].lower() == "loc"][:5]
-                          except Exception:
-                              item["xml_parse"] = "not_xml_or_unparseable"
-                      results.append(item)
-              except urllib.error.HTTPError as exc:
-                  results.append({"path": path, "status": exc.code, "error": "HTTP_ERROR"})
-              except Exception as exc:
-                  results.append({"path": path, "error": type(exc).__name__})
-          print("NOTINO_SITEMAP_PROBE=" + json.dumps(results, ensure_ascii=False))
-          usable = any(x.get("xml_root") in ("urlset", "sitemapindex") and x.get("loc_count", 0) > 0 for x in results)
-          print("NOTINO_SITEMAP_PROBE_STATUS=" + ("PUBLIC_SITEMAP_FOUND" if usable else "NO_PUBLIC_SITEMAP_FOUND"))
-          summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
-          if summary_path:
-              with open(summary_path, "a", encoding="utf-8") as summary:
-                  summary.write("## Notino.fr public sitemap probe (read-only)\\n\\n")
-                  summary.write("**" + ("PUBLIC_SITEMAP_FOUND" if usable else "NO_PUBLIC_SITEMAP_FOUND") + "**\\n\\n")
-                  summary.write("```json\\n" + json.dumps(results, ensure_ascii=False, indent=2) + "\\n```\\n")
+          status = get("/api/catalog/status")
+          if status.get("status") != "ready":
+              raise SystemExit("Canonical PostgreSQL catalog is not ready: " + json.dumps(status))
+          query = urllib.parse.urlencode({"q": "Dior Sauvage"})
+          result = get("/api/catalog/search?" + query)
+          if not isinstance(result.get("results"), list):
+              raise SystemExit("Canonical catalog search returned an invalid payload")
+          notino_offers = [
+              offer
+              for product in result["results"]
+              for offer in (product.get("offers") or [])
+              if "notino" in str(offer.get("store") or "").casefold()
+          ]
+          print("NOTINO_POSTGRES_DIAGNOSTIC=" + json.dumps({
+              "catalog_status": status.get("status"),
+              "query": "Dior Sauvage",
+              "products": len(result["results"]),
+              "published_offers": int(result.get("offer_count", 0) or 0),
+              "notino_offers": len(notino_offers),
+          }, sort_keys=True))
+          if not notino_offers:
+              raise SystemExit("No Notino offer is visible in canonical PostgreSQL search.")
+          print("NOTINO_PUBLIC_POSTGRES_SEARCH=PASS")
           PY

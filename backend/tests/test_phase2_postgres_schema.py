@@ -83,6 +83,57 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
                     {"id": uuid4(), "store": uuid4()},
                 )
 
+    def test_queue_cutover_claim_skips_legacy_backlog_without_mutating_it(self):
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+        from unittest.mock import patch
+
+        from app.workers import postgres_queue
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=5)
+        old_id, new_id = uuid4(), uuid4()
+        rows = [
+            {
+                "id": old_id, "stage": "fetch", "payload": "{}",
+                "dedupe": "cutover-old-" + old_id.hex, "available": now - timedelta(hours=1),
+                "created": cutoff - timedelta(days=1),
+            },
+            {
+                "id": new_id, "stage": "discover", "payload": '{"store_id":"notino-fr"}',
+                "dedupe": "cutover-new-" + new_id.hex, "available": now - timedelta(hours=1),
+                "created": now - timedelta(minutes=1),
+            },
+        ]
+        try:
+            with self.engine.begin() as connection:
+                for row in rows:
+                    connection.execute(text("""
+                        INSERT INTO ingestion_queue_jobs
+                        (id,stage,payload,dedupe_key,status,attempts,max_attempts,available_at,created_at)
+                        VALUES (:id,:stage,CAST(:payload AS json),:dedupe,'queued',0,5,:available,:created)
+                    """), row)
+
+            with patch.dict(os.environ, {
+                "SCENTHUNTER_QUEUE_MIN_CREATED_AT": cutoff.isoformat(),
+            }):
+                claimed = postgres_queue.claim_next("phase2-cutover-test")
+            self.assertIsNotNone(claimed)
+            self.assertEqual(claimed["id"], new_id)
+
+            with self.engine.connect() as connection:
+                states = dict(connection.execute(text("""
+                    SELECT id,status FROM ingestion_queue_jobs
+                    WHERE id IN (:old_id,:new_id)
+                """), {"old_id": old_id, "new_id": new_id}).all())
+            self.assertEqual(states[old_id], "queued")
+            self.assertEqual(states[new_id], "running")
+        finally:
+            with self.engine.begin() as connection:
+                connection.execute(text("""
+                    DELETE FROM ingestion_queue_jobs WHERE id IN (:old_id,:new_id)
+                """), {"old_id": old_id, "new_id": new_id})
+
 
 if __name__ == "__main__":
     unittest.main()

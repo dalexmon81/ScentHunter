@@ -15,6 +15,7 @@ on:
       - "backend/tests/test_phase2_database_backends.py"
       - "backend/tests/test_catalog_search_token_tolerance.py"
       - "backend/tests/test_phase2_postgres_schema.py"
+      - "backend/tests/test_postgres_queue_cutover.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
       - "backend/app/services/canonical_matching.py"
       - "backend/app/services/connector_ingestion.py"
@@ -112,6 +113,8 @@ jobs:
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
         run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
+      - name: Verify production queue cutover boundary parsing
+        run: pytest -q backend/tests/test_postgres_queue_cutover.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify concentration and format grouping in catalog search

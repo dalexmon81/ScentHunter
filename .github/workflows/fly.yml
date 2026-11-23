@@ -517,13 +517,13 @@ jobs:
           # a durable exit marker on the worker's persistent volume.
           remote_script="$(cat <<'REMOTE'
           set -eu
-          mkdir -p /data/catalog
-          rm -f /data/catalog/notino_postgres_bootstrap.exit /data/catalog/notino_postgres_bootstrap.log
+          mkdir -p /tmp
+          rm -f /tmp/notino_postgres_bootstrap.exit /tmp/notino_postgres_bootstrap.log
           nohup /bin/sh -c '
             /app/.venv/bin/python /app/backend/scripts/bootstrap_notino_postgres.py
             result=$?
-            echo "$result" > /data/catalog/notino_postgres_bootstrap.exit
-          ' </dev/null >/data/catalog/notino_postgres_bootstrap.log 2>&1 &
+            echo "$result" > /tmp/notino_postgres_bootstrap.exit
+          ' </dev/null >/tmp/notino_postgres_bootstrap.log 2>&1 &
           echo NOTINO_POSTGRES_BOOTSTRAP_STARTED
           REMOTE
           )"
@@ -531,24 +531,24 @@ jobs:
           flyctl machine exec "$worker_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app scenthunter --timeout 30
 
           for attempt in $(seq 1 190); do
-            poll="$(flyctl machine exec "$worker_id" "sh -c 'if [ -f /data/catalog/notino_postgres_bootstrap.exit ]; then echo NOTINO_BOOTSTRAP_EXIT=\$(cat /data/catalog/notino_postgres_bootstrap.exit); else echo NOTINO_BOOTSTRAP_RUNNING; fi'" --app scenthunter --timeout 30 2>&1)" || {
+            poll="$(flyctl machine exec "$worker_id" "sh -c 'if [ -f /tmp/notino_postgres_bootstrap.exit ]; then echo NOTINO_BOOTSTRAP_EXIT=\$(cat /tmp/notino_postgres_bootstrap.exit); else echo NOTINO_BOOTSTRAP_RUNNING; fi'" --app scenthunter --timeout 30 2>&1)" || {
               echo "Notino PostgreSQL bootstrap poll failed ($attempt/190): $poll"
               sleep 5
               continue
             }
             printf '%s\\n' "$poll"
             if printf '%s\\n' "$poll" | grep -q 'NOTINO_BOOTSTRAP_EXIT=0'; then
-              flyctl machine exec "$worker_id" "tail -n 100 /data/catalog/notino_postgres_bootstrap.log" --app scenthunter --timeout 30
+              flyctl machine exec "$worker_id" "tail -n 100 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30
               echo "NOTINO_POSTGRES_INGESTION=PASS"
               break
             fi
             if printf '%s\\n' "$poll" | grep -Eq 'NOTINO_BOOTSTRAP_EXIT=[1-9]'; then
-              flyctl machine exec "$worker_id" "tail -n 160 /data/catalog/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
+              flyctl machine exec "$worker_id" "tail -n 160 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
               exit 1
             fi
             if [ "$attempt" -eq 190 ]; then
               echo "Notino PostgreSQL bootstrap did not finish within 16 minutes." >&2
-              flyctl machine exec "$worker_id" "tail -n 160 /data/catalog/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
+              flyctl machine exec "$worker_id" "tail -n 160 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
               exit 1
             fi
             sleep 5
