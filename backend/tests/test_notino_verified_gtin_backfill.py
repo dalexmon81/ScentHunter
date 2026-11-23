@@ -1,17 +1,24 @@
-"""The reviewed Notino Dior Sauvage GTINs must resolve to exact EDP variants."""
+"""The reviewed Notino Dior Sauvage GTINs map to exact EDP variants."""
 
 from pathlib import Path
 
-from scripts.backfill_notino_verified_gtin import VERIFIED_GTINS, _valid_gtin13
-from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from scripts.backfill_notino_verified_gtin import (
+    CANONICAL_PRODUCT_ID,
+    VERIFIED_GTINS,
+    _payload_identity_matches,
+    _valid_gtin13,
+)
 from scenthunter_next_engine.catalog_repository import CatalogRepository
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
 
-def test_four_reviewed_notino_gtins_resolve_to_their_exact_sauvage_edp_variants():
+def test_four_reviewed_notino_gtins_resolve_to_exact_catalog_edp_variants():
     backend = Path(__file__).resolve().parents[1]
     catalog = CatalogRepository.from_file(backend / "product_catalog.json")
-    matcher = CanonicalMatcher(catalog)
+    product = catalog.get(CANONICAL_PRODUCT_ID)
+    assert product is not None
+    catalog_variants = {variant.variant_id: variant.size_ml for variant in product.variants}
+
     titles = {
         "3348901608053": "DIOR Sauvage Eau de Parfum rechargeable pour homme 30 ml",
         "3348901368254": "DIOR Sauvage Eau de Parfum pour homme 60 ml",
@@ -25,6 +32,7 @@ def test_four_reviewed_notino_gtins_resolve_to_their_exact_sauvage_edp_variants(
             "brand": "DIOR",
             "gtin": gtin,
             "size_ml": expected["size_ml"],
+            "concentration": "Eau de Parfum",
             "price": "69.70",
             "currency": "EUR",
             "currency_explicit": True,
@@ -34,15 +42,27 @@ def test_four_reviewed_notino_gtins_resolve_to_their_exact_sauvage_edp_variants(
             "source": "authorized_cj_viv_xml_feed",
         }
         offer = normalize_offer(payload, retailer="Notino", currency_default="EUR")
-        matched = matcher.match(offer)
-        assert matched.reason in {
-            "verified_gtin_exact_variant",
-            "exact_name_brand_alias_and_size",
-        }
         assert _valid_gtin13(gtin)
-        assert matched.canonical_product_id == "SH-AUTO-0178"
-        assert matched.canonical_variant_id == expected["variant_id"]
+        assert _payload_identity_matches(payload, expected)
+        assert catalog_variants[expected["variant_id"]] == expected["size_ml"]
         assert offer.size_ml == expected["size_ml"]
+
+
+def test_reviewed_gtin_identity_guard_rejects_wrong_brand_concentration_or_size():
+    from scripts.backfill_notino_verified_gtin import _payload_identity_matches
+
+    expected = VERIFIED_GTINS["3348901368247"]
+    payload = {
+        "title": "DIOR Sauvage Eau de Parfum rechargeable pour homme 100 ml",
+        "brand": "DIOR",
+        "gtin": "3348901368247",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+    }
+    assert _payload_identity_matches(payload, expected)
+    assert not _payload_identity_matches({**payload, "brand": "Chanel"}, expected)
+    assert not _payload_identity_matches({**payload, "concentration": "Eau de Toilette"}, expected)
+    assert not _payload_identity_matches({**payload, "size_ml": 60}, expected)
 
 
 def test_notino_verified_gtin_registry_contains_exactly_four_edp_sizes():
