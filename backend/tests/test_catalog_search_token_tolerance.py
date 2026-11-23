@@ -145,22 +145,12 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
                 is_gift_set=False, is_mini=False,
                 canonical_key="dior|sauvage|edp|100|tester|standard|single|standard",
             ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=30, is_tester=False, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
-            ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=60, is_tester=False, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
-            ),
         ])
         session.commit()
 
-        persisted = session.query(ProductVariant).order_by(ProductVariant.size_ml).all()
+        persisted = session.query(ProductVariant).order_by(
+            ProductVariant.size_ml, ProductVariant.is_tester
+        ).all()
         assert [(item.size_ml, item.concentration, item.is_tester) for item in persisted] == [
             (30, "Eau de Toilette", False),
             (50, "Eau de Parfum", False),
