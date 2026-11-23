@@ -75,35 +75,6 @@ jobs:
             --app scenthunter
           echo "Notino CJ feed URL and credentials staged for the production release."
 
-      - name: Ensure catalog volume exists
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if flyctl volumes list --app scenthunter | grep -q 'scenthunter_data'; then
-            echo "Volume scenthunter_data already exists."
-          else
-            echo "Creating catalog volume in ams..."
-            flyctl volumes create scenthunter_data \
-              --app scenthunter \
-              --region ams \
-              --size 1 \
-              --count 1 \
-              --yes
-          fi
-
-      - name: Inspect Fly machines and volume attachments before deployment
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== FLY STATUS ==="
-          flyctl status --app scenthunter --json
-          echo "=== FLY MACHINES ==="
-          flyctl machines list --app scenthunter --json
-          echo "=== FLY VOLUMES ==="
-          flyctl volumes list --app scenthunter --json
-
       - name: Deploy ScentHunter
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
