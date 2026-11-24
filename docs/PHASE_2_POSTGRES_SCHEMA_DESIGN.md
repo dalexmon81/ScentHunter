@@ -105,7 +105,7 @@ Add `store_products`:
 - `first_seen_at`, `last_seen_at`, `status`, `created_at`, `updated_at`.
 - Unique `(store_id, external_product_id)`; indexes for store/status and last-seen refresh.
 
-Add nullable `store_product_id` FKs to `ingestion_raw` and `offers`. Keep the existing `store_id`, `external_product_id`, URL and variant columns during the compatibility period. Backfill store products from distinct raw `(store_id, external_product_id)` pairs, using direct raw payload `product_url`/`url` and title/name keys only when present; affiliate tracking URLs are not promoted to canonical URLs. Then link current offers. Do not delete the legacy columns in this phase.
+Add nullable `store_product_id` FKs to `ingestion_raw` and `offers`. Keep the existing `store_id`, `external_product_id`, URL and variant columns during the compatibility period. Backfill store products from distinct raw `(store_id, external_product_id)` pairs, using the direct raw payload `product_url` and title/name keys only when present; raw `url` and `affiliate_url` can be affiliate redirects and are never promoted to canonical URLs. Then link current offers. Do not delete the legacy columns in this phase.
 
 Expected initial backfill: up to 33,189 store-product identities from `ingestion_raw`; all 167 current offers have IDs and can be linked. The migration must report unmatched identities rather than inventing IDs.
 
