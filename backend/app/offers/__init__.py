@@ -1,1 +1,1 @@
-"""Own offer validation, staging, publication eligibility, expiry and rejection reasons."""
+"""Offer staging, ingestion and publication lifecycle package."""

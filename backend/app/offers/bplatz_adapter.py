@@ -1,0 +1,113 @@
+"""Bplatz-to-Phase-2 persistence adapter; caller owns the transaction."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+from urllib.parse import urlparse
+from uuid import UUID
+
+from sqlalchemy.orm import Session
+
+from app.offers.persistence import (
+    promote_offer, record_legacy_match, record_match, stage_raw_offer,
+)
+from app.matching.legacy_fallback import LegacyOfferMatcher, resolve_legacy_catalog_match
+from app.offers.normalization import normalize_offer
+
+
+@dataclass(frozen=True)
+class BplatzPhase2Result:
+    ingestion_raw_id: UUID
+    status: str
+    offer_id: UUID | None = None
+    fragrance_id: UUID | None = None
+    product_variant_id: UUID | None = None
+    reason: str | None = None
+
+
+def persist_bplatz_record(
+    session: Session, *, store_id: UUID, raw_record: dict,
+    matcher: LegacyOfferMatcher, currency_default: str = "EUR",
+) -> BplatzPhase2Result:
+    """Stage, normalize, match and promote one successfully hydrated Bplatz item.
+
+    The raw record is staged before normalization. Unmatched records stay pending
+    for review and never create an offer. The caller owns commit or rollback;
+    this function performs no network access or schema migration.
+    """
+    if not isinstance(raw_record, dict):
+        raise TypeError("raw_record must be a dict")
+
+    try:
+        normalized = normalize_offer(
+            raw_record, retailer="Bplatz", currency_default=currency_default,
+        )
+    except (TypeError, ValueError) as exc:
+        stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
+        raw_id = stage_raw_offer(
+            session, store_id=store_id, raw_payload=raw_record,
+            external_product_id=str(stable_id) if stable_id else None,
+        )
+        reason = f"normalization_failed:{type(exc).__name__}:{exc}"
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="bplatz_phase2_normalizer", reason=reason,
+            unresolved_status="pending",
+        )
+        return BplatzPhase2Result(raw_id, "pending", reason=reason)
+
+    stable_id = raw_record.get("sku") or raw_record.get("gtin") or raw_record.get("product_url") or raw_record.get("url")
+    raw_id = stage_raw_offer(
+        session, store_id=store_id, raw_payload=raw_record,
+        external_product_id=str(stable_id) if stable_id else None,
+    )
+
+    legacy_match = resolve_legacy_catalog_match(matcher, normalized)
+    if legacy_match.reason:
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="bplatz_next_engine_matcher", reason=legacy_match.reason,
+            unresolved_status="pending",
+        )
+        return BplatzPhase2Result(raw_id, "pending", reason=legacy_match.reason)
+
+    resolved = record_legacy_match(
+        session, ingestion_raw_id=raw_id,
+        legacy_product_id=legacy_match.legacy_product_id,
+        legacy_variant_id=legacy_match.legacy_variant_id,
+        method="bplatz_next_engine_matcher",
+        unresolved_status="pending",
+    )
+    if resolved is None:
+        return BplatzPhase2Result(
+            raw_id, "pending",
+            reason="legacy_catalog_id_mapping_not_found_or_inconsistent",
+        )
+
+    if not isinstance(normalized.price, Decimal) or not normalized.price.is_finite() or normalized.price <= 0:
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id, reason="missing_or_invalid_price",
+        )
+    parsed_url = urlparse(normalized.product_url or "")
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id, reason="missing_or_invalid_url",
+        )
+    if normalized.availability not in {"in_stock", "out_of_stock"}:
+        return BplatzPhase2Result(
+            raw_id, "matched", fragrance_id=resolved.fragrance_id,
+            product_variant_id=resolved.product_variant_id, reason="availability_not_explicit",
+        )
+
+    offer_id = promote_offer(
+        session, ingestion_raw_id=raw_id, price=normalized.price,
+        currency=normalized.currency, url=normalized.product_url,
+        availability=normalized.availability, source="bplatz_parser",
+    )
+    return BplatzPhase2Result(
+        raw_id, "promoted", offer_id=offer_id,
+        fragrance_id=resolved.fragrance_id,
+        product_variant_id=resolved.product_variant_id,
+    )

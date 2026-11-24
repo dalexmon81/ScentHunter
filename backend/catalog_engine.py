@@ -4132,7 +4132,7 @@ def _maybe_persist_bplatz_phase2(item, url):
         from app.db_runtime_identity import (
             configuration_source, log_runtime_database_identity, opened_at_utc,
         )
-        from app.services.bplatz_phase2_adapter import persist_bplatz_record
+        from app.offers.bplatz_adapter import persist_bplatz_record
         from scenthunter_next_engine.next_engine_service import NextEngineService
 
         database_url = (

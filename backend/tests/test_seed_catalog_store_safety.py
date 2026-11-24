@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -221,7 +222,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
         from sqlalchemy import create_engine, select, func
         from sqlalchemy.orm import Session
         from app.models import Base, Store, ProductVariant, Offer
-        from app.services.canonical_matching import resolve_canonical_variant
+        from app.matching.canonical_matching import resolve_canonical_variant
 
         with tempfile.TemporaryDirectory() as temp:
             database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
@@ -292,7 +293,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
                     self.assertEqual(before["offer_count"], 0)
 
                     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-                    from app.services.connector_ingestion import persist_connector_record
+                    from app.offers.ingestion import persist_connector_record
                     from scenthunter_next_engine.next_engine_service import NextEngineService
 
                     connector = NotinoAffiliateFeedConnector(
@@ -314,7 +315,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
                         "affiliate_url": None,
                         "source": "authorized_cj_viv_xml_feed",
                         "raw_xml": "<product/>",
-                        "source_updated_at": "2026-11-24T04:00:00+00:00",
+                        "source_updated_at": datetime.now(timezone.utc).isoformat(),
                     }
                     matcher = NextEngineService.from_catalog_file(CATALOG)
                     store_id = store.id

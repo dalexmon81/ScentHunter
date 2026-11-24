@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Base, Store
-from app.services.connector_health import (
+from app.monitoring.connector_health import (
     record_connector_failure,
     record_connector_success,
     reinstate_connector,
@@ -28,6 +28,21 @@ class ConnectorHealthTests(unittest.TestCase):
 
     def tearDown(self):
         self.engine.dispose()
+
+    def test_legacy_service_imports_are_same_implementations(self):
+        from app.services.connector_health import (
+            record_connector_failure as legacy_failure,
+            record_connector_success as legacy_success,
+            reinstate_connector as legacy_reinstate,
+        )
+        from app.monitoring.connector_health import (
+            record_connector_failure as canonical_failure,
+            record_connector_success as canonical_success,
+            reinstate_connector as canonical_reinstate,
+        )
+        self.assertIs(legacy_failure, canonical_failure)
+        self.assertIs(legacy_success, canonical_success)
+        self.assertIs(legacy_reinstate, canonical_reinstate)
 
     def test_quarantines_after_five_consecutive_connector_outages(self):
         with self.sessions() as session, session.begin():

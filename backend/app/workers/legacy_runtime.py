@@ -13,16 +13,18 @@ from uuid import UUID
 from sqlalchemy import or_, select
 
 from app.connectors.base import ConnectorUnavailable
+from app.discovery.dispatch import dispatch_discovered_products
+from app.extraction.product import extract_product_record, extract_price_stock_observation
 from app.connectors.legacy_scrapers import (
     build_legacy_connector,
     connector_key_for_store_slug,
 )
 from app.models import Offer, Store
-from app.services.connector_health import record_connector_failure, record_connector_success
-from app.services.connector_ingestion import persist_connector_record
-from app.services.offer_refresh import refresh_offer_observation
+from app.monitoring.connector_health import record_connector_failure, record_connector_success
+from app.offers.ingestion import persist_connector_record
+from app.pricing.offer_refresh import refresh_offer_observation
 from app.workers import notino_runtime
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
@@ -78,29 +80,16 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         with notino_runtime._sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
 
-        queued = skipped = 0
-        errors: list[str] = []
-        # Do not pre-filter legacy retailer discoveries with the Notino
-        # feed matcher. That helper has a different signature and performs a
-        # Notino-specific canonical lookup. Every discovered reference is
-        # staged; fetch/persistence applies the shared canonical matching and
-        # publication gates before any offer can become public.
-        for product in products:
-            try:
-                enqueue_offer_fetch(store_id, product.external_product_id)
-                queued += 1
-            except Exception as exc:
-                errors.append(
-                    f"enqueue_fetch:{product.external_product_id}:{type(exc).__name__}:{exc}"
-                )
-
-        next_cursor = None
-        if len(products) == limit:
-            next_cursor = str(int(cursor or 0) + len(products))
-            try:
-                enqueue_discovery(store_id, cursor=next_cursor, limit=limit)
-            except Exception as exc:
-                errors.append(f"enqueue_next_page:{type(exc).__name__}:{exc}")
+        # Do not pre-filter discoveries with a retailer-specific matcher.
+        # All references proceed to the shared canonical matching/publication gate.
+        dispatch = dispatch_discovered_products(
+            store_id, products, cursor=str(cursor) if cursor is not None else None,
+            limit=limit, enqueue_fetch=enqueue_offer_fetch,
+            enqueue_next_page=enqueue_discovery,
+        )
+        queued = dispatch.fetch_jobs_queued
+        next_cursor = dispatch.next_cursor
+        errors = list(dispatch.errors)
 
         with notino_runtime._sessions()() as session, session.begin():
             record_ingestion_progress(
@@ -142,7 +131,8 @@ def handle_legacy_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     connector = build_legacy_connector(connector_key)
     try:
-        record = asyncio.run(connector.fetch_product(external_id))
+        extracted = asyncio.run(extract_product_record(connector, external_id))
+        record = extracted.raw_payload if extracted is not None else None
         if not isinstance(record, Mapping):
             raise LookupError(f"{store.slug}_product_not_found")
         with notino_runtime._sessions()() as session, session.begin():
@@ -192,7 +182,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     connector = build_legacy_connector(connector_key)
     try:
-        observation = asyncio.run(connector.fetch_price_and_stock(external_id))
+        observation = asyncio.run(extract_price_stock_observation(connector, external_id))
         raw_record = observation.get("raw_record")
         parsed = connector.parse_raw(raw_record if isinstance(raw_record, Mapping) else observation)
         if parsed.get("currency_explicit") is not True:

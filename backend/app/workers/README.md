@@ -9,10 +9,10 @@ three queue stages: `discover`, `fetch` and `refresh`.
 Notino and the four legacy retailer adapters (Deloox, Sabina, Easycosmetic and
 Parfum-Zentrum) register handlers for discovery, fetch and refresh.
 
-A product fetch currently runs parsing, normalization, canonical matching,
-validation and offer promotion together through
-`app.services.connector_ingestion.persist_connector_record`. This is
-intentional: the raw evidence, match result and published offer are written in
+A product fetch first uses `app.extraction.product.extract_product_record` to
+fetch and preserve the raw source mapping. Parsing, normalization, canonical
+matching, validation and offer promotion then run through
+`app.offers.ingestion.persist_connector_record`. This is intentional: the raw evidence, match result and published offer are written in
 one caller-owned database transaction. Unmatched or invalid records remain
 staged and are not published.
 
@@ -64,7 +64,7 @@ python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v
 
 ## Durable ingestion run tracking
 
-`app.workers.ingestion_run` provides transaction-scoped helpers for creating,
+`app.repositories.ingestion_runs` provides transaction-scoped helpers for creating,
 updating and closing `IngestionRun` rows. A worker records progress in small
 transactions, retains bounded error messages and closes each run as
 `completed`, `partial` or `failed`. The helpers never commit on behalf of

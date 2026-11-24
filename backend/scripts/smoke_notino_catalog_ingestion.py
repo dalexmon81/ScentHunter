@@ -15,7 +15,7 @@ from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.models import IngestionRaw, IngestionRun, Offer, Store
 from app.search.catalog import catalog_status, search_catalog
-from app.services.connector_ingestion import persist_connector_record
+from app.offers.ingestion import persist_connector_record
 from scrapers.notino import affiliate_feed
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models import Base, Store, IngestionRun
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
@@ -31,6 +31,11 @@ class IngestionRunLifecycleTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.session.close()
         self.engine.dispose()
+
+    def test_legacy_worker_import_is_same_implementation(self) -> None:
+        from app.workers.ingestion_run import start_ingestion_run as legacy_start
+        from app.repositories.ingestion_runs import start_ingestion_run as canonical_start
+        self.assertIs(legacy_start, canonical_start)
 
     def test_run_tracks_progress_and_finishes(self) -> None:
         run_id = start_ingestion_run(self.session, store_id=self.store.id)

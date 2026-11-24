@@ -20,8 +20,8 @@ from app.models import (  # noqa: E402
     Base, Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap,
     LegacyVariantIdMap, IngestionRaw, Offer, PriceHistory, MatchAudit,
 )
-from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
-from app.services.ingestion_persistence import PromotionRejected  # noqa: E402
+from app.offers.bplatz_adapter import persist_bplatz_record  # noqa: E402
+from app.offers.persistence import PromotionRejected  # noqa: E402
 from app.search.catalog import catalog_status, search_catalog  # noqa: E402
 
 

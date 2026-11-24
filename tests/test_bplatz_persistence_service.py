@@ -19,7 +19,7 @@ from app.models import (
     Store, IngestionRaw, Offer, PriceHistory, MatchAudit,
     LegacyProductIdMap, LegacyVariantIdMap,
 )
-from app.services.ingestion_persistence import (
+from app.offers.persistence import (
     PromotionRejected, stage_raw_offer, record_legacy_match,
     resolve_legacy_ids, promote_offer,
 )
@@ -263,8 +263,15 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
 
 
 
+
+
+def test_legacy_bplatz_adapter_is_a_compatibility_reexport():
+    from app.services.bplatz_phase2_adapter import persist_bplatz_record as legacy_adapter
+    from app.offers.bplatz_adapter import persist_bplatz_record as canonical_adapter
+    assert legacy_adapter is canonical_adapter
+
 def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, record, normalized, group = _real_bplatz_components()
@@ -317,7 +324,7 @@ def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
 
 def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_path):
     from datetime import datetime, timedelta, timezone
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, record, normalized, _group = _real_bplatz_components()
@@ -426,7 +433,7 @@ def test_live_liquid_brun_persistence_makes_one_backed_up_offer_searchable(tmp_p
 
 
 def test_bplatz_unmatched_record_remains_pending_without_offer(tmp_path):
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     engine, db_url, _ = _migrated_database(tmp_path)
@@ -681,7 +688,7 @@ def test_normal_bplatz_hydration_worker_logs_only_after_phase2_persistence(
 def test_notino_connector_record_uses_shared_phase2_persistence_and_search(tmp_path):
     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
     from app.search.catalog import search_catalog
-    from app.services.connector_ingestion import persist_connector_record
+    from app.offers.ingestion import persist_connector_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, bplatz_record, normalized, _group = _real_bplatz_components()
@@ -735,7 +742,7 @@ def test_notino_connector_record_uses_shared_phase2_persistence_and_search(tmp_p
 
 def test_connector_persistence_does_not_publish_defaulted_currency(tmp_path):
     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-    from app.services.connector_ingestion import persist_connector_record
+    from app.offers.ingestion import persist_connector_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, bplatz_record, normalized, _group = _real_bplatz_components()

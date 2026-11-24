@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.models import Base, Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
 from decimal import Decimal
-from app.services.ingestion_persistence import promote_offer, record_match, stage_raw_offer
-from app.services.canonical_matching import _gtin, resolve_canonical_variant
+from app.offers.persistence import promote_offer, record_match, stage_raw_offer
+from app.matching.canonical_matching import _gtin, resolve_canonical_variant
 
 
 class CanonicalMatchingTests(unittest.TestCase):
@@ -40,6 +40,21 @@ class CanonicalMatchingTests(unittest.TestCase):
     def tearDown(self):
         self.session.close()
         self.engine.dispose()
+
+    def test_legacy_ingestion_import_is_same_implementation(self):
+        from app.services.connector_ingestion import persist_connector_record as legacy_ingest
+        from app.offers.ingestion import persist_connector_record as canonical_ingest
+        self.assertIs(legacy_ingest, canonical_ingest)
+
+    def test_legacy_offer_persistence_import_is_same_implementation(self):
+        from app.services.ingestion_persistence import promote_offer as legacy_promote
+        from app.offers.persistence import promote_offer as canonical_promote
+        self.assertIs(legacy_promote, canonical_promote)
+
+    def test_legacy_service_import_is_same_implementation(self):
+        from app.services.canonical_matching import resolve_canonical_variant as legacy_resolver
+        from app.matching.canonical_matching import resolve_canonical_variant as canonical_resolver
+        self.assertIs(legacy_resolver, canonical_resolver)
 
     def test_exact_gtin_has_priority_and_does_not_need_legacy_ids(self):
         self.variant.gtin = "3348901486392"

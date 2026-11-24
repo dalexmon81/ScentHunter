@@ -1,4 +1,8 @@
-"""Regression tests for canonical fragrance identity normalization."""
+"""Regression tests for canonical fragrance identity normalization.
+
+The implementation lives in app.catalog.normalization. This suite is kept
+under backend/tests so the existing project test discovery remains canonical.
+"""
 import unittest
 
 from app.catalog.normalization import (
@@ -59,10 +63,7 @@ class NormalizationTests(unittest.TestCase):
     def test_legacy_import_path_remains_compatible(self):
         from app.models.normalization import build_identity as legacy_build_identity
         from app.catalog.normalization import build_identity as catalog_build_identity
-        self.assertEqual(
-            legacy_build_identity(brand="Dior", fragrance_name="Sauvage").canonical_key,
-            catalog_build_identity(brand="Dior", fragrance_name="Sauvage").canonical_key,
-        )
+        self.assertIs(legacy_build_identity, catalog_build_identity)
 
 
 if __name__ == "__main__":

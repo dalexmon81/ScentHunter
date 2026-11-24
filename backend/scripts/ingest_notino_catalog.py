@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.db import make_engine
 from app.models import Store
-from app.services.connector_ingestion import persist_connector_record
+from app.offers.ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 

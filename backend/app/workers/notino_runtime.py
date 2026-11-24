@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db import make_engine
 from app.models import Offer, Store
 from app.connectors.base import ConnectorUnavailable
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
@@ -20,15 +20,16 @@ from app.workers.ingestion_run import (
 from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-from app.services.connector_ingestion import persist_connector_record
-from scenthunter_next_engine.next_engine_service import NextEngineService
-from app.services.canonical_matching import resolve_canonical_variant
-from app.services.connector_health import record_connector_failure, record_connector_success
-from app.services.offer_refresh import refresh_offer_observation
+from app.discovery.dispatch import dispatch_discovered_products
+from app.extraction.product import extract_product_record, extract_price_stock_observation
+from app.offers.ingestion import persist_connector_record
+from app.matching.legacy_fallback import LegacyOfferMatcher, build_legacy_matcher
+from app.monitoring.connector_health import record_connector_failure, record_connector_success
+from app.pricing.offer_refresh import refresh_offer_observation
 
 _SESSION_FACTORY = None
 _CONNECTOR: NotinoAffiliateFeedConnector | None = None
-_MATCHER: NextEngineService | None = None
+_MATCHER: LegacyOfferMatcher | None = None
 
 
 def _sessions():
@@ -45,14 +46,12 @@ def _connector() -> NotinoAffiliateFeedConnector:
     return _CONNECTOR
 
 
-def _matcher() -> NextEngineService:
-    """Load the read-only legacy catalog used only as a conservative fallback matcher."""
+def _matcher() -> LegacyOfferMatcher:
+    """Load the read-only legacy matcher through the isolated matching adapter."""
     global _MATCHER
     if _MATCHER is None:
         catalog_path = Path(__file__).resolve().parents[2] / "product_catalog.json"
-        if not catalog_path.is_file():
-            raise RuntimeError(f"Notino fallback matcher catalog is missing: {catalog_path}")
-        _MATCHER = NextEngineService.from_catalog_file(catalog_path)
+        _MATCHER = build_legacy_matcher(catalog_path)
     return _MATCHER
 
 
@@ -68,38 +67,6 @@ def _active_notino_store(session, store_id: UUID) -> Store:
     if store is None or store.slug != "notino-fr" or store.status != "active":
         raise ValueError("store_id must identify the active notino-fr catalog store")
     return store
-
-
-def _is_unique_canonical_candidate(
-    connector: NotinoAffiliateFeedConnector,
-    store_id: UUID,
-    raw_record: Mapping[str, Any],
-) -> bool:
-    """Pre-filter with the same canonical database matcher used at persistence.
-
-    The legacy JSON matcher must not decide whether a record reaches the
-    canonical ingestion pipeline: it can exclude products already present in
-    the canonical database. Ambiguous and incomplete records remain excluded
-    here and are never published; eligible records are re-matched at persistence.
-    """
-    try:
-        parsed = connector.parse_raw(raw_record)
-        validation = connector.validate_offer(parsed)
-        if not validation.valid or parsed.get("currency_explicit") is not True:
-            return False
-        external_id = str(
-            parsed.get("external_product_id") or raw_record.get("external_product_id") or ""
-        ).strip() or None
-        with _sessions()() as session:
-            result = resolve_canonical_variant(
-                session,
-                store_id=store_id,
-                external_product_id=external_id,
-                record=dict(parsed),
-            )
-        return result.match is not None
-    except (TypeError, ValueError, ArithmeticError):
-        return False
 
 
 def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -125,28 +92,16 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         )
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
-        queued = 0
-        errors: list[str] = []
-        # Queue every discovered retailer product. Do not pre-filter against the
-        # canonical DB here: persist_connector_record performs canonical matching
-        # first and the conservative legacy matcher fallback second, while keeping
-        # unmatched/ambiguous rows staged for review instead of publishing them.
-        for product in products:
-            try:
-                enqueue_offer_fetch(store_id, product.external_product_id)
-                queued += 1
-            except Exception as exc:
-                errors.append(
-                    f"enqueue_fetch:{product.external_product_id}:{type(exc).__name__}:{exc}"
-                )
-
-        next_cursor = None
-        if len(products) == limit:
-            next_cursor = str(int(cursor or 0) + len(products))
-            try:
-                enqueue_discovery(store_id, cursor=next_cursor, limit=limit)
-            except Exception as exc:
-                errors.append(f"enqueue_next_page:{type(exc).__name__}:{exc}")
+        # Discovery dispatch never filters on canonical matching. Every
+        # reference reaches the shared fetch/offer gate for a consistent decision.
+        dispatch = dispatch_discovered_products(
+            store_id, products, cursor=str(cursor) if cursor is not None else None,
+            limit=limit, enqueue_fetch=enqueue_offer_fetch,
+            enqueue_next_page=enqueue_discovery,
+        )
+        queued = dispatch.fetch_jobs_queued
+        next_cursor = dispatch.next_cursor
+        errors = list(dispatch.errors)
 
         with _sessions()() as session, session.begin():
             record_ingestion_progress(
@@ -192,7 +147,8 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
         run_id = start_ingestion_run(session, store_id=store_id)
 
     try:
-        raw_record = asyncio.run(_connector().fetch_product(external_id))
+        extracted = asyncio.run(extract_product_record(_connector(), external_id))
+        raw_record = extracted.raw_payload if extracted is not None else None
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
         if raw_record is None:
@@ -275,7 +231,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         run_id = start_ingestion_run(session, store_id=store.id)
 
     try:
-        observation = asyncio.run(_connector().fetch_price_and_stock(external_id))
+        observation = asyncio.run(extract_price_stock_observation(_connector(), external_id))
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
         if not isinstance(observation, Mapping):
