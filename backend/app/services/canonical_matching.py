@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Brand, Fragrance, Offer, ProductVariant
-from app.models.normalization import (
+from app.catalog.normalization import (
     build_identity, extract_concentration, normalize_brand, normalize_fragrance_name, normalize_text,
 )
 

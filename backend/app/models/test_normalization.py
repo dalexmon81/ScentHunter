@@ -1,7 +1,7 @@
 """Regression tests for canonical fragrance identity normalization."""
 import unittest
 
-from app.models.normalization import (
+from app.catalog.normalization import (
     build_identity,
     extract_concentration,
     extract_format_flags,
@@ -55,6 +55,14 @@ class NormalizationTests(unittest.TestCase):
         known = build_identity(brand="Dior", fragrance_name="Sauvage")
         regular = build_identity(brand="Dior", fragrance_name="Sauvage", is_tester=False, is_refill=False, is_gift_set=False, is_mini=False)
         self.assertNotEqual(known.canonical_key, regular.canonical_key)
+
+    def test_legacy_import_path_remains_compatible(self):
+        from app.models.normalization import build_identity as legacy_build_identity
+        from app.catalog.normalization import build_identity as catalog_build_identity
+        self.assertEqual(
+            legacy_build_identity(brand="Dior", fragrance_name="Sauvage").canonical_key,
+            catalog_build_identity(brand="Dior", fragrance_name="Sauvage").canonical_key,
+        )
 
 
 if __name__ == "__main__":
