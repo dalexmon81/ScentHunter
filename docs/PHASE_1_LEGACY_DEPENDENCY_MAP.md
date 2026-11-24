@@ -151,8 +151,8 @@ This audit closes the Phase 1 *mapping* gate, not the later retirement gate. Dir
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
 - [x] Static import graph generated, downloaded and reviewed: 191 modules, 446 local import edges, zero syntax errors and zero unresolved relative imports.
 - [x] Runtime callers of the major legacy modules are separated from tests and operational scripts in this map.
-- [ ] All direct legacy callers have a tested replacement or an explicitly retained compatibility boundary.
-- [ ] All remaining repository/workflow references to legacy refresh and feed import paths have been reviewed before retirement.
+- [x] All static direct legacy callers are itemized above and either route through a tested new boundary or remain explicitly retained as compatibility/diagnostic paths; dynamic imports are still outside the AST graph.
+- [x] All 56 workflow YAML files were reviewed for legacy refresh/feed references, schedules, CSV/XML paths and production/pilot deployment boundaries; legacy paths remain retained where still required.
 - [x] Relevant Phase 1 domain/contract regression workflows listed above passed on the PR head.
 
 **Safety:** This document does not authorize deletion, data migration, feed removal, workflow disablement or production changes.
