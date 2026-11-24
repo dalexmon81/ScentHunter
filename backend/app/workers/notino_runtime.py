@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db import make_engine
 from app.models import Offer, Store
 from app.connectors.base import ConnectorUnavailable
+from app.discovery.dispatch import dispatch_discovered_products
 from app.workers.ingestion_run import (
     finish_ingestion_run,
     record_ingestion_progress,
@@ -20,6 +21,7 @@ from app.workers.ingestion_run import (
 from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+from app.discovery.dispatch import dispatch_discovered_products
 from app.offers.ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from app.matching.canonical_matching import resolve_canonical_variant
@@ -125,28 +127,16 @@ def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         )
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
-        queued = 0
-        errors: list[str] = []
-        # Queue every discovered retailer product. Do not pre-filter against the
-        # canonical DB here: persist_connector_record performs canonical matching
-        # first and the conservative legacy matcher fallback second, while keeping
-        # unmatched/ambiguous rows staged for review instead of publishing them.
-        for product in products:
-            try:
-                enqueue_offer_fetch(store_id, product.external_product_id)
-                queued += 1
-            except Exception as exc:
-                errors.append(
-                    f"enqueue_fetch:{product.external_product_id}:{type(exc).__name__}:{exc}"
-                )
-
-        next_cursor = None
-        if len(products) == limit:
-            next_cursor = str(int(cursor or 0) + len(products))
-            try:
-                enqueue_discovery(store_id, cursor=next_cursor, limit=limit)
-            except Exception as exc:
-                errors.append(f"enqueue_next_page:{type(exc).__name__}:{exc}")
+        # Discovery dispatch never filters on canonical matching. Every
+        # reference reaches the shared fetch/offer gate for a consistent decision.
+        dispatch = dispatch_discovered_products(
+            store_id, products, cursor=str(cursor) if cursor is not None else None,
+            limit=limit, enqueue_fetch=enqueue_offer_fetch,
+            enqueue_next_page=enqueue_discovery,
+        )
+        queued = dispatch.fetch_jobs_queued
+        next_cursor = dispatch.next_cursor
+        errors = list(dispatch.errors)
 
         with _sessions()() as session, session.begin():
             record_ingestion_progress(
