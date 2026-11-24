@@ -20,7 +20,7 @@ from app.connectors.legacy_scrapers import (
 from app.models import Offer, Store
 from app.services.connector_health import record_connector_failure, record_connector_success
 from app.services.connector_ingestion import persist_connector_record
-from app.services.offer_refresh import refresh_offer_observation
+from app.pricing.offer_refresh import refresh_offer_observation
 from app.workers import notino_runtime
 from app.workers.ingestion_run import (
     finish_ingestion_run,
