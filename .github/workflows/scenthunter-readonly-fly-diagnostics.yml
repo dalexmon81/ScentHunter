@@ -2,6 +2,10 @@ name: ScentHunter 2.0 read-only Fly diagnostics
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/PHASE_0_AUDIT_2026-11-24.md
 
 permissions:
   contents: read
@@ -48,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"import os; from pathlib import Path; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); print(\\\"CANONICAL_BACKEND:\\\",u.get_backend_name()); print(\\\"CANONICAL_DRIVER:\\\",u.drivername); print(\\\"CATALOG_URL_CONFIGURED:\\\",bool(os.getenv(\\\"SCENTHUNTER_CATALOG_DATABASE_URL\\\"))); print(\\\"GENERAL_URL_CONFIGURED:\\\",bool(os.getenv(\\\"SCENTHUNTER_DATABASE_URL\\\"))); print(\\\"POSTGRES_REQUIRED:\\\",os.getenv(\\\"SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL\\\",\\\"unset\\\")); print(\\\"STORE_DB_PATH:\\\",os.getenv(\\\"SCENTHUNTER_CATALOG_DB\\\",\\\"unset\\\")); [print(k+\\\"_EXISTS:\\\",Path(p).exists()) for k,p in [(\\\"CANONICAL_SQLITE\\\",\\\"/data/catalog/catalog.sqlite3\\\"),(\\\"STORE_SQLITE\\\",\\\"/data/store_catalog.sqlite3\\\")]]\"'"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"import os; from pathlib import Path; from sqlalchemy.engine import make_url; from app.db import database_url; u=make_url(database_url()); print(\\\"CANONICAL_BACKEND:\\\",u.get_backend_name()); print(\\\"CANONICAL_DRIVER:\\\",u.drivername); print(\\\"CATALOG_DB_HOST:\\\",u.host); print(\\\"CATALOG_DB_NAME:\\\",u.database); print(\\\"CATALOG_URL_CONFIGURED:\\\",bool(os.getenv(\\\"SCENTHUNTER_CATALOG_DATABASE_URL\\\"))); print(\\\"GENERAL_URL_CONFIGURED:\\\",bool(os.getenv(\\\"SCENTHUNTER_DATABASE_URL\\\"))); print(\\\"POSTGRES_REQUIRED:\\\",os.getenv(\\\"SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL\\\",\\\"unset\\\")); print(\\\"STORE_DB_PATH:\\\",os.getenv(\\\"SCENTHUNTER_CATALOG_DB\\\",\\\"unset\\\")); [print(k+\\\"_EXISTS:\\\",Path(p).exists()) for k,p in [(\\\"CANONICAL_SQLITE\\\",\\\"/data/catalog/catalog.sqlite3\\\"),(\\\"STORE_SQLITE\\\",\\\"/data/store_catalog.sqlite3\\\")]]\"'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command"
 
       - name: Record diagnostic boundary
