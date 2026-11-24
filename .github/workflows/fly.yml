@@ -7,6 +7,9 @@ on:
     paths-ignore:
       # Workflow maintenance must not trigger an application deployment.
       - .github/workflows/**
+      # Documentation-only changes must not rebuild or redeploy the production app.
+      - docs/**
+      - README.md
       - .github/workflows/phase-0-live-baseline.yml
       - .github/workflows/phase2-sql-verification.yml
       - backend/scenthunter_next_engine/baseline_report.py
