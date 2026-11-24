@@ -127,3 +127,43 @@ The harness imports only `app.api.catalog_search.router` into a minimal FastAPI 
 The manual workflow requires a repository Actions secret named `RESTORE_DRILL_DATABASE_URL` containing a dedicated SELECT-only connection URL for a disposable Neon clone. The workflow does not create a branch, role, credential or machine. Before the API calls, the script checks that the configured database name matches the requested expected name, PostgreSQL is in transaction read-only mode, the login role is not superuser/createdb/createrole/replication/bypassrls, and it has no database/schema CREATE or table write privileges. It then calls only `GET /api/catalog/status` and `GET /api/catalog/search`.
 
 **Execution status:** prepared but not dispatched. No clone-specific read-only URL was configured or independently verified during this work. A passing workflow run is still required before claiming application-level restore success. It would prove only these catalog read paths against that clone; it would not prove independent logical export/restore, full production startup, or worker recovery.
+
+
+### 7.1 Exact minimum database grants for the smoke role
+
+The two read endpoints currently query these seven canonical tables: `brands`,
+`fragrances`, `product_variants`, `stores`, `offers`, `ingestion_raw`,
+and `match_audit`. No sequence privileges are needed.
+
+Run the following manually in the Neon SQL Editor **only on**
+`phase0-restore-drill-2026-11-24` / database `scenthunter_offerfirst`.
+Replace the password placeholder with a newly generated unique secret; do not
+reuse the database owner password or paste the secret into GitHub issues/PRs:
+
+```sql
+CREATE ROLE scenthunter_restore_reader
+  LOGIN PASSWORD '<GENERATE-A-UNIQUE-PASSWORD>'
+  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
+GRANT CONNECT ON DATABASE scenthunter_offerfirst
+  TO scenthunter_restore_reader;
+GRANT USAGE ON SCHEMA public TO scenthunter_restore_reader;
+GRANT SELECT ON TABLE
+  public.brands,
+  public.fragrances,
+  public.product_variants,
+  public.stores,
+  public.offers,
+  public.ingestion_raw,
+  public.match_audit
+TO scenthunter_restore_reader;
+
+ALTER ROLE scenthunter_restore_reader
+  SET default_transaction_read_only = on;
+```
+
+After creating the role, obtain a connection URL for this role on the clone
+from Neon Console and add it as the GitHub Actions repository secret
+`RESTORE_DRILL_DATABASE_URL`. The expected database input remains
+`scenthunter_offerfirst`. Do not use the owner URL. The role is disposable
+and should be dropped/revoked after the drill once the workflow is complete.
