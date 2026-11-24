@@ -129,8 +129,10 @@ def enqueue_daily_once(schedule_key: str, stage: str, payload: Mapping[str, Any]
                 set_={"scheduled_day": day, "updated_at": _now()},
                 where=_schedule.c.scheduled_day != day,
             ).returning(_schedule.c.schedule_key)).scalar_one_or_none()
-            if scheduled is None:
-                return None
+            # The schedule row may already be marked for today even though its
+            # old payload-only queue job is pre-cutover and cannot be claimed.
+            # Continue to insert the day-scoped job; its dedupe key preserves
+            # same-day idempotency without allowing the stale row to block it.
             job_id = uuid.uuid4()
             inserted = conn.execute(pg_insert(_jobs).values(
                 id=job_id, stage=stage, payload=value, dedupe_key=dedupe,

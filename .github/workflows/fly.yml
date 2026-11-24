@@ -274,11 +274,20 @@ jobs:
           session.close()
           print("BPLATZ_REFRESH_JOBS_AVAILABLE=" + str(count))
           assert count >= 1, "No eligible Bplatz PostgreSQL refresh jobs were available"
+          print("BPLATZ_REFRESH_VERIFICATION=PASS")
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
           remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
-          flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
+          remote_output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60 2>&1)" || {
+            printf '%s\n' "$remote_output" >&2
+            exit 1
+          }
+          printf '%s\n' "$remote_output"
+          grep -Fq "BPLATZ_REFRESH_VERIFICATION=PASS" <<< "$remote_output" || {
+            echo "Remote Bplatz refresh verification did not complete successfully." >&2
+            exit 1
+          }
 
       - name: Queue and verify daily PostgreSQL discovery for all legacy retailers
         env:
@@ -329,11 +338,20 @@ jobs:
               print("DISCOVERY_JOBS_" + slug.upper().replace("-", "_") + "=" + str(count))
               assert count >= 1, "No PostgreSQL discovery job scheduled for " + slug
           session.close()
+          print("DAILY_DISCOVERY_VERIFICATION=PASS")
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
           remote_command="sh -c 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
-          flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60
+          remote_output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60 2>&1)" || {
+            printf '%s\n' "$remote_output" >&2
+            exit 1
+          }
+          printf '%s\n' "$remote_output"
+          grep -Fq "DAILY_DISCOVERY_VERIFICATION=PASS" <<< "$remote_output" || {
+            echo "Remote daily discovery verification did not complete successfully." >&2
+            exit 1
+          }
 
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
         shell: bash
@@ -539,13 +557,13 @@ jobs:
               sleep 5
               continue
             }
-            printf '%s\\n' "$poll"
-            if printf '%s\\n' "$poll" | grep -q 'NOTINO_BOOTSTRAP_EXIT=0'; then
+            printf '%s\n' "$poll"
+            if printf '%s\n' "$poll" | grep -q 'NOTINO_BOOTSTRAP_EXIT=0'; then
               flyctl machine exec "$worker_id" "tail -n 100 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30
               echo "NOTINO_POSTGRES_INGESTION=PASS"
               break
             fi
-            if printf '%s\\n' "$poll" | grep -Eq 'NOTINO_BOOTSTRAP_EXIT=[1-9]'; then
+            if printf '%s\n' "$poll" | grep -Eq 'NOTINO_BOOTSTRAP_EXIT=[1-9]'; then
               flyctl machine exec "$worker_id" "tail -n 160 /tmp/notino_postgres_bootstrap.log" --app scenthunter --timeout 30 || true
               exit 1
             fi
