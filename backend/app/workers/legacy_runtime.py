@@ -14,6 +14,7 @@ from sqlalchemy import or_, select
 
 from app.connectors.base import ConnectorUnavailable
 from app.discovery.dispatch import dispatch_discovered_products
+from app.extraction.product import extract_product_record
 from app.connectors.legacy_scrapers import (
     build_legacy_connector,
     connector_key_for_store_slug,
@@ -130,7 +131,8 @@ def handle_legacy_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     connector = build_legacy_connector(connector_key)
     try:
-        record = asyncio.run(connector.fetch_product(external_id))
+        extracted = asyncio.run(extract_product_record(connector, external_id))
+        record = extracted.raw_payload if extracted is not None else None
         if not isinstance(record, Mapping):
             raise LookupError(f"{store.slug}_product_not_found")
         with notino_runtime._sessions()() as session, session.begin():
