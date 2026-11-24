@@ -125,6 +125,7 @@ A read-only scan of all **56** workflow YAML files on this branch was completed.
 |---|---|---|
 | `.github/workflows/notino-cj-feed-import.yml` | Daily schedule `17 5 * * *` plus manual dispatch | Current authorized Notino CJ feed import into PostgreSQL through `bootstrap_notino_postgres.py`; not an old SQLite import path. Keep active until direct Notino discovery passes complete live acceptance. |
 | `.github/workflows/notino-cj-production-feed-monitor.yml` | Every 6 hours (`17 */6 * * *`) plus manual/maintenance triggers | Read-only production feed/parser and PostgreSQL offer monitor. It does not publish or import offers. |
+| `.github/workflows/notino-catalog-diagnostics.yml` | Daily (`47 6 * * *`), manual, after successful Fly Deploy | Read-only public PostgreSQL catalog/search diagnostic for Dior Sauvage EDP formats and exclusion of unverified Parfum results. |
 | `.github/workflows/fly.yml` | Push to `main` with runtime paths | Production deploy workflow. It stages existing CJ credentials and feed URL and enables the current active offer refresh setting. No changes to this workflow or production secrets were made in Phase 1. |
 | `.github/workflows/fly-pilot.yml` | Isolated pilot deploy workflow | Configures CJ feed in the separate pilot app and exercises catalog ingestion; not the production app. |
 | `.github/workflows/fly-pilot-notino-ingestion.yml` | Explicit dispatch or pilot marker | Runs authorized feed ingestion against the isolated pilot catalog and verifies persisted offer/search visibility. |
