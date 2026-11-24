@@ -554,7 +554,7 @@ jobs:
           REMOTE
           )"
           encoded_script="$(printf '%s' "$remote_script" | base64 -w0)"
-          flyctl machine exec "$worker_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app scenthunter --timeout 30
+          flyctl machine exec "$worker_id" "sh -c 'echo $encoded_script | base64 -d | sh'" --app scenthunter --timeout 90
 
           for attempt in $(seq 1 190); do
             poll="$(flyctl machine exec "$worker_id" "sh -c 'if [ -f /tmp/notino_postgres_bootstrap.exit ]; then echo NOTINO_BOOTSTRAP_EXIT=\$(cat /tmp/notino_postgres_bootstrap.exit); else echo NOTINO_BOOTSTRAP_RUNNING; fi'" --app scenthunter --timeout 30 2>&1)" || {
