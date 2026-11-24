@@ -25,12 +25,9 @@ STORE = "Deloox"
 
 # Production storefront used by ScentHunter.
 BASE_URL = "https://www.deloox.be"
-DELOOX_BASE_URLS = (
-    "https://www.deloox.be",
-    "https://www.deloox.nl",
-    "https://www.deloox.com",
-    "https://www.deloox.lu",
-)
+# ScentHunter supports the Belgian storefront only. Other markets are
+# intentionally excluded from discovery to avoid duplicate retailer records.
+DELOOX_BASE_URLS = ("https://www.deloox.be",)
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
 MAX_RESULTS = 80
@@ -45,16 +42,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
 }
-DELOOX_HOSTS = {
-    "deloox.be",
-    "www.deloox.be",
-    "deloox.nl",
-    "www.deloox.nl",
-    "deloox.com",
-    "www.deloox.com",
-    "deloox.lu",
-    "www.deloox.lu",
-}
+DELOOX_HOSTS = {"deloox.be", "www.deloox.be"}
 
 # Discovery state is diagnostic/contract state only. It never decides identity.
 _LAST_DISCOVERY_STATE = {
@@ -1776,7 +1764,7 @@ def extract_product_page(session, url, query=None, html=None):
             or 'itemprop="price"' in initial
             or 'property="product:price:amount"' in initial
         )
-        if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
+        if not product_markup:
             try:
                 browser_html, browser_url = _browser_product_document(target)
                 if browser_html:
