@@ -33,7 +33,7 @@ def main() -> int:
                 SELECT current_database() AS database_name,
                        current_user AS role_name,
                        current_setting('transaction_read_only') AS transaction_read_only,
-                       r.rolsuper, r.rolcreatedb, r.rolcreaterole, r.rolreplication,
+                       r.rolsuper, r.rolcreatedb, r.rolcreaterole, r.rolreplication, r.rolbypassrls,
                        has_database_privilege(current_user, current_database(), 'CREATE') AS can_create_schema,
                        has_schema_privilege(current_user, 'public', 'CREATE') AS can_create_public_objects
                 FROM pg_roles r
@@ -44,19 +44,22 @@ def main() -> int:
                 fail(f"Connected to unexpected database: {identity['database_name']!r}")
             if identity["transaction_read_only"] != "on":
                 fail("Connection is not transaction_read_only=on; refusing API smoke test")
-            if any(identity[key] for key in ("rolsuper", "rolcreatedb", "rolcreaterole", "rolreplication",
+            if any(identity[key] for key in ("rolsuper", "rolcreatedb", "rolcreaterole", "rolreplication", "rolbypassrls",
                                                "can_create_schema", "can_create_public_objects")):
                 fail("Database role has elevated privileges; refusing API smoke test")
 
             writable = conn.execute(text("""
-                SELECT table_schema, table_name, privilege
-                FROM information_schema.role_table_grants
-                CROSS JOIN LATERAL unnest(ARRAY[
-                    'INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'
-                ]) AS privilege
-                WHERE grantee = current_user
-                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND privilege_type = privilege
+                SELECT n.nspname AS table_schema, c.relname AS table_name,
+                       p.privilege
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                CROSS JOIN LATERAL (VALUES
+                    ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'),
+                    ('REFERENCES'), ('TRIGGER')
+                ) AS p(privilege)
+                WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+                  AND has_table_privilege(current_user, c.oid, p.privilege)
                 LIMIT 1
             """)).mappings().first()
             if writable:
