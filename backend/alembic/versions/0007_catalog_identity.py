@@ -127,7 +127,7 @@ def _backfill_store_products(connection):
         })
         payload = _payload_dict(row["raw_payload"])
         item["canonical_url"] = item["canonical_url"] or _first_text(
-            payload, ("product_url", "url")
+            payload, ("product_url",)
         )
         item["raw_title"] = item["raw_title"] or _first_text(
             payload, ("title", "name", "raw_name")
@@ -167,7 +167,6 @@ def _backfill_store_products(connection):
             "created_at": row["captured_at"] or datetime.now(timezone.utc),
             "updated_at": row["captured_at"] or datetime.now(timezone.utc),
         })
-        item["canonical_url"] = item["canonical_url"] or row["url"]
         if row["product_variant_id"] is not None:
             item["product_variant_id"] = _as_uuid(row["product_variant_id"])
         if str(row["status"] or "").lower() == "active":
