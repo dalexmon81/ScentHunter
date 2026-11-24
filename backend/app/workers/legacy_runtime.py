@@ -182,7 +182,7 @@ def handle_legacy_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     connector = build_legacy_connector(connector_key)
     try:
-        observation = asyncio.run(connector.fetch_price_and_stock(external_id))
+        observation = asyncio.run(extract_price_stock_observation(connector, external_id))
         raw_record = observation.get("raw_record")
         parsed = connector.parse_raw(raw_record if isinstance(raw_record, Mapping) else observation)
         if parsed.get("currency_explicit") is not True:
