@@ -3,6 +3,7 @@
 **Responsibility:** own the lifecycle of retailer observations from staging through canonical match persistence, validation and publication of verified offers.
 
 **Implementation ownership**
+- `app.offers.contracts` and `app.offers.normalization`: canonical `RetailerOffer` data contract, safe numeric conversion and pure retailer-record normalization. The old `scenthunter_next_engine` paths are re-export shims only.
 - `app.offers.ingestion`: shared orchestration for parsing connector records, invoking canonical matching, applying publication gates and promoting eligible offers.
 - `app.offers.bplatz_adapter`: compatibility adapter for the existing Bplatz Phase 2 hydration path; it reuses the shared persistence gate and retains its established Next Engine matching behavior.
 - `app.offers.persistence`: single SQLAlchemy persistence gate for raw staging, legacy-ID mapping, match audit and offer promotion.
