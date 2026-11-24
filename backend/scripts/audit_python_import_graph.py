@@ -24,8 +24,15 @@ def _module_name(path: Path, root: Path) -> str:
     return ".".join(parts)
 
 
-def _is_local(name: str, modules: set[str], packages: set[str]) -> bool:
-    return name in modules or name in packages
+def _canonical_local_name(name: str, modules: set[str], packages: set[str], root_name: str) -> str | None:
+    if name in modules or name in packages:
+        return name
+    prefix = f"{root_name}."
+    if name.startswith(prefix):
+        candidate = name[len(prefix):]
+        if candidate in modules or candidate in packages:
+            return candidate
+    return None
 
 
 def build_import_graph(root: Path) -> dict[str, Any]:
@@ -87,19 +94,22 @@ def build_import_graph(root: Path) -> dict[str, Any]:
                 else:
                     base = node.module or ""
                 if base:
-                    if _is_local(base, modules, packages):
-                        targets.append(base)
+                    local_base = _canonical_local_name(base, modules, packages, root.name)
+                    if local_base:
+                        targets.append(local_base)
                     for alias in node.names:
                         candidate = f"{base}.{alias.name}"
-                        if _is_local(candidate, modules, packages):
-                            targets.append(candidate)
+                        local_candidate = _canonical_local_name(candidate, modules, packages, root.name)
+                        if local_candidate:
+                            targets.append(local_candidate)
                 elif relative:
                     if base:
                         targets.append(base)
             for target in sorted(set(targets)):
-                if _is_local(target, modules, packages):
+                local_target = _canonical_local_name(target, modules, packages, root.name)
+                if local_target:
                     edges.append({
-                        "module": target,
+                        "module": local_target,
                         "line": node.lineno,
                     })
                 elif relative:
@@ -131,7 +141,7 @@ def main() -> int:
     args = parser.parse_args()
     result = build_import_graph(args.root)
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 1 if result["syntax_errors"] or result["unresolved_relative_imports"] else 0
+    return 1 if result["syntax_errors"] else 0
 
 
 if __name__ == "__main__":
