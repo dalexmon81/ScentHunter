@@ -10,6 +10,7 @@ on:
       - "backend/tests/test_extraction_product.py"
       - "backend/app/repositories/**"
       - "backend/app/offers/**"
+      - "backend/tests/test_offer_normalization.py"
       - "backend/app/matching/**"
       - "backend/tests/test_legacy_matching_fallback.py"
       - "backend/app/pricing/**"
@@ -93,6 +94,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Run canonical offer normalization tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_offer_normalization.py' -v
       - name: Run isolated legacy matching fallback tests
         working-directory: backend
         env:
