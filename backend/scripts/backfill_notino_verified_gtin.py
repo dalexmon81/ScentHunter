@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.db import make_engine
 from app.models import IngestionRaw, Offer, Store
 from app.search.catalog import _offer_url_valid
-from app.services.ingestion_persistence import (
+from app.offers.persistence import (
     promote_offer,
     record_legacy_match,
     stage_raw_offer,
