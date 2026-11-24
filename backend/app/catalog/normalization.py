@@ -1,11 +1,11 @@
 """Canonical fragrance identity normalization and domain helpers."""
+from __future__ import annotations
 
 __all__ = [
     "CanonicalIdentity", "build_identity", "extract_concentration",
     "extract_format_flags", "extract_size_from_text", "extract_size_ml",
     "normalize_brand", "normalize_fragrance_name", "normalize_text",
 ]
-from __future__ import annotations
 
 import re
 import unicodedata
