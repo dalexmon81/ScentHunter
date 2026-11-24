@@ -21,6 +21,7 @@ from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.discovery.dispatch import dispatch_discovered_products
+from app.extraction.product import extract_product_record
 from app.offers.ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from app.monitoring.connector_health import record_connector_failure, record_connector_success
@@ -148,7 +149,8 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
         run_id = start_ingestion_run(session, store_id=store_id)
 
     try:
-        raw_record = asyncio.run(_connector().fetch_product(external_id))
+        extracted = asyncio.run(extract_product_record(_connector(), external_id))
+        raw_record = extracted.raw_payload if extracted is not None else None
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
         if raw_record is None:
