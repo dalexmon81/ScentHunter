@@ -10,7 +10,7 @@ sys.path.insert(0, str(BACKEND))
 
 from app.db import make_session_factory
 from app.models import Store
-from app.services.connector_health import reinstate_connector
+from app.monitoring.connector_health import reinstate_connector
 
 
 def main() -> int:
