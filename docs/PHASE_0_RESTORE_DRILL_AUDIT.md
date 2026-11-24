@@ -113,3 +113,17 @@ Do not apply Alembic revision `0007_catalog_identity` to the operational Neon da
 - the exact production branch/database and migration window are approved.
 
 No production changes were made by this audit.
+
+
+## 7. Read-only API smoke harness prepared
+
+The Phase 2 branch now contains:
+
+- `backend/scripts/restore_readonly_smoke.py`
+- `.github/workflows/neon-restore-readonly-smoke.yml`
+
+The harness imports only `app.api.catalog_search.router` into a minimal FastAPI app. It intentionally does not import `backend.main`, because the legacy main application's startup hooks can launch catalog bootstrap, discovery and hydration threads.
+
+The manual workflow requires a repository Actions secret named `RESTORE_DRILL_DATABASE_URL` containing a dedicated SELECT-only connection URL for a disposable Neon clone. The workflow does not create a branch, role, credential or machine. Before the API calls, the script checks that the configured database name matches the requested expected name, PostgreSQL is in transaction read-only mode, the login role is not superuser/createdb/createrole/replication/bypassrls, and it has no database/schema CREATE or table write privileges. It then calls only `GET /api/catalog/status` and `GET /api/catalog/search`.
+
+**Execution status:** prepared but not dispatched. No clone-specific read-only URL was configured or independently verified during this work. A passing workflow run is still required before claiming application-level restore success. It would prove only these catalog read paths against that clone; it would not prove independent logical export/restore, full production startup, or worker recovery.
