@@ -40,6 +40,21 @@ class SabinaAvailabilityTests(unittest.TestCase):
         self.assertEqual(availability, "out_of_stock")
         self.assertEqual(source, "sabina_html_availability")
 
+    def test_unavailable_text_on_related_product_does_not_mark_current_product_out_of_stock(self):
+        html = """
+        <html><body><main>
+          <section class="product-container">
+            <h1>Liquid Brun</h1>
+            <button class="add-to-cart">Añadir a la cesta</button>
+          </section>
+          <section class="related-products">
+            <p>Producto agotado</p>
+          </section>
+        </main></body></html>
+        """
+        availability, source = availability_from_product_page(BeautifulSoup(html, "html.parser"))
+        self.assertEqual(availability, "in_stock")
+        self.assertEqual(source, "sabina_purchase_control")
     def test_active_product_purchase_control_remains_in_stock_without_unavailable_message(self):
         html = """
         <html><body><main class="product-container">
