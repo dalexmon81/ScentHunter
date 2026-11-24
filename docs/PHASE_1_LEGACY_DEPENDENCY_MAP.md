@@ -42,6 +42,7 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 | `app.services.connector_ingestion` | `app.offers.ingestion` | Re-export shim; workers, scripts and tests updated |
 | `app.services.offer_refresh` | `app.pricing.offer_refresh` | Re-export shim; workers and tests updated |
 | `app.services.connector_health` | `app.monitoring.connector_health` | Re-export shim; workers, operator script and tests updated |
+| `app.services.bplatz_phase2_adapter` | `app.offers.bplatz_adapter` | Re-export shim; catalog engine, live script and Bplatz tests updated |
 
 The old paths above contain imports only; the implementation exists once in the new package. Keep these shims until all external or untracked consumers are ruled out.
 
