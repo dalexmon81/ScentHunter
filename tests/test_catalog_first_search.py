@@ -182,7 +182,8 @@ def test_publication_gate_and_freshness(pilot):
         assert count() == 1
 
 
-def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():    html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
+def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():
+    html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
     <script type="application/ld+json">{"@type":"Product",
       "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
       "brand":{"@type":"Brand","name":"French Avenue"},
