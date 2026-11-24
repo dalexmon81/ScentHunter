@@ -68,7 +68,32 @@ def _backfill_store_products(connection):
     metadata = sa.MetaData()
     raw = sa.Table("ingestion_raw", metadata, autoload_with=connection)
     offers = sa.Table("offers", metadata, autoload_with=connection)
-    products = sa.Table("store_products", metadata, autoload_with=connection)
+    products = sa.table(
+        "store_products",
+        sa.column("id", sa.Uuid()),
+        sa.column("store_id", sa.Uuid()),
+        sa.column("external_product_id", sa.String(240)),
+        sa.column("canonical_url", sa.Text()),
+        sa.column("raw_title", sa.Text()),
+        sa.column("product_variant_id", sa.Uuid()),
+        sa.column("status", sa.String(24)),
+        sa.column("first_seen_at", sa.DateTime(timezone=True)),
+        sa.column("last_seen_at", sa.DateTime(timezone=True)),
+        sa.column("created_at", sa.DateTime(timezone=True)),
+        sa.column("updated_at", sa.DateTime(timezone=True)),
+    )
+    offers_update = sa.table(
+        "offers",
+        sa.column("store_id", sa.Uuid()),
+        sa.column("external_product_id", sa.String(240)),
+        sa.column("store_product_id", sa.Uuid()),
+    )
+    raw_update = sa.table(
+        "ingestion_raw",
+        sa.column("store_id", sa.Uuid()),
+        sa.column("external_product_id", sa.String(240)),
+        sa.column("store_product_id", sa.Uuid()),
+    )
 
     grouped = {}
     raw_rows = connection.execute(
@@ -143,10 +168,8 @@ def _backfill_store_products(connection):
             "updated_at": row["captured_at"] or datetime.now(timezone.utc),
         })
         item["canonical_url"] = item["canonical_url"] or row["url"]
-        item["product_variant_id"] = (
-            _as_uuid(row["product_variant_id"])
-            if row["product_variant_id"] is not None else item["product_variant_id"]
-        )
+        if row["product_variant_id"] is not None:
+            item["product_variant_id"] = _as_uuid(row["product_variant_id"])
         if str(row["status"] or "").lower() == "active":
             item["status"] = "active"
         item["first_seen_at"] = _min_time(item["first_seen_at"], row["captured_at"])
@@ -160,19 +183,19 @@ def _backfill_store_products(connection):
 
     # Correlated subqueries are supported by both PostgreSQL and SQLite.
     connection.execute(
-        offers.update()
-        .where(offers.c.external_product_id.is_not(None))
+        sa.update(offers_update)
+        .where(offers_update.c.external_product_id.is_not(None))
         .values(store_product_id=sa.select(products.c.id).where(
-            products.c.store_id == offers.c.store_id,
-            products.c.external_product_id == offers.c.external_product_id,
+            products.c.store_id == offers_update.c.store_id,
+            products.c.external_product_id == offers_update.c.external_product_id,
         ).scalar_subquery())
     )
     connection.execute(
-        raw.update()
-        .where(raw.c.external_product_id.is_not(None))
+        sa.update(raw_update)
+        .where(raw_update.c.external_product_id.is_not(None))
         .values(store_product_id=sa.select(products.c.id).where(
-            products.c.store_id == raw.c.store_id,
-            products.c.external_product_id == raw.c.external_product_id,
+            products.c.store_id == raw_update.c.store_id,
+            products.c.external_product_id == raw_update.c.external_product_id,
         ).scalar_subquery())
     )
 
@@ -194,13 +217,23 @@ def _backfill_store_products(connection):
             f"offers={unlinked_offers}, ingestion_raw={unlinked_raw}"
         )
 
-
 def _backfill_legacy_gtins(connection):
     variants = sa.Table(
         "product_variants", sa.MetaData(), autoload_with=connection
     )
-    gtins = sa.Table(
-        "product_variant_gtins", sa.MetaData(), autoload_with=connection
+    gtins = sa.table(
+        "product_variant_gtins",
+        sa.column("id", sa.Uuid()),
+        sa.column("product_variant_id", sa.Uuid()),
+        sa.column("gtin", sa.String(14)),
+        sa.column("normalized_gtin", sa.String(14)),
+        sa.column("market", sa.String(2)),
+        sa.column("source", sa.String(80)),
+        sa.column("verification_status", sa.String(24)),
+        sa.column("is_primary", sa.Boolean()),
+        sa.column("evidence", sa.JSON()),
+        sa.column("observed_at", sa.DateTime(timezone=True)),
+        sa.column("verified_at", sa.DateTime(timezone=True)),
     )
     allowed_lengths = {8, 12, 13, 14}
     rows = connection.execute(
@@ -228,7 +261,6 @@ def _backfill_legacy_gtins(connection):
         })
     for offset in range(0, len(values), 500):
         connection.execute(gtins.insert(), values[offset:offset + 500])
-
 
 def upgrade():
     op.create_table(
