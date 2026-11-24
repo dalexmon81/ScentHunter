@@ -149,7 +149,6 @@ def test_publication_gate_and_freshness(pilot):
             (offer, "captured_at", now - timedelta(hours=25)),
             (offer, "captured_at", now + timedelta(minutes=1)),
             (offer, "valid_until", now - timedelta(seconds=1)),
-            (offer, "availability", "out_of_stock"),
             (offer, "price", Decimal("0")),
             (offer, "currency", "USD"),
             (offer, "url", "https://bplatz.de.evil.test/product"),
@@ -168,9 +167,22 @@ def test_publication_gate_and_freshness(pilot):
             session.flush()
         assert count() == 1
 
+        # A valid, priced offer remains visible when the retailer confirms
+        # that the item is temporarily out of stock. Availability is a label,
+        # not a reason to erase the retailer/product/price from search.
+        offer.availability = "out_of_stock"
+        session.flush()
+        assert count() == 1
+        out_of_stock = search_catalog(session, "Liquid Brun 100ml", now=now)
+        visible_offer = out_of_stock["results"][0]["offers"][0]
+        assert visible_offer["availability"] == "out_of_stock"
+        assert Decimal(visible_offer["price"]) > 0
+        offer.availability = "in_stock"
+        session.flush()
+        assert count() == 1
 
-def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():
-    html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
+
+def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():    html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
     <script type="application/ld+json">{"@type":"Product",
       "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
       "brand":{"@type":"Brand","name":"French Avenue"},
