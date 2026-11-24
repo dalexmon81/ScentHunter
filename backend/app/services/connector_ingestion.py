@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.connectors.base import StoreConnector
-from app.models import IngestionRaw
+from app.models import IngestionRaw, Store
 from app.services.canonical_matching import resolve_canonical_variant
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
@@ -58,7 +58,8 @@ def persist_connector_record(
         external_product_id=str(external_id) if external_id else None,
     )
 
-    if connector.store_key == "notino" and not raw_record.get("source_updated_at"):
+    source_store = session.get(Store, store_id)
+    if connector.store_key == "notino" and source_store is not None and source_store.slug == "notino-fr" and not raw_record.get("source_updated_at"):
         reason = "missing_retailer_source_updated_at"
         record_match(
             session, ingestion_raw_id=raw_id, product_variant_id=None,
