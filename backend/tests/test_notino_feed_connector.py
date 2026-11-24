@@ -10,6 +10,7 @@ from app.connectors.base import ConnectorUnavailable
 DIOR_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>
   <item>
+    <last_updated>2026-11-23T01:34:44.059-08:00</last_updated>
     <g:id>SAUVAGE100</g:id>
     <g:title>Dior Sauvage Eau de Parfum 100 ml</g:title>
     <g:brand>Dior</g:brand>
@@ -71,6 +72,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(normalized["concentration"], "Eau de Parfum")
         self.assertEqual(normalized["currency"], "EUR")
         self.assertIs(normalized["currency_explicit"], True)
+        self.assertEqual(raw["source_updated_at"], "2026-11-23T09:34:44.059000+00:00")
 
     async def test_out_of_stock_is_valid_but_unknown_stock_is_not(self) -> None:
         connector = NotinoAffiliateFeedConnector(feed_loader=lambda: DIOR_FEED)
@@ -111,6 +113,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         await connector.refresh_snapshot()
         self.assertEqual(calls, 2)
         self.assertIn("SAUVAGE100", connector._snapshot_by_id)
+        self.assertEqual(connector._snapshot_by_id["SAUVAGE100"]["source_updated_at"], "2026-11-23T09:34:44.059000+00:00")
 
 
 if __name__ == "__main__":

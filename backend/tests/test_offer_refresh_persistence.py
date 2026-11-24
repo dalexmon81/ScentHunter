@@ -45,7 +45,8 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
                 session, offer_id=self.offer_id,
                 observation={"price": "79.90", "currency": "EUR",
                              "availability": "out_of_stock",
-                             "product_url": "https://www.notino.fr/p/123"},
+                             "product_url": "https://www.notino.fr/p/123",
+                             "source_updated_at": "2026-11-24T04:00:00+00:00"},
                 source="authorized_cj_feed", currency_explicit=True,
             )
             self.assertEqual(result, self.offer_id)

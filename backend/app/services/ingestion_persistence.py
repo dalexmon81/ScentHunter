@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -162,6 +162,21 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise PromotionRejected("confidence must be between 0 and 1")
 
+    captured_at = datetime.now(timezone.utc)
+    source_updated_at = row.raw_payload.get("source_updated_at")
+    if source_updated_at:
+        try:
+            parsed_source_time = datetime.fromisoformat(str(source_updated_at).replace("Z", "+00:00"))
+        except ValueError:
+            raise PromotionRejected("retailer_source_updated_at_invalid") from None
+        if parsed_source_time.tzinfo is None:
+            raise PromotionRejected("retailer_source_updated_at_missing_timezone")
+        captured_at = parsed_source_time.astimezone(timezone.utc)
+        if captured_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+            raise PromotionRejected("retailer_source_updated_at_in_future")
+    elif store.slug == "notino-fr":
+        raise PromotionRejected("missing_retailer_source_updated_at")
+
     existing = None
     if row.external_product_id:
         existing = session.scalar(select(Offer).where(
@@ -185,19 +200,21 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
             external_product_id=row.external_product_id, url=url, price=price,
             currency=currency, availability=availability, source=source,
             confidence=confidence if confidence is not None else row.match_confidence,
+            captured_at=captured_at,
             status="active",
         )
         session.add(offer)
         session.flush()
         session.add(PriceHistory(offer_id=offer.id, price=price,
-                                 currency=currency, availability=availability))
+                                 currency=currency, availability=availability,
+                                 captured_at=captured_at))
         offer_id = offer.id
     else:
         existing.ingestion_raw_id = row.id
         existing.external_product_id = row.external_product_id or existing.external_product_id
         existing.product_variant_id = row.product_variant_id
         existing.url = url
-        existing.captured_at = datetime.now(timezone.utc)
+        existing.captured_at = captured_at
         existing.price = price
         existing.currency = currency
         existing.availability = availability
@@ -211,6 +228,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         session.add(PriceHistory(
             offer_id=existing.id, price=price,
             currency=currency, availability=availability,
+            captured_at=captured_at,
         ))
         offer_id = existing.id
         session.flush()

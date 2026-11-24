@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from datetime import datetime, timezone
 from itertools import groupby
 from typing import Iterable
 
@@ -68,6 +69,8 @@ class NotinoOffer:
     # Preserve the original feed item so the canonical ingestion layer can audit
     # and reprocess retailer evidence without downloading the feed again.
     raw_xml: str | None = None
+    # Timestamp supplied by the retailer's product-feed record, not our fetch time.
+    source_updated_at: str | None = None
 
 
 def _local(tag: str) -> str:
@@ -315,6 +318,19 @@ def _image_url(raw: str) -> str | None:
     return str(raw).strip()
 
 
+def _source_updated_at(raw: str) -> str | None:
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
 def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) -> NotinoOffer | None:
     fields = fields if fields is not None else _field_map(item)
     title = _first(item, "title", "name", "productname", fields=fields)
@@ -323,6 +339,7 @@ def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) ->
     sku = _first(item, "sku", "g:id", fields=fields)
     gtin = _first(item, "gtin", "gtin13", "gtin12", "gtin14", "ean", "barcode", fields=fields)
     mpn = _first(item, "mpn", "manufacturer_part_number", fields=fields)
+    source_updated_at = _source_updated_at(_first(item, "last_updated", "lastupdated", "updated_at", fields=fields))
     raw_price = _first(item, "price", "saleprice", "currentprice", fields=fields)
     price, currency = _money(raw_price)
     currency = currency or _first(item, "currency", "pricecurrency", fields=fields).upper()
@@ -364,6 +381,7 @@ def _parse_item(item: ET.Element, fields: dict[str, list[str]] | None = None) ->
         concentration=_concentration(title, raw_size),
         affiliate_url=affiliate_url,
         raw_xml=ET.tostring(item, encoding="unicode"),
+        source_updated_at=source_updated_at,
     )
 
 

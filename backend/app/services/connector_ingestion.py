@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.connectors.base import StoreConnector
-from app.models import IngestionRaw
+from app.models import IngestionRaw, Store
 from app.services.canonical_matching import resolve_canonical_variant
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
@@ -50,11 +50,23 @@ def persist_connector_record(
     )
     raw_payload = dict(raw_record)
     raw_payload["currency_explicit"] = bool(raw_record.get("currency_explicit", False))
+    if raw_record.get("source_updated_at"):
+        raw_payload["source_updated_at"] = raw_record["source_updated_at"]
     raw_payload["connector_store_key"] = connector.store_key
     raw_id = stage_raw_offer(
         session, store_id=store_id, raw_payload=raw_payload,
         external_product_id=str(external_id) if external_id else None,
     )
+
+    source_store = session.get(Store, store_id)
+    if connector.store_key == "notino" and source_store is not None and source_store.slug == "notino-fr" and not raw_record.get("source_updated_at"):
+        reason = "missing_retailer_source_updated_at"
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method="notino_source_freshness_gate", reason=reason,
+            unresolved_status="pending",
+        )
+        return ConnectorIngestionResult(raw_id, "pending", reason=reason)
 
     try:
         parsed = connector.parse_raw(raw_record)

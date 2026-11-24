@@ -314,6 +314,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
                         "affiliate_url": None,
                         "source": "authorized_cj_viv_xml_feed",
                         "raw_xml": "<product/>",
+                        "source_updated_at": "2026-11-24T04:00:00+00:00",
                     }
                     matcher = NextEngineService.from_catalog_file(CATALOG)
                     store_id = store.id

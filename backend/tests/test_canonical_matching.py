@@ -75,7 +75,7 @@ class CanonicalMatchingTests(unittest.TestCase):
 
     def test_repeated_observation_keeps_one_offer_and_appends_price_history(self):
         first_raw_id = stage_raw_offer(
-            self.session, store_id=self.store.id, raw_payload={},
+            self.session, store_id=self.store.id, raw_payload={"source_updated_at": "2026-11-24T04:00:00+00:00"},
             external_product_id="REDELIVERED-1",
         )
         record_match(self.session, ingestion_raw_id=first_raw_id,
@@ -86,7 +86,7 @@ class CanonicalMatchingTests(unittest.TestCase):
             availability="in_stock", source="fixture",
         )
         second_raw_id = stage_raw_offer(
-            self.session, store_id=self.store.id, raw_payload={},
+            self.session, store_id=self.store.id, raw_payload={"source_updated_at": "2026-11-24T04:00:00+00:00"},
             external_product_id="REDELIVERED-1",
         )
         record_match(self.session, ingestion_raw_id=second_raw_id,

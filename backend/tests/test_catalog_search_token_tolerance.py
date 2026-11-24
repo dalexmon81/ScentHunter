@@ -1,7 +1,7 @@
 """Regression coverage for incidental words and verified public search."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import create_engine, select
@@ -205,6 +205,52 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
         assert [item["size_ml"] for item in edp["formats"]] == [50, 100]
         assert [item["size_ml"] for item in edt["formats"]] == [30, 60]
         assert [item["size_ml"] for item in tester["formats"]] == [100]
+    finally:
+        session.close()
+        engine.dispose()
+
+ 
+
+def test_notino_offer_with_stale_feed_timestamp_is_not_published():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    try:
+        brand = Brand(name="Dior", slug="dior", normalized_name="dior")
+        store = Store(name="Notino", slug="notino-fr", domain="notino.fr", currency="EUR", status="active")
+        session.add_all([brand, store])
+        session.flush()
+        fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage", image_url=None)
+        session.add(fragrance)
+        session.flush()
+        variant = ProductVariant(
+            fragrance_id=fragrance.id, concentration="Eau de Parfum", size_ml=200,
+            is_tester=False, is_refill=False, is_gift_set=False, is_mini=False,
+            canonical_key="dior|sauvage|edp|200|regular|standard|single|standard",
+        )
+        session.add(variant)
+        session.flush()
+        source_time = (datetime.now(timezone.utc) - timedelta(hours=13)).isoformat()
+        raw = IngestionRaw(
+            store_id=store.id,
+            raw_payload={"currency_explicit": True, "refresh_observation": {"raw_xml": f"<entry><last_updated>{source_time}</last_updated></entry>"}},
+            status="promoted", product_variant_id=variant.id,
+        )
+        session.add(raw)
+        session.flush()
+        offer = Offer(
+            ingestion_raw_id=raw.id, store_id=store.id, product_variant_id=variant.id,
+            external_product_id="CHDSVGM_AEDP25", url="https://www.notino.fr/dior/sauvage-eau-de-parfum-pour-homme/p-15971107/",
+            price=Decimal("198.00"), currency="EUR", availability="in_stock",
+            source="authorized_cj_viv_xml_feed", captured_at=datetime.now(timezone.utc), status="active",
+        )
+        session.add(offer)
+        session.flush()
+        session.add(MatchAudit(offer_id=offer.id, product_variant_id=variant.id, method="test", confidence=Decimal("1.000")))
+        session.commit()
+        result = search_catalog(session, "Dior Sauvage EDP 200 ml")
+        assert result["count"] == 0
+        assert result["offer_count"] == 0
     finally:
         session.close()
         engine.dispose()

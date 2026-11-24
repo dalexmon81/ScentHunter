@@ -295,6 +295,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                     "product_url": parsed.get("product_url"),
                     "url": parsed.get("url"),
                     "captured_at": observation.get("captured_at"),
+                    "source_updated_at": observation.get("source_updated_at"),
                     "raw_xml": observation.get("raw_xml"),
                 }, source=str(parsed.get("source") or "notino_authorized_cj_viv_xml_feed"),
                 currency_explicit=parsed.get("currency_explicit") is True,
