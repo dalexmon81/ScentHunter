@@ -23,7 +23,7 @@ from app.monitoring.connector_health import record_connector_failure, record_con
 from app.offers.ingestion import persist_connector_record
 from app.pricing.offer_refresh import refresh_offer_observation
 from app.workers import notino_runtime
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
