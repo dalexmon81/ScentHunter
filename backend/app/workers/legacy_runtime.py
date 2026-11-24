@@ -13,6 +13,7 @@ from uuid import UUID
 from sqlalchemy import or_, select
 
 from app.connectors.base import ConnectorUnavailable
+from app.discovery.dispatch import dispatch_discovered_products
 from app.connectors.legacy_scrapers import (
     build_legacy_connector,
     connector_key_for_store_slug,
@@ -78,29 +79,16 @@ def handle_legacy_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
         with notino_runtime._sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
 
-        queued = skipped = 0
-        errors: list[str] = []
-        # Do not pre-filter legacy retailer discoveries with the Notino
-        # feed matcher. That helper has a different signature and performs a
-        # Notino-specific canonical lookup. Every discovered reference is
-        # staged; fetch/persistence applies the shared canonical matching and
-        # publication gates before any offer can become public.
-        for product in products:
-            try:
-                enqueue_offer_fetch(store_id, product.external_product_id)
-                queued += 1
-            except Exception as exc:
-                errors.append(
-                    f"enqueue_fetch:{product.external_product_id}:{type(exc).__name__}:{exc}"
-                )
-
-        next_cursor = None
-        if len(products) == limit:
-            next_cursor = str(int(cursor or 0) + len(products))
-            try:
-                enqueue_discovery(store_id, cursor=next_cursor, limit=limit)
-            except Exception as exc:
-                errors.append(f"enqueue_next_page:{type(exc).__name__}:{exc}")
+        # Do not pre-filter discoveries with a retailer-specific matcher.
+        # All references proceed to the shared canonical matching/publication gate.
+        dispatch = dispatch_discovered_products(
+            store_id, products, cursor=str(cursor) if cursor is not None else None,
+            limit=limit, enqueue_fetch=enqueue_offer_fetch,
+            enqueue_next_page=enqueue_discovery,
+        )
+        queued = dispatch.fetch_jobs_queued
+        next_cursor = dispatch.next_cursor
+        errors = list(dispatch.errors)
 
         with notino_runtime._sessions()() as session, session.begin():
             record_ingestion_progress(
