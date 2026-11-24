@@ -63,7 +63,7 @@ jobs:
           if mode in ("preflight", "postflight"):
               d = json.load(open(path))
               assert d["database"] == "scenthunter_offerfirst", d
-              assert d["alembic_revision"] == "0006_postgres_ingestion_queue", d
+              assert d["alembic_revision"] in {"0006_postgres_ingestion_queue", "0007_catalog_identity"}, d
               assert d["safe_to_apply_preflight"] is True, d
               assert not d["domain_conflicts"] and not d["inactive_stores"], d
               assert not d["missing_store_slugs"] and len(d["existing_stores"]) == 9, d
