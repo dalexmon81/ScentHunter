@@ -952,10 +952,11 @@ function showProducts(groups){
   statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null;
+    const lastKnown=(g.offers||[]).find(o=>isOfferOutOfStock(o)&&hasValidOfferPrice(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
-      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
+      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:lastKnown?`<div class="bestprice">OUT OF STOCK · ultimo prezzo ${esc(shPrice(lastKnown))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
@@ -964,12 +965,12 @@ function showProducts(groups){
 function renderOffersHtml(g,img,offers,saved){
   return (offers||[]).map((o,n)=>{
     const out=isOfferOutOfStock(o)||!hasValidOfferPrice(o);
-    const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
+    const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":(hasValidOfferPrice(o)?shPrice(o):""),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:out};
     const on=saved.some(x=>sameWishOffer(x,item));
     const updated=o.captured_at?new Date(o.captured_at):null;
     const updatedText=updated&&!Number.isNaN(updated.getTime())?`${hasValidOfferPrice(o)&&!isOfferOutOfStock(o)?"Disponibile":"Ultimo controllo"} · ${updated.toLocaleString("it-IT",{dateStyle:"short",timeStyle:"short"})}`:"";
     const shipping=o.captured_at?(o.shipping_cost==null?"Spedizione da verificare":`Spedizione: ${formatEuro(Number(o.shipping_cost))}`):"";
-    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?`<div class="offer-meta">${o.captured_at?"PREZZO PRODOTTO PIÙ BASSO":"MIGLIOR PREZZO"}</div>`:"")}${updatedText?`<div class="offer-meta">${esc(updatedText)}</div>`:""}${shipping?`<div class="offer-meta">${esc(shipping)}</div>`:""}${out?'<div class="offer-outstock">'+(hasValidOfferPrice(o)?'OUT OF STOCK':'PREZZO NON VERIFICATO')+'</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!out?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!out&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    return `<div class="offer ${!out&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!out&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${o.price_stale?'<div class="offer-meta">ULTIMO PREZZO NOTO · AGGIORNAMENTO IN CORSO</div>':(!out&&n===0?`<div class="offer-meta">${o.captured_at?"PREZZO PRODOTTO PIÙ BASSO":"MIGLIOR PREZZO"}</div>`:"")}${updatedText?`<div class="offer-meta">${esc(updatedText)}</div>`:""}${shipping?`<div class="offer-meta">${esc(shipping)}</div>`:""}${out?'<div class="offer-outstock">'+(hasValidOfferPrice(o)?'OUT OF STOCK':'PREZZO NON VERIFICATO')+'</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${hasValidOfferPrice(o)?`<span class="offer-price">${out?`<span class="offer-meta">ULTIMO PREZZO NOTO · NON DISPONIBILE</span>`:""}${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
   }).join("");
 }
 

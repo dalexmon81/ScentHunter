@@ -1,4 +1,4 @@
-name: ScentHunter - isolated Neon restore read-only API smoke
+name: ScentHunter - isolated Neon restore read-only catalog smoke
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ on:
         description: "Representative catalog search term"
         required: true
         type: string
-        default: "Dior"
+        default: "Vulcan Feu"
 
 permissions:
   contents: read
@@ -45,7 +45,7 @@ jobs:
         run: python -m compileall -q backend/app backend/scripts/restore_readonly_smoke.py
 
   readonly-api-smoke:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     name: Catalog status and search against disposable Neon clone
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -53,8 +53,8 @@ jobs:
       SCENTHUNTER_CATALOG_DATABASE_URL: ${{ secrets.RESTORE_DRILL_DATABASE_URL }}
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       PGOPTIONS: "-c default_transaction_read_only=on"
-      RESTORE_EXPECTED_DATABASE: ${{ inputs.expected_database }}
-      RESTORE_SMOKE_SEARCH_QUERY: ${{ inputs.search_query }}
+      RESTORE_EXPECTED_DATABASE: ${{ inputs.expected_database || 'scenthunter_offerfirst' }}
+      RESTORE_SMOKE_SEARCH_QUERY: ${{ inputs.search_query || 'Vulcan Feu' }}
       PYTHONPATH: backend
     steps:
       - name: Checkout tested branch

@@ -16,12 +16,20 @@ def test_phase2_declares_all_core_tables():
         "brands", "fragrances", "product_variants", "stores",
         "offers", "price_history", "match_audit", "ingestion_runs",
         "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
+        "brand_aliases", "fragrance_aliases", "product_variant_aliases",
+        "product_variant_gtins", "store_products", "discovery_runs", "extraction_runs",
     }
 
 def test_canonical_identity_is_separate_from_retailer_offers():
     assert "canonical_key" in ProductVariant.__table__.columns
     assert "product_variant_id" in Offer.__table__.columns
     assert Offer.__table__.c.product_variant_id.nullable is True
+    assert "store_product_id" in Offer.__table__.columns
+    assert Offer.__table__.c.store_product_id.nullable is True
+    assert "store_product_id" in Base.metadata.tables["ingestion_raw"].columns
+    assert "external_product_id" in Base.metadata.tables["store_products"].columns
+    assert "ingestion_run_id" in Base.metadata.tables["discovery_runs"].columns
+    assert "ingestion_run_id" in Base.metadata.tables["extraction_runs"].columns
     assert "external_product_id" not in ProductVariant.__table__.columns
 
 def test_variant_attributes_and_fixed_precision_prices():
@@ -39,6 +47,10 @@ def test_required_offer_and_catalog_indexes_exist():
         "ix_offers_captured_at", "ix_offers_price",
         "ix_offers_store_external_product", "ix_offers_store_id",
         "ix_offers_product_variant_id", "ix_fragrances_name",
+        "ix_store_products_status_last_seen", "ix_store_products_product_variant_id",
+        "ix_brand_aliases_normalized", "ix_fragrance_aliases_normalized",
+        "ix_product_variant_aliases_normalized", "ix_product_variant_gtins_normalized",
+        "ix_discovery_runs_store_started_at", "ix_extraction_runs_store_started_at",
     } <= indexes
 
 def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, monkeypatch):
@@ -58,6 +70,8 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
             "brands", "fragrances", "product_variants", "stores",
             "offers", "price_history", "match_audit", "ingestion_runs",
             "ingestion_raw", "legacy_product_id_map", "legacy_variant_id_map",
+            "brand_aliases", "fragrance_aliases", "product_variant_aliases",
+            "product_variant_gtins", "store_products", "discovery_runs", "extraction_runs",
             "alembic_version",
         } <= tables
         with engine.begin() as connection:
@@ -78,8 +92,217 @@ def test_sqlite_migration_wal_foreign_keys_and_active_offer_integrity(tmp_path, 
     finally:
         engine.dispose()
 
-def test_database_url_rejects_postgresql_for_current_phase(monkeypatch):
+
+
+def test_phase2_upgrade_backfills_store_products_and_legacy_gtins(tmp_path, monkeypatch):
+    import uuid
+    import json
+    from decimal import Decimal
+
+    db_path = tmp_path / "phase2-backfill" / "catalog.sqlite3"
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
+    config = Config(str(BACKEND / "alembic.ini"))
+    command.upgrade(config, "0006_postgres_ingestion_queue")
+
+    engine = make_engine()
+    brand_id, fragrance_id, variant_id, store_id, raw_id, offer_id, history_id = [
+        uuid.uuid4() for _ in range(7)
+    ]
+    ids = {
+        "brand": brand_id.hex, "fragrance": fragrance_id.hex,
+        "variant": variant_id.hex, "store": store_id.hex,
+        "raw": raw_id.hex, "offer": offer_id.hex, "history": history_id.hex,
+    }
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "INSERT INTO brands (id,name,slug,normalized_name) VALUES (:id,'Dior','dior','dior')"
+            ), {"id": ids["brand"]})
+            connection.execute(text(
+                "INSERT INTO fragrances (id,brand_id,name,slug) VALUES (:id,:brand,'Sauvage','sauvage')"
+            ), {"id": ids["fragrance"], "brand": ids["brand"]})
+            connection.execute(text(
+                "INSERT INTO product_variants (id,fragrance_id,concentration,size_ml,gtin,canonical_key) "
+                "VALUES (:id,:fragrance,'Eau de Parfum',100,'4006381333931','dior|sauvage|edp|100')"
+            ), {"id": ids["variant"], "fragrance": ids["fragrance"]})
+            connection.execute(text(
+                "INSERT INTO stores (id,name,slug,currency,status) VALUES (:id,'Notino','notino-fr','EUR','active')"
+            ), {"id": ids["store"]})
+            payload = json.dumps({
+                "product_url": "https://shop.example/sauvage-edp-100",
+                "title": "Dior Sauvage Eau de Parfum 100 ml",
+            })
+            connection.execute(text(
+                "INSERT INTO ingestion_raw (id,store_id,raw_payload,external_product_id,product_variant_id,status) "
+                "VALUES (:id,:store,:payload,'sku-100',:variant,'promoted')"
+            ), {"id": ids["raw"], "store": ids["store"], "payload": payload, "variant": ids["variant"]})
+            connection.execute(text(
+                "INSERT INTO offers (id,store_id,product_variant_id,external_product_id,ingestion_raw_id,url,price,currency,availability,source,status) "
+                "VALUES (:id,:store,:variant,'sku-100',:raw,'https://shop.example/sauvage-edp-100',:price,'EUR','in_stock','ci','active')"
+            ), {
+                "id": ids["offer"], "store": ids["store"], "variant": ids["variant"],
+                "raw": ids["raw"], "price": "89.90",
+            })
+            connection.execute(text(
+                "INSERT INTO price_history (id,offer_id,price,currency,availability) "
+                "VALUES (:id,:offer,:price,'EUR','in_stock')"
+            ), {"id": ids["history"], "offer": ids["offer"], "price": "89.90"})
+
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            row = connection.execute(text("""
+                SELECT sp.id, sp.canonical_url, sp.raw_title, sp.product_variant_id, sp.status,
+                       o.store_product_id AS offer_store_product_id,
+                       r.store_product_id AS raw_store_product_id,
+                       o.price
+                FROM store_products sp
+                JOIN offers o ON o.store_product_id = sp.id
+                JOIN ingestion_raw r ON r.store_product_id = sp.id
+                WHERE sp.store_id = :store AND sp.external_product_id = 'sku-100'
+            """), {"store": ids["store"]}).mappings().one()
+            assert row["canonical_url"] == "https://shop.example/sauvage-edp-100"
+            assert row["raw_title"] == "Dior Sauvage Eau de Parfum 100 ml"
+            assert row["product_variant_id"] == ids["variant"]
+            assert row["status"] == "active"
+            assert row["offer_store_product_id"] == row["raw_store_product_id"] == row["id"]
+            assert str(row["price"]) in {"89.9", "89.90"}
+            gtin = connection.execute(text(
+                "SELECT gtin, normalized_gtin, verification_status, source "
+                "FROM product_variant_gtins WHERE product_variant_id = :variant"
+            ), {"variant": ids["variant"]}).mappings().one()
+            assert gtin["gtin"] == "4006381333931"
+            assert gtin["normalized_gtin"] == "4006381333931"
+            assert gtin["verification_status"] == "legacy"
+            assert gtin["source"] == "legacy_product_variants.gtin"
+            assert connection.execute(text(
+                "SELECT count(*) FROM price_history WHERE id = :id"
+            ), {"id": ids["history"]}).scalar_one() == 1
+
+        # Prove the revision is reversible on SQLite and that Phase 1 catalog
+        # records survive the rollback of Phase 2's additive identity tables.
+        command.downgrade(config, "0006_postgres_ingestion_queue")
+        with engine.connect() as connection:
+            inspector = inspect(connection)
+            remaining_tables = set(inspector.get_table_names())
+            assert not {
+                "store_products", "brand_aliases", "fragrance_aliases",
+                "product_variant_aliases", "product_variant_gtins",
+                "discovery_runs", "extraction_runs",
+            } & remaining_tables
+            assert "store_product_id" not in {
+                column["name"] for column in inspector.get_columns("offers")
+            }
+            assert "store_product_id" not in {
+                column["name"] for column in inspector.get_columns("ingestion_raw")
+            }
+            assert connection.execute(text(
+                "SELECT count(*) FROM offers WHERE id = :id"
+            ), {"id": ids["offer"]}).scalar_one() == 1
+            assert connection.execute(text(
+                "SELECT count(*) FROM price_history WHERE id = :id"
+            ), {"id": ids["history"]}).scalar_one() == 1
+            assert connection.execute(text(
+                "SELECT gtin FROM product_variants WHERE id = :id"
+            ), {"id": ids["variant"]}).scalar_one() == "4006381333931"
+            revision = connection.execute(text(
+                "SELECT version_num FROM alembic_version"
+            )).scalar_one()
+            assert revision == "0006_postgres_ingestion_queue"
+    finally:
+        engine.dispose()
+
+def test_database_url_accepts_postgresql_runtime(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql://example.invalid/catalog")
+    monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
     from app.db import database_url
-    with pytest.raises(RuntimeError, match="SQLite only"):
-        database_url()
+    assert database_url() == "postgresql+psycopg://example.invalid/catalog"
+
+
+def test_phase2_backfill_scale_with_50k_raw_observations(tmp_path, monkeypatch):
+    """Measure the migration backfill at roughly the current raw-row volume."""
+    import json
+    import time
+    import uuid
+
+    raw_observations = 50_000
+    products_per_store = 1_000
+    observations_per_product = 5
+    store_count = 10
+
+    db_path = tmp_path / "phase2-scale" / "catalog.sqlite3"
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
+    config = Config(str(BACKEND / "alembic.ini"))
+    command.upgrade(config, "0006_postgres_ingestion_queue")
+
+    engine = make_engine()
+    store_ids = [uuid.uuid4().hex for _ in range(store_count)]
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "INSERT INTO stores (id,name,slug,currency,status) "
+                "VALUES (:id,:name,:slug,'EUR','active')"
+            ), [
+                {"id": store_id, "name": f"Scale Store {index}",
+                 "slug": f"scale-store-{index}"}
+                for index, store_id in enumerate(store_ids)
+            ])
+
+            insert_raw = text(
+                "INSERT INTO ingestion_raw "
+                "(id,store_id,raw_payload,external_product_id,status) "
+                "VALUES (:id,:store,:payload,:external,'pending')"
+            )
+            payload = json.dumps({
+                "title": "Synthetic Phase 2 scale fixture",
+                "product_url": "https://scale.example/product",
+            })
+            batch = []
+            for store_index, store_id in enumerate(store_ids):
+                for product_index in range(products_per_store):
+                    external_id = f"scale-{store_index}-{product_index}"
+                    for _ in range(observations_per_product):
+                        batch.append({
+                            "id": uuid.uuid4().hex,
+                            "store": store_id,
+                            "payload": payload,
+                            "external": external_id,
+                        })
+                        if len(batch) >= 1_000:
+                            connection.execute(insert_raw, batch)
+                            batch.clear()
+            if batch:
+                connection.execute(insert_raw, batch)
+
+        started = time.perf_counter()
+        command.upgrade(config, "head")
+        elapsed_seconds = time.perf_counter() - started
+
+        with engine.connect() as connection:
+            product_count = connection.execute(text(
+                "SELECT count(*) FROM store_products"
+            )).scalar_one()
+            linked_raw_count = connection.execute(text(
+                "SELECT count(*) FROM ingestion_raw WHERE store_product_id IS NOT NULL"
+            )).scalar_one()
+
+        expected_products = store_count * products_per_store
+        assert raw_observations == store_count * products_per_store * observations_per_product
+        assert product_count == expected_products
+        assert linked_raw_count == raw_observations
+        print(
+            "PHASE2_BACKFILL_SCALE",
+            {
+                "raw_observations": raw_observations,
+                "unique_store_products": product_count,
+                "linked_raw_observations": linked_raw_count,
+                "elapsed_seconds": round(elapsed_seconds, 2),
+            },
+        )
+        assert elapsed_seconds < 120, (
+            f"Phase 2 backfill took {elapsed_seconds:.2f}s for "
+            f"{raw_observations} raw observations"
+        )
+    finally:
+        engine.dispose()

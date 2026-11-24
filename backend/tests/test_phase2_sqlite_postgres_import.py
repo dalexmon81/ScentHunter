@@ -37,7 +37,7 @@ class CanonicalSQLitePostgresImporterTests(unittest.TestCase):
                 "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
             ))
             connection.execute(text(
-                "INSERT INTO alembic_version (version_num) VALUES ('0005_connector_quarantine')"
+                "INSERT INTO alembic_version (version_num) VALUES ('0007_catalog_identity')"
             ))
 
         cls.brand_id = uuid.uuid4()

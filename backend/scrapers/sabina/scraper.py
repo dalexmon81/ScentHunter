@@ -612,6 +612,25 @@ def availability_from_product_page(soup, jsonld_offer=None):
             )):
                 explicit_out_of_stock = True
 
+    # Sabina can leave stale Schema.org InStock data on a product page
+    # after the selected item has sold out. A product-specific unavailable
+    # message is stronger evidence than that stale structured value or a
+    # generic purchase control elsewhere in the page.
+    product_scopes = soup.select(
+        ".product-container, .product-information, .product-detail, "
+        ".product-page"
+    ) or soup.select("main, #main") or [soup]
+    product_text = norm(" ".join(scope.get_text(" ", strip=True) for scope in product_scopes))
+    unavailable_markers = (
+        "este producto no esta disponible",
+        "este articulo no esta disponible",
+        "producto no disponible",
+        "producto agotado",
+        "articulo agotado",
+    )
+    if any(marker in product_text for marker in unavailable_markers):
+        return "out_of_stock", "sabina_product_unavailable_message"
+
     purchase_roots = soup.select(
         "main, #main, .product-container, .product-information, "
         ".product-detail, .product-page, .product-actions, "

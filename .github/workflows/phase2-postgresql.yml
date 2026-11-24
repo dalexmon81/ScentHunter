@@ -2,12 +2,14 @@ name: Phase 2 PostgreSQL compatibility
 
 on:
   pull_request:
-    branches: [main, refactor/catalog-first-architecture]
+    branches: [main, refactor/catalog-first-architecture, phase1-catalog-boundary-tests-2026-11-24]
     paths:
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
       - "backend/app/api/catalog_search.py"
       - "backend/app/search/catalog.py"
+      - "backend/scrapers/sabina/scraper.py"
+      - "backend/tests/test_sabina_availability.py"
       - "backend/catalog_engine.py"
       - "backend/app/models/**"
       - "backend/alembic/**"
@@ -21,6 +23,8 @@ on:
       - "backend/tests/test_notino_verified_gtin_backfill.py"
       - "backend/scenthunter_next_engine/notino_verified_catalog_additions.json"
       - "backend/tests/test_phase2_postgres_schema.py"
+      - "backend/tests/test_catalog_normalization.py"
+      - "tests/test_phase2_schema_contract.py"
       - "backend/tests/test_postgres_queue_cutover.py"
       - "backend/tests/test_phase2_runtime_db_identity.py"
       - "backend/app/services/canonical_matching.py"
@@ -111,7 +115,7 @@ jobs:
           assert seed["status"] == "seeded" and seed["database_written"] is True
           assert dry["status"] == "dry_run" and dry["destination_written"] is False
           assert applied["status"] == "applied" and applied["destination_written"] is True
-          assert applied["source_alembic_revision"] in {"0005_connector_quarantine", "0006_postgres_ingestion_queue"}
+          assert applied["source_alembic_revision"] == "0007_catalog_identity"
           assert all(row["checksums_match_after_import"] for row in applied["tables"].values())
           assert all(row["would_insert"] == 0 for row in repeated["tables"].values())
           print("Full checked-in catalog import, checksums and idempotent repeat: PASS")
@@ -119,9 +123,11 @@ jobs:
           PY
       - name: Verify PostgreSQL schema, constraints and rollback behavior
         working-directory: backend
-        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py tests/test_phase2_bplatz_postgres.py
+        run: pytest -q tests/test_phase2_database_backends.py tests/test_phase2_postgres_schema.py tests/test_phase2_runtime_db_identity.py tests/test_phase2_sqlite_postgres_import.py
       - name: Verify production queue cutover boundary parsing
         run: pytest -q backend/tests/test_postgres_queue_cutover.py
+      - name: Verify additive catalog identity migration and SQLite backfill
+        run: pytest -q -s tests/test_phase2_schema_contract.py backend/tests/test_catalog_normalization.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify four reviewed Notino Dior Sauvage GTINs
@@ -137,5 +143,11 @@ jobs:
         run: pytest -q tests/test_notino_sauvage_catalog_additions.py
       - name: Verify concentration and format grouping in catalog search
         run: pytest -q backend/tests/test_catalog_search_token_tolerance.py
+      - name: Verify Sabina out-of-stock product visibility parsing
+        run: pytest -q backend/tests/test_sabina_availability.py
+
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
+
+      - name: Verify Bplatz hydration worker and persistence on disposable PostgreSQL
+        run: pytest -q -s backend/tests/test_phase2_bplatz_postgres.py

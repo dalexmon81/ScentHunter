@@ -4,7 +4,7 @@ from __future__ import annotations
 __all__ = [
     "CanonicalIdentity", "build_identity", "extract_concentration",
     "extract_format_flags", "extract_size_from_text", "extract_size_ml",
-    "normalize_brand", "normalize_fragrance_name", "normalize_text",
+    "normalize_brand", "normalize_fragrance_name", "normalize_gtin", "normalize_text",
 ]
 
 import re
@@ -40,6 +40,32 @@ def normalize_brand(value: str | None) -> str:
     """Use exact, curated aliases only; never collapse brand substrings."""
     normalized = normalize_text(value)
     return _BRAND_ALIASES.get(normalized, normalized)
+
+
+def normalize_gtin(value: Any) -> str | None:
+    """Normalize and checksum-validate a GS1 GTIN-8/12/13/14 value.
+
+    Spaces and hyphens are accepted as display separators. Letters, other
+    punctuation, unsupported lengths and invalid check digits are rejected.
+    Leading zeroes are preserved.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    raw = str(value).strip()
+    if not raw or not re.fullmatch(r"[0-9\s-]+", raw):
+        return None
+    digits = re.sub(r"[\s-]", "", raw)
+    if len(digits) not in {8, 12, 13, 14}:
+        return None
+    body = digits[:-1]
+    weighted_sum = sum(
+        int(digit) * (3 if (len(body) - 1 - index) % 2 == 0 else 1)
+        for index, digit in enumerate(body)
+    )
+    expected_check_digit = (10 - (weighted_sum % 10)) % 10
+    if expected_check_digit != int(digits[-1]):
+        return None
+    return digits
 
 
 def extract_concentration(value: str | None) -> str | None:
