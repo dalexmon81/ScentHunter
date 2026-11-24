@@ -178,6 +178,37 @@ def test_phase2_upgrade_backfills_store_products_and_legacy_gtins(tmp_path, monk
             assert connection.execute(text(
                 "SELECT count(*) FROM price_history WHERE id = :id"
             ), {"id": ids["history"]}).scalar_one() == 1
+
+        # Prove the revision is reversible on SQLite and that Phase 1 catalog
+        # records survive the rollback of Phase 2's additive identity tables.
+        command.downgrade(config, "0006_postgres_ingestion_queue")
+        with engine.connect() as connection:
+            inspector = inspect(connection)
+            remaining_tables = set(inspector.get_table_names())
+            assert not {
+                "store_products", "brand_aliases", "fragrance_aliases",
+                "product_variant_aliases", "product_variant_gtins",
+                "discovery_runs", "extraction_runs",
+            } & remaining_tables
+            assert "store_product_id" not in {
+                column["name"] for column in inspector.get_columns("offers")
+            }
+            assert "store_product_id" not in {
+                column["name"] for column in inspector.get_columns("ingestion_raw")
+            }
+            assert connection.execute(text(
+                "SELECT count(*) FROM offers WHERE id = :id"
+            ), {"id": ids["offer"]}).scalar_one() == 1
+            assert connection.execute(text(
+                "SELECT count(*) FROM price_history WHERE id = :id"
+            ), {"id": ids["history"]}).scalar_one() == 1
+            assert connection.execute(text(
+                "SELECT gtin FROM product_variants WHERE id = :id"
+            ), {"id": ids["variant"]}).scalar_one() == "4006381333931"
+            revision = connection.execute(text(
+                "SELECT version_num FROM alembic_version"
+            )).scalar_one()
+            assert revision == "0006_postgres_ingestion_queue"
     finally:
         engine.dispose()
 
