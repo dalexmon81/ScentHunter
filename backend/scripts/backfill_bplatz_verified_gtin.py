@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.db import make_engine
 from app.models import IngestionRaw, Offer, Store
 from app.search.catalog import _offer_url_valid
-from app.services.ingestion_persistence import record_legacy_match, promote_offer
+from app.offers.persistence import record_legacy_match, promote_offer
 from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
 from scenthunter_next_engine.catalog_repository import CatalogRepository
 from scenthunter_next_engine.offer_normalizer import normalize_offer
