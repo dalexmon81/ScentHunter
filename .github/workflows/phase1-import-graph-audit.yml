@@ -1,0 +1,36 @@
+name: Phase 1 Python import graph audit
+
+on:
+  pull_request:
+    paths:
+      - "backend/**/*.py"
+      - ".github/workflows/phase1-import-graph-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**/*.py"
+      - ".github/workflows/phase1-import-graph-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  import-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build static import graph
+        run: |
+          python backend/scripts/audit_python_import_graph.py --root backend > backend-import-graph.json
+          python -c "import json; d=json.load(open('backend-import-graph.json')); print('modules:', d['module_count']); print('syntax errors:', len(d['syntax_errors'])); print('unresolved relative imports:', len(d['unresolved_relative_imports']))"
+      - name: Upload import graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scent-hunter-backend-import-graph
+          path: backend-import-graph.json
+          if-no-files-found: error
+          retention-days: 14
