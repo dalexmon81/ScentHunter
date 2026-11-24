@@ -316,3 +316,79 @@ Do not start broad cleanup yet. Before Phase 1, resolve these blockers in order:
 8. Only after these gates pass, approve a per-file dependency map and begin narrow Phase 1 refactoring.
 
 **Safety decision:** No legacy module, scraper, feed parser, JSON catalog, workflow, database row or historical record is approved for deletion by this Phase 0 report.
+
+
+## 9. Operational re-check after the 2026-11-24 production deploy
+
+**Re-check time:** approximately 2026-11-24 06:56 UTC  
+**Current main at re-check:** `790ef6aecf016f7ae1c567fc122d68d1677fb524`
+
+The Deloox Belgium restriction and daily dedupe changes from PRs #903 and #905 have since been merged and deployed. Fly Deploy run [45343148474](https://github.com/dalexmon81/ScentHunter/actions/runs/45343148474) completed successfully.
+
+Verified in that run:
+- Production health: PASS.
+- Canonical PostgreSQL catalog: READY.
+- Public `/search` and `/api/catalog/search` parity for the smoke query `Hawas Kobra`: PASS.
+- Published offers for that smoke query: 1.
+- Bplatz active-offer refresh jobs available: 28.
+- Deloox bounded parser/hydration regression checks: PASS.
+
+Important outstanding issue:
+- The same deploy's daily discovery verification reported `DISCOVERY_JOBS_BPLATZ=0`. The daily schedule row was already marked for 2026-11-24, so the worker did not enqueue a replacement job for that day. PR #906 now contains a fix to allow the day-scoped queue dedupe key to recover from this exact same-day state, plus a regression test and improved propagation of remote verification failures. Its latest CI checks are green, but it is not merged or deployed. Therefore daily discovery recovery is **not yet production-verified**.
+
+### 9.1 Read-only PostgreSQL baseline
+
+A fresh read-only query of the operational branch `offer-first-postgres-cutover` produced these current counts:
+
+| Object | Rows |
+|---|---:|
+| Brands | 65 |
+| Fragrances | 1,403 |
+| Product variants | 556 |
+| Stores | 10 |
+| Active offers | 163 |
+| Price history | 8,882 |
+| Ingestion runs | 50,443 |
+| Raw ingestion records | 48,401 |
+| Queue jobs | 173,365 |
+
+Active offers by store:
+- Bplatz: 28
+- Notino FR: 108
+- Sabina ES: 21
+- Parfumzentrum DE: 6
+- Deloox BE: 0
+- Easycosmetic DE: 0
+
+All 163 active offers had a positive price, a three-letter uppercase currency, an HTTP(S) URL and a recognized availability value in the baseline query. Availability: 150 in stock and 13 out of stock. Freshness: 54 offers under one hour, 1 between one and six hours, 108 between six and 24 hours, and none older than 24 hours. Notino's 108 offers were in the 6–24 hour bucket at query time.
+
+Raw ingestion states: 39,494 pending, 8,895 promoted, 17 rejected. All 8,895 promoted records had a product variant linked. Ingestion runs: 8,895 completed, 19 failed, 41,516 partial and 19 running. The pending raw records are not automatically classified as ambiguous; do not relabel them without a matching review report.
+
+A store-level CSV baseline was generated separately for this query window: `scenthunter_phase0_baseline_2026-11-24.csv`. It is a point-in-time read-only export, not a recurring monitoring artifact.
+
+### 9.2 Database clone / restore rehearsal
+
+A new Neon child branch was created from the operational branch without changing production:
+
+- Name: `phase0-restore-drill-2026-11-24`
+- Branch ID: `br-round-band-bazbz4rt`
+- Parent: `br-red-night-ba3reqhp`
+- Parent LSN: `0/23C898F0`
+- Parent timestamp: `2026-11-24T06:54:53Z`
+- State: ready
+
+The clone was queried successfully. It contains the canonical tables and the same point-in-time counts for brands, fragrances, variants, stores, offers and queue jobs; raw/run/history counts are subject to concurrent writes around the clone timestamp. This validates creation and read access to a production-data clone, but **does not yet prove a full disaster-recovery restore**, application cutover, or Fly volume restore.
+
+The existing Neon backup child `phase0-verified-backup-2026-11-24-compute` is also ready and queryable. Both child branches are currently unprotected because the Neon account has reached its protected-branch limit. Do not delete either branch as part of cleanup.
+
+### 9.3 Phase 0 exit decision
+
+Phase 0 remains **OPEN / NOT PASSED**. The following are still required before an honest closure:
+
+1. Run the read-only Fly diagnostics workflow and retain machine, volume and runtime configuration evidence. The available GitHub connector in this session is read-only for workflow runs and cannot dispatch this manual workflow.
+2. Revalidate the existing production-volume backup workflow against the current Fly volume ID and current PostgreSQL-only runtime. Its checked-in script still references the legacy SQLite catalog path and a hard-coded volume ID; do not run it unchanged.
+3. Run bounded live scraper smoke tests for each connector that is intended to be active, especially Deloox BE and Easycosmetic DE. Fixture tests alone are not live connector proof.
+4. Merge and deploy PR #906 only after its checks and explicit approval; then verify that a new Deloox BE daily discovery job is actually enqueued and processed. A successful queue enqueue is not the same as successful product discovery or offer publication.
+5. Complete a full restore drill with verified data and application recovery instructions. The Neon clone rehearsal above is only a partial restore gate.
+
+No old queue rows, raw records, history, store rows, or catalog files were deleted in this re-check.
