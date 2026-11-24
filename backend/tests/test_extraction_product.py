@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import unittest
+
+from app.extraction.product import extract_product_record
+
+
+class FakeConnector:
+    async def fetch_product(self, external_product_id):
+        if external_product_id == "missing":
+            return None
+        return {"title": "Sauvage", "source": "fixture"}
+
+
+class ExtractionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_preserves_raw_evidence_and_adds_missing_external_id(self):
+        result = await extract_product_record(FakeConnector(), "SKU-1")
+        self.assertEqual(result.external_product_id, "SKU-1")
+        self.assertEqual(result.raw_payload["external_product_id"], "SKU-1")
+        self.assertEqual(result.raw_payload["title"], "Sauvage")
+        self.assertEqual(result.raw_payload["source"], "fixture")
+
+    async def test_missing_product_remains_none(self):
+        result = await extract_product_record(FakeConnector(), "missing")
+        self.assertIsNone(result)
+
+    async def test_rejects_empty_identifier_before_network_call(self):
+        with self.assertRaisesRegex(ValueError, "external_product_id"):
+            await extract_product_record(FakeConnector(), "  ")
+
+    async def test_rejects_malformed_connector_result(self):
+        class BrokenConnector:
+            async def fetch_product(self, external_product_id):
+                return ["not", "a", "mapping"]
+        with self.assertRaisesRegex(TypeError, "mapping or None"):
+            await extract_product_record(BrokenConnector(), "SKU-1")
+
+
+if __name__ == "__main__":
+    unittest.main()
