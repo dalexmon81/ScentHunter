@@ -1,4 +1,4 @@
-name: ScentHunter - isolated Neon restore read-only API smoke
+name: ScentHunter - isolated Neon restore read-only catalog smoke
 
 on:
   pull_request:
