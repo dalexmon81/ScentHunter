@@ -1,13 +1,8 @@
 """PostgreSQL-only ScentHunter web application."""
-from pathlib import Path
-
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.catalog_search import router as catalog_search_router
-
-ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_INDEX = ROOT / "frontend" / "index.html"
 
 app = FastAPI(title="ScentHunter API", version="6.0-postgresql-only")
 app.include_router(catalog_search_router)
@@ -25,4 +20,5 @@ def health():
 @app.get("/", include_in_schema=False)
 @app.get("/frontend", include_in_schema=False)
 def frontend():
-    return FileResponse(FRONTEND_INDEX)
+    """Send visitors to the UI that is wired to the PostgreSQL catalog API."""
+    return RedirectResponse(url="/catalog-demo", status_code=307)
