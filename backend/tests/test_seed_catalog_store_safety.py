@@ -292,7 +292,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
                     self.assertEqual(before["offer_count"], 0)
 
                     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-                    from app.services.connector_ingestion import persist_connector_record
+                    from app.offers.ingestion import persist_connector_record
                     from scenthunter_next_engine.next_engine_service import NextEngineService
 
                     connector = NotinoAffiliateFeedConnector(
