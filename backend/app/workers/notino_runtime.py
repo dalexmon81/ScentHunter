@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db import make_engine
 from app.models import Offer, Store
 from app.connectors.base import ConnectorUnavailable
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
