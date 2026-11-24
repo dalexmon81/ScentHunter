@@ -52,7 +52,7 @@ The old paths above contain imports only; the implementation exists once in the 
 - Isolated regression coverage: `backend/tests/test_discovery_dispatch.py`; the worker queue workflow runs this suite.
 - `backend/scripts/audit_python_import_graph.py` now builds a read-only AST graph for tracked backend Python modules; CI runs its tests and uploads the graph artifact. The graph includes static imports only; dynamic imports and runtime plugin loading still require separate review.
 
-## Proposed extraction sequence
+## Current discovery and extraction boundaries\n\n- `app.discovery.dispatch` is the shared pagination/queue-dispatch policy used by both Notino and legacy retailer discovery handlers.\n- `app.extraction.product` is the shared known-product and price/stock fetch boundary used by both Notino and legacy retailer workers. It preserves raw fields; it does not parse, match or publish.\n- Retailer-specific transport and parsing remain in `app.connectors.notino_feed`, `app.connectors.legacy_scrapers` and `backend/scrapers/*`; no scraper code was copied or rewritten.\n- `app.repositories.ingestion_runs` owns transaction-scoped run persistence; the worker path is a compatibility re-export.\n\n## Proposed extraction sequence
 
 1. [x] Create/retain characterization tests for normalization, canonical matching, connector contracts, worker behavior and discovery dispatch; additional retailer parser and legacy catalog persistence coverage remains in its existing suites.
 2. [x] Move normalization/identity helpers into `app/catalog` and canonical matching into `app/matching`; keep old import paths as compatibility wrappers.
