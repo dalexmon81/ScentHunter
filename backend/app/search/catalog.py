@@ -9,7 +9,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Brand, Fragrance, IngestionRaw, MatchAudit, Offer, ProductVariant, Store
-from scrapers.notino.affiliate_feed import validated_cj_offer_url
+from app.connectors.notino_links import validated_cj_offer_url
 
 
 def _utc(value: datetime) -> datetime:
