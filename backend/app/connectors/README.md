@@ -20,6 +20,10 @@ The common validation gate requires an absolute HTTP(S) product URL, a positive
 finite price, a three-letter uppercase currency code, and explicit availability
 (`in_stock` or `out_of_stock`). It intentionally rejects unknown stock states.
 
+## Pure connector utilities and import boundary
+
+`app.connectors.notino_links` contains the pure Notino/CJ URL validation contract used by read-only search and the authorized feed parser. It has no network or scraper dependency. Package exports are lazy: importing this utility does not eagerly import the retailer adapters or legacy scraper modules.
+
 ## Responsibilities outside the connector
 
 The ingestion worker/orchestrator owns rate limiting, bounded retries with
