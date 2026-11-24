@@ -6,7 +6,7 @@ The Fly release command applies Alembic migrations before application rollout. T
 
 Production acceptance checks:
 
-1. Confirm Alembic revision `0006_postgres_ingestion_queue`.
+1. Confirm Alembic revision `0007_catalog_identity` (the additive catalog-identity revision after `0006_postgres_ingestion_queue`).
 2. Confirm `ingestion_queue_jobs` and `ingestion_queue_schedule` exist in `scenthunter_offerfirst`.
 3. Confirm the dedicated `worker` process is started and its logs show successful PostgreSQL queue polling.
 4. Confirm a supported connector has a configured discovery seed before expecting discovery jobs.
