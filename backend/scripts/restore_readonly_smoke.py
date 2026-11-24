@@ -49,10 +49,28 @@ def main() -> int:
                                                "can_create_schema", "can_create_public_objects")):
                 fail("Database role has elevated privileges; refusing API smoke test")
 
-            revision = conn.execute(
-                text("SELECT version_num FROM alembic_version")
-            ).scalar_one()
-            print("ALEMBIC_REVISION", revision)
+            schema_shape = conn.execute(text("""
+                SELECT
+                    EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'offers'
+                          AND column_name = 'store_product_id'
+                    ) AS offers_has_store_product_id,
+                    EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'ingestion_raw'
+                          AND column_name = 'store_product_id'
+                    ) AS raw_has_store_product_id
+            """)).mappings().one()
+            print("CATALOG_SCHEMA_SHAPE", dict(schema_shape))
+            if schema_shape["offers_has_store_product_id"] and schema_shape["raw_has_store_product_id"]:
+                revision = "0007_catalog_identity"
+            elif not schema_shape["offers_has_store_product_id"] and not schema_shape["raw_has_store_product_id"]:
+                revision = "0006_postgres_ingestion_queue"
+            else:
+                fail("Restore clone has a partial Phase 2 store_product_id schema")
 
             if revision == "0006_postgres_ingestion_queue":
                 # The historical restore clone predates Phase 2's additive
