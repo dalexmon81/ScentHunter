@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from app.matching.legacy_fallback import resolve_legacy_catalog_match
+from app.matching.legacy_fallback import build_legacy_matcher, resolve_legacy_catalog_match
 
 
 class FakeLegacyMatcher:
@@ -17,6 +20,25 @@ class FakeLegacyMatcher:
 
 
 class LegacyMatchingFallbackTests(unittest.TestCase):
+    def test_builds_legacy_matcher_only_from_existing_catalog_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = Path(tmp) / "product_catalog.json"
+            catalog.write_text("{}", encoding="utf-8")
+            matcher = object()
+            with patch(
+                "scenthunter_next_engine.next_engine_service.NextEngineService.from_catalog_file",
+                return_value=matcher,
+            ) as factory:
+                result = build_legacy_matcher(catalog)
+        self.assertIs(result, matcher)
+        factory.assert_called_once_with(catalog)
+
+    def test_missing_legacy_catalog_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.json"
+            with self.assertRaisesRegex(RuntimeError, "catalog is missing"):
+                build_legacy_matcher(missing)
+
     def test_returns_only_one_unambiguous_legacy_candidate(self):
         group = SimpleNamespace(
             canonical_product_id="legacy-product-1",
