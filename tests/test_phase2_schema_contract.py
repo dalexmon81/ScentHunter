@@ -142,12 +142,12 @@ def test_phase2_upgrade_backfills_store_products_and_legacy_gtins(tmp_path, monk
                 "VALUES (:id,:store,:variant,'sku-100',:raw,'https://shop.example/sauvage-edp-100',:price,'EUR','in_stock','ci','active')"
             ), {
                 "id": ids["offer"], "store": ids["store"], "variant": ids["variant"],
-                "raw": ids["raw"], "price": Decimal("89.90"),
+                "raw": ids["raw"], "price": "89.90",
             })
             connection.execute(text(
                 "INSERT INTO price_history (id,offer_id,price,currency,availability) "
                 "VALUES (:id,:offer,:price,'EUR','in_stock')"
-            ), {"id": ids["history"], "offer": ids["offer"], "price": Decimal("89.90")})
+            ), {"id": ids["history"], "offer": ids["offer"], "price": "89.90"})
 
         command.upgrade(config, "head")
         with engine.connect() as connection:
@@ -181,8 +181,8 @@ def test_phase2_upgrade_backfills_store_products_and_legacy_gtins(tmp_path, monk
     finally:
         engine.dispose()
 
-def test_database_url_rejects_postgresql_for_current_phase(monkeypatch):
+def test_database_url_accepts_postgresql_runtime(monkeypatch):
     monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", "postgresql://example.invalid/catalog")
+    monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
     from app.db import database_url
-    with pytest.raises(RuntimeError, match="SQLite only"):
-        database_url()
+    assert database_url() == "postgresql+psycopg://example.invalid/catalog"
