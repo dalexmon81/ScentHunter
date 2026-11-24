@@ -14,7 +14,7 @@ from sqlalchemy import or_, select
 
 from app.connectors.base import ConnectorUnavailable
 from app.discovery.dispatch import dispatch_discovered_products
-from app.extraction.product import extract_product_record
+from app.extraction.product import extract_product_record, extract_price_stock_observation
 from app.connectors.legacy_scrapers import (
     build_legacy_connector,
     connector_key_for_store_slug,
