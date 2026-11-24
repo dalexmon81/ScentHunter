@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Branch:** `phase1-structure-foundation-2026-11-24`  
-**Status:** additive scaffolding; no runtime cutover  
+**Status:** package scaffolding plus first controlled domain extractions; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
@@ -20,11 +20,11 @@
 | Package | Responsibility | Existing implementation to reuse |
 |---|---|---|
 | `app/api` | HTTP routes, request/response validation, auth boundary | `app/api/catalog_search.py`; `postgres_main.py` |
-| `app/catalog` | Canonical brand, fragrance, variant and alias domain | `app/models/catalog.py`; `app/models/normalization.py` |
+| `app/catalog` | Canonical brand, fragrance, variant and alias domain | `app/catalog/normalization.py` (single implementation); `app/models/catalog.py` (ORM persistence); legacy normalization re-export only |
 | `app/connectors` | Per-retailer transport and source parsing adapters | `app/connectors/base.py`; `legacy_scrapers.py`; `notino_feed.py`; `backend/scrapers/*` |
 | `app/discovery` | Find retailer product candidates and persist discovery evidence | `app/services/connector_ingestion.py`; `app/workers/postgres_queue.py` |
 | `app/extraction` | Fetch and parse a known retailer product page/feed record | `app/connectors/*`; `app/workers/notino_runtime.py` |
-| `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/services/canonical_matching.py`; `app/models/catalog.py` |
+| `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/matching/canonical_matching.py` (single implementation); `app/models/catalog.py`; `app.services.ingestion_persistence` for audit writes |
 | `app/offers` | Validate, stage and publish verified retailer offers | `app/services/connector_ingestion.py`; `app/services/ingestion_persistence.py` |
 | `app/pricing` | Refresh prices, currency, stock and price history | `app/services/offer_refresh.py`; price-history model/repository |
 | `app/workers` | Scheduling, durable queue execution, retries and orchestration | `app/workers/postgres_worker.py`; `postgres_queue.py`; `ingestion_run.py` |
