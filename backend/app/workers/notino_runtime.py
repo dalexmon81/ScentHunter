@@ -12,7 +12,6 @@ from sqlalchemy.orm import sessionmaker
 from app.db import make_engine
 from app.models import Offer, Store
 from app.connectors.base import ConnectorUnavailable
-from app.discovery.dispatch import dispatch_discovered_products
 from app.workers.ingestion_run import (
     finish_ingestion_run,
     record_ingestion_progress,
