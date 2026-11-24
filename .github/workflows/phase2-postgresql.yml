@@ -8,6 +8,8 @@ on:
       - "backend/app/db_runtime_identity.py"
       - "backend/app/api/catalog_search.py"
       - "backend/app/search/catalog.py"
+      - "backend/scrapers/sabina/scraper.py"
+      - "backend/tests/test_sabina_availability.py"
       - "backend/catalog_engine.py"
       - "backend/app/models/**"
       - "backend/alembic/**"
@@ -141,6 +143,9 @@ jobs:
         run: pytest -q tests/test_notino_sauvage_catalog_additions.py
       - name: Verify concentration and format grouping in catalog search
         run: pytest -q backend/tests/test_catalog_search_token_tolerance.py
+      - name: Verify Sabina out-of-stock product visibility parsing
+        run: pytest -q backend/tests/test_sabina_availability.py
+
       - name: Verify retailer offer price selection regression
         run: pytest -q tests/test_catalog_offer_price_selection.py
 
