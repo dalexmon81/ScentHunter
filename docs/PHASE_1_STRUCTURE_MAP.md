@@ -62,11 +62,13 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 
 - The canonical implementation package boundary is in place for the current scope. `app/repositories` currently contains transaction-scoped ingestion-run persistence; full ORM isolation is intentionally incremental and is not claimed complete.
 - `backend/tests` remains the authoritative test discovery location. `app/tests` is a package boundary, not a second test suite.
-- The static graph is a CI artifact, not a dynamic runtime trace. It records 191 modules, 446 local import edges, no syntax errors and no unresolved relative imports on the audited PR commit.
-- The graph still contains direct legacy-runtime references documented in `docs/PHASE_1_LEGACY_DEPENDENCY_MAP.md`. These are retained compatibility boundaries, not completed retirements.
+- The static graph is a CI artifact, not a dynamic runtime trace. It records 191 modules, 447 local import edges, no syntax errors and no unresolved relative imports on the audited PR commit.
+- The graph still contains direct legacy-runtime references documented in `docs/PHASE_1_LEGACY_DEPENDENCY_MAP.md`. All 56 workflow YAML files were also scanned for legacy/feed/CSV/XML references and scheduled triggers. These are retained compatibility boundaries, not completed retirements.
 - CI evidence is limited to the named workflows and commit in the dependency map. A skipped live CJ feed check is not considered a successful live test.
 
 ## Acceptance for the current implementation slice
+
+The structural extraction slice is complete on the PR branch. This does not authorize merging or production activation until the latest PR-head CI is green; it also does not claim that CJ/feed retirement, legacy deletion, dynamic-import tracing or store-by-store live acceptance is complete.
 
 - All target package paths exist and have documented ownership.
 - Catalog normalization, matching, offers, pricing and connector health each have one implementation; legacy import paths are re-export shims.
