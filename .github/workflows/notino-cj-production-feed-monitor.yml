@@ -305,101 +305,81 @@ jobs:
           )
           PY
 
-      - name: Check production catalog status
+      - name: Check production PostgreSQL Notino offers
         if: ${{ github.event_name != 'pull_request' }}
+        env:
+          BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$BASELINE_TOKEN" || { echo "::error::SCENTHUNTER_BASELINE_TOKEN is missing."; exit 1; }
           python - <<'PY'
-          import datetime
           import json
           import os
           import urllib.request
 
-          url = "https://scenthunter.fly.dev/catalog-status"
           request = urllib.request.Request(
-              url,
+              "https://scenthunter.fly.dev/admin/phase0/postgres-baseline",
               headers={
                   "Accept": "application/json",
-                  "User-Agent": "ScentHunter-Notino-CJ-monitor/1.0",
+                  "Authorization": "Bearer " + os.environ["BASELINE_TOKEN"],
+                  "User-Agent": "ScentHunter-Notino-Postgres-Monitor/2.0",
               },
           )
-          payload = None
-          last_error = None
-          for attempt in range(1, 4):
-              try:
-                  with urllib.request.urlopen(request, timeout=30) as response:
-                      if response.status != 200:
-                          raise RuntimeError(f"catalog-status returned HTTP {response.status}")
-                      payload = json.loads(response.read().decode("utf-8"))
-                  break
-              except (OSError, TimeoutError, ValueError, RuntimeError) as exc:
-                  last_error = exc
-                  print(f"catalog-status attempt {attempt}/3 failed: {type(exc).__name__}: {exc}", flush=True)
-                  if attempt < 3:
-                      import time
-                      time.sleep(5)
-          if payload is None:
-              raise RuntimeError(f"catalog-status unavailable after three attempts: {last_error}")
+          with urllib.request.urlopen(request, timeout=45) as response:
+              if response.status != 200:
+                  raise RuntimeError(f"PostgreSQL baseline returned HTTP {response.status}")
+              payload = json.loads(response.read().decode("utf-8"))
 
-          stores = payload.get("stores")
-          if not isinstance(stores, dict):
-              raise RuntimeError("catalog-status has no stores object")
-          notino = stores.get("notino")
-          if not isinstance(notino, dict):
-              raise RuntimeError("catalog-status has no Notino status")
+          if (
+              payload.get("report") != "phase0-postgresql-read-only"
+              or payload.get("database_backend") != "postgresql"
+              or payload.get("read_only") is not True
+          ):
+              raise RuntimeError("Unexpected PostgreSQL baseline identity or safety mode")
 
-          status = str(notino.get("status") or "")
-          finished_at = notino.get("finished_at")
-          age_sec = notino.get("age_sec")
-          indexed = int(notino.get("indexed_urls") or 0)
-          fetched = int(notino.get("fetched_products") or 0)
-          pending = int(notino.get("pending_hydration") or 0)
-          error = str(notino.get("error") or "")
+          rows = payload.get("stores")
+          if not isinstance(rows, list):
+              raise RuntimeError("PostgreSQL baseline has no store rows")
+          notino = next((row for row in rows if row.get("store") == "notino"), None)
+          if notino is None:
+              raise RuntimeError("PostgreSQL baseline is missing the Notino scope row")
 
-          if not isinstance(finished_at, (int, float)) or not isinstance(age_sec, (int, float)):
-              raise RuntimeError("Notino status has no valid successful-import timestamp")
-          age_hours = float(age_sec) / 3600
-          imported_at = datetime.datetime.fromtimestamp(
-              float(finished_at), datetime.timezone.utc
-          ).isoformat()
-
+          active = int(notino.get("active_offers") or 0)
+          publishable = int(notino.get("publishable_offers") or 0)
+          offers = notino.get("offers") or []
+          latest_capture = max(
+              (str(offer.get("captured_at")) for offer in offers if offer.get("captured_at")),
+              default=None,
+          )
+          sync = notino.get("last_successful_sync_at")
           summary = [
-              "## Notino CJ production feed",
+              "## Notino CJ production PostgreSQL offers",
               "",
-              f"- Status: **{status}**",
-              f"- Last successful feed import: **{imported_at}**",
-              f"- Age: **{age_hours:.2f} hours**",
-              f"- Indexed URLs: **{indexed}**",
-              f"- Hydrated product pages: **{fetched}**",
-              f"- Pending hydration: **{pending}**",
-              f"- Last status detail: {error or 'none'}",
+              f"- Database status: **{notino.get('status')}**",
+              f"- Active offers: **{active}**",
+              f"- Publishable offers: **{publishable}**",
+              f"- Latest stored offer capture: **{latest_capture or 'none'}**",
+              f"- Last successful connector sync: **{sync or 'none'}**",
+              "",
+              "Publication is determined by the canonical PostgreSQL freshness, URL, currency, availability and match-audit gates.",
           ]
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
-              stream.write("\n".join(summary) + "\n")
+              stream.write("\\n".join(summary) + "\\n")
 
           print(json.dumps({
-              "status": status,
-              "finished_at": imported_at,
-              "age_hours": round(age_hours, 2),
-              "indexed_urls": indexed,
-              "fetched_products": fetched,
-              "pending_hydration": pending,
-              "error": error,
-          }, ensure_ascii=False))
+              "database_status": notino.get("status"),
+              "active_offers": active,
+              "publishable_offers": publishable,
+              "latest_capture": latest_capture,
+              "last_successful_sync_at": sync,
+          }, ensure_ascii=False, sort_keys=True))
 
-          # A successful feed import is explicitly persisted as FEED_IMPORTED.
-          # 27 hours allows the 23-hour throttle plus background round-robin delay.
-          if status != "FEED_IMPORTED":
+          if notino.get("status") != "active":
+              raise RuntimeError("Notino PostgreSQL store is not active")
+          if publishable <= 0:
               raise RuntimeError(
-                  f"Notino CJ feed has not completed successfully; current status={status!r}, detail={error!r}"
+                  f"Notino has {active} active offers but none pass the live PostgreSQL publication gates"
               )
-          if age_hours > 27:
-              raise RuntimeError(
-                  f"Notino CJ feed is stale: last successful import was {age_hours:.2f} hours ago"
-              )
-          if indexed <= 0:
-              raise RuntimeError("Notino CJ feed reports success but has no indexed URLs")
-          print("Notino CJ production feed verification: PASS")
+          print("NOTINO_POSTGRES_PUBLICATION_GATE=PASS")
           PY
-
