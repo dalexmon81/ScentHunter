@@ -291,7 +291,7 @@ def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypa
         raw.raw_payload = {
             **dict(raw.raw_payload),
             "currency_explicit": True,
-            "source_updated_at": "2026-11-24T04:00:00+00:00",
+            "source_updated_at": datetime.now(timezone.utc).isoformat(),
             "affiliate_url": click_url,
         }
         session.commit()
