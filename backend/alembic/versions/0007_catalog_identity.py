@@ -244,10 +244,20 @@ def _backfill_legacy_gtins(connection):
     values = []
     for variant_id, raw_gtin in rows:
         original = str(raw_gtin).strip()
-        normalized = "".join(char for char in original if char.isdigit())
+        if any(char not in "0123456789 -" for char in original):
+            continue
+        normalized = "".join(char for char in original if char in "0123456789")
         if len(normalized) not in allowed_lengths:
             # Preserve the original legacy column; do not promote malformed
             # values into the searchable GTIN evidence table.
+            continue
+        body = normalized[:-1]
+        weighted_sum = sum(
+            int(digit) * (3 if (len(body) - 1 - index) % 2 == 0 else 1)
+            for index, digit in enumerate(body)
+        )
+        expected_check_digit = (10 - (weighted_sum % 10)) % 10
+        if expected_check_digit != int(normalized[-1]):
             continue
         values.append({
             "id": uuid.uuid4(),
