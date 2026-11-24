@@ -233,7 +233,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         run_id = start_ingestion_run(session, store_id=store.id)
 
     try:
-        observation = asyncio.run(_connector().fetch_price_and_stock(external_id))
+        observation = asyncio.run(extract_price_stock_observation(_connector(), external_id))
         with _sessions()() as session, session.begin():
             record_connector_success(session, store_id=store_id)
         if not isinstance(observation, Mapping):
