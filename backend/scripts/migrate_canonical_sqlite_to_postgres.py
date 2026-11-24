@@ -27,12 +27,15 @@ from app.models import Base  # noqa: E402
 
 TABLE_ORDER = (
     "brands", "fragrances", "product_variants", "stores",
-    "legacy_product_id_map", "legacy_variant_id_map", "ingestion_raw",
-    "offers", "price_history", "match_audit", "ingestion_runs",
+    "brand_aliases", "fragrance_aliases", "product_variant_aliases",
+    "product_variant_gtins", "store_products",
+    "legacy_product_id_map", "legacy_variant_id_map", "ingestion_runs",
+    "discovery_runs", "extraction_runs", "ingestion_raw", "offers",
+    "price_history", "match_audit",
 )
-EXPECTED_REVISION = "0005_connector_quarantine"
-SUPPORTED_SOURCE_REVISIONS = {EXPECTED_REVISION, "0006_postgres_ingestion_queue"}
-SUPPORTED_TARGET_REVISIONS = {EXPECTED_REVISION, "0006_postgres_ingestion_queue"}
+EXPECTED_REVISION = "0007_catalog_identity"
+SUPPORTED_SOURCE_REVISIONS = {EXPECTED_REVISION}
+SUPPORTED_TARGET_REVISIONS = {EXPECTED_REVISION}
 
 
 def open_source_read_only(source_path: Path):
