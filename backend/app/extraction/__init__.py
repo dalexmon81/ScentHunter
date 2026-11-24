@@ -1,1 +1,1 @@
-"""Fetch and parse a known retailer product page or authorized feed record."""
+"""Known-product extraction boundary for retailer connector records."""
