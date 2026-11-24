@@ -70,11 +70,28 @@ The old paths above contain imports only; the implementation exists once in the 
 6. Replace legacy scripts/workflows one at a time and record the replacement path.
 7. Run repository-wide import/reference checks and the relevant test suites. Delete a legacy module only when references are zero, compatibility is unnecessary, and rollback is documented.
 
-## Static import graph audit snapshot\n\nThe CI artifact from commit `d94ff42c5df56496de4e1bb379eef9f694437e62` contains **186 Python modules**, **0 syntax errors** and **0 unresolved relative imports**. It reports **155 edges** into legacy modules; most are in the legacy engine, old scripts, tests and tools.\n\nThe remaining runtime dependencies under `app.*` are limited to five modules:\n\n| Runtime module | Legacy dependency still present | Reason to retain temporarily |\n|---|---|---|\n| `app.connectors.notino_feed` | `scrapers.notino.affiliate_feed` | Existing authorized CJ/VIV feed/parser path; preserve until a direct replacement passes live acceptance |\n| `app.search.catalog` | `scrapers.notino.affiliate_feed` | Existing search-side integration with the authorized feed snapshot; isolate only after tracing its read-only contract |\n| `app.offers.ingestion` | `scenthunter_next_engine.offer_normalizer` | Shared conservative raw-offer normalization still used by connector ingestion |\n| `app.offers.bplatz_adapter` | `scenthunter_next_engine.offer_normalizer` | Bplatz Phase 2 adapter still relies on the same single normalizer implementation |\n| `app.workers.notino_runtime` | `scenthunter_next_engine.next_engine_service` | Explicit legacy fallback matcher; canonical PostgreSQL matching runs first |\n\nThe direct `NextEngineService` matching calls were removed from offer ingestion and the Bplatz adapter and centralized behind `app.matching.legacy_fallback`. The adapter cannot override a successful database-native match.\n\n## Phase 1 exit criteria for dependency mapping
+## Static import graph audit snapshot
+
+The CI artifact from commit `d94ff42c5df56496de4e1bb379eef9f694437e62` contains **186 Python modules**, **0 syntax errors** and **0 unresolved relative imports**. It reports **155 edges** into legacy modules; most are in the legacy engine, old scripts, tests and tools.
+
+The remaining runtime dependencies under `app.*` are limited to five modules:
+
+| Runtime module | Legacy dependency still present | Reason to retain temporarily |
+|---|---|---|
+| `app.connectors.notino_feed` | `scrapers.notino.affiliate_feed` | Existing authorized CJ/VIV feed/parser path; preserve until a direct replacement passes live acceptance |
+| `app.search.catalog` | `scrapers.notino.affiliate_feed` | Existing search-side integration with the authorized feed snapshot; isolate only after tracing its read-only contract |
+| `app.offers.ingestion` | `scenthunter_next_engine.offer_normalizer` | Shared conservative raw-offer normalization still used by connector ingestion |
+| `app.offers.bplatz_adapter` | `scenthunter_next_engine.offer_normalizer` | Bplatz Phase 2 adapter still relies on the same single normalizer implementation |
+| `app.workers.notino_runtime` | `scenthunter_next_engine.next_engine_service` | Explicit legacy fallback matcher; canonical PostgreSQL matching runs first |
+
+The direct `NextEngineService` matching calls were removed from offer ingestion and the Bplatz adapter and centralized behind `app.matching.legacy_fallback`. The adapter cannot override a successful database-native match.
+
+## Phase 1 exit criteria for dependency mapping
 
 - [x] Existing target packages are documented in `docs/PHASE_1_STRUCTURE_MAP.md`.
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
-- [ ] Review the generated static import graph artifact and reconcile any remaining legacy import edges (AST graph generator and CI artifact pipeline are now implemented).
+- [x] Generate and review the static import graph: 186 modules, zero syntax errors and zero unresolved relative imports; the five remaining `app.*` runtime dependencies are documented above.
+- [ ] Plan retirement or replacement for the remaining legacy references in scripts, tests and operational tools; preserve recovery utilities until their replacements are verified.
 - [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository tests now exist; final CI run is pending).
 - [ ] Verify all legacy callers have a tested replacement before any module moves.
 
