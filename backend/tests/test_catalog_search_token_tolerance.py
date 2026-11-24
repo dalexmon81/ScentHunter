@@ -233,7 +233,7 @@ def test_notino_offer_with_stale_feed_timestamp_is_not_published():
         source_time = (datetime.now(timezone.utc) - timedelta(hours=13)).isoformat()
         raw = IngestionRaw(
             store_id=store.id,
-            raw_payload={"currency_explicit": True, "refresh_observation": {"source_updated_at": source_time}},
+            raw_payload={"currency_explicit": True, "refresh_observation": {"raw_xml": f"<entry><last_updated>{source_time}</last_updated></entry>"}},
             status="promoted", product_variant_id=variant.id,
         )
         session.add(raw)
