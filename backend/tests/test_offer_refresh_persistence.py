@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Base, Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store, IngestionRaw
-from app.services.offer_refresh import refresh_offer_observation
+from app.pricing.offer_refresh import refresh_offer_observation
 
 
 class OfferRefreshPersistenceTests(unittest.TestCase):
