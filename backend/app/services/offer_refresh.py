@@ -46,11 +46,25 @@ def refresh_offer_observation(
     if currency_explicit is not True:
         raise ValueError("refresh currency must be explicit in retailer source")
 
+    source_updated_at = observation.get("source_updated_at")
+    if store.slug == "notino-fr" and not source_updated_at:
+        raise ValueError("Notino refresh missing retailer source_updated_at")
     captured_at = datetime.now(timezone.utc)
+    if source_updated_at:
+        try:
+            parsed_source_time = datetime.fromisoformat(str(source_updated_at).replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("retailer source_updated_at is invalid") from None
+        if parsed_source_time.tzinfo is None:
+            raise ValueError("retailer source_updated_at must include a timezone")
+        captured_at = parsed_source_time.astimezone(timezone.utc)
+        if captured_at > datetime.now(timezone.utc):
+            raise ValueError("retailer source_updated_at cannot be in the future")
     raw = IngestionRaw(
         store_id=offer.store_id,
         external_product_id=offer.external_product_id,
         raw_payload={"refresh_observation": observation, "source": source,
+                     "source_updated_at": source_updated_at,
                      "currency_explicit": True},
         status="promoted",
         product_variant_id=offer.product_variant_id,
