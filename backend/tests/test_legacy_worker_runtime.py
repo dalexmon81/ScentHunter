@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.connectors.base import DiscoveredProduct
 from app.models import Base, IngestionRun, Store
-from app.services.connector_ingestion import ConnectorIngestionResult
+from app.offers.ingestion import ConnectorIngestionResult
 from app.workers import legacy_runtime, notino_runtime
 
 
