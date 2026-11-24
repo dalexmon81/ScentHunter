@@ -156,6 +156,14 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
                 "offers": offers,
             })
 
+        queue_rows = session.execute(text(
+            "SELECT stage, status, COUNT(*) FROM ingestion_queue_jobs GROUP BY stage, status ORDER BY stage, status"
+        )).all()
+        queue = [
+            {"stage": stage, "status": status, "count": int(count)}
+            for stage, status, count in queue_rows
+        ]
+
         return {
             "report": "phase0-postgresql-read-only",
             "generated_at": now.isoformat(),
@@ -163,6 +171,7 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
             "read_only": True,
             "scope": [name for name, _slug in STORE_SCOPE],
             "catalog": catalog_counts,
+            "queue": queue,
             "stores": store_report,
             "totals": {
                 "stores_in_scope": len(STORE_SCOPE),
