@@ -1,8 +1,8 @@
-"""Read-only application smoke test for a disposable Neon restore clone.
+"""Read-only catalog smoke test for a disposable Neon restore clone.
 
-This intentionally builds a tiny FastAPI app from the catalog read router only.
-It does not import backend.main, whose startup hooks can launch discovery,
-hydration and bootstrap workers.
+Phase 2 snapshots exercise the catalog API router. Historical 0006 snapshots
+use read-only SQL compatibility checks because the Phase 2 ORM expects columns
+that do not exist yet. The clone is never migrated or modified.
 """
 from __future__ import annotations
 
