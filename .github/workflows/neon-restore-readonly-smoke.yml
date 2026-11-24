@@ -1,6 +1,12 @@
 name: ScentHunter - isolated Neon restore read-only API smoke
 
 on:
+  pull_request:
+    paths:
+      - "backend/app/**"
+      - "backend/scripts/restore_readonly_smoke.py"
+      - "backend/requirements.txt"
+      - ".github/workflows/neon-restore-readonly-smoke.yml"
   workflow_dispatch:
     inputs:
       expected_database:
@@ -22,7 +28,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  static-validation:
+    name: Validate isolated smoke harness syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout tested branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile application and smoke harness
+        run: python -m compileall -q backend/app backend/scripts/restore_readonly_smoke.py
+
   readonly-api-smoke:
+    if: github.event_name == 'workflow_dispatch'
     name: Catalog status and search against disposable Neon clone
     runs-on: ubuntu-latest
     timeout-minutes: 10
