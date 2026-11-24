@@ -1,0 +1,60 @@
+name: ScentHunter - isolated Neon restore read-only API smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_database:
+        description: "Expected disposable clone database name (never production)"
+        required: true
+        type: string
+        default: "scenthunter_offerfirst"
+      search_query:
+        description: "Representative catalog search term"
+        required: true
+        type: string
+        default: "Dior"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-neon-restore-readonly-smoke
+  cancel-in-progress: false
+
+jobs:
+  readonly-api-smoke:
+    name: Catalog status and search against disposable Neon clone
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SCENTHUNTER_CATALOG_DATABASE_URL: ${{ secrets.RESTORE_DRILL_DATABASE_URL }}
+      SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
+      PGOPTIONS: "-c default_transaction_read_only=on"
+      RESTORE_EXPECTED_DATABASE: ${{ inputs.expected_database }}
+      RESTORE_SMOKE_SEARCH_QUERY: ${{ inputs.search_query }}
+      PYTHONPATH: backend
+    steps:
+      - name: Checkout tested branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Require a dedicated restore-clone credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SCENTHUNTER_CATALOG_DATABASE_URL:-}" ]]; then
+            echo "::error::Configure RESTORE_DRILL_DATABASE_URL with a dedicated read-only credential for the disposable Neon clone."
+            exit 1
+          fi
+
+      - name: Run isolated API read-only smoke test
+        run: python backend/scripts/restore_readonly_smoke.py
