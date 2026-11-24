@@ -18,7 +18,7 @@ from app.connectors.legacy_scrapers import (
     connector_key_for_store_slug,
 )
 from app.models import Offer, Store
-from app.services.connector_health import record_connector_failure, record_connector_success
+from app.monitoring.connector_health import record_connector_failure, record_connector_success
 from app.offers.ingestion import persist_connector_record
 from app.pricing.offer_refresh import refresh_offer_observation
 from app.workers import notino_runtime
