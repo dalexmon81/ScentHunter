@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Branch:** `phase1-structure-foundation-2026-11-24`  
-**Status:** package scaffolding plus first controlled domain extractions; no production cutover  
+**Status:** package scaffolding plus controlled catalog, matching and pricing extractions; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
