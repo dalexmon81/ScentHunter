@@ -32,6 +32,11 @@ class IngestionRunLifecycleTests(unittest.TestCase):
         self.session.close()
         self.engine.dispose()
 
+    def test_legacy_worker_import_is_same_implementation(self) -> None:
+        from app.workers.ingestion_run import start_ingestion_run as legacy_start
+        from app.repositories.ingestion_runs import start_ingestion_run as canonical_start
+        self.assertIs(legacy_start, canonical_start)
+
     def test_run_tracks_progress_and_finishes(self) -> None:
         run_id = start_ingestion_run(self.session, store_id=self.store.id)
         record_ingestion_progress(
