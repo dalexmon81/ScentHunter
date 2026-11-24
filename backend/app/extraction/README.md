@@ -1,18 +1,19 @@
 # Extraction
 
-**Responsibility:** fetch a known retailer product reference or existing offer observation and preserve the returned source evidence.
+**Responsibility:** fetch a known retailer product reference or a known offer's price/stock observation and preserve the raw source evidence.
 
 **Implementation ownership**
-- `app.extraction.product`: shared async boundary for fetching one known product or price/stock observation; validates identifiers and result shape without changing retailer fields.
-- `app.connectors`: retailer-specific network transport, authorized feed access, parsing and normalized connector contract.
+- `app.extraction.product.extract_product_record`: shared async boundary for product-page/feed-record fetches; validates the stable external ID, preserves the source mapping and fills a missing external ID without rewriting source fields.
+- `app.extraction.product.extract_price_stock_observation`: shared async boundary for price/stock refresh fetches; returns the source observation unchanged as a mapping.
+- `app.connectors`: retailer-specific transport and parsing (`parse_raw`) remain in the existing adapters.
 - `app.workers`: invokes extraction only in background jobs and retains run/error accounting.
-- `app.offers.ingestion`: receives extracted raw product records, applies canonical matching and publication gates, and persists evidence.
-- `app.pricing`: validates and persists refresh observations for existing offers.
+- `app.offers.ingestion`: parses/normalizes product records, resolves canonical identity and applies publication gates.
+- `app.pricing`: validates and persists observations for already-published offers without rematching canonical identity.
 
 **Boundaries**
-- Extraction operates on a known retailer identifier discovered earlier; it does not perform broad product discovery.
+- Extraction operates on a known retailer identifier; broad discovery and pagination belong to `app.discovery`.
 - It does not create canonical identities, choose variants, publish offers or update price history.
 - It does not run in user-facing search requests.
-- Do not copy scraper parsers into this package. Existing source parsers remain in `app.connectors` and `backend/scrapers/`.
+- Do not copy scraper parsers into this package; source parsing stays in the exact existing connector implementation.
 
-**Tests:** `backend/tests/test_extraction_product.py`, `backend/tests/test_notino_worker_runtime.py`, and `backend/tests/test_legacy_worker_runtime.py`.
+**Tests:** `backend/tests/test_extraction_product.py`, plus the Notino and legacy worker runtime regression suites.
