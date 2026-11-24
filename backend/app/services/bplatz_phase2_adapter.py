@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.services.ingestion_persistence import (
+from app.offers.persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
 from scenthunter_next_engine.next_engine_service import NextEngineService
