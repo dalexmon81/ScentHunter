@@ -13,12 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Wait for this revision's successful PostgreSQL deploy
+      - name: Wait for this revision's successful PostgreSQL deploy when runtime files changed
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          COMMIT="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA")"
+          RUNTIME_CHANGED="$(printf '%s' "$COMMIT" | jq -r '
+            [.files[].filename]
+            | any(startswith("backend/") or . == "fly.toml" or . == "Dockerfile")
+          ')"
+          if [ "$RUNTIME_CHANGED" != "true" ]; then
+            echo "No backend or Fly runtime files changed; no deployment is required for this revision."
+            echo "Existing production revision remains the target of the read-only audit."
+            exit 0
+          fi
+
           READY=0
           for attempt in $(seq 1 90); do
             DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
