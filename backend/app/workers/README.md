@@ -64,7 +64,7 @@ python -m unittest discover -s tests -p 'test_catalog_worker_queue.py' -v
 
 ## Durable ingestion run tracking
 
-`app.workers.ingestion_run` provides transaction-scoped helpers for creating,
+`app.repositories.ingestion_runs` provides transaction-scoped helpers for creating,
 updating and closing `IngestionRun` rows. A worker records progress in small
 transactions, retains bounded error messages and closes each run as
 `completed`, `partial` or `failed`. The helpers never commit on behalf of
