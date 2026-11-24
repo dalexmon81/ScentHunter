@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 EXPECTED_DATABASE = os.environ.get("RESTORE_EXPECTED_DATABASE", "scenthunter_offerfirst")
-SEARCH_QUERY = os.environ.get("RESTORE_SMOKE_SEARCH_QUERY", "Dior")
+SEARCH_QUERY = os.environ.get("RESTORE_SMOKE_SEARCH_QUERY", "Vulcan Feu")
 
 
 def fail(message: str) -> None:
@@ -92,8 +92,20 @@ def main() -> int:
             })
             if search_payload.get("status") != "completed" or search_payload.get("completed") is not True:
                 fail("Catalog search did not complete")
-            if not isinstance(search_payload.get("results"), list):
+            results = search_payload.get("results")
+            if not isinstance(results, list):
                 fail("Catalog search response has no results list")
+            if search_payload.get("count", 0) < 1 or not results:
+                fail(f"Representative catalog search returned no product results for {SEARCH_QUERY!r}")
+            if search_payload.get("offer_count", 0) < 1:
+                fail(f"Representative catalog search returned no published offers for {SEARCH_QUERY!r}")
+            if not any(item.get("offers") for item in results):
+                fail("Search results contain no nested retailer offers")
+            print("SEARCH_FIRST_RESULT", {
+                "brand": results[0].get("brand"),
+                "name": results[0].get("name"),
+                "offers": len(results[0].get("offers", [])),
+            })
 
         print("RESTORE_READ_ONLY_SMOKE_RESULT=PASS")
         return 0
