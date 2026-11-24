@@ -3,9 +3,11 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.catalog_search import router as catalog_search_router
+from app.api.phase0_baseline import router as phase0_baseline_router
 
 app = FastAPI(title="ScentHunter API", version="6.0-postgresql-only")
 app.include_router(catalog_search_router)
+app.include_router(phase0_baseline_router)
 
 
 @app.get("/health")
