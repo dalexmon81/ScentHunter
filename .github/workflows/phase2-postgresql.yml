@@ -2,7 +2,7 @@ name: Phase 2 PostgreSQL compatibility
 
 on:
   pull_request:
-    branches: [main, refactor/catalog-first-architecture]
+    branches: [main, refactor/catalog-first-architecture, phase1-catalog-boundary-tests-2026-11-24]
     paths:
       - "backend/app/db.py"
       - "backend/app/db_runtime_identity.py"
