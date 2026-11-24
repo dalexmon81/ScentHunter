@@ -21,7 +21,7 @@ on:
 
 jobs:
   deploy:
-    if: ${{ false }} # Temporarily paused for the approved PR merges; re-enable only after separate release approval.
+    if: ${{ true }} # Release explicitly authorized on 2026-11-24.
     name: Deploy ScentHunter
     runs-on: ubuntu-latest
     timeout-minutes: 20
