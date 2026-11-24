@@ -44,7 +44,7 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 
 1. Add package boundaries and document ownership (this branch).
 2. Map imports and call sites from `backend/main.py`, `catalog_engine.py`, `product_matcher.py`, `offer_engine` and legacy scripts.
-3. Add characterization tests around existing behavior before moving implementation; CI runs discovery-dispatch and import-graph auditor tests.
+3. Add characterization tests around existing behavior before moving implementation; CI runs discovery-dispatch and import-graph auditor tests, and uploads a read-only AST import graph artifact.
 4. Extract one responsibility at a time behind existing imports/API contracts.
 5. Update runtime imports only after tests prove behavior parity.
 6. Retire legacy paths only after repository-wide reference search, live connector acceptance and rollback review.
@@ -63,5 +63,5 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 - All target package paths exist and have documented ownership.
 - Catalog normalization, matching, offers, pricing and connector health each have one implementation; legacy import paths are re-export shims.
 - Notino and legacy discovery workers share one tested dispatch/pagination implementation. Notino and legacy product/refresh fetches share the tested `app.extraction.product` boundary; retailer parsers remain in connectors.
-- CI builds a read-only AST import graph and uploads it as a workflow artifact; dynamic imports still require manual review.
+- CI builds a read-only AST import graph and uploads it as a workflow artifact; syntax errors fail the audit, while dynamic imports and unresolved absolute imports still require manual review.
 - Production entrypoint, queue backend, database schema/data, feed, scrapers and production configuration remain unchanged.
