@@ -52,9 +52,9 @@ def normalize_gtin(value: Any) -> str | None:
     if value is None or isinstance(value, bool):
         return None
     raw = str(value).strip()
-    if not raw or not re.fullmatch(r"[0-9\\s-]+", raw):
+    if not raw or not re.fullmatch(r"[0-9\s-]+", raw):
         return None
-    digits = re.sub(r"[\\s-]", "", raw)
+    digits = re.sub(r"[\s-]", "", raw)
     if len(digits) not in {8, 12, 13, 14}:
         return None
     body = digits[:-1]
