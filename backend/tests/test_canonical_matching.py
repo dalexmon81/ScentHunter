@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Base, Brand, Fragrance, Offer, PriceHistory, ProductVariant, Store
 from decimal import Decimal
-from app.services.ingestion_persistence import promote_offer, record_match, stage_raw_offer
+from app.offers.persistence import promote_offer, record_match, stage_raw_offer
 from app.matching.canonical_matching import _gtin, resolve_canonical_variant
 
 
