@@ -67,7 +67,7 @@ The old paths above contain imports only; the implementation exists once in the 
 - [x] Existing target packages are documented in `docs/PHASE_1_STRUCTURE_MAP.md`.
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
 - [ ] Review the generated static import graph artifact and reconcile any remaining legacy import edges (AST graph generator and CI artifact pipeline are now implemented).
-- [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing and monitoring tests now include legacy-import identity checks).
+- [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository tests now exist; final CI run is pending).
 - [ ] Verify all legacy callers have a tested replacement before any module moves.
 
 **Safety:** This document does not authorize deletion, data migration, feed removal, workflow disablement or production changes.
