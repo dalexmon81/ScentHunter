@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Implementation branch:** `phase1-catalog-boundary-tests-2026-11-24`  
-**Status:** controlled catalog, matching, offers, pricing, monitoring, discovery-dispatch and ingestion-run repository extractions; static import-graph audit added; no production cutover  
+**Status:** controlled catalog, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository extractions; static import-graph audit added; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
@@ -23,7 +23,7 @@
 | `app/catalog` | Canonical brand, fragrance, variant and alias domain | `app/catalog/normalization.py` (single implementation); `app/models/catalog.py` (ORM persistence); legacy normalization re-export only |
 | `app/connectors` | Per-retailer transport and source parsing adapters | `app/connectors/base.py`; `legacy_scrapers.py`; `notino_feed.py`; `backend/scrapers/*` |
 | `app/discovery` | Dispatch every discovered reference to background fetch jobs and continue pagination | `app/discovery/dispatch.py`; retailer discovery I/O remains in connectors; worker owns queue backend and run accounting |
-| `app/extraction` | Boundary for fetching a known retailer reference and preserving raw source evidence | Existing transport/parsing stays in `app.connectors`; worker invokes it; offer ingestion persists the raw record |
+| `app/extraction` | Fetch a known retailer reference and preserve the raw source record | `app/extraction/product.py` shared async boundary; source transport/parsing remains in existing connectors |
 | `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/matching/canonical_matching.py` (single implementation); `app/models/catalog.py`; offer persistence records match audit |
 | `app/offers` | Orchestrate extracted records, persist match outcomes and publish verified offers | `app/offers/ingestion.py` and `app/offers/persistence.py` (single implementations); old service paths are re-exports |
 | `app/pricing` | Refresh price and availability for existing offers and append price history | `app/pricing/offer_refresh.py` (single implementation); old service path is a re-export |
