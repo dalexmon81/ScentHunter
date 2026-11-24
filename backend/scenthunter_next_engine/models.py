@@ -6,10 +6,8 @@ modify product_catalog.json, scrape retailers, or change production behavior.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from enum import Enum
-from typing import Any
-
 from app.offers.contracts import RetailerOffer, decimal_or_none
 
 
