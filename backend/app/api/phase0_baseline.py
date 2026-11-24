@@ -44,7 +44,8 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
     """Return a point-in-time catalog/retailer snapshot without writing anything."""
     _authorize(authorization)
 
-    from app.api.catalog_search import _eligible_offer_rows, _engine
+    from app.api.catalog_search import _engine
+    from app.search.catalog import _eligible_offer_rows
 
     now = datetime.now(timezone.utc)
     with Session(_engine()) as session:
