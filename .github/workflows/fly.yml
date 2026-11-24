@@ -191,7 +191,7 @@ jobs:
           import urllib.request
 
           base = "https://scenthunter.fly.dev"
-          query = "Dior Sauvage"
+          query = "Liquid Brun"
 
           def get_json(path):
               request = urllib.request.Request(
