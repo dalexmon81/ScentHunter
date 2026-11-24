@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models import Base, Store, IngestionRun
-from app.workers.ingestion_run import (
+from app.repositories.ingestion_runs import (
     finish_ingestion_run,
     record_ingestion_progress,
     start_ingestion_run,
