@@ -58,6 +58,14 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 - No CJ/VIV removal; it remains a current Notino ingestion source.
 - No Fly.io deployment or production secret changes.
 
+## Verified implementation and limitations
+
+- The canonical implementation package boundary is in place for the current scope. `app/repositories` currently contains transaction-scoped ingestion-run persistence; full ORM isolation is intentionally incremental and is not claimed complete.
+- `backend/tests` remains the authoritative test discovery location. `app/tests` is a package boundary, not a second test suite.
+- The static graph is a CI artifact, not a dynamic runtime trace. It records 191 modules, 446 local import edges, no syntax errors and no unresolved relative imports on the audited PR commit.
+- The graph still contains direct legacy-runtime references documented in `docs/PHASE_1_LEGACY_DEPENDENCY_MAP.md`. These are retained compatibility boundaries, not completed retirements.
+- CI evidence is limited to the named workflows and commit in the dependency map. A skipped live CJ feed check is not considered a successful live test.
+
 ## Acceptance for the current implementation slice
 
 - All target package paths exist and have documented ownership.
