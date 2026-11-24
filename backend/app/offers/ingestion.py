@@ -19,7 +19,7 @@ from app.offers.persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
 from app.matching.legacy_fallback import LegacyOfferMatcher, resolve_legacy_catalog_match
-from scenthunter_next_engine.offer_normalizer import normalize_offer
+from app.offers.normalization import normalize_offer
 
 
 @dataclass(frozen=True)
