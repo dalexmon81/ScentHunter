@@ -6,7 +6,7 @@
 - `app.offers.ingestion`: shared orchestration for parsing connector records, invoking canonical matching, applying publication gates and promoting eligible offers.
 - `app.offers.bplatz_adapter`: compatibility adapter for the existing Bplatz Phase 2 hydration path; it reuses the shared persistence gate and retains its established Next Engine matching behavior.
 - `app.offers.persistence`: single SQLAlchemy persistence gate for raw staging, legacy-ID mapping, match audit and offer promotion.
-- `app.matching.canonical_matching`: decides the canonical variant; offers persists the decision but does not duplicate matching rules.
+- `app.matching.canonical_matching`: database-native canonical resolver; `app.matching.legacy_fallback`: isolated compatibility adapter used only when the canonical resolver has no safe match. Offers persists the decision but does not duplicate matching rules.
 - `app.models`: Offer, IngestionRaw, MatchAudit and PriceHistory persistence entities.
 - `app.pricing.offer_refresh`: updates already-published offers; it does not rediscover or rematch them.
 
