@@ -91,10 +91,9 @@ jobs:
               "|---|---|---:|---:|---:|---:|---|",
           ]
           for row in stores:
-              for row in stores:
-                  raw = row.get("raw_ingestion_by_status") or {}
-                  raw_summary = f"{raw.get('pending', 0)} / {raw.get('promoted', 0)} / {raw.get('rejected', 0)}"
-                  lines.append(f"| {row['store']} | {row['status']} | {row['total_offers']} | {row['active_offers']} | {row['publishable_offers']} | {raw_summary} | {row['last_successful_sync_at'] or '—'} |")
+              raw = row.get("raw_ingestion_by_status") or {}
+              raw_summary = f"{raw.get('pending', 0)} / {raw.get('promoted', 0)} / {raw.get('rejected', 0)}"
+              lines.append(f"| {row['store']} | {row['status']} | {row['total_offers']} | {row['active_offers']} | {row['publishable_offers']} | {raw_summary} | {row['last_successful_sync_at'] or '—'} |")
           gaps = [
               f"{row['store']}: database record missing" if not row['database_present']
               else f"{row['store']}: zero publishable offers"
