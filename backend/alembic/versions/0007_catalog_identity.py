@@ -177,6 +177,13 @@ def _backfill_store_products(connection):
         item["created_at"] = _min_time(item["created_at"], row["captured_at"])
         item["updated_at"] = _max_time(item["updated_at"], row["captured_at"])
 
+    now = datetime.now(timezone.utc)
+    for item in grouped.values():
+        item["first_seen_at"] = item["first_seen_at"] or item["created_at"] or now
+        item["last_seen_at"] = item["last_seen_at"] or item["updated_at"] or now
+        item["created_at"] = item["created_at"] or now
+        item["updated_at"] = item["updated_at"] or now
+
     values = list(grouped.values())
     for offset in range(0, len(values), 500):
         connection.execute(products.insert(), values[offset:offset + 500])
