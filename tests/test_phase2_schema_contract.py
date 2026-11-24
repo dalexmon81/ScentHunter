@@ -217,3 +217,92 @@ def test_database_url_accepts_postgresql_runtime(monkeypatch):
     monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
     from app.db import database_url
     assert database_url() == "postgresql+psycopg://example.invalid/catalog"
+
+
+def test_phase2_backfill_scale_with_50k_raw_observations(tmp_path, monkeypatch):
+    """Measure the migration backfill at roughly the current raw-row volume."""
+    import json
+    import time
+    import uuid
+
+    raw_observations = 50_000
+    products_per_store = 1_000
+    observations_per_product = 5
+    store_count = 10
+
+    db_path = tmp_path / "phase2-scale" / "catalog.sqlite3"
+    monkeypatch.setenv("SCENTHUNTER_CATALOG_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.delenv("SCENTHUNTER_DATABASE_URL", raising=False)
+    config = Config(str(BACKEND / "alembic.ini"))
+    command.upgrade(config, "0006_postgres_ingestion_queue")
+
+    engine = make_engine()
+    store_ids = [uuid.uuid4().hex for _ in range(store_count)]
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "INSERT INTO stores (id,name,slug,currency,status) "
+                "VALUES (:id,:name,:slug,'EUR','active')"
+            ), [
+                {"id": store_id, "name": f"Scale Store {index}",
+                 "slug": f"scale-store-{index}"}
+                for index, store_id in enumerate(store_ids)
+            ])
+
+            insert_raw = text(
+                "INSERT INTO ingestion_raw "
+                "(id,store_id,raw_payload,external_product_id,status) "
+                "VALUES (:id,:store,:payload,:external,'pending')"
+            )
+            payload = json.dumps({
+                "title": "Synthetic Phase 2 scale fixture",
+                "product_url": "https://scale.example/product",
+            })
+            batch = []
+            for store_index, store_id in enumerate(store_ids):
+                for product_index in range(products_per_store):
+                    external_id = f"scale-{store_index}-{product_index}"
+                    for _ in range(observations_per_product):
+                        batch.append({
+                            "id": uuid.uuid4().hex,
+                            "store": store_id,
+                            "payload": payload,
+                            "external": external_id,
+                        })
+                        if len(batch) >= 1_000:
+                            connection.execute(insert_raw, batch)
+                            batch.clear()
+            if batch:
+                connection.execute(insert_raw, batch)
+
+        started = time.perf_counter()
+        command.upgrade(config, "head")
+        elapsed_seconds = time.perf_counter() - started
+
+        with engine.connect() as connection:
+            product_count = connection.execute(text(
+                "SELECT count(*) FROM store_products"
+            )).scalar_one()
+            linked_raw_count = connection.execute(text(
+                "SELECT count(*) FROM ingestion_raw WHERE store_product_id IS NOT NULL"
+            )).scalar_one()
+
+        expected_products = store_count * products_per_store
+        assert raw_observations == store_count * products_per_store * observations_per_product
+        assert product_count == expected_products
+        assert linked_raw_count == raw_observations
+        print(
+            "PHASE2_BACKFILL_SCALE",
+            {
+                "raw_observations": raw_observations,
+                "unique_store_products": product_count,
+                "linked_raw_observations": linked_raw_count,
+                "elapsed_seconds": round(elapsed_seconds, 2),
+            },
+        )
+        assert elapsed_seconds < 120, (
+            f"Phase 2 backfill took {elapsed_seconds:.2f}s for "
+            f"{raw_observations} raw observations"
+        )
+    finally:
+        engine.dispose()
