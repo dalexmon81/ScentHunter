@@ -58,6 +58,9 @@ NON_PERFUME_MARKERS = {
     "tester", "testeur", "sample", "samples", "shampoo", "shower gel", "body wash", "body lotion",
     "body cream", "body milk", "deodorant", "deo spray", "aftershave", "after shave", "body spray",
     "hair mist", "makeup", "cosmetics", "cosmetic", "skincare", "skin care", "cosmetici",
+    # French non-perfume product labels observed on Notino.fr search results.
+    "apres rasage", "apres-rasage", "apres rasage parfume", "baume apres rasage",
+    "lotion apres rasage", "soin apres rasage", "creme apres rasage",
     "creme corpo", "crema corpo", "gel doccia", "bagnoschiuma", "deodorante", "cofanetto", "estuche",
     "etui", "pochette", "miniature", "mini spray", "minispray",
 }
