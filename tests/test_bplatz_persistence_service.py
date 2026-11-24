@@ -264,7 +264,7 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
 
 
 def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, record, normalized, group = _real_bplatz_components()
@@ -317,7 +317,7 @@ def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
 
 def test_bplatz_phase2_repeat_hydration_updates_one_offer_and_price_history(tmp_path):
     from datetime import datetime, timedelta, timezone
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, record, normalized, _group = _real_bplatz_components()
@@ -426,7 +426,7 @@ def test_live_liquid_brun_persistence_makes_one_backed_up_offer_searchable(tmp_p
 
 
 def test_bplatz_unmatched_record_remains_pending_without_offer(tmp_path):
-    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     engine, db_url, _ = _migrated_database(tmp_path)
