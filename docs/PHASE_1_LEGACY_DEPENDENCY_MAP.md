@@ -45,7 +45,7 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 
 The old paths above contain imports only; the implementation exists once in the new package. Keep these shims until all external or untracked consumers are ruled out.
 
-## Additional shared discovery extraction and import audit (current branch)
+## Additional shared discovery, repository and import-audit extractions (current branch)
 
 - `app.discovery.dispatch` now owns the shared candidate-fetch dispatch and pagination continuation used by both Notino and legacy worker discovery handlers.
 - Discovery candidates are not pre-filtered by retailer-specific or legacy matching logic; canonical resolution remains in `app.matching` and publication remains in `app.offers`.
