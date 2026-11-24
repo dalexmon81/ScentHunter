@@ -83,6 +83,93 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
                     {"id": uuid4(), "store": uuid4()},
                 )
 
+    def test_postgres_catalog_search_returns_a_known_product_and_offer(self):
+        from uuid import uuid4
+        import json
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from app.api import catalog_search
+
+        brand_id, fragrance_id, variant_id, store_id, raw_id, offer_id, audit_id = [
+            uuid4() for _ in range(7)
+        ]
+        suffix = uuid4().hex
+        slug = "phase2-search-" + suffix
+        external_id = "phase2-search-" + suffix
+        payload = json.dumps({"currency_explicit": True})
+
+        try:
+            with self.engine.begin() as connection:
+                connection.execute(text(
+                    "INSERT INTO brands (id,name,slug,normalized_name) "
+                    "VALUES (:id,'Probe House',:slug,:slug)"
+                ), {"id": brand_id, "slug": slug})
+                connection.execute(text(
+                    "INSERT INTO fragrances (id,brand_id,name,slug) "
+                    "VALUES (:id,:brand,'Saffron Search Probe',:slug)"
+                ), {"id": fragrance_id, "brand": brand_id, "slug": slug})
+                connection.execute(text(
+                    "INSERT INTO product_variants "
+                    "(id,fragrance_id,concentration,size_ml,canonical_key) "
+                    "VALUES (:id,:fragrance,'Eau de Parfum',100,:key)"
+                ), {"id": variant_id, "fragrance": fragrance_id, "key": slug})
+                connection.execute(text(
+                    "INSERT INTO stores (id,name,slug,domain,country,currency,status) "
+                    "VALUES (:id,'Phase 2 CI Store',:slug,'phase2-ci.example','DE','EUR','active')"
+                ), {"id": store_id, "slug": slug})
+                connection.execute(text(
+                    "INSERT INTO ingestion_raw "
+                    "(id,store_id,raw_payload,external_product_id,product_variant_id,status) "
+                    "VALUES (:id,:store,CAST(:payload AS json),:external,:variant,'promoted')"
+                ), {
+                    "id": raw_id, "store": store_id, "payload": payload,
+                    "external": external_id, "variant": variant_id,
+                })
+                connection.execute(text(
+                    "INSERT INTO offers "
+                    "(id,store_id,product_variant_id,external_product_id,ingestion_raw_id,"
+                    "url,price,currency,availability,source,status) "
+                    "VALUES (:id,:store,:variant,:external,:raw,"
+                    "'https://phase2-ci.example/saffron-search-probe',29.90,'EUR',"
+                    "'in_stock','phase2-ci','active')"
+                ), {
+                    "id": offer_id, "store": store_id, "variant": variant_id,
+                    "external": external_id, "raw": raw_id,
+                })
+                connection.execute(text(
+                    "INSERT INTO match_audit (id,offer_id,product_variant_id,method,confidence) "
+                    "VALUES (:id,:offer,:variant,'deterministic_ci',1.0)"
+                ), {"id": audit_id, "offer": offer_id, "variant": variant_id})
+
+            catalog_search._engine.cache_clear()
+            app = FastAPI(title="Phase 2 PostgreSQL catalog search test")
+            app.include_router(catalog_search.router)
+            with TestClient(app) as client:
+                response = client.get(
+                    "/api/catalog/search", params={"q": "Saffron Search Probe"}
+                )
+            self.assertEqual(response.status_code, 200, response.text)
+            result = response.json()
+            self.assertEqual(result["status"], "completed")
+            self.assertGreaterEqual(result["count"], 1)
+            self.assertGreaterEqual(result["offer_count"], 1)
+            self.assertTrue(any(
+                item["brand"] == "Probe House"
+                and item["name"].startswith("Saffron Search Probe")
+                and any(offer["store"] == "Phase 2 CI Store" for offer in item["offers"])
+                for item in result["results"]
+            ))
+        finally:
+            catalog_search._engine.cache_clear()
+            with self.engine.begin() as connection:
+                connection.execute(text("DELETE FROM match_audit WHERE id=:id"), {"id": audit_id})
+                connection.execute(text("DELETE FROM offers WHERE id=:id"), {"id": offer_id})
+                connection.execute(text("DELETE FROM ingestion_raw WHERE id=:id"), {"id": raw_id})
+                connection.execute(text("DELETE FROM product_variants WHERE id=:id"), {"id": variant_id})
+                connection.execute(text("DELETE FROM fragrances WHERE id=:id"), {"id": fragrance_id})
+                connection.execute(text("DELETE FROM brands WHERE id=:id"), {"id": brand_id})
+                connection.execute(text("DELETE FROM stores WHERE id=:id"), {"id": store_id})
+
     def test_queue_cutover_claim_skips_legacy_backlog_without_mutating_it(self):
         from datetime import datetime, timedelta, timezone
         from uuid import uuid4
