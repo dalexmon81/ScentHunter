@@ -392,3 +392,43 @@ Phase 0 remains **OPEN / NOT PASSED**. The following are still required before a
 5. Complete a full restore drill with verified data and application recovery instructions. The Neon clone rehearsal above is only a partial restore gate.
 
 No old queue rows, raw records, history, store rows, or catalog files were deleted in this re-check.
+
+---
+
+## 11. Phase 0 closure addendum — 2026-11-24
+
+**Decision:** Phase 0 is CLOSED for the purpose of establishing the current-state map and authorizing the first non-destructive Phase 1 structure work. This closure does not certify every retailer scraper as live or authorize deletion of legacy code/data.
+
+### Direct live checks completed after the original inventory draft
+
+- Fly.io app scenthunter was inspected through the existing read-only diagnostics workflow. The app and worker machines were started in Amsterdam; one standby worker machine was stopped. Three unattached volumes were listed. Secret names were inspected only; no secret values were read.
+- The Fly runtime reported postgresql+psycopg, database scenthunter_offerfirst, Neon host ep-aged-thunder-ba5bz2vz.c-8.eu-central-1.aws.neon.tech, SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1, and no legacy SQLite catalog files at the two checked paths.
+- Neon endpoint inventory confirms the Fly database is on branch offer-first-postgres-cutover, not the default production branch.
+- Read-only SQL against the live operational branch returned: 65 brands, 1,403 fragrances, 556 variants, 10 stores, 167 offers, 9,203 price-history rows, 49,175 raw-ingestion rows, 51,275 ingestion runs, 174,727 queue jobs and 260 match-audit rows.
+- The default Neon branch production / neondb independently returned 73 brands, 3,579 fragrances, 853 variants, zero stores and zero offers. These are separate datasets and must not be conflated.
+- The production Fly app returned catalog status ready; public catalog search for Hawas Kobra returned one product and one offer in the read-only smoke test.
+- The latest Fly Deploy workflow on 2026-11-24 completed successfully. A separate Notino CJ production feed monitor failed; current evidence identifies an obsolete route check and does not prove the Notino feed itself is unavailable.
+- The operational store registry has six active retailer identities (Bplatz, Deloox BE, Easycosmetic DE, Notino FR, Parfum-Zentrum DE, Sabina), four inactive Deloox country rows and three requested retailer identities absent from the registry (Orioudh, Parfumcity, PerfumeMarket).
+- Current operational counts changed while the audit was running. The backup, verified-backup and restore-drill branches therefore have different history/raw/run/queue counts. The Neon restore-drill branch is queryable and confirms a clone/read rehearsal, not a complete application disaster-recovery test.
+
+### Phase 0 deliverables and remaining gates
+
+| Deliverable | Closure status |
+|---|---|
+| GitHub repository, branches, PRs, workflows and core paths inventoried | Complete |
+| Neon production/default branch distinction and operational schema/data photographed | Complete |
+| Fly.io app, machines, volumes, runtime DB identity and secret names photographed | Complete |
+| Frontend source/runtime entrypoint and public search route identified | Complete |
+| Legacy runtime, scraper packages, CJ/XML/CSV/import paths mapped at source level | Complete |
+| Reusable / modify / preserve classification and safe retirement order documented | Complete |
+| Git revision preserved and Neon backup/clone branches identified and read-queried | Complete as an audit safeguard; backup branches are not point-in-time identical |
+| All nine requested retailers proven live end-to-end | Not complete; move to retailer-by-retailer acceptance in Phases 3–4 and Phase 11 |
+| Full application + data disaster-recovery restore | Not complete; retain as a mandatory pre-production-cutover gate in Phase 12 |
+
+### Authorization boundary for Phase 1
+
+Phase 1 may begin with additive package scaffolding, responsibility documentation, dependency/import mapping and tests. No production deployment, database mutation, secret removal, volume deletion, data cleanup, legacy module deletion or mass file movement is authorized by this closure.
+
+Legacy files and feed parsers remain preserved until their replacement paths pass explicit regression and live acceptance tests. The CJ/VIV Notino feed remains a current ingestion dependency; it is not to be removed as part of Phase 1 scaffolding.
+
+**Phase 0 exit:** CLOSED — inventory and dependency map delivered; unresolved live connector and full disaster-recovery gates explicitly carried forward.
