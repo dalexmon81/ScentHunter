@@ -68,7 +68,7 @@ These are live read-only counts at the time of this audit; queue and ingestion t
 
 All 167 current offers have a store external product ID and URL, and each `(store_id, external_product_id)` pair is unique. All 167 are currently linked to a canonical variant. The offer source distribution is 108 Notino CJ/VIV, 28 Bplatz, 24 Sabina and 7 Parfumzentrum. Six store rows are active; Deloox.be and Easycosmetic.de currently have no active offers.
 
-The raw observation table contains 33,189 distinct `(store_id, external_product_id)` identities. Its JSON payload includes a product URL and title/name in 41,103 of 50,217 rows. A GTIN key is present in 37,275 raw rows.
+The raw observation table contains 33,189 distinct `(store_id, external_product_id)` identities. Its JSON payload includes a product URL and title/name in 41,103 of 50,217 rows. A direct product URL is present in 41,103 raw rows, a title/name in 41,103 rows, and a GTIN key in 37,275 raw rows.
 
 Current ingestion-run states: 9,407 completed, 19 failed, 42,890 partial and 25 running. Queue jobs total 176,055; 74,382 fetch jobs are queued. These are operational state, not cleanup candidates. Do not retry, delete, reclassify or reset them as part of Phase 2 schema work.
 
@@ -105,7 +105,7 @@ Add `store_products`:
 - `first_seen_at`, `last_seen_at`, `status`, `created_at`, `updated_at`.
 - Unique `(store_id, external_product_id)`; indexes for store/status and last-seen refresh.
 
-Add nullable `store_product_id` FKs to `ingestion_raw` and `offers`. Keep the existing `store_id`, `external_product_id`, URL and variant columns during the compatibility period. Backfill store products from distinct raw `(store_id, external_product_id)` pairs, using raw payload URL/title keys only when present. Then link current offers. Do not delete the legacy columns in this phase.
+Add nullable `store_product_id` FKs to `ingestion_raw` and `offers`. Keep the existing `store_id`, `external_product_id`, URL and variant columns during the compatibility period. Backfill store products from distinct raw `(store_id, external_product_id)` pairs, using direct raw payload `product_url`/`url` and title/name keys only when present; affiliate tracking URLs are not promoted to canonical URLs. Then link current offers. Do not delete the legacy columns in this phase.
 
 Expected initial backfill: up to 33,189 store-product identities from `ingestion_raw`; all 167 current offers have IDs and can be linked. The migration must report unmatched identities rather than inventing IDs.
 
