@@ -79,12 +79,12 @@ The remaining runtime dependencies under `app.*` are limited to five modules:
 | Runtime module | Legacy dependency still present | Reason to retain temporarily |
 |---|---|---|
 | `app.connectors.notino_feed` | `scrapers.notino.affiliate_feed` | Existing authorized CJ/VIV feed/parser path; preserve until a direct replacement passes live acceptance |
-| `app.search.catalog` | `scrapers.notino.affiliate_feed` | Existing search-side integration with the authorized feed snapshot; isolate only after tracing its read-only contract |
+| `app.search.catalog` | None after this extraction; uses `app.connectors.notino_links` | Pure CJ URL validation moved out of the feed parser; lazy connector exports avoid loading scrapers during search |
 | `app.offers.ingestion` | `scenthunter_next_engine.offer_normalizer` | Shared conservative raw-offer normalization still used by connector ingestion |
 | `app.offers.bplatz_adapter` | `scenthunter_next_engine.offer_normalizer` | Bplatz Phase 2 adapter still relies on the same single normalizer implementation |
 | `app.workers.notino_runtime` | `scenthunter_next_engine.next_engine_service` | Explicit legacy fallback matcher; canonical PostgreSQL matching runs first |
 
-The direct `NextEngineService` matching calls were removed from offer ingestion and the Bplatz adapter and centralized behind `app.matching.legacy_fallback`. The adapter cannot override a successful database-native match.
+The direct `NextEngineService` matching calls were removed from offer ingestion and the Bplatz adapter and centralized behind `app.matching.legacy_fallback`. The adapter cannot override a successful database-native match. Pure Notino/CJ URL validation was moved to `app.connectors.notino_links`; `app.search.catalog` no longer imports the legacy scraper module. `app.connectors` exports are lazy so importing the pure helper does not eagerly load retailer adapters.
 
 ## Phase 1 exit criteria for dependency mapping
 
