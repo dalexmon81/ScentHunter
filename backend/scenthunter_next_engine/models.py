@@ -8,7 +8,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from app.offers.contracts import RetailerOffer, decimal_or_none
+try:
+    # Import style used when backend/ is the Python path (production workers/CI).
+    from app.offers.contracts import RetailerOffer, decimal_or_none
+except ModuleNotFoundError as exc:
+    if exc.name != "app":
+        raise
+    # Import style used when the repository root is the Python path (legacy tests/tools).
+    from backend.app.offers.contracts import RetailerOffer, decimal_or_none
 
 
 class MatchStatus(str, Enum):
