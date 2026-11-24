@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Implementation branch:** `phase1-catalog-boundary-tests-2026-11-24`  
-**Status:** controlled catalog, matching, offers, pricing, monitoring and discovery-dispatch extractions; static import-graph audit added; no production cutover  
+**Status:** controlled catalog, matching, offers, pricing, monitoring, discovery-dispatch and ingestion-run repository extractions; static import-graph audit added; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
@@ -28,7 +28,7 @@
 | `app/offers` | Orchestrate extracted records, persist match outcomes and publish verified offers | `app/offers/ingestion.py` and `app/offers/persistence.py` (single implementations); old service paths are re-exports |
 | `app/pricing` | Refresh price and availability for existing offers and append price history | `app/pricing/offer_refresh.py` (single implementation); old service path is a re-export |
 | `app/workers` | Scheduling, durable queue execution, retries and orchestration | `app/workers/postgres_worker.py`; `postgres_queue.py`; `ingestion_run.py` |
-| `app/repositories` | Database queries and persistence interfaces | Existing SQLAlchemy models and persistence services; extract incrementally |
+| `app/repositories` | Transaction-scoped persistence operations and database query interfaces | `app/repositories/ingestion_runs.py`; `app.models` entities; offers/pricing keep their atomic domain persistence gates |
 | `app/models` | SQLAlchemy persistence models and shared persistence types | Existing `app/models/*` |
 | `app/schemas` | Pydantic/API and internal data contracts | Existing schemas and connector contracts |
 | `app/monitoring` | Connector health, failure streaks, quarantine and recovery | `app/monitoring/connector_health.py` (single implementation); old service path is a re-export |
