@@ -72,14 +72,13 @@ The old paths above contain imports only; the implementation exists once in the 
 
 ## Static import graph audit snapshot
 
-The CI artifact from commit `d94ff42c5df56496de4e1bb379eef9f694437e62` contains **186 Python modules**, **0 syntax errors** and **0 unresolved relative imports**. It reports **155 edges** into legacy modules; most are in the legacy engine, old scripts, tests and tools.
+The CI artifact from commit `d94ff42c5df56496de4e1bb379eef9f694437e62` contains **188 Python modules**, **0 syntax errors** and **0 unresolved relative imports**. It reports **155 edges** into legacy modules; most are in the legacy engine, old scripts, tests and tools.
 
-The remaining runtime dependencies under `app.*` are limited to five modules:
+The remaining runtime dependencies under `app.*` are limited to four modules:
 
 | Runtime module | Legacy dependency still present | Reason to retain temporarily |
 |---|---|---|
 | `app.connectors.notino_feed` | `scrapers.notino.affiliate_feed` | Existing authorized CJ/VIV feed/parser path; preserve until a direct replacement passes live acceptance |
-| `app.search.catalog` | None after this extraction; uses `app.connectors.notino_links` | Pure CJ URL validation moved out of the feed parser; lazy connector exports avoid loading scrapers during search |
 | `app.offers.ingestion` | `scenthunter_next_engine.offer_normalizer` | Shared conservative raw-offer normalization still used by connector ingestion |
 | `app.offers.bplatz_adapter` | `scenthunter_next_engine.offer_normalizer` | Bplatz Phase 2 adapter still relies on the same single normalizer implementation |
 | `app.workers.notino_runtime` | `scenthunter_next_engine.next_engine_service` | Explicit legacy fallback matcher; canonical PostgreSQL matching runs first |
@@ -90,7 +89,7 @@ The direct `NextEngineService` matching calls were removed from offer ingestion 
 
 - [x] Existing target packages are documented in `docs/PHASE_1_STRUCTURE_MAP.md`.
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
-- [x] Generate and review the static import graph: 186 modules, zero syntax errors and zero unresolved relative imports; the five remaining `app.*` runtime dependencies are documented above.
+- [x] Generate and review the static import graph: 186 modules, zero syntax errors and zero unresolved relative imports; the four remaining `app.*` runtime dependencies are documented above.
 - [ ] Plan retirement or replacement for the remaining legacy references in scripts, tests and operational tools; preserve recovery utilities until their replacements are verified.
 - [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository tests now exist; final CI run is pending).
 - [ ] Verify all legacy callers have a tested replacement before any module moves.
