@@ -125,7 +125,7 @@ jobs:
       - name: Verify production queue cutover boundary parsing
         run: pytest -q backend/tests/test_postgres_queue_cutover.py
       - name: Verify additive catalog identity migration and SQLite backfill
-        run: pytest -q tests/test_phase2_schema_contract.py backend/tests/test_catalog_normalization.py
+        run: pytest -q -s tests/test_phase2_schema_contract.py backend/tests/test_catalog_normalization.py
       - name: Verify catalog-first API with the historical Bplatz fixture
         run: pytest -q tests/test_catalog_first_search.py
       - name: Verify four reviewed Notino Dior Sauvage GTINs
