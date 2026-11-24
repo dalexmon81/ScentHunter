@@ -43,6 +43,19 @@ class CatalogWorkerQueueTests(unittest.TestCase):
             require_worker_broker({})
         self.assertEqual(require_worker_broker({"SCENTHUNTER_REDIS_URL": "rediss://redis.example/0"}), "rediss://redis.example/0")
 
+    def test_postgres_daily_dedupe_key_changes_by_day_but_is_stable_within_day(self):
+        from app.workers.postgres_queue import _daily_dedupe_key
+
+        first = _daily_dedupe_key("payload-hash", "schedule:deloox-be:daily-discovery", "2026-11-24")
+        repeated = _daily_dedupe_key("payload-hash", "schedule:deloox-be:daily-discovery", "2026-11-24")
+        next_day = _daily_dedupe_key("payload-hash", "schedule:deloox-be:daily-discovery", "2026-11-25")
+        other_schedule = _daily_dedupe_key("payload-hash", "schedule:sabina-es:daily-discovery", "2026-11-24")
+
+        self.assertEqual(first, repeated)
+        self.assertNotEqual(first, next_day)
+        self.assertNotEqual(first, other_schedule)
+        self.assertEqual(len(first), 64)
+
     def test_queue_always_routes_to_postgres(self):
         from unittest.mock import patch
         with patch.dict(os.environ, {"SCENTHUNTER_QUEUE_BACKEND": "postgres"}, clear=True):

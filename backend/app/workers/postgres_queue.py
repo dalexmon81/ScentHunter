@@ -72,6 +72,16 @@ def _serialize(payload: Mapping[str, Any]) -> tuple[dict, str]:
     return json.loads(raw), hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _daily_dedupe_key(payload_dedupe_key: str, schedule_key: str, day: str) -> str:
+    """Give each scheduled day its own queue identity.
+
+    A pre-cutover queued job may be intentionally ineligible for claiming. It
+    must not deduplicate and block the next day's fresh discovery job forever.
+    """
+    material = "\0".join((schedule_key, day, payload_dedupe_key))
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
 def enqueue(stage: str, payload: Mapping[str, Any]) -> str:
     if stage not in _ALLOWED_STAGES:
         raise ValueError(f"unsupported ingestion stage: {stage}")
@@ -107,7 +117,8 @@ def enqueue_daily_once(schedule_key: str, stage: str, payload: Mapping[str, Any]
     if stage not in _ALLOWED_STAGES:
         raise ValueError(f"unsupported ingestion stage: {stage}")
     _require_postgresql()
-    value, dedupe = _serialize(payload)
+    value, payload_dedupe = _serialize(payload)
+    dedupe = _daily_dedupe_key(payload_dedupe, schedule_key, day)
     engine = make_engine()
     try:
         with engine.begin() as conn:
