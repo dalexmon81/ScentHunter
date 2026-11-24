@@ -7,6 +7,7 @@ It never persists data or overrides a successful database-native match.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol, Sequence
 
 
@@ -48,3 +49,15 @@ def resolve_legacy_catalog_match(
         legacy_variant_id=group.canonical_variant_id,
         reason=None,
     )
+
+
+def build_legacy_matcher(catalog_path: Path) -> LegacyOfferMatcher:
+    """Load the transitional read-only matcher from its explicit catalog path."""
+    path = Path(catalog_path)
+    if not path.is_file():
+        raise RuntimeError(f"Notino fallback matcher catalog is missing: {path}")
+    # Keep the legacy engine import inside this adapter. Worker orchestration
+    # depends only on the matcher protocol, not on the legacy implementation.
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    return NextEngineService.from_catalog_file(path)
