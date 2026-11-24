@@ -221,7 +221,7 @@ class CanonicalGtinImportTests(unittest.TestCase):
         from sqlalchemy import create_engine, select, func
         from sqlalchemy.orm import Session
         from app.models import Base, Store, ProductVariant, Offer
-        from app.services.canonical_matching import resolve_canonical_variant
+        from app.matching.canonical_matching import resolve_canonical_variant
 
         with tempfile.TemporaryDirectory() as temp:
             database_url = "sqlite:///" + str(Path(temp) / "catalog.sqlite3")
