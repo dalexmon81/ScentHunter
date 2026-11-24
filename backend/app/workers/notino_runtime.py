@@ -20,7 +20,7 @@ from app.workers.ingestion_run import (
 from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-from app.services.connector_ingestion import persist_connector_record
+from app.offers.ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
 from app.matching.canonical_matching import resolve_canonical_variant
 from app.services.connector_health import record_connector_failure, record_connector_success
