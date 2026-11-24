@@ -41,6 +41,11 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.session.close()
         self.engine.dispose()
 
+    def test_legacy_ingestion_import_is_same_implementation(self):
+        from app.services.connector_ingestion import persist_connector_record as legacy_ingest
+        from app.offers.ingestion import persist_connector_record as canonical_ingest
+        self.assertIs(legacy_ingest, canonical_ingest)
+
     def test_legacy_offer_persistence_import_is_same_implementation(self):
         from app.services.ingestion_persistence import promote_offer as legacy_promote
         from app.offers.persistence import promote_offer as canonical_promote
