@@ -87,13 +87,24 @@ jobs:
               f"- Active stores: {data['totals']['active_stores']}",
               f"- Offers: {data['totals']['offers']} total, {data['totals']['active_offers']} active, {data['totals']['publishable_offers']} publishable",
               "",
-              "| Store | DB status | Offers | Active | Publishable | Last successful sync |",
-              "|---|---|---:|---:|---:|---|",
+              "| Store | DB status | Offers | Active | Publishable | Raw pending / promoted / rejected | Last successful sync |",
+              "|---|---|---:|---:|---:|---:|---|",
           ]
           for row in stores:
-              lines.append(f"| {row['store']} | {row['status']} | {row['total_offers']} | {row['active_offers']} | {row['publishable_offers']} | {row['last_successful_sync_at'] or '—'} |")
-          gaps = [row['store'] for row in stores if not row['database_present'] or row['total_offers'] == 0]
-          lines += ["", "## Coverage gaps", "", *(f"- {name}" for name in gaps)] if gaps else ["", "No missing stores or zero-offer stores in scope."]
+              for row in stores:
+                  raw = row.get("raw_ingestion_by_status") or {}
+                  raw_summary = f"{raw.get('pending', 0)} / {raw.get('promoted', 0)} / {raw.get('rejected', 0)}"
+                  lines.append(f"| {row['store']} | {row['status']} | {row['total_offers']} | {row['active_offers']} | {row['publishable_offers']} | {raw_summary} | {row['last_successful_sync_at'] or '—'} |")
+          gaps = [
+              f"{row['store']}: database record missing" if not row['database_present']
+              else f"{row['store']}: zero publishable offers"
+              for row in stores if not row['database_present'] or row['publishable_offers'] == 0
+          ]
+          lines += ["", "## Coverage gaps", "", *(f"- {name}" for name in gaps)] if gaps else ["", "All nine stores have publishable offers."]
+
+          lines += ["", "## Queue status", "", "| Stage | Status | Jobs |", "|---|---|---:|"]
+          for item in data.get("queue", []):
+              lines.append(f"| {item['stage']} | {item['status']} | {item['count']} |")
           Path("phase0-postgres-baseline.md").write_text("\n".join(lines) + "\n")
           with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a") as f:
               f.write(Path("phase0-postgres-baseline.md").read_text())
