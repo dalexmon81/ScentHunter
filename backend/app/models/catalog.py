@@ -104,6 +104,7 @@ class IngestionRaw(Base):
     rejection_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    store_product: Mapped["StoreProduct | None"] = relationship(back_populates="raw_observations")
 
 
 class Offer(Base):
@@ -249,7 +250,7 @@ class ProductVariantGtin(Base):
         UniqueConstraint("product_variant_id", "normalized_gtin", name="uq_product_variant_gtin_identity"),
         Index("ix_product_variant_gtins_normalized", "normalized_gtin"),
         Index("uq_product_variant_gtins_verified", "normalized_gtin", unique=True, postgresql_where=text("verification_status = 'verified'"), sqlite_where=text("verification_status = 'verified'")),
-        CheckConstraint("normalized_gtin ~ '^(\\\\d{8}|\\\\d{12}|\\\\d{13}|\\\\d{14})$'", name="normalized_gtin_format"),
+        CheckConstraint("length(normalized_gtin) IN (8,12,13,14)", name="normalized_gtin_length"),
         CheckConstraint("verification_status IN ('pending','verified','rejected','ambiguous','legacy')", name="verification_status"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
