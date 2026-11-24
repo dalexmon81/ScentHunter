@@ -41,6 +41,11 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.session.close()
         self.engine.dispose()
 
+    def test_legacy_offer_persistence_import_is_same_implementation(self):
+        from app.services.ingestion_persistence import promote_offer as legacy_promote
+        from app.offers.persistence import promote_offer as canonical_promote
+        self.assertIs(legacy_promote, canonical_promote)
+
     def test_legacy_service_import_is_same_implementation(self):
         from app.services.canonical_matching import resolve_canonical_variant as legacy_resolver
         from app.matching.canonical_matching import resolve_canonical_variant as canonical_resolver
