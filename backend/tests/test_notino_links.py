@@ -8,6 +8,11 @@ from app.connectors.notino_links import validated_cj_offer_url
 
 
 class NotinoLinkBoundaryTests(unittest.TestCase):
+    def test_connector_package_exports_remain_compatible(self):
+        from app.connectors import StoreConnector as exported
+        from app.connectors.base import StoreConnector as direct
+        self.assertIs(exported, direct)
+
     def test_legacy_feed_module_reexports_the_same_url_validator(self):
         from scrapers.notino.affiliate_feed import validated_cj_offer_url as legacy_validator
         self.assertIs(legacy_validator, validated_cj_offer_url)
