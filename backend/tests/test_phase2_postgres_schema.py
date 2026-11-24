@@ -28,8 +28,8 @@ class PostgreSQLMigrationContractTests(unittest.TestCase):
         self.assertTrue(set(Base.metadata.tables).issubset(tables))
         with self.engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        self.assertEqual(revision, "0006_postgres_ingestion_queue")
-        for table in ("fragrances", "product_variants", "offers", "ingestion_raw"):
+        self.assertEqual(revision, "0007_catalog_identity")
+        for table in ("fragrances", "product_variants", "offers", "ingestion_raw", "store_products", "brand_aliases", "fragrance_aliases", "product_variant_aliases", "product_variant_gtins", "discovery_runs", "extraction_runs"):
             self.assertTrue(inspector.get_foreign_keys(table), table)
 
     def test_json_uuid_numeric_and_transaction_rollback(self):
