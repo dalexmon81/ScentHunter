@@ -90,7 +90,7 @@ def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | No
             IngestionRaw.status == "promoted",
             IngestionRaw.product_variant_id == Offer.product_variant_id,
             IngestionRaw.store_id == Offer.store_id,
-            Offer.availability == "in_stock",
+            Offer.availability.in_(("in_stock", "out_of_stock")),
             Offer.price > 0,
             Offer.currency == "EUR",
             Offer.captured_at >= now - timedelta(hours=24),
