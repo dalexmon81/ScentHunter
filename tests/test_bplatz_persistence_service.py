@@ -681,7 +681,7 @@ def test_normal_bplatz_hydration_worker_logs_only_after_phase2_persistence(
 def test_notino_connector_record_uses_shared_phase2_persistence_and_search(tmp_path):
     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
     from app.search.catalog import search_catalog
-    from app.services.connector_ingestion import persist_connector_record
+    from app.offers.ingestion import persist_connector_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, bplatz_record, normalized, _group = _real_bplatz_components()
@@ -735,7 +735,7 @@ def test_notino_connector_record_uses_shared_phase2_persistence_and_search(tmp_p
 
 def test_connector_persistence_does_not_publish_defaulted_currency(tmp_path):
     from app.connectors.notino_feed import NotinoAffiliateFeedConnector
-    from app.services.connector_ingestion import persist_connector_record
+    from app.offers.ingestion import persist_connector_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
 
     _parsed, bplatz_record, normalized, _group = _real_bplatz_components()
