@@ -183,7 +183,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
     def test_supplied_interstitial_html_uses_browser_rendered_product_document(self):
         from unittest.mock import patch
 
-        url = "https://www.deloox.com/product/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html"
+        url = "https://www.deloox.be/produit/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html"
         interstitial = "<html><body>Checking your browser...</body></html>"
         rendered = """
         <html><head><script type="application/ld+json">
