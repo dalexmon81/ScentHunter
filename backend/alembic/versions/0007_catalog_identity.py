@@ -127,7 +127,7 @@ def _backfill_store_products(connection):
         })
         payload = _payload_dict(row["raw_payload"])
         item["canonical_url"] = item["canonical_url"] or _first_text(
-            payload, ("product_url", "url", "affiliate_url")
+            payload, ("product_url", "url")
         )
         item["raw_title"] = item["raw_title"] or _first_text(
             payload, ("title", "name", "raw_name")
