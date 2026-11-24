@@ -21,7 +21,7 @@
 |---|---|---|
 | `app/api` | HTTP routes, request/response validation, auth boundary | `app/api/catalog_search.py`; `postgres_main.py` |
 | `app/catalog` | Canonical brand, fragrance, variant and alias domain | `app/catalog/normalization.py` (single implementation); `app/models/catalog.py` (ORM persistence); legacy normalization re-export only |
-| `app/connectors` | Per-retailer transport and source parsing adapters | `app/connectors/base.py`; `legacy_scrapers.py`; `notino_feed.py`; `backend/scrapers/*` |
+| `app/connectors` | Per-retailer transport, source parsing adapters and pure source-link validation | `app/connectors/base.py`; `app/connectors/notino_links.py`; `legacy_scrapers.py`; `notino_feed.py`; `backend/scrapers/*` |
 | `app/discovery` | Dispatch every discovered reference to background fetch jobs and continue pagination | `app/discovery/dispatch.py`; retailer discovery I/O remains in connectors; worker owns queue backend and run accounting |
 | `app/extraction` | Fetch a known retailer reference and preserve the raw source record | `app/extraction/product.py` shared async boundary; source transport/parsing remains in existing connectors |
 | `app/matching` | Resolve canonical variants and isolate the transitional legacy matcher | `app/matching/canonical_matching.py` (database-native); `app/matching/legacy_fallback.py` (single Next Engine adapter); offer persistence records audit evidence |
