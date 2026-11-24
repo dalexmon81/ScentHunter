@@ -1,16 +1,17 @@
 # Extraction
 
-**Responsibility:** fetch a known retailer product reference or authorized feed item and preserve the source record needed for parsing and validation.
+**Responsibility:** fetch a known retailer product reference and preserve the raw source record for downstream parsing and validation.
 
 **Implementation ownership**
-- `app.connectors` owns retailer-specific network transport, rate limits at the adapter boundary, raw response parsing and the normalized connector contract.
-- `app.workers` invokes connector extraction only in background jobs and retains run/error accounting.
-- `app.offers.ingestion` receives the extracted raw record, applies canonical matching and publication gates, and persists the evidence.
+- `app.extraction.product.extract_product_record`: shared async boundary used by background workers; validates the stable external ID, preserves the source mapping and fills a missing external ID without rewriting source fields.
+- `app.connectors`: retailer-specific transport and parsing (`parse_raw`) remain in the existing adapters.
+- `app.workers`: invokes extraction only in background jobs and retains run/error accounting.
+- `app.offers.ingestion`: parses/normalizes the extracted raw record, resolves canonical identity and applies publication gates.
 
 **Boundaries**
-- Extraction operates on a known retailer identifier discovered earlier; it does not perform broad product discovery.
+- Extraction operates on a known retailer identifier; broad discovery and pagination belong to `app.discovery`.
 - It does not create canonical identities, choose variants, publish offers or update price history.
 - It does not run in user-facing search requests.
-- Do not copy scraper parsers into this package. Move source parsing only when the exact existing parser can be reused without behavioral change.
+- Do not copy scraper parsers into this package; source parsing stays in the exact existing connector implementation.
 
-**Current adapters:** `app.connectors.notino_feed` and `app.connectors.legacy_scrapers`; existing scraper implementations remain in `backend/scrapers/`.
+**Tests:** `backend/tests/test_extraction_product.py`, plus the Notino and legacy worker runtime regression suites.
