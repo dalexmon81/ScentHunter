@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.connectors.base import StoreConnector
 from app.models import IngestionRaw, Store
-from app.services.canonical_matching import resolve_canonical_variant
+from app.matching.canonical_matching import resolve_canonical_variant
 from app.services.ingestion_persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
