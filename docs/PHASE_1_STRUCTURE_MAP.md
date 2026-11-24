@@ -24,7 +24,7 @@
 | `app/connectors` | Per-retailer transport and source parsing adapters | `app/connectors/base.py`; `legacy_scrapers.py`; `notino_feed.py`; `backend/scrapers/*` |
 | `app/discovery` | Dispatch every discovered reference to background fetch jobs and continue pagination | `app/discovery/dispatch.py`; retailer discovery I/O remains in connectors; worker owns queue backend and run accounting |
 | `app/extraction` | Boundary for fetching a known retailer reference and preserving raw source evidence | Existing transport/parsing stays in `app.connectors`; worker invokes it; offer ingestion persists the raw record |
-| `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/matching/canonical_matching.py` (single implementation); `app.models.catalog.py`; offer persistence records match audit |
+| `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/matching/canonical_matching.py` (single implementation); `app/models/catalog.py`; offer persistence records match audit |
 | `app/offers` | Orchestrate extracted records, persist match outcomes and publish verified offers | `app/offers/ingestion.py` and `app/offers/persistence.py` (single implementations); old service paths are re-exports |
 | `app/pricing` | Refresh price and availability for existing offers and append price history | `app/pricing/offer_refresh.py` (single implementation); old service path is a re-export |
 | `app/workers` | Scheduling, durable queue execution, retries and orchestration | `app/workers/postgres_worker.py`; `postgres_queue.py`; `ingestion_run.py` |
@@ -60,8 +60,8 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 
 ## Acceptance for the current implementation slice
 
-- All target package paths exist.
-- Each package has one documented responsibility and identifies existing code to reuse.
-- Existing package locations are not duplicated.
-- Production entrypoint and worker remain unchanged.
-- No database, feed, scraper or production configuration is modified.
+- All target package paths exist and have documented ownership.
+- Catalog normalization, matching, offers, pricing and connector health each have one implementation; legacy import paths are re-export shims.
+- Notino and legacy discovery workers share one tested dispatch/pagination implementation.
+- CI builds a read-only AST import graph and uploads it as a workflow artifact; dynamic imports still require manual review.
+- Production entrypoint, queue backend, database schema/data, feed, scrapers and production configuration remain unchanged.
