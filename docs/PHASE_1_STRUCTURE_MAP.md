@@ -25,7 +25,7 @@
 | `app/discovery` | Dispatch every discovered reference to background fetch jobs and continue pagination | `app/discovery/dispatch.py`; retailer discovery I/O remains in connectors; worker owns queue backend and run accounting |
 | `app/extraction` | Fetch a known retailer reference and preserve the raw source record | `app/extraction/product.py` shared async boundary; source transport/parsing remains in existing connectors |
 | `app/matching` | Resolve source records to canonical variants and audit uncertainty | `app/matching/canonical_matching.py` (single implementation); `app/models/catalog.py`; offer persistence records match audit |
-| `app/offers` | Orchestrate extracted records, persist match outcomes and publish verified offers | `app/offers/ingestion.py` and `app/offers/persistence.py` (single implementations); old service paths are re-exports |
+| `app/offers` | Orchestrate extracted records, persist match outcomes and publish verified offers | `app/offers/ingestion.py`, `app/offers/persistence.py`, and the specialized `app/offers/bplatz_adapter.py`; old service paths are re-exports |
 | `app/pricing` | Refresh price and availability for existing offers and append price history | `app/pricing/offer_refresh.py` (single implementation); old service path is a re-export |
 | `app/workers` | Scheduling, durable queue execution, retries and orchestration | `app/workers/postgres_worker.py`; `postgres_queue.py`; `ingestion_run.py` |
 | `app/repositories` | Transaction-scoped persistence operations and database query interfaces | `app/repositories/ingestion_runs.py`; `app.models` entities; offers/pricing keep their atomic domain persistence gates |
