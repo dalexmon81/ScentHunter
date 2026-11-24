@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Base, IngestionRun, Store
 from app.connectors.base import ConnectorUnavailable, DiscoveredProduct
-from app.services.connector_ingestion import ConnectorIngestionResult
+from app.offers.ingestion import ConnectorIngestionResult
 from app.workers import notino_runtime
 from app.workers.runtime import clear_handlers, get_handler
 
