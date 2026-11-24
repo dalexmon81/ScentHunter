@@ -26,7 +26,7 @@ from app.db import make_engine  # noqa: E402
 from app.models import (  # noqa: E402
     IngestionRaw, MatchAudit, Offer, PriceHistory, Store,
 )
-from app.services.bplatz_phase2_adapter import persist_bplatz_record  # noqa: E402
+from app.offers.bplatz_adapter import persist_bplatz_record  # noqa: E402
 from scenthunter_next_engine.next_engine_service import NextEngineService  # noqa: E402
 from scenthunter_next_engine.offer_normalizer import normalize_offer  # noqa: E402
 
