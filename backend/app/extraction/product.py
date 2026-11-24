@@ -41,3 +41,16 @@ async def extract_product_record(
         external_product_id=identifier,
         raw_payload=payload,
     )
+
+
+async def extract_price_stock_observation(
+    connector: StoreConnector, external_product_id: str
+) -> dict[str, Any]:
+    """Fetch one known offer's price/stock evidence without applying pricing rules."""
+    identifier = str(external_product_id or "").strip()
+    if not identifier:
+        raise ValueError("external_product_id is required")
+    raw = await connector.fetch_price_and_stock(identifier)
+    if not isinstance(raw, Mapping):
+        raise TypeError("connector fetch_price_and_stock must return a mapping")
+    return dict(raw)
