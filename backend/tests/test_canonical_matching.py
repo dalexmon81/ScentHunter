@@ -41,6 +41,11 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.session.close()
         self.engine.dispose()
 
+    def test_legacy_service_import_is_same_implementation(self):
+        from app.services.canonical_matching import resolve_canonical_variant as legacy_resolver
+        from app.matching.canonical_matching import resolve_canonical_variant as canonical_resolver
+        self.assertIs(legacy_resolver, canonical_resolver)
+
     def test_exact_gtin_has_priority_and_does_not_need_legacy_ids(self):
         self.variant.gtin = "3348901486392"
         self.session.commit()
