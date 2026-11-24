@@ -309,12 +309,12 @@ def upgrade():
         # enforcement while the migration is running.
         op.execute(
             "ALTER TABLE offers ADD COLUMN store_product_id CHAR(32) "
-            "REFERENCES store_products(id) ON DELETE RESTRICT"
+            "CONSTRAINT fk_offers_store_product_id_store_products REFERENCES store_products(id) ON DELETE RESTRICT"
         )
         op.create_index("ix_offers_store_product_id", "offers", ["store_product_id"])
         op.execute(
             "ALTER TABLE ingestion_raw ADD COLUMN store_product_id CHAR(32) "
-            "REFERENCES store_products(id) ON DELETE RESTRICT"
+            "CONSTRAINT fk_ingestion_raw_store_product_id_store_products REFERENCES store_products(id) ON DELETE RESTRICT"
         )
         op.create_index("ix_ingestion_raw_store_product_id", "ingestion_raw", ["store_product_id"])
     else:
