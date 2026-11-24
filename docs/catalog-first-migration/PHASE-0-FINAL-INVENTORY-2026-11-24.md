@@ -79,7 +79,7 @@ The GitHub Actions Fly deployment run `45332439063` shows:
 
 An earlier deployment run `45324835107` passed health, public-search parity, Bplatz refresh, daily discovery and Deloox URL requeue checks. The later failed smoke check must remain visible as an unresolved acceptance issue.
 
-This GitHub evidence does not replace a direct Fly machine/volume inventory. No Fly.io account connector is available in this audit session, so exact machine IDs/counts, attached volume contents, runtime secret names/values and current machine allocation could not be independently enumerated. Secret values must not be copied into this report.
+This GitHub evidence does not replace a direct Fly machine/volume inventory. No Fly.io account connector or GitHub Actions dispatch action is available in this audit session, so exact machine IDs/counts, attached volume contents, runtime secret names and current machine allocation could not be independently enumerated. An existing safe manual workflow is already present at `.github/workflows/scenthunter-readonly-fly-diagnostics.yml` (Actions name: **ScentHunter 2.0 read-only Fly diagnostics**). It reads app status, machine list, volume list, secret names only, runtime database backend/driver and SQLite file-presence markers; it explicitly performs no deploy, restart, migration, import, secret update or database write. This workflow should be manually dispatched to close the Fly inventory. Secret values must not be copied into the report.
 
 ## 4. Neon database inventory
 
@@ -307,7 +307,7 @@ The CSV baseline has **not** been generated or attached as an artifact in this a
 Do not start broad cleanup yet. Before Phase 1, resolve these blockers in order:
 
 1. Confirm the exact Neon branch/database endpoint used by the Fly app without exposing connection secrets; record the endpoint/branch identity.
-2. Obtain a direct read-only Fly inventory of app machines, worker machine, volumes, regions and mounted paths. Record secret *names* only, never values.
+2. Manually run the existing **ScentHunter 2.0 read-only Fly diagnostics** workflow (`.github/workflows/scenthunter-readonly-fly-diagnostics.yml`). Record app/machine/volume state, runtime DB backend and mounted-file presence; record secret *names* only, never values.
 3. Replace or adapt the legacy SQLite Phase 0 baseline workflow with a read-only PostgreSQL baseline that matches the approved active retailer scope. Do not enqueue a legacy baseline job on the current app.
 4. Reconcile the 73,763 pre-cutoff queued jobs and 18 running ingestion runs with a dry-run plan before any state change.
 5. Align the Postgres store registry with the approved retailer list and Deloox.be-only policy. Decide explicitly whether Orioudh, Parfumcity and PerfumeMarket are in or out of the first supported release.
