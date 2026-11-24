@@ -23,7 +23,6 @@ from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.discovery.dispatch import dispatch_discovered_products
 from app.offers.ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
-from app.matching.canonical_matching import resolve_canonical_variant
 from app.monitoring.connector_health import record_connector_failure, record_connector_success
 from app.pricing.offer_refresh import refresh_offer_observation
 
@@ -69,38 +68,6 @@ def _active_notino_store(session, store_id: UUID) -> Store:
     if store is None or store.slug != "notino-fr" or store.status != "active":
         raise ValueError("store_id must identify the active notino-fr catalog store")
     return store
-
-
-def _is_unique_canonical_candidate(
-    connector: NotinoAffiliateFeedConnector,
-    store_id: UUID,
-    raw_record: Mapping[str, Any],
-) -> bool:
-    """Pre-filter with the same canonical database matcher used at persistence.
-
-    The legacy JSON matcher must not decide whether a record reaches the
-    canonical ingestion pipeline: it can exclude products already present in
-    the canonical database. Ambiguous and incomplete records remain excluded
-    here and are never published; eligible records are re-matched at persistence.
-    """
-    try:
-        parsed = connector.parse_raw(raw_record)
-        validation = connector.validate_offer(parsed)
-        if not validation.valid or parsed.get("currency_explicit") is not True:
-            return False
-        external_id = str(
-            parsed.get("external_product_id") or raw_record.get("external_product_id") or ""
-        ).strip() or None
-        with _sessions()() as session:
-            result = resolve_canonical_variant(
-                session,
-                store_id=store_id,
-                external_product_id=external_id,
-                record=dict(parsed),
-            )
-        return result.match is not None
-    except (TypeError, ValueError, ArithmeticError):
-        return False
 
 
 def handle_notino_discovery(payload: Mapping[str, Any]) -> dict[str, Any]:
