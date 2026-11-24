@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -172,7 +172,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         if parsed_source_time.tzinfo is None:
             raise PromotionRejected("retailer_source_updated_at_missing_timezone")
         captured_at = parsed_source_time.astimezone(timezone.utc)
-        if captured_at > datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=5):
+        if captured_at > datetime.now(timezone.utc) + timedelta(minutes=5):
             raise PromotionRejected("retailer_source_updated_at_in_future")
     elif store.slug == "notino-fr":
         raise PromotionRejected("missing_retailer_source_updated_at")
