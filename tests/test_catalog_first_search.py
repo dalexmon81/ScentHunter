@@ -77,9 +77,11 @@ def test_fixture_to_catalog_api_without_network(pilot, monkeypatch):
         assert status["latest_offer_update_by_store"]["bplatz"] == offer["captured_at"]
         assert status["freshness_window_hours"] == 24
 
+        # A canonical catalog match without a verified offer must not be
+        # exposed through the public shopping search endpoint.
         other = client.get("/api/catalog/search", params={"q": "Liquid Brun 150 ml"}).json()
-        assert other["count"] == 1 and other["offer_count"] == 0
-        assert "Limited Edition" in other["results"][0]["name"]
+        assert other["count"] == 0 and other["offer_count"] == 0
+        assert other["results"] == []
         assert client.get("/api/catalog/search", params={"q": "no-such-perfume"}).json()["count"] == 0
         assert client.get("/api/catalog/search", params={"q": "9" * 100}).json()["count"] == 0
         assert client.get("/api/catalog/search", params={"q": "Liquid Brun tester"}).json()["count"] == 0

@@ -1,11 +1,52 @@
-"""Regression coverage for incidental words in canonical product searches."""
+"""Regression coverage for incidental words and verified public search."""
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.models import Base, Brand, Fragrance, ProductVariant
+from app.models import (
+    Base, Brand, Fragrance, IngestionRaw, MatchAudit, Offer,
+    ProductVariant, Store,
+)
 from app.search.catalog import search_catalog
+
+
+def _add_verified_offer(session: Session, store: Store, variant: ProductVariant, price: str) -> None:
+    """Create a complete, current, explicitly-priced offer accepted by the public gate."""
+    raw = IngestionRaw(
+        store_id=store.id,
+        raw_payload={"currency_explicit": True},
+        status="promoted",
+        product_variant_id=variant.id,
+    )
+    session.add(raw)
+    session.flush()
+
+    offer = Offer(
+        ingestion_raw_id=raw.id,
+        store_id=store.id,
+        product_variant_id=variant.id,
+        external_product_id=f"test-{variant.id}",
+        url=f"https://shop.test/item/{variant.id}",
+        price=Decimal(price),
+        currency="EUR",
+        availability="in_stock",
+        source="verified-search-test",
+        captured_at=datetime.now(timezone.utc),
+        status="active",
+    )
+    session.add(offer)
+    session.flush()
+    session.add(MatchAudit(
+        offer_id=offer.id,
+        product_variant_id=variant.id,
+        method="test_exact",
+        confidence=Decimal("1.000"),
+    ))
+    session.flush()
 
 
 def _session():
@@ -13,7 +54,11 @@ def _session():
     Base.metadata.create_all(engine)
     session = Session(engine)
     brand = Brand(name="Dior", slug="dior", normalized_name="dior")
-    session.add(brand)
+    store = Store(
+        name="Verified Test Shop", slug="verified-test-shop",
+        domain="shop.test", currency="EUR", status="active",
+    )
+    session.add_all([brand, store])
     session.flush()
     fragrance = Fragrance(
         brand_id=brand.id, name="Sauvage", slug="sauvage",
@@ -21,12 +66,15 @@ def _session():
     )
     session.add(fragrance)
     session.flush()
-    session.add(ProductVariant(
+    variant = ProductVariant(
         fragrance_id=fragrance.id, concentration="Eau de Parfum",
         size_ml=100, is_tester=False, is_refill=False,
         is_gift_set=False, is_mini=False,
         canonical_key="dior|sauvage|edp|100|regular|standard|single|standard",
-    ))
+    )
+    session.add(variant)
+    session.flush()
+    _add_verified_offer(session, store, variant, "99.90")
     session.commit()
     return engine, session
 
@@ -55,7 +103,7 @@ def test_variant_attributes_remain_strict_filters():
         engine.dispose()
 
 
-def test_canonical_identity_without_variant_remains_searchable_without_offers():
+def test_canonical_identity_without_variant_is_retained_but_not_published_without_offers():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     session = Session(engine)
@@ -63,43 +111,41 @@ def test_canonical_identity_without_variant_remains_searchable_without_offers():
         brand = Brand(name="Rasasi", slug="rasasi", normalized_name="rasasi")
         session.add(brand)
         session.flush()
-        session.add(Fragrance(
+        fragrance = Fragrance(
             brand_id=brand.id, name="Hawas Atlantis", slug="hawas-atlantis",
             image_url=None,
-        ))
+        )
+        session.add(fragrance)
         session.commit()
 
         result = search_catalog(session, "Rasasi Hawas")
-        assert result["count"] == 1
+        assert session.scalar(select(Fragrance.id).where(Fragrance.id == fragrance.id)) == fragrance.id
+        assert result["count"] == 0
         assert result["offer_count"] == 0
-        assert result["results"][0]["brand"] == "Rasasi"
-        assert result["results"][0]["name"] == "Hawas Atlantis Identità catalogo"
-        assert result["results"][0]["offers"] == []
-        assert result["results"][0]["variant_id"] is None
+        assert result["results"] == []
     finally:
         session.close()
         engine.dispose()
-
 
 
 def test_search_groups_sizes_inside_each_fragrance_concentration():
     engine, session = _session()
     try:
         fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
-        session.add_all([
+        store = session.query(Store).filter_by(slug="verified-test-shop").one()
+        variants = [
             ProductVariant(
                 fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=30, is_tester=False, is_refill=False,
+                size_ml=size, is_tester=False, is_refill=False,
                 is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
-            ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=60, is_tester=False, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
-            ),
-        ])
+                canonical_key=f"dior|sauvage|edt|{size}|regular|standard|single|standard",
+            )
+            for size in (30, 60)
+        ]
+        session.add_all(variants)
+        session.flush()
+        for variant, price in zip(variants, ("59.90", "79.90")):
+            _add_verified_offer(session, store, variant, price)
         session.commit()
 
         result = search_catalog(session, "Dior Sauvage")
@@ -120,32 +166,25 @@ def test_search_does_not_merge_edp_edt_or_tester_packaging():
     engine, session = _session()
     try:
         fragrance = session.query(Fragrance).filter_by(name="Sauvage").one()
-        session.add_all([
+        store = session.query(Store).filter_by(slug="verified-test-shop").one()
+        variants = [
             ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=30, is_tester=False, is_refill=False,
+                fragrance_id=fragrance.id, concentration=concentration,
+                size_ml=size, is_tester=tester, is_refill=False,
                 is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|30|regular|standard|single|standard",
-            ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Toilette",
-                size_ml=60, is_tester=False, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edt|60|regular|standard|single|standard",
-            ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Parfum",
-                size_ml=50, is_tester=False, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edp|50|regular|standard|single|standard",
-            ),
-            ProductVariant(
-                fragrance_id=fragrance.id, concentration="Eau de Parfum",
-                size_ml=100, is_tester=True, is_refill=False,
-                is_gift_set=False, is_mini=False,
-                canonical_key="dior|sauvage|edp|100|tester|standard|single|standard",
-            ),
-        ])
+                canonical_key=key,
+            )
+            for concentration, size, tester, key in [
+                ("Eau de Toilette", 30, False, "dior|sauvage|edt|30|regular|standard|single|standard"),
+                ("Eau de Toilette", 60, False, "dior|sauvage|edt|60|regular|standard|single|standard"),
+                ("Eau de Parfum", 50, False, "dior|sauvage|edp|50|regular|standard|single|standard"),
+                ("Eau de Parfum", 100, True, "dior|sauvage|edp|100|tester|standard|single|standard"),
+            ]
+        ]
+        session.add_all(variants)
+        session.flush()
+        for index, variant in enumerate(variants):
+            _add_verified_offer(session, store, variant, f"{49 + index * 10}.90")
         session.commit()
 
         persisted = session.query(ProductVariant).order_by(
