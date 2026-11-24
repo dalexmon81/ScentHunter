@@ -331,7 +331,8 @@ jobs:
                       SELECT count(*) FROM ingestion_queue_jobs
                       WHERE stage='discover'
                         AND payload->>'store_id'=:store_id
-                        AND created_at >= now() - interval '10 minutes'
+                        AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+              AND status IN ('queued', 'running', 'completed')
                   """),
                   {"store_id": store_id},
               ).scalar_one()
