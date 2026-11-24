@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Implementation branch:** `phase1-catalog-boundary-tests-2026-11-24`  
-**Status:** controlled catalog, matching, offers, pricing, monitoring and discovery-dispatch extractions; no production cutover  
+**Status:** controlled catalog, matching, offers, pricing, monitoring and discovery-dispatch extractions; static import-graph audit added; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
@@ -44,7 +44,7 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 
 1. Add package boundaries and document ownership (this branch).
 2. Map imports and call sites from `backend/main.py`, `catalog_engine.py`, `product_matcher.py`, `offer_engine` and legacy scripts.
-3. Add characterization tests around existing behavior before moving implementation.
+3. Add characterization tests around existing behavior before moving implementation; CI runs discovery-dispatch and import-graph auditor tests.
 4. Extract one responsibility at a time behind existing imports/API contracts.
 5. Update runtime imports only after tests prove behavior parity.
 6. Retire legacy paths only after repository-wide reference search, live connector acceptance and rollback review.
