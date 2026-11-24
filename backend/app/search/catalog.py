@@ -52,6 +52,29 @@ def _display_offer_url(offer: Offer, store: Store, raw: IngestionRaw) -> str:
     return offer.url
 
 
+def _notino_source_timestamp(raw: IngestionRaw) -> datetime | None:
+    payload = raw.raw_payload if isinstance(raw.raw_payload, dict) else {}
+    value = payload.get("source_updated_at")
+    observation = payload.get("refresh_observation")
+    if not value and isinstance(observation, dict):
+        value = observation.get("source_updated_at")
+    if not value:
+        xml = payload.get("raw_xml")
+        if not xml and isinstance(observation, dict):
+            xml = observation.get("raw_xml")
+        match = re.search(r"<last_updated>\\s*([^<]+?)\\s*</last_updated>", str(xml or ""), re.I)
+        value = match.group(1) if match else None
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
 def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | None = None):
     audit_exists = exists(select(MatchAudit.id).where(
         MatchAudit.offer_id == Offer.id,
@@ -81,11 +104,22 @@ def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | No
             return []
         statement = statement.where(Offer.product_variant_id.in_(variant_ids))
     rows = session.execute(statement.order_by(Offer.price, Offer.id)).all()
-    return [
-        (offer, store, raw) for offer, store, raw in rows
-        if raw.raw_payload.get("currency_explicit") is True
-        and _offer_url_valid(offer.url, store.domain)
-    ]
+    eligible = []
+    for offer, store, raw in rows:
+        if raw.raw_payload.get("currency_explicit") is not True:
+            continue
+        if not _offer_url_valid(offer.url, store.domain):
+            continue
+        if store.slug == "notino-fr":
+            source_time = _notino_source_timestamp(raw)
+            # CJ's Notino catalogue can lag the live retailer page. Never label
+            # an old feed price as current merely because we downloaded it now.
+            if source_time is None or source_time > now + timedelta(minutes=5):
+                continue
+            if source_time < now - timedelta(hours=12):
+                continue
+        eligible.append((offer, store, raw))
+    return eligible
 
 
 def search_catalog(session: Session, query: str, *, now: datetime | None = None) -> dict:
