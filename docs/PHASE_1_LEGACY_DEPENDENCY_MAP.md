@@ -32,11 +32,11 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 - `backend/catalog_family_coverage.py` reads `family_registry.json`; legacy matching and tests also consume it.
 - Diagnostic utilities under `tools/diagnostics/` and `tools/debug/` import legacy functions. These tools are not automatically safe to delete: they preserve operational recovery knowledge and regression workflows.
 
-## Completed Phase 1 domain extractions (current branch)\n\n| Previous service path | Canonical implementation | Compatibility policy |\n|---|---|---|\n| `app.models.normalization` | `app.catalog.normalization` | Re-export shim; regression test asserts object identity |\n| `app.services.canonical_matching` | `app.matching.canonical_matching` | Re-export shim; worker and test imports updated |\n| `app.services.ingestion_persistence` | `app.offers.persistence` | Re-export shim; connector, Bplatz adapter, scripts and tests updated |\n| `app.services.connector_ingestion` | `app.offers.ingestion` | Re-export shim; workers, scripts and tests updated |\n| `app.services.offer_refresh` | `app.pricing.offer_refresh` | Re-export shim; workers and tests updated |\n| `app.services.connector_health` | `app.monitoring.connector_health` | Re-export shim; workers, operator script and tests updated |\n\nThe old paths above contain imports only; the implementation exists once in the new package. Keep these shims until all external or untracked consumers are ruled out.\n\n## Additional shared discovery extraction (current branch)
+## Completed Phase 1 domain extractions (current branch)\n\n| Previous service path | Canonical implementation | Compatibility policy |\n|---|---|---|\n| `app.models.normalization` | `app.catalog.normalization` | Re-export shim; regression test asserts object identity |\n| `app.services.canonical_matching` | `app.matching.canonical_matching` | Re-export shim; worker and test imports updated |\n| `app.services.ingestion_persistence` | `app.offers.persistence` | Re-export shim; connector, Bplatz adapter, scripts and tests updated |\n| `app.services.connector_ingestion` | `app.offers.ingestion` | Re-export shim; workers, scripts and tests updated |\n| `app.services.offer_refresh` | `app.pricing.offer_refresh` | Re-export shim; workers and tests updated |\n| `app.services.connector_health` | `app.monitoring.connector_health` | Re-export shim; workers, operator script and tests updated |\n\nThe old paths above contain imports only; the implementation exists once in the new package. Keep these shims until all external or untracked consumers are ruled out.\n\n## Additional shared discovery extraction and import audit (current branch)
 
 - `app.discovery.dispatch` now owns the shared candidate-fetch dispatch and pagination continuation used by both Notino and legacy worker discovery handlers.
 - Discovery candidates are not pre-filtered by retailer-specific or legacy matching logic; canonical resolution remains in `app.matching` and publication remains in `app.offers`.
-- Isolated regression coverage: `backend/tests/test_discovery_dispatch.py`; the worker queue workflow runs this suite.
+- Isolated regression coverage: `backend/tests/test_discovery_dispatch.py`; the worker queue workflow runs this suite.\n- `backend/scripts/audit_python_import_graph.py` now builds a read-only AST graph for tracked backend Python modules; CI runs its tests and uploads the graph artifact. The graph includes static imports only; dynamic imports and runtime plugin loading still require separate review.
 
 ## Proposed extraction sequence
 
@@ -52,7 +52,7 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 
 - [x] Existing target packages are documented in `docs/PHASE_1_STRUCTURE_MAP.md`.
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
-- [ ] Generate a complete static import graph for all tracked Python files.
+- [ ] Review the generated static import graph artifact and reconcile any remaining legacy import edges (AST graph generator and CI artifact pipeline are now implemented).
 - [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing and monitoring tests now include legacy-import identity checks).
 - [ ] Verify all legacy callers have a tested replacement before any module moves.
 
