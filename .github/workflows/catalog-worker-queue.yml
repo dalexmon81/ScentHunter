@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/app/workers/**"
       - "backend/app/discovery/**"
+      - "backend/app/repositories/**"
       - "backend/scripts/audit_python_import_graph.py"
       - "backend/tests/test_import_graph_audit.py"
       - "backend/app/offers/**"
