@@ -301,21 +301,36 @@ def upgrade():
     op.create_index("ix_store_products_status_last_seen", "store_products", ["status", "last_seen_at"])
     op.create_index("ix_store_products_product_variant_id", "store_products", ["product_variant_id"])
 
-    with op.batch_alter_table("offers") as batch:
-        batch.add_column(sa.Column("store_product_id", sa.Uuid(), nullable=True))
-        batch.create_foreign_key(
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        # SQLite can add a nullable REFERENCES column without rebuilding the
+        # table. Avoid batch recreation here: offers already references
+        # ingestion_raw, so dropping/recreating ingestion_raw would violate FK
+        # enforcement while the migration is running.
+        op.execute(
+            "ALTER TABLE offers ADD COLUMN store_product_id CHAR(32) "
+            "REFERENCES store_products(id) ON DELETE RESTRICT"
+        )
+        op.create_index("ix_offers_store_product_id", "offers", ["store_product_id"])
+        op.execute(
+            "ALTER TABLE ingestion_raw ADD COLUMN store_product_id CHAR(32) "
+            "REFERENCES store_products(id) ON DELETE RESTRICT"
+        )
+        op.create_index("ix_ingestion_raw_store_product_id", "ingestion_raw", ["store_product_id"])
+    else:
+        op.add_column("offers", sa.Column("store_product_id", sa.Uuid(), nullable=True))
+        op.create_foreign_key(
             "fk_offers_store_product_id_store_products",
-            "store_products", ["store_product_id"], ["id"], ondelete="RESTRICT",
+            "offers", "store_products", ["store_product_id"], ["id"], ondelete="RESTRICT",
         )
-        batch.create_index("ix_offers_store_product_id", ["store_product_id"])
+        op.create_index("ix_offers_store_product_id", "offers", ["store_product_id"])
 
-    with op.batch_alter_table("ingestion_raw") as batch:
-        batch.add_column(sa.Column("store_product_id", sa.Uuid(), nullable=True))
-        batch.create_foreign_key(
+        op.add_column("ingestion_raw", sa.Column("store_product_id", sa.Uuid(), nullable=True))
+        op.create_foreign_key(
             "fk_ingestion_raw_store_product_id_store_products",
-            "store_products", ["store_product_id"], ["id"], ondelete="RESTRICT",
+            "ingestion_raw", "store_products", ["store_product_id"], ["id"], ondelete="RESTRICT",
         )
-        batch.create_index("ix_ingestion_raw_store_product_id", ["store_product_id"])
+        op.create_index("ix_ingestion_raw_store_product_id", "ingestion_raw", ["store_product_id"])
 
     op.create_table(
         "brand_aliases",
