@@ -18,7 +18,7 @@ from app.matching.canonical_matching import resolve_canonical_variant
 from app.offers.persistence import (
     promote_offer, record_legacy_match, record_match, stage_raw_offer,
 )
-from scenthunter_next_engine.next_engine_service import NextEngineService
+from app.matching.legacy_fallback import LegacyOfferMatcher, resolve_legacy_catalog_match
 from scenthunter_next_engine.offer_normalizer import normalize_offer
 
 
@@ -33,7 +33,7 @@ class ConnectorIngestionResult:
 
 def persist_connector_record(
     session: Session, *, connector: StoreConnector, store_id: UUID,
-    raw_record: dict, matcher: NextEngineService,
+    raw_record: dict, matcher: LegacyOfferMatcher,
 ) -> ConnectorIngestionResult:
     """Stage, normalize, match and optionally publish one connector record.
 
@@ -156,28 +156,21 @@ def persist_connector_record(
             product_variant_id=resolved_variant_id,
         )
 
-    aggregation = matcher.process_offers([normalized])
-    if (
-        aggregation.input_count != 1 or aggregation.matched_offer_count != 1
-        or len(aggregation.groups) != 1 or len(aggregation.groups[0].offers) != 1
-    ):
-        reasons = [
-            item.reason or item.status.value
-            for item in (*aggregation.unresolved, *aggregation.ambiguous)
-        ]
-        reason = ";".join(reasons) or "no_single_canonical_variant_match"
+    legacy_match = resolve_legacy_catalog_match(matcher, normalized)
+    if legacy_match.reason:
         record_match(
             session, ingestion_raw_id=raw_id, product_variant_id=None,
             method=f"{connector.store_key}_canonical_matcher",
-            reason=reason, unresolved_status="pending",
+            reason=legacy_match.reason, unresolved_status="pending",
         )
-        return ConnectorIngestionResult(raw_id, "pending", reason=reason)
+        return ConnectorIngestionResult(
+            raw_id, "pending", reason=legacy_match.reason,
+        )
 
-    group = aggregation.groups[0]
     resolved = record_legacy_match(
         session, ingestion_raw_id=raw_id,
-        legacy_product_id=group.canonical_product_id,
-        legacy_variant_id=group.canonical_variant_id,
+        legacy_product_id=legacy_match.legacy_product_id,
+        legacy_variant_id=legacy_match.legacy_variant_id,
         method=f"{connector.store_key}_canonical_matcher",
         unresolved_status="pending",
     )
