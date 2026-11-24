@@ -72,7 +72,7 @@ The old paths above contain imports only; the implementation exists once in the 
 
 ## Static import graph audit snapshot
 
-The CI artifact from commit `58b372f3295b4357beecf7ce89bb50079a71a262` was downloaded and inspected. It contains **191 Python modules**, **447 local import edges**, **0 syntax errors** and **0 unresolved relative imports**. Artifact SHA-256: `8bc80920d801a746374a6bfc801ffdb6c9eb3560fa9e51978c6d7c82721efc34`. These are static AST results: dynamic imports and runtime plugin loading are not represented.
+The CI artifact from commit `688b06af0d63651ebce5675a3aaaec720d454519` was downloaded and inspected. It contains **191 Python modules**, **447 local import edges**, **0 syntax errors** and **0 unresolved relative imports**. Artifact SHA-256: `5a0ccb034bebc246c985889c78d713133410f763c1fcffbcca398a9628a2f640`. These are static AST results: dynamic imports and runtime plugin loading are not represented.
 
 The graph reports 44 edges to `catalog_engine`, 4 to `product_matcher`, and 75 edges into `scenthunter_next_engine`. Those totals include tests, tools and internal imports inside the legacy package; they are not counts of production callers.
 
@@ -103,7 +103,7 @@ The same graph shows numerous references from tests and scripts. These are retai
 
 ### Latest CI checks on this PR head
 
-The following completed successfully for commit `58b372f3295b4357beecf7ce89bb50079a71a262`:
+The following completed successfully for commit `688b06af0d63651ebce5675a3aaaec720d454519`:
 
 - Hydration queue and search regressions
 - Catalog normalization
@@ -112,7 +112,7 @@ The following completed successfully for commit `58b372f3295b4357beecf7ce89bb500
 - Connector contract
 - Static Python import graph generation
 
-The import-graph workflow uploaded artifact `scent-hunter-backend-import-graph` (SHA-256 `8bc80920d801a746374a6bfc801ffdb6c9eb3560fa9e51978c6d7c82721efc34`). The artifact was downloaded and inspected directly.
+The import-graph workflow uploaded artifact `scent-hunter-backend-import-graph` (SHA-256 `5a0ccb034bebc246c985889c78d713133410f763c1fcffbcca398a9628a2f640`). The artifact was downloaded and inspected directly.
 
 Notino canonical discovery regression also completed successfully. Live CJ feed parser checks were **skipped** by workflow conditions and are not counted as passing live tests. No production Fly.io deploy or production database mutation was performed by these Phase 1 changes.
 
