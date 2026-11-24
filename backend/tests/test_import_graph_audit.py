@@ -21,6 +21,16 @@ class ImportGraphAuditTests(unittest.TestCase):
         self.assertEqual(graph["modules"]["app"]["imports"][0]["module"], "app.catalog")
         self.assertEqual(graph["modules"]["workers"]["imports"][0]["module"], "app.catalog")
 
+    def test_resolves_backend_prefixed_legacy_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "backend"
+            root.mkdir()
+            (root / "catalog_engine.py").write_text("VALUE = 1\\n", encoding="utf-8")
+            (root / "legacy.py").write_text("from backend.catalog_engine import VALUE\\n", encoding="utf-8")
+            graph = build_import_graph(root)
+        imports = graph["modules"]["legacy"]["imports"]
+        self.assertIn("catalog_engine", [item["module"] for item in imports])
+
     def test_reports_python_syntax_errors_without_importing_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
