@@ -6,6 +6,8 @@ on:
     paths:
       - "backend/app/workers/**"
       - "backend/app/discovery/**"
+      - "backend/scripts/audit_python_import_graph.py"
+      - "backend/tests/test_import_graph_audit.py"
       - "backend/app/offers/**"
       - "backend/app/matching/**"
       - "backend/app/pricing/**"
@@ -60,6 +62,14 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install backend requirements
         run: python -m pip install -r backend/requirements.txt
+      - name: Build static backend Python import graph
+        working-directory: backend
+        run: python scripts/audit_python_import_graph.py > /tmp/scenthunter-python-import-graph.json
+      - name: Test static import graph auditor
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_import_graph_audit.py' -v
       - name: Run Celery and SQLite queue contract tests
         working-directory: backend
         env:
