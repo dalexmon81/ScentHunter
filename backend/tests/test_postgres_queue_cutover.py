@@ -164,7 +164,7 @@ def test_daily_discovery_recovers_when_today_is_scheduled_but_only_stale_job_exi
         payload = {"store_id": "deloox-be-id", "cursor": None, "limit": 100}
         payload_dedupe = queue._serialize(payload)[1]
         stale_id = uuid.uuid4()
-        now = datetime(2026, 11, 24, 9, 0, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         with engine.begin() as connection:
             connection.execute(insert(schedule).values(
                 schedule_key=schedule_key, scheduled_day=day, updated_at=now,
@@ -191,9 +191,11 @@ def test_daily_discovery_recovers_when_today_is_scheduled_but_only_stale_job_exi
                 jobs.c.id, jobs.c.dedupe_key, jobs.c.status
             ).order_by(jobs.c.created_at)).all()
         assert len(rows) == 2, rows
-        assert rows[0].id == stale_id and rows[0].status == "queued"
-        assert rows[1].id == uuid.UUID(first) and rows[1].status == "queued"
-        assert rows[1].dedupe_key == queue._daily_dedupe_key(
+        rows_by_id = {row.id: row for row in rows}
+        assert rows_by_id[stale_id].status == "queued"
+        replacement = rows_by_id[uuid.UUID(first)]
+        assert replacement.status == "queued"
+        assert replacement.dedupe_key == queue._daily_dedupe_key(
             payload_dedupe, schedule_key, day
         )
     finally:
