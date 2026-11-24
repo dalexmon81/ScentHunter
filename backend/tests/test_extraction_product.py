@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.extraction.product import extract_product_record
+from app.extraction.product import extract_product_record, extract_price_stock_observation
 
 
 class FakeConnector:
@@ -27,6 +27,20 @@ class ExtractionTests(unittest.IsolatedAsyncioTestCase):
     async def test_rejects_empty_identifier_before_network_call(self):
         with self.assertRaisesRegex(ValueError, "external_product_id"):
             await extract_product_record(FakeConnector(), "  ")
+
+    async def test_extracts_price_stock_observation_without_mutating_source(self):
+        class PriceConnector:
+            async def fetch_price_and_stock(self, external_product_id):
+                return {"external_product_id": external_product_id, "price": "12.50"}
+        result = await extract_price_stock_observation(PriceConnector(), "SKU-2")
+        self.assertEqual(result, {"external_product_id": "SKU-2", "price": "12.50"})
+
+    async def test_rejects_malformed_price_stock_observation(self):
+        class BrokenConnector:
+            async def fetch_price_and_stock(self, external_product_id):
+                return None
+        with self.assertRaisesRegex(TypeError, "must return a mapping"):
+            await extract_price_stock_observation(BrokenConnector(), "SKU-2")
 
     async def test_rejects_malformed_connector_result(self):
         class BrokenConnector:
