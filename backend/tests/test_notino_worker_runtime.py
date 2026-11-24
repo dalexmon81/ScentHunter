@@ -69,9 +69,8 @@ class NotinoWorkerRuntimeTests(unittest.TestCase):
         clear_handlers()
         self.engine.dispose()
 
-    def test_discovery_queues_all_products_for_conservative_matching(self):
-        with patch.object(notino_runtime, "_is_unique_canonical_candidate", side_effect=AssertionError("pre-filter must not run")), \
-             patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
+    def test_discovery_queues_all_products_without_legacy_prefilter(self):
+        with patch.object(notino_runtime, "enqueue_offer_fetch") as enqueue_fetch:
             result = notino_runtime.handle_notino_discovery({
                 "store_id": str(self.store_id),
                 "limit": 10,
