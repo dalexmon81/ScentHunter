@@ -398,3 +398,19 @@ def test_search_prefers_apish_before_direct_public_scraper_when_feed_empty(monke
     assert report["status"] == "success"
     assert report["details"]["source"] == "api_sh_notino"
     assert report["results"][0]["offer_source"] == "api_sh_notino"
+
+
+
+def test_public_search_rejects_french_aftershave_titles():
+    # Regression: a live Notino.fr smoke result exposed an aftershave balm
+    # as a perfume match because the French product label was not blocked.
+    assert scraper._has_non_perfume_marker(
+        "DIOR Sauvage baume apres-rasage parfume - apaise et hydrate"
+    )
+    assert scraper._candidate_from_evidence(
+        "https://www.notino.fr/dior/sauvage-baume-apres-rasage-parfume/p-16111226/",
+        "DIOR Sauvage baume apres-rasage parfume - apaise et hydrate",
+        "60,50 €",
+        "Dior Sauvage Eau de Parfum",
+        "regression-test",
+    ) is None
