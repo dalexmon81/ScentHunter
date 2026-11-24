@@ -6,10 +6,10 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from app.models import Brand, Fragrance, IngestionRaw, Offer, ProductVariant, Store
+from app.models import Brand, Fragrance, IngestionRaw, IngestionRun, Offer, ProductVariant, Store
 
 router = APIRouter()
 
@@ -48,6 +48,8 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
 
     now = datetime.now(timezone.utc)
     with Session(_engine()) as session:
+        # Enforce read-only at the PostgreSQL transaction level, not merely by convention.
+        session.execute(text("SET TRANSACTION READ ONLY"))
         catalog_counts = {
             "brands": session.scalar(select(func.count()).select_from(Brand)) or 0,
             "fragrances": session.scalar(select(func.count()).select_from(Fragrance)) or 0,
@@ -69,6 +71,40 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
             .order_by(Store.slug, Offer.captured_at.desc(), Offer.id)
         )
         rows = session.execute(statement).all()
+
+        raw_counts: dict[str, dict[str, int]] = {}
+        for store_id, status, count in session.execute(
+            select(IngestionRaw.store_id, IngestionRaw.status, func.count())
+            .group_by(IngestionRaw.store_id, IngestionRaw.status)
+        ).all():
+            raw_counts.setdefault(str(store_id), {})[str(status)] = int(count)
+
+        run_counts: dict[str, dict[str, int]] = {}
+        latest_run_by_store: dict[str, str] = {}
+        for store_id, status, count, discovered, created, updated, rejected, latest in session.execute(
+            select(
+                IngestionRun.store_id,
+                IngestionRun.status,
+                func.count(),
+                func.coalesce(func.sum(IngestionRun.products_discovered), 0),
+                func.coalesce(func.sum(IngestionRun.offers_created), 0),
+                func.coalesce(func.sum(IngestionRun.offers_updated), 0),
+                func.coalesce(func.sum(IngestionRun.offers_rejected), 0),
+                func.max(IngestionRun.started_at),
+            ).group_by(IngestionRun.store_id, IngestionRun.status)
+        ).all():
+            key = str(store_id)
+            run_counts.setdefault(key, {})[str(status)] = {
+                "runs": int(count),
+                "products_discovered": int(discovered),
+                "offers_created": int(created),
+                "offers_updated": int(updated),
+                "offers_rejected": int(rejected),
+            }
+            if latest is not None:
+                previous = latest_run_by_store.get(key)
+                if previous is None or _iso(latest) > previous:
+                    latest_run_by_store[key] = _iso(latest)
 
         offers_by_slug: dict[str, list[dict]] = {}
         for offer, store, raw, variant, fragrance, brand in rows:
@@ -111,6 +147,9 @@ def postgres_phase0_baseline(authorization: str = Header(default="")):
                 "domain": store.domain if store else None,
                 "last_successful_sync_at": _iso(store.last_successful_sync_at) if store else None,
                 "consecutive_failures": store.consecutive_failures if store else None,
+                "raw_ingestion_by_status": raw_counts.get(str(store.id), {}) if store else {},
+                "ingestion_runs_by_status": run_counts.get(str(store.id), {}) if store else {},
+                "last_ingestion_run_at": latest_run_by_store.get(str(store.id)) if store else None,
                 "total_offers": len(offers),
                 "active_offers": sum(row["offer_status"] == "active" for row in offers),
                 "publishable_offers": sum(row["is_valid_offer"] for row in offers),
