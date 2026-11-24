@@ -19,7 +19,7 @@ from app.models import (
     Store, IngestionRaw, Offer, PriceHistory, MatchAudit,
     LegacyProductIdMap, LegacyVariantIdMap,
 )
-from app.services.ingestion_persistence import (
+from app.offers.persistence import (
     PromotionRejected, stage_raw_offer, record_legacy_match,
     resolve_legacy_ids, promote_offer,
 )
