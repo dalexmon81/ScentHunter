@@ -1,413 +1,113 @@
-name: Phase 0 - live retailer baseline (read-only)
+name: Phase 0 - PostgreSQL live retailer baseline (read-only)
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - .github/workflows/phase-0-live-baseline.yml
+      - backend/app/api/phase0_baseline.py
+      - backend/postgres_main.py
+
 permissions:
   contents: read
   actions: read
 
 jobs:
   baseline:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 15
     steps:
-      - name: Confirm production deploy and health checks succeeded
-        if: false
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PARENT_RUN_ID: ${{ github.event.workflow_run.id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          jobs_json=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$PARENT_RUN_ID/jobs?per_page=100")
-          jq -e '
-            [.jobs[].steps[] | select(.name == "Deploy ScentHunter") | .conclusion] == ["success"]
-            and
-            [.jobs[].steps[] | select(.name == "Verify production health and catalog API") | .conclusion] == ["success"]
-          ' <<< "$jobs_json" >/dev/null
-
-      - name: Wait for this commit's Fly deployment before reading production
+      - name: Wait for the matching Fly deployment when runtime files changed
         if: ${{ github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          COMMIT_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          commit_json=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$COMMIT_SHA")
-          backend_changed=$(jq -r '
-            [.files[].filename]
-            | any(startswith("backend/") or . == "fly.toml" or . == "Dockerfile")
-          ' <<< "$commit_json")
-          if [[ "$backend_changed" != "true" ]]; then
-            echo "No backend/deployment files changed; production deploy wait is not required."
+          COMMIT="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA")"
+          RUNTIME_CHANGED="$(printf '%s' "$COMMIT" | jq -r '[.files[].filename] | any(startswith("backend/") or . == "fly.toml" or . == "Dockerfile")')"
+          if [ "$RUNTIME_CHANGED" != "true" ]; then
+            echo "No runtime files changed; auditing the current Fly release."
             exit 0
           fi
-
-          echo "Backend changed in this push; waiting for the matching Fly Deploy workflow."
-          for attempt in $(seq 1 60); do
-            runs=$(curl --fail --silent --show-error \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$COMMIT_SHA&event=push&per_page=100")
-            deploy=$(jq -c '[.workflow_runs[] | select(.name == "Fly Deploy")] | first // empty' <<< "$runs")
-            if [[ -n "$deploy" ]]; then
-              status=$(jq -r '.status' <<< "$deploy")
-              conclusion=$(jq -r '.conclusion // ""' <<< "$deploy")
-              echo "Fly Deploy status=$status conclusion=$conclusion"
-              if [[ "$status" == "completed" ]]; then
-                [[ "$conclusion" == "success" ]] || {
-                  echo "::error::Fly deployment did not succeed; refusing to run the production baseline."
-                  exit 1
-                }
-                exit 0
-              fi
+          for attempt in $(seq 1 90); do
+            RUNS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$RUNS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$RUNS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            echo "Fly Deploy: $STATUS / $CONCLUSION (attempt $attempt/90)"
+            if [ "$STATUS" = "completed" ]; then
+              [ "$CONCLUSION" = "success" ] || { echo "::error::Fly deployment failed."; exit 1; }
+              exit 0
             fi
-            sleep 15
+            sleep 10
           done
-          echo "::error::Timed out waiting for the Fly deployment for $COMMIT_SHA."
+          echo "::error::Timed out waiting for Fly deployment."
           exit 1
 
-      - name: Reuse latest Phase 0 job, poll and validate its CSV
+      - name: Read the PostgreSQL catalog baseline from Fly production
         env:
-          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
-          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+          BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "$SCENTHUNTER_BASELINE_URL" || -z "$SCENTHUNTER_BASELINE_TOKEN" ]]; then
-            echo "::error::Phase 0 baseline URL or token secret is missing."
-            exit 1
-          fi
+          test -n "$BASELINE_TOKEN" || { echo "::error::SCENTHUNTER_BASELINE_TOKEN GitHub secret is missing."; exit 1; }
+          HTTP="$(curl --silent --show-error --connect-timeout 10 --max-time 90 \
+            -H "Authorization: Bearer $BASELINE_TOKEN" -H "Accept: application/json" \
+            --output phase0-postgres-baseline.json --write-out '%{http_code}' \
+            https://scenthunter.fly.dev/admin/phase0/postgres-baseline)"
+          [ "$HTTP" = "200" ] || { echo "::error::PostgreSQL baseline endpoint returned HTTP $HTTP"; cat phase0-postgres-baseline.json; exit 1; }
 
-          suffix="/admin/phase0/baseline-report.csv"
-          if [[ "$SCENTHUNTER_BASELINE_URL" == *"$suffix" ]]; then
-            base_url="${SCENTHUNTER_BASELINE_URL%"$suffix"}"
-          else
-            base_url="${SCENTHUNTER_BASELINE_URL%/}"
-          fi
-          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
-
-          echo "Checking the latest durable Phase 0 job before creating anything..."
-          latest_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-            -H "$auth_header" -H "Accept: application/json" \
-            --output phase0-latest.json --write-out '%{http_code}' \
-            "$base_url/admin/phase0/baseline/latest")
-
-          start_new_job() {
-            local reason="$1"
-            echo "$reason"
-            start_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-              -X POST -H "$auth_header" -H "Accept: application/json" \
-              --output phase0-start.json --write-out '%{http_code}' \
-              "$base_url/admin/phase0/baseline/start")
-            [[ "$start_http" == "202" ]] || {
-              echo "::error::Baseline start returned HTTP $start_http"
-              cat phase0-start.json
-              exit 1
-            }
-            start_payload=$(cat phase0-start.json)
-            job_id=$(jq -er '.job_id' <<< "$start_payload")
-            job_status=$(jq -er '.status' <<< "$start_payload")
-            [[ "$job_status" == "queued" ]] || {
-              echo "::error::Expected queued after POST /start, got $job_status"
-              exit 1
-            }
-          }
-
-          if [[ "$latest_http" == "200" ]]; then
-            latest_payload=$(cat phase0-latest.json)
-            previous_job_id=$(jq -er '.job_id' <<< "$latest_payload")
-            previous_status=$(jq -er '.status' <<< "$latest_payload")
-            if [[ "$previous_status" == "queued" || "$previous_status" == "running" ]]; then
-              previous_status_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-                -H "$auth_header" -H "Accept: application/json" \
-                --output phase0-previous-status.json --write-out '%{http_code}' \
-                "$base_url/admin/phase0/baseline/status?job_id=$previous_job_id")
-              [[ "$previous_status_http" == "200" ]] || {
-                echo "::error::Could not safely inspect existing in-flight job (HTTP $previous_status_http); refusing to enqueue a duplicate."
-                cat phase0-previous-status.json
-                exit 1
-              }
-              previous_total=$(jq -r '.total_stores // 0' phase0-previous-status.json)
-              if [[ "$previous_total" == "9" ]]; then
-                job_id="$previous_job_id"
-                job_status="$previous_status"
-                echo "Reusing current-scope in-flight job_id=$job_id status=$job_status stores=$previous_total"
-              else
-                echo "::error::An active Phase 0 job already exists (job_id=$previous_job_id, total_stores=$previous_total). Refusing to create a duplicate job."
-                exit 1
-              fi
-            else
-              echo "Latest job is terminal (status=$previous_status); creating a fresh nine-store baseline."
-              start_new_job "Starting a fresh Phase 0 baseline for the nine active retailers."
-            fi
-          elif [[ "$latest_http" == "404" ]]; then
-            start_new_job "No durable Phase 0 job exists; creating the first job."
-          else
-            echo "::error::GET latest returned unexpected HTTP $latest_http"
-            cat phase0-latest.json
-            exit 1
-          fi
-
-          echo "PHASE0_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$job_status" != "queued" && "$job_status" != "running" && "$job_status" != "completed" ]]; then
-            echo "::error::Unexpected latest Phase 0 status: $job_status"
-            jq . phase0-latest.json
-            exit 1
-          fi
-          # One durable job is followed for at most 30 minutes. Never enqueue a
-          # second job while an existing queued/running job is present.
-          deadline=$((SECONDS + 1800))
-          completed=false
-          heartbeat_missing_since=$SECONDS
-          while true; do
-            (( SECONDS < deadline )) || {
-              echo "::error::Phase 0 baseline timed out after 30 minutes."
-              exit 1
-            }
-
-            status_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-              -H "$auth_header" -H "Accept: application/json" \
-              --output phase0-status.json --write-out '%{http_code}' \
-              "$base_url/admin/phase0/baseline/status?job_id=$job_id")
-            [[ "$status_http" == "200" ]] || {
-              echo "::error::Status endpoint returned HTTP $status_http"
-              cat phase0-status.json
-              exit 1
-            }
-
-            status_payload=$(cat phase0-status.json)
-            job_status=$(jq -er '.status' <<< "$status_payload")
-            progress=$(jq -r '.progress // 0' <<< "$status_payload")
-            heartbeat=$(jq -r '.heartbeat_at // "null"' <<< "$status_payload")
-            job_detail_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-              -H "$auth_header" -H "Accept: application/json" \
-              --output phase0-job-detail.json --write-out '%{http_code}' \
-              "$base_url/admin/phase0/baseline/jobs/$job_id")
-            [[ "$job_detail_http" == "200" ]] || {
-              echo "::error::Job detail endpoint returned HTTP $job_detail_http"
-              cat phase0-job-detail.json
-              exit 1
-            }
-            job_detail=$(cat phase0-job-detail.json)
-            current_store=$(jq -r '.current_store // .store // "unknown"' <<< "$job_detail")
-            processed=$(jq -r '.processed_stores // 0' <<< "$status_payload")
-            total=$(jq -r '.total_stores // 9' <<< "$status_payload")
-            error_message=$(jq -r '.error_message // .error // ""' <<< "$status_payload")
-
-            echo "PHASE0_JOB_ID=$job_id"
-            echo "PHASE0_STATUS=$job_status"
-            echo "PHASE0_PROGRESS=$progress"
-            echo "PHASE0_HEARTBEAT_AT=$heartbeat"
-            echo "PHASE0_CURRENT_STORE=$current_store"
-            echo "PHASE0_PROCESSED_STORES=$processed"
-            echo "PHASE0_TOTAL_STORES=$total"
-            echo "PHASE0_ERROR=$error_message"
-
-            case "$job_status" in
-              queued)
-                ;;
-              running)
-                now=$SECONDS
-                if [[ "$heartbeat" == "null" || -z "$heartbeat" ]]; then
-                  if (( now - heartbeat_missing_since > 600 )); then
-                    echo "::error::Worker heartbeat stalled: no heartbeat update for more than 10 minutes."
-                    exit 1
-                  fi
-                else
-                  heartbeat_epoch=$(date -u -d "$heartbeat" +%s 2>/dev/null || true)
-                  if [[ -z "$heartbeat_epoch" ]]; then
-                    echo "::error::Could not parse worker heartbeat_at: $heartbeat"
-                    exit 1
-                  fi
-                  current_epoch=$(date -u +%s)
-                  if (( current_epoch - heartbeat_epoch > 600 )); then
-                    echo "::error::Worker heartbeat stalled: no heartbeat update for more than 10 minutes."
-                    exit 1
-                  fi
-                  heartbeat_missing_since=$now
-                fi
-                ;;
-              completed)
-                completed=true
-                break
-                ;;
-              failed)
-                echo "::error::Phase 0 worker failed:"
-                jq '{job_id,status,heartbeat_at,current_store,error_message,error,error_traceback,traceback}' <<< "$status_payload"
-                exit 1
-                ;;
-              *)
-                echo "::error::Unexpected Phase 0 job status: $job_status"
-                jq . <<< "$status_payload"
-                exit 1
-                ;;
-            esac
-
-            sleep 20
-          done
-
-          [[ "$completed" == "true" ]] || {
-            echo "::error::Phase 0 job exited polling without completed status."
-            exit 1
-          }
-
-          echo "Downloading the latest completed CSV..."
-          download_http=$(curl --silent --show-error --connect-timeout 10 --max-time 120 \
-            -H "$auth_header" -H "Accept: text/csv" \
-            --output phase-0-retailer-baseline.csv --write-out '%{http_code}' \
-            "$base_url/admin/phase0/baseline/latest/download")
-          [[ "$download_http" == "200" ]] || {
-            echo "::error::Latest CSV download returned HTTP $download_http"
-            exit 1
-          }
-
+      - name: Validate and summarize the nine-store snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
-          import csv
-          import io
-          import os
-          from collections import Counter
+          import json
           from pathlib import Path
 
-          path = Path("phase-0-retailer-baseline.csv")
-          text = path.read_bytes().decode("utf-8-sig")
-          reader = csv.DictReader(io.StringIO(text, newline=""))
-          expected_header = [
-              "store", "catalog_product_count", "canonical_product_id", "brand", "fragrance",
-              "concentration", "size_ml", "variant_type", "gtin",
-              "external_product_id", "offer_url", "price", "currency",
-              "availability", "captured_at", "source", "match_status", "match_confidence",
-              "is_valid_offer", "store_status",
+          data = json.loads(Path("phase0-postgres-baseline.json").read_text())
+          expected = {"bplatz", "deloox", "easycosmetic", "notino", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"}
+          stores = data.get("stores", [])
+          names = {row.get("store") for row in stores}
+          if data.get("report") != "phase0-postgresql-read-only" or data.get("database_backend") != "postgresql" or data.get("read_only") is not True:
+              raise SystemExit("Unexpected report identity or database backend.")
+          if names != expected or len(stores) != 9:
+              raise SystemExit(f"Nine-store scope mismatch: {sorted(names)}")
+          if sum(row.get("total_offers", 0) for row in stores) != data["totals"]["offers"]:
+              raise SystemExit("Offer total does not reconcile.")
+          if sum(row.get("publishable_offers", 0) for row in stores) != data["totals"]["publishable_offers"]:
+              raise SystemExit("Publishable offer total does not reconcile.")
+          lines = [
+              "# Phase 0 — PostgreSQL live baseline",
+              "",
+              f"- Snapshot: {data['generated_at']}",
+              f"- Catalog: {data['catalog']['brands']} brands, {data['catalog']['fragrances']} fragrances, {data['catalog']['variants']} variants",
+              f"- Stores present: {data['totals']['stores_present']}/9",
+              f"- Active stores: {data['totals']['active_stores']}",
+              f"- Offers: {data['totals']['offers']} total, {data['totals']['active_offers']} active, {data['totals']['publishable_offers']} publishable",
+              "",
+              "| Store | DB status | Offers | Active | Publishable | Last successful sync |",
+              "|---|---|---:|---:|---:|---|",
           ]
-          if reader.fieldnames != expected_header:
-              raise SystemExit("CSV schema mismatch: " + repr(reader.fieldnames))
-          expected_stores = {
-              "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
-              "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
-          }
-          rows = list(reader)
-          counts = Counter(row["store"] for row in rows)
-          missing = sorted(store for store in expected_stores if counts[store] == 0)
-          if missing:
-              raise SystemExit("CSV has no rows for required stores: " + repr(missing))
-          unknown = set(counts) - expected_stores
-          if unknown:
-              raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
-          offer_rows = [row for row in rows if row.get("source")]
-          offer_counts = Counter(row["store"] for row in offer_rows)
-          if offer_counts["notino"] <= 0:
-              raise SystemExit("CSV has no real offer rows for notino")
-          allowed_statuses = {"completed", "timeout", "failed", "skipped"}
-          allowed_stock = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
-          import re
-          from urllib.parse import urlparse
-
-          def valid_price(row):
-              try:
-                  amount = float(row.get("price", ""))
-              except (TypeError, ValueError):
-                  return False
-              return amount > 0 and bool(re.fullmatch(r"[A-Z]{3}", row.get("currency", "")))
-
-          def valid_url(row):
-              try:
-                  parsed = urlparse(row.get("offer_url", ""))
-                  return parsed.scheme == "https" and bool(parsed.netloc)
-              except ValueError:
-                  return False
-
-          catalog_counts = []
-          for row in rows:
-              try:
-                  count = int(row.get("catalog_product_count") or 0)
-                  if count > 0:
-                      catalog_counts.append(count)
-              except (TypeError, ValueError):
-                  pass
-          catalog_products = max(catalog_counts, default=0)
-
-          summary_rows = []
-          for store in sorted(expected_stores):
-              offers = [row for row in offer_rows if row["store"] == store]
-              n = len(offers)
-              price_count = sum(valid_price(row) for row in offers)
-              url_count = sum(valid_url(row) for row in offers)
-              stock_count = sum(row.get("availability", "").strip().lower() in allowed_stock for row in offers)
-              ambiguous = sum(row.get("match_status") == "ambiguous" for row in offers)
-              summary_rows.append({
-                  "store": store, "offer_count": n,
-                  "valid_price_count": price_count,
-                  "valid_price_pct": round(100 * price_count / n, 2) if n else 0,
-                  "valid_url_count": url_count,
-                  "valid_url_pct": round(100 * url_count / n, 2) if n else 0,
-                  "valid_stock_count": stock_count,
-                  "valid_stock_pct": round(100 * stock_count / n, 2) if n else 0,
-                  "ambiguous_match_count": ambiguous,
-              })
-
-          total_offers = len(offer_rows)
-          total_price = sum(valid_price(row) for row in offer_rows)
-          total_url = sum(valid_url(row) for row in offer_rows)
-          total_stock = sum(row.get("availability", "").strip().lower() in allowed_stock for row in offer_rows)
-          total_ambiguous = sum(row.get("match_status") == "ambiguous" for row in offer_rows)
-          summary_path = Path("phase-0-quality-summary.csv")
-          with summary_path.open("w", newline="", encoding="utf-8") as handle:
-              fields = list(summary_rows[0]) if summary_rows else []
-              writer = csv.DictWriter(handle, fieldnames=fields)
-              writer.writeheader()
-              writer.writerows(summary_rows)
-
-          report = Path("phase-0-quality-summary.md")
-          with report.open("w", encoding="utf-8") as handle:
-              handle.write("# Phase 0 — quality baseline\n\n")
-              handle.write(f"- Canonical products in catalog: **{catalog_products}**\n")
-              handle.write(f"- Persisted retailer offers: **{total_offers}**\n")
-              handle.write(f"- Valid price: **{(100 * total_price / total_offers) if total_offers else 0:.2f}%** ({total_price}/{total_offers})\n")
-              handle.write(f"- Valid HTTPS URL: **{(100 * total_url / total_offers) if total_offers else 0:.2f}%** ({total_url}/{total_offers})\n")
-              handle.write(f"- Valid stock: **{(100 * total_stock / total_offers) if total_offers else 0:.2f}%** ({total_stock}/{total_offers})\n")
-              handle.write(f"- Ambiguous matches: **{total_ambiguous}**\n\n")
-              handle.write("| Store | Offers | Price valid | URL valid | Stock valid | Ambiguous |\n|---|---:|---:|---:|---:|---:|\n")
-              for item in summary_rows:
-                  handle.write(f"| {item['store']} | {item['offer_count']} | {item['valid_price_pct']:.2f}% | {item['valid_url_pct']:.2f}% | {item['valid_stock_pct']:.2f}% | {item['ambiguous_match_count']} |\n")
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
-              handle.write(report.read_text(encoding="utf-8"))
-
-          if any(row.get("store_status") not in allowed_statuses for row in rows):
-              raise SystemExit("CSV contains an invalid store_status value.")
-          if any(row["is_valid_offer"] not in {"true", "false"} for row in rows):
-              raise SystemExit("CSV contains an invalid is_valid_offer value.")
-          if any(row.get("match_status") not in {"matched", "ambiguous", "unresolved", ""} for row in offer_rows):
-              raise SystemExit("CSV contains an invalid match_status value.")
-          print("PHASE0_CSV_HEADER=PASS")
-          print("PHASE0_CSV_ROWS=" + str(len(rows)))
-          print(f"PHASE0_CATALOG_PRODUCTS={catalog_products}")
-          print(f"PHASE0_TOTAL_OFFERS={total_offers}")
-          print(f"PHASE0_AMBIGUOUS_MATCHES={total_ambiguous}")
-          for item in summary_rows:
-              print(f"PHASE0_STORE_{item['store'].upper()}_OFFERS={item['offer_count']}")
+          for row in stores:
+              lines.append(f"| {row['store']} | {row['status']} | {row['total_offers']} | {row['active_offers']} | {row['publishable_offers']} | {row['last_successful_sync_at'] or '—'} |")
+          gaps = [row['store'] for row in stores if not row['database_present'] or row['total_offers'] == 0]
+          lines += ["", "## Coverage gaps", "", *(f"- {name}" for name in gaps)] if gaps else ["", "No missing stores or zero-offer stores in scope."]
+          Path("phase0-postgres-baseline.md").write_text("\n".join(lines) + "\n")
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(Path("phase0-postgres-baseline.md").read_text())
+          print("PHASE0_POSTGRES_BASELINE=PASS")
+          print("PHASE0_STORES_PRESENT=" + str(data["totals"]["stores_present"]))
+          print("PHASE0_OFFERS=" + str(data["totals"]["offers"]))
+          print("PHASE0_PUBLISHABLE_OFFERS=" + str(data["totals"]["publishable_offers"]))
           PY
-          echo "Phase 0 baseline CSV downloaded and validated for job $job_id."
 
-      - name: Upload CSV report
+      - name: Upload the raw baseline and summary
         uses: actions/upload-artifact@v4
         with:
-          name: scenthunter-phase-0-live-baseline
+          name: phase0-postgres-live-baseline
           path: |
-            phase-0-retailer-baseline.csv
-            phase-0-quality-summary.csv
-            phase-0-quality-summary.md
-          if-no-files-found: error
+            phase0-postgres-baseline.json
+            phase0-postgres-baseline.md
           retention-days: 30
