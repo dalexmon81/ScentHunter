@@ -4,7 +4,7 @@
 
 **Implementation ownership**
 - `app.matching.canonical_matching`: canonical database-backed resolver and result types.
-- `app.matching.legacy_fallback`: the single transitional adapter to Next Engine; invoked only after the database-native resolver has no safe match.
+- `app.matching.legacy_fallback`: the single transitional adapter to Next Engine, including lazy construction from the legacy JSON catalog; invoked only after the database-native resolver has no safe match.
 - `app.catalog.normalization`: shared identity normalization; matching must not copy normalization rules.
 - `app.models`: SQLAlchemy persistence entities.
 - `app.offers.persistence`: persists the selected match and audit evidence; matching itself never writes to the database.
