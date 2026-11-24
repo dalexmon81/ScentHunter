@@ -62,7 +62,7 @@ def _notino_source_timestamp(raw: IngestionRaw) -> datetime | None:
         xml = payload.get("raw_xml")
         if not xml and isinstance(observation, dict):
             xml = observation.get("raw_xml")
-        match = re.search(r"<last_updated>\\s*([^<]+?)\\s*</last_updated>", str(xml or ""), re.I)
+        match = re.search(r"<last_updated>\s*([^<]+?)\s*</last_updated>", str(xml or ""), re.I)
         value = match.group(1) if match else None
     if not value:
         return None
