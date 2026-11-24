@@ -1,7 +1,7 @@
 # Phase 1 — backend structure and responsibility map
 
 **Implementation branch:** `phase1-catalog-boundary-tests-2026-11-24`  
-**Status:** controlled catalog, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository extractions; static import-graph audit added; no production cutover  
+**Status:** controlled catalog, matching, offers, pricing, monitoring, discovery, extraction and ingestion-run repository extractions; static import-graph audit added; normalization CI path corrected; no production cutover  
 **Production runtime:** `backend/postgres_main.py` + `backend/app/workers/postgres_worker.py`
 
 ## Rules
@@ -62,6 +62,6 @@ The additive target packages introduced in this branch are `catalog`, `discovery
 
 - All target package paths exist and have documented ownership.
 - Catalog normalization, matching, offers, pricing and connector health each have one implementation; legacy import paths are re-export shims.
-- Notino and legacy discovery workers share one tested dispatch/pagination implementation.
+- Notino and legacy discovery workers share one tested dispatch/pagination implementation. Notino and legacy product/refresh fetches share the tested `app.extraction.product` boundary; retailer parsers remain in connectors.
 - CI builds a read-only AST import graph and uploads it as a workflow artifact; dynamic imports still require manual review.
 - Production entrypoint, queue backend, database schema/data, feed, scrapers and production configuration remain unchanged.
