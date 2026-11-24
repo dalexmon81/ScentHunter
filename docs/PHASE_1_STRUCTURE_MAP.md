@@ -36,7 +36,7 @@
 
 ## Existing packages retained
 
-The packages `api`, `config`, `connectors`, `matching`, `models`, `repositories`, `schemas`, `search`, `services` and `workers` already exist. Extend them; do not recreate them.
+The packages `api`, `config`, `connectors`, `matching`, `models`, `repositories`, `schemas`, `search`, `services` and `workers` already exist. Explicit package initializers are now present for `api`, `workers`, `repositories` and `schemas`; extend these packages rather than recreating them.
 
 The additive target packages introduced in this branch are `catalog`, `discovery`, `extraction`, `offers`, `pricing`, `monitoring` and `tests`.
 
