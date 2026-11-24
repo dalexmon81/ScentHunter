@@ -12,6 +12,7 @@ from app.catalog.normalization import (
     extract_size_from_text,
     normalize_brand,
     normalize_fragrance_name,
+    normalize_gtin,
     normalize_text,
 )
 
@@ -59,6 +60,15 @@ class NormalizationTests(unittest.TestCase):
         known = build_identity(brand="Dior", fragrance_name="Sauvage")
         regular = build_identity(brand="Dior", fragrance_name="Sauvage", is_tester=False, is_refill=False, is_gift_set=False, is_mini=False)
         self.assertNotEqual(known.canonical_key, regular.canonical_key)
+
+
+    def test_gtin_normalization_validates_check_digit_and_preserves_zeroes(self):
+        self.assertEqual(normalize_gtin("3348901368247"), "3348901368247")
+        self.assertEqual(normalize_gtin("3 348901 368247"), "3348901368247")
+        self.assertEqual(normalize_gtin("036000291452"), "036000291452")
+        self.assertIsNone(normalize_gtin("3348901368248"))
+        self.assertIsNone(normalize_gtin("1234567"))
+        self.assertIsNone(normalize_gtin("ABC3348901368247"))
 
     def test_legacy_import_path_remains_compatible(self):
         from app.models.normalization import build_identity as legacy_build_identity
