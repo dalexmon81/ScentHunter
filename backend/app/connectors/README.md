@@ -58,4 +58,4 @@ treated as source evidence: publication requires an explicit `priceCurrency`
 field in the retained JSON-LD (or an explicit provenance field from a source).
 Unknown availability remains unknown and is rejected by the shared validation
 gate. Canonical matching and persistence stay in
-`app.services.connector_ingestion`.
+`app.offers.ingestion`.
