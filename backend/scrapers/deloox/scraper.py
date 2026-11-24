@@ -1764,7 +1764,7 @@ def extract_product_page(session, url, query=None, html=None):
             or 'itemprop="price"' in initial
             or 'property="product:price:amount"' in initial
         )
-        if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
+        if not product_markup:
             try:
                 browser_html, browser_url = _browser_product_document(target)
                 if browser_html:
