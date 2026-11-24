@@ -57,6 +57,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "image_url": offer.image,
             "concentration": offer.concentration,
             "raw_xml": offer.raw_xml,
+            "source_updated_at": offer.source_updated_at,
             "source": "authorized_cj_viv_xml_feed",
         }
 
@@ -151,7 +152,8 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "currency": row["currency"],
             "currency_explicit": bool(row.get("currency_explicit")),
             "availability": row["availability"],
-            "captured_at": time.time(),
+            "captured_at": row.get("source_updated_at"),
+            "source_updated_at": row.get("source_updated_at"),
             "source": row["source"],
             "raw_xml": row["raw_xml"],
         }
@@ -177,6 +179,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             "image_url": raw.get("image_url"),
             "source": raw.get("source", "authorized_cj_viv_xml_feed"),
             "currency_explicit": raw.get("currency_explicit") is True,
+            "source_updated_at": raw.get("source_updated_at"),
             "raw_payload": {
                 "raw_xml": raw.get("raw_xml"),
                 "affiliate_url": raw.get("affiliate_url"),
