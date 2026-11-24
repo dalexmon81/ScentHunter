@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - "backend/app/workers/**"
+      - "backend/app/discovery/**"
+      - "backend/app/offers/**"
+      - "backend/app/matching/**"
+      - "backend/app/pricing/**"
+      - "backend/app/monitoring/**"
       - "backend/app/connectors/base.py"
       - "backend/app/connectors/notino_feed.py"
       - "backend/app/connectors/legacy_scrapers.py"
@@ -18,6 +23,8 @@ on:
       - "backend/app/services/offer_refresh.py"
       - "backend/app/services/connector_health.py"
       - "backend/app/services/ingestion_persistence.py"
+      - "backend/tests/test_discovery_dispatch.py"
+      - "backend/tests/test_catalog_normalization.py"
       - "backend/scripts/enqueue_notino_discovery.py"
       - "backend/scripts/reinstate_store_connector.py"
       - "backend/scripts/seed_notino_store.py"
@@ -64,6 +71,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_catalog_ingestion_run.py' -v
+      - name: Run shared discovery dispatch tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_discovery_dispatch.py' -v
       - name: Run Notino worker runtime tests
         working-directory: backend
         env:
