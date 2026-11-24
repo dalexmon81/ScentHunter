@@ -39,6 +39,11 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
     def tearDown(self):
         self.engine.dispose()
 
+    def test_legacy_service_import_is_same_implementation(self):
+        from app.services.offer_refresh import refresh_offer_observation as legacy_refresh
+        from app.pricing.offer_refresh import refresh_offer_observation as canonical_refresh
+        self.assertIs(legacy_refresh, canonical_refresh)
+
     def test_refresh_updates_current_offer_and_appends_history(self):
         with self.sessions() as session, session.begin():
             result = refresh_offer_observation(
