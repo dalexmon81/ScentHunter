@@ -23,13 +23,13 @@ from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.discovery.dispatch import dispatch_discovered_products
 from app.extraction.product import extract_product_record, extract_price_stock_observation
 from app.offers.ingestion import persist_connector_record
-from scenthunter_next_engine.next_engine_service import NextEngineService
+from app.matching.legacy_fallback import LegacyOfferMatcher, build_legacy_matcher
 from app.monitoring.connector_health import record_connector_failure, record_connector_success
 from app.pricing.offer_refresh import refresh_offer_observation
 
 _SESSION_FACTORY = None
 _CONNECTOR: NotinoAffiliateFeedConnector | None = None
-_MATCHER: NextEngineService | None = None
+_MATCHER: LegacyOfferMatcher | None = None
 
 
 def _sessions():
@@ -46,14 +46,12 @@ def _connector() -> NotinoAffiliateFeedConnector:
     return _CONNECTOR
 
 
-def _matcher() -> NextEngineService:
-    """Load the read-only legacy catalog used only as a conservative fallback matcher."""
+def _matcher() -> LegacyOfferMatcher:
+    """Load the read-only legacy matcher through the isolated matching adapter."""
     global _MATCHER
     if _MATCHER is None:
         catalog_path = Path(__file__).resolve().parents[2] / "product_catalog.json"
-        if not catalog_path.is_file():
-            raise RuntimeError(f"Notino fallback matcher catalog is missing: {catalog_path}")
-        _MATCHER = NextEngineService.from_catalog_file(catalog_path)
+        _MATCHER = build_legacy_matcher(catalog_path)
     return _MATCHER
 
 
