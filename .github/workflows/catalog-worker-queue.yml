@@ -11,6 +11,7 @@ on:
       - "backend/app/repositories/**"
       - "backend/app/offers/**"
       - "backend/app/matching/**"
+      - "backend/tests/test_legacy_matching_fallback.py"
       - "backend/app/pricing/**"
       - "backend/app/monitoring/**"
       - "backend/app/connectors/base.py"
@@ -89,6 +90,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_notino_worker_runtime.py' -v
+      - name: Run isolated legacy matching fallback tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p 'test_legacy_matching_fallback.py' -v
       - name: Run canonical database matching tests
         working-directory: backend
         env:
