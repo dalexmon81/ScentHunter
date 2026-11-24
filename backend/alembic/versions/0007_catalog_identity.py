@@ -527,15 +527,25 @@ def downgrade():
     op.drop_index("ix_brand_aliases_normalized", table_name="brand_aliases")
     op.drop_table("brand_aliases")
 
-    with op.batch_alter_table("ingestion_raw") as batch:
-        batch.drop_index("ix_ingestion_raw_store_product_id")
-        batch.drop_constraint("fk_ingestion_raw_store_product_id_store_products", type_="foreignkey")
-        batch.drop_column("store_product_id")
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        # SQLite supports native DROP COLUMN. Use it here rather than batch
+        # table recreation: offers has a foreign key to ingestion_raw, so
+        # rebuilding ingestion_raw while offers exists can violate FK checks.
+        op.drop_index("ix_ingestion_raw_store_product_id", table_name="ingestion_raw")
+        op.drop_column("ingestion_raw", "store_product_id")
+        op.drop_index("ix_offers_store_product_id", table_name="offers")
+        op.drop_column("offers", "store_product_id")
+    else:
+        with op.batch_alter_table("ingestion_raw") as batch:
+            batch.drop_index("ix_ingestion_raw_store_product_id")
+            batch.drop_constraint("fk_ingestion_raw_store_product_id_store_products", type_="foreignkey")
+            batch.drop_column("store_product_id")
 
-    with op.batch_alter_table("offers") as batch:
-        batch.drop_index("ix_offers_store_product_id")
-        batch.drop_constraint("fk_offers_store_product_id_store_products", type_="foreignkey")
-        batch.drop_column("store_product_id")
+        with op.batch_alter_table("offers") as batch:
+            batch.drop_index("ix_offers_store_product_id")
+            batch.drop_constraint("fk_offers_store_product_id_store_products", type_="foreignkey")
+            batch.drop_column("store_product_id")
 
     op.drop_index("ix_store_products_product_variant_id", table_name="store_products")
     op.drop_index("ix_store_products_status_last_seen", table_name="store_products")
