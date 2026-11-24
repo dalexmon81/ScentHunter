@@ -32,13 +32,13 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 - `backend/catalog_family_coverage.py` reads `family_registry.json`; legacy matching and tests also consume it.
 - Diagnostic utilities under `tools/diagnostics/` and `tools/debug/` import legacy functions. These tools are not automatically safe to delete: they preserve operational recovery knowledge and regression workflows.
 
-## Proposed extraction sequence
+## Completed Phase 1 domain extractions (current branch)\n\n| Previous service path | Canonical implementation | Compatibility policy |\n|---|---|---|\n| `app.models.normalization` | `app.catalog.normalization` | Re-export shim; regression test asserts object identity |\n| `app.services.canonical_matching` | `app.matching.canonical_matching` | Re-export shim; worker and test imports updated |\n| `app.services.ingestion_persistence` | `app.offers.persistence` | Re-export shim; connector, Bplatz adapter, scripts and tests updated |\n| `app.services.connector_ingestion` | `app.offers.ingestion` | Re-export shim; workers, scripts and tests updated |\n| `app.services.offer_refresh` | `app.pricing.offer_refresh` | Re-export shim; workers and tests updated |\n| `app.services.connector_health` | `app.monitoring.connector_health` | Re-export shim; workers, operator script and tests updated |\n\nThe old paths above contain imports only; the implementation exists once in the new package. Keep these shims until all external or untracked consumers are ruled out.\n\n## Proposed extraction sequence
 
 1. Create characterization tests for normalization, canonical matching, URL validation, retailer parsing, and legacy catalog persistence behavior.
-2. Move only pure normalization/identity helpers into `app/catalog` or `app/matching`; keep old import paths as compatibility wrappers.
+2. [x] Move normalization/identity helpers into `app/catalog` and canonical matching into `app/matching`; keep old import paths as compatibility wrappers.
 3. Move source-specific parsing into `app/connectors` only where the new adapter can call the exact existing parser; do not fork parser logic.
 4. Separate Notino XML download/parse from legacy SQLite writes. Keep the authorized feed source in service until direct Notino discovery is proven for search, product detail, price, currency, availability and EAN.
-5. Move offer lifecycle logic into `app/offers` and pricing refresh into `app/pricing` while preserving database transaction boundaries and current PostgreSQL behavior.
+5. [x] Move offer ingestion/persistence into `app/offers` and pricing refresh into `app/pricing` while preserving caller-owned database transaction boundaries.
 6. Replace legacy scripts/workflows one at a time and record the replacement path.
 7. Run repository-wide import/reference checks and the relevant test suites. Delete a legacy module only when references are zero, compatibility is unnecessary, and rollback is documented.
 
@@ -47,7 +47,7 @@ No legacy runtime file is safe to delete in this slice. The current PostgreSQL p
 - [x] Existing target packages are documented in `docs/PHASE_1_STRUCTURE_MAP.md`.
 - [x] First-pass references from legacy monolith, catalog, matcher, JSON registries, Notino feed and old workers are recorded.
 - [ ] Generate a complete static import graph for all tracked Python files.
-- [ ] Add characterization tests for every extracted responsibility.
+- [ ] Add/verify characterization tests for every extracted responsibility (normalization, matching, offers, pricing and monitoring tests now include legacy-import identity checks).
 - [ ] Verify all legacy callers have a tested replacement before any module moves.
 
 **Safety:** This document does not authorize deletion, data migration, feed removal, workflow disablement or production changes.
