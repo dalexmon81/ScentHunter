@@ -169,7 +169,7 @@ def test_real_catalog_seed_populates_every_legacy_map_and_is_idempotent(tmp_path
 
     sys.path.insert(0, str(BACKEND))
     from app.models import LegacyProductIdMap, LegacyVariantIdMap
-    from app.services.ingestion_persistence import resolve_legacy_ids
+    from app.offers.persistence import resolve_legacy_ids
 
     catalog_path = BACKEND / "product_catalog.json"
     raw_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
