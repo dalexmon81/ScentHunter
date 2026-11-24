@@ -263,6 +263,13 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
 
 
 
+
+
+def test_legacy_bplatz_adapter_is_a_compatibility_reexport():
+    from app.services.bplatz_phase2_adapter import persist_bplatz_record as legacy_adapter
+    from app.offers.bplatz_adapter import persist_bplatz_record as canonical_adapter
+    assert legacy_adapter is canonical_adapter
+
 def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
     from app.offers.bplatz_adapter import persist_bplatz_record
     from scenthunter_next_engine.next_engine_service import NextEngineService
