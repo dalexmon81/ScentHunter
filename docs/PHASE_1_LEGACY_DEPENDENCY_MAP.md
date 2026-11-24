@@ -1,6 +1,6 @@
 # Phase 1 — legacy dependency map (first pass)
 
-**Branch:** `phase1-legacy-dependency-map-2026-11-24`  
+**Branch:** `phase1-catalog-boundary-tests-2026-11-24`  
 **Scope:** static reference search on the current `main` tree; not a complete dynamic call graph.
 
 ## Decision
@@ -72,7 +72,7 @@ The old paths above contain imports only; the implementation exists once in the 
 
 ## Static import graph audit snapshot
 
-The CI artifact from commit `732c510b4d61cddc46d643b60c52b383068c6b06` was downloaded and inspected. It contains **191 Python modules**, **446 local import edges**, **0 syntax errors** and **0 unresolved relative imports**. These are static AST results: dynamic imports and runtime plugin loading are not represented.
+The CI artifact from commit `58b372f3295b4357beecf7ce89bb50079a71a262` was downloaded and inspected. It contains **191 Python modules**, **447 local import edges**, **0 syntax errors** and **0 unresolved relative imports**. Artifact SHA-256: `8bc80920d801a746374a6bfc801ffdb6c9eb3560fa9e51978c6d7c82721efc34`. These are static AST results: dynamic imports and runtime plugin loading are not represented.
 
 The graph reports 44 edges to `catalog_engine`, 4 to `product_matcher`, and 75 edges into `scenthunter_next_engine`. Those totals include tests, tools and internal imports inside the legacy package; they are not counts of production callers.
 
@@ -103,7 +103,7 @@ The same graph shows numerous references from tests and scripts. These are retai
 
 ### Latest CI checks on this PR head
 
-The following completed successfully for commit `732c510b4d61cddc46d643b60c52b383068c6b06`:
+The following completed successfully for commit `58b372f3295b4357beecf7ce89bb50079a71a262`:
 
 - Hydration queue and search regressions
 - Catalog normalization
@@ -112,9 +112,38 @@ The following completed successfully for commit `732c510b4d61cddc46d643b60c52b38
 - Connector contract
 - Static Python import graph generation
 
-The import-graph workflow uploaded artifact `scent-hunter-backend-import-graph` (SHA-256 `b1a323c9f377fa50daa08a01ea2b4214d71215320cc8e710e888a5b1ceac2b3a`). The artifact was downloaded and inspected directly.
+The import-graph workflow uploaded artifact `scent-hunter-backend-import-graph` (SHA-256 `8bc80920d801a746374a6bfc801ffdb6c9eb3560fa9e51978c6d7c82721efc34`). The artifact was downloaded and inspected directly.
 
 Notino canonical discovery regression also completed successfully. Live CJ feed parser checks were **skipped** by workflow conditions and are not counted as passing live tests. No production Fly.io deploy or production database mutation was performed by these Phase 1 changes.
+
+
+## Workflow, schedule and deployment reference audit (PR head)
+
+A read-only scan of all **56** workflow YAML files on this branch was completed. The following are the material legacy/feed references; they remain intentionally active or retained and were not disabled by Phase 1:
+
+| Workflow / runtime file | Trigger or role | Finding and boundary |
+|---|---|---|
+| `.github/workflows/notino-cj-feed-import.yml` | Daily schedule `17 5 * * *` plus manual dispatch | Current authorized Notino CJ feed import into PostgreSQL through `bootstrap_notino_postgres.py`; not an old SQLite import path. Keep active until direct Notino discovery passes complete live acceptance. |
+| `.github/workflows/notino-cj-production-feed-monitor.yml` | Every 6 hours (`17 */6 * * *`) plus manual/maintenance triggers | Read-only production feed/parser and PostgreSQL offer monitor. It does not publish or import offers. |
+| `.github/workflows/fly.yml` | Push to `main` with runtime paths | Production deploy workflow. It stages existing CJ credentials and feed URL and enables the current active offer refresh setting. No changes to this workflow or production secrets were made in Phase 1. |
+| `.github/workflows/fly-pilot.yml` | Isolated pilot deploy workflow | Configures CJ feed in the separate pilot app and exercises catalog ingestion; not the production app. |
+| `.github/workflows/fly-pilot-notino-ingestion.yml` | Explicit dispatch or pilot marker | Runs authorized feed ingestion against the isolated pilot catalog and verifies persisted offer/search visibility. |
+| `.github/workflows/backend-parser-regression.yml` | PR/push regression; live CJ checks require explicit opt-in | Runs parser, hydration and staging tests; public Notino fallback smoke is read-only. Two full live CJ parser checks were skipped in this PR run by design. |
+| `.github/workflows/notino-cj-feed-diagnose.yml` and `.github/workflows/bplatz-notino-gtin-crosscheck.yml` | Diagnostic/cross-check workflows | Read-only feed parsing and GTIN cross-checks; retained as operational diagnostics. |
+| `.github/workflows/phase-0-live-baseline.yml` | Manual dispatch or selected path changes | Reads the PostgreSQL baseline endpoint; it is not a scheduled legacy SQLite worker. |
+| `.github/workflows/phase-0-smoke-test.yml` | Manual dispatch | Exercises the Phase 0 baseline HTTP job and validates its CSV report artifact. CSV here is a diagnostic export, not a product/offer import feed. |
+| `.github/workflows/bplatz-phase2-worker-wiring.yml`, `bplatz-size-regression.yml`, `bplatz-store-seed-isolated.yml`, `phase2-postgresql.yml` | CI path filters and regression suites | Some mention `backend/catalog_engine.py` or Notino scripts as changed-file triggers; these are test triggers, not instructions to deploy or delete legacy code. |
+
+Production runtime configuration was also checked: `fly.toml` declares only `postgres_main:app` and `app.workers.postgres_worker`. It does not start `backend/offer_engine/refresh_worker.py` or `backend/phase0_baseline_worker.py`. The former is opt-in and defaults disabled unless `SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED=1`; the latter is a legacy SQLite baseline worker. `fly.staging.toml` targets the separate pilot app and SQLite volume. No production process, machine, secret, schedule or deployment configuration was changed.
+
+### Runtime compatibility edges confirmed on the current static graph
+
+- `app.connectors.notino_feed` deliberately calls the existing `scrapers.notino.affiliate_feed` parser; it is not a duplicate parser. The parser still has two legacy helper paths importing `catalog_engine` for SQLite persistence/URL helpers. Feed transport/parser and legacy persistence are not yet fully separated.
+- `app.matching.legacy_fallback` deliberately retains a fallback call into `scenthunter_next_engine.next_engine_service`; canonical PostgreSQL matching remains the primary implementation.
+- `backend/main.py`, `catalog_family_coverage.py`, `scenthunter_next_engine.runtime`, `catalog_url_hygiene.py` and `deloox_targeted_refresh.py` retain direct legacy imports for old application, shadow, or diagnostic paths. The production Fly entrypoint is `postgres_main.py`, not `main.py`.
+- `backend/offer_engine/refresh_worker.py` and `backend/phase0_baseline_worker.py` are not configured as production Fly processes. Their import references remain documented and are not grounds for deletion.
+
+This audit closes the Phase 1 *mapping* gate, not the later retirement gate. Direct Notino replacement, removal of CJ, removal of compatibility fallbacks and deletion of legacy modules remain deferred until the relevant store-by-store acceptance and migration/rollback evidence exists.
 
 ## Phase 1 exit criteria for dependency mapping
 
