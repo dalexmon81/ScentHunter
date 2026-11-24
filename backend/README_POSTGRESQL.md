@@ -1,48 +1,57 @@
-# SQLite canonical catalog — Phase 2
+# Canonical catalog database runtime
 
-Phase 2 uses a dedicated SQLite database on the existing Fly volume:
+The SQLAlchemy application database is configured explicitly through
+`SCENTHUNTER_CATALOG_DATABASE_URL` (preferred) or
+`SCENTHUNTER_DATABASE_URL`.
 
-- Canonical catalog: `/data/catalog/catalog.sqlite3`
-- Existing storefront catalog: `/data/store_catalog.sqlite3` (untouched)
-- Phase 0 queue: `/data/phase0/queue.sqlite3` (untouched)
+## Runtime rules
 
-The canonical database is isolated from both existing files. It uses WAL mode,
-foreign-key enforcement, a 30-second busy timeout, and the canonical schema
-tables:
-`brands`, `fragrances`, `product_variants`, `stores`, `offers`,
-`price_history`, `match_audit`, `ingestion_runs`, `ingestion_raw`,
-`legacy_product_id_map`, and `legacy_variant_id_map`.
+- PostgreSQL with the `psycopg 3` driver is the required application runtime.
+- Set `SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1` in production and recovery
+  smoke-test environments. This rejects SQLite URLs.
+- SQLite is supported only when a caller explicitly supplies a SQLite URL for
+  isolated tests or local tools; there is no implicit local-database fallback.
+- The canonical SQLAlchemy runtime is separate from legacy storefront and
+  Phase 0 SQLite files. Do not infer that those SQLite files are the canonical
+  production database.
+- Do not run Alembic upgrades, seed commands, ingestion, discovery, hydration,
+  queue workers or schedulers during a restore read-only smoke test.
 
-From the repository root:
+## Isolated restore API smoke test
 
-```bash
-cd backend
-alembic upgrade head
-python scripts/seed_catalog.py
-# Review the dry-run report first. Import only with explicit approval:
-python scripts/seed_catalog.py --apply
-```
+The workflow
+`.github/workflows/neon-restore-readonly-smoke.yml` builds a minimal FastAPI
+application from `app.api.catalog_search.router` only. It deliberately does
+not import `backend.main`, whose startup hooks can launch bootstrap,
+discovery and hydration workers.
 
-By default, `SCENTHUNTER_CATALOG_DATABASE_URL` or
-`SCENTHUNTER_DATABASE_URL` may override the location, but the current Phase 2
-engine rejects non-SQLite URLs. Without an override, it uses
-`sqlite:////data/catalog/catalog.sqlite3`.
+Before dispatching the workflow:
 
-The seed imports brands, fragrances and explicitly declared variants only.
-It does not import retailer offers, invent missing variants, or modify source
-JSON, the storefront SQLite database, or the Phase 0 queue. Products without
-known variants are retained as fragrance identities and reported in
-`products_without_variants`; they are not searchable as variant results until
-explicit variant data is added. Missing tester/refill/gift-set flags and GTINs
-are not inferred; unknown flags stay NULL. Dry-run is the default; `--apply`
-is required to write canonical rows.
+1. Create or identify a disposable Neon child branch cloned from the intended
+   operational branch, and record its exact branch ID and parent timestamp.
+2. Create a dedicated PostgreSQL role on that clone with SELECT-only access to
+   the catalog tables required by the two read endpoints. Do not use the
+   database owner, a superuser, the production URL or a production secret.
+3. Store the clone-only connection URL as the GitHub Actions secret
+   `RESTORE_DRILL_DATABASE_URL`. Restrict the secret to the repository and
+   remove it after the drill.
+4. Dispatch the workflow only after confirming that the secret targets the
+   disposable clone and that its database name matches the input.
 
-After an apply, the seed verifies all eleven tables exist, reports row counts,
-and checks that no active offer has a NULL price, empty/NULL URL, or NULL
-availability. The initial seed intentionally imports no offers, so the
-expected offer count is zero until a separately reviewed offer-import phase.
+The script additionally enforces PostgreSQL, transaction read-only mode,
+non-superuser/non-admin role attributes, no database/schema CREATE privilege,
+and no table write grants. It then calls only:
+- `GET /api/catalog/status`
+- `GET /api/catalog/search?q=<search_query>`
 
-SQLite WAL is appropriate for the current single-writer/small-volume phase.
-When multiple machines need concurrent shared writes, plan a separately
-reviewed migration to Neon or Supabase PostgreSQL free tier. Do not enable a
-paid Fly Managed PostgreSQL service.
+It does not import the legacy main application, invoke retailer connectors,
+enqueue jobs, or run workers. The workflow does not create Neon branches,
+roles, credentials or infrastructure. A passing run proves these two API
+read paths work against the configured clone; it does not prove independent
+logical backup/export recovery or a full production application restore.
+
+## Production release gate
+
+Do not apply revision `0007_catalog_identity` to the operational Neon branch
+until the isolated API smoke test, independent backup/export recovery strategy,
+retention policy, rollback review and explicit production approval are complete.
