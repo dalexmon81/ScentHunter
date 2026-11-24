@@ -3,15 +3,17 @@ name: Catalog-first normalization tests
 on:
   pull_request:
     paths:
+      - "backend/app/catalog/normalization.py"
       - "backend/app/models/normalization.py"
-      - "backend/app/models/test_normalization.py"
+      - "backend/tests/test_catalog_normalization.py"
       - ".github/workflows/catalog-first-normalization.yml"
   push:
     branches:
       - refactor/catalog-first-architecture
     paths:
+      - "backend/app/catalog/normalization.py"
       - "backend/app/models/normalization.py"
-      - "backend/app/models/test_normalization.py"
+      - "backend/tests/test_catalog_normalization.py"
       - ".github/workflows/catalog-first-normalization.yml"
 
 permissions:
@@ -27,8 +29,8 @@ jobs:
           python-version: "3.12"
       - name: Install backend dependencies
         run: python -m pip install -r backend/requirements.txt
-      - name: Run pure normalization regression tests
+      - name: Run canonical catalog normalization regression tests
         working-directory: backend
         env:
           PYTHONPATH: .
-        run: python -m unittest app.models.test_normalization -v
+        run: python -m unittest discover -s tests -p "test_catalog_normalization.py" -v
