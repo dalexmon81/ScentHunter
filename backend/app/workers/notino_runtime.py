@@ -22,7 +22,7 @@ from app.workers.runtime import register_handler
 from app.connectors.notino_feed import NotinoAffiliateFeedConnector
 from app.services.connector_ingestion import persist_connector_record
 from scenthunter_next_engine.next_engine_service import NextEngineService
-from app.services.canonical_matching import resolve_canonical_variant
+from app.matching.canonical_matching import resolve_canonical_variant
 from app.services.connector_health import record_connector_failure, record_connector_success
 from app.services.offer_refresh import refresh_offer_observation
 
