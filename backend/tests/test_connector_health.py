@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Base, Store
-from app.services.connector_health import (
+from app.monitoring.connector_health import (
     record_connector_failure,
     record_connector_success,
     reinstate_connector,
