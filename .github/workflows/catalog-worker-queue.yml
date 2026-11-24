@@ -70,6 +70,12 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m unittest discover -s tests -p 'test_import_graph_audit.py' -v
+      - name: Publish static import graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-backend-import-graph
+          path: /tmp/scenthunter-python-import-graph.json
+          if-no-files-found: error
       - name: Run Celery and SQLite queue contract tests
         working-directory: backend
         env:
