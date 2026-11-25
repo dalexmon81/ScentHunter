@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     services:
       postgres:
         image: postgres:17
@@ -86,8 +86,8 @@ jobs:
         with:
           name: scenthunter-postgresql-independent-backup
           path: |
-            \${{ env.BACKUP_FILE }}
-            \${{ env.BACKUP_FILE }}.sha256
+            ${{ env.BACKUP_FILE }}
+            ${{ env.BACKUP_FILE }}.sha256
             restore-verification.txt
             archive-list.txt
           if-no-files-found: error
