@@ -699,3 +699,24 @@ A direct HTTPS probe of `/`, `/health`, `/api/catalog/status` and `/catalog-demo
 This pass rules out the legacy pre-cutover SQLite workflow as a safe substitute for a current PostgreSQL backup. It does not produce an independent database export or verify the frontend live. No workflow was dispatched, no deploy/restart was made, no production data or secrets were changed, and `main` remains untouched.
 
 **Remaining hard blockers:** (1) an authorized execution path that can produce and verify a logical export of `scenthunter_offerfirst` outside the Neon project; (2) live frontend/API verification from a network that can resolve `scenthunter.fly.dev`. The Fly machine/worker inventory itself is now verified by the successful read-only diagnostic in section 18.
+
+
+## 21. Independent PostgreSQL backup attempt — blocked by Fly credential validation (25/11/2026)
+
+A dedicated backup workflow was added on the documentation/audit branch only:
+`.github/workflows/phase0-independent-postgres-backup.yml`
+Commit: `9df29adc2f9ca6d1c631811aa6ef881d8e600021`.
+
+The workflow is designed to:
+1. obtain the live runtime database URL from the Fly worker without printing credentials;
+2. run PostgreSQL 17 `pg_dump` in custom format;
+3. inspect the archive and restore it into an isolated PostgreSQL 17 service;
+4. publish the dump, SHA-256 checksum, restore verification and archive listing as a GitHub Actions artifact (90-day retention).
+
+GitHub Actions run: [45684432525](https://github.com/dalexmon81/ScentHunter/actions/runs/45684432525).
+
+**Actual result: failed before database access.** Fly CLI rejected the configured `FLY_API_TOKEN` with `token validation error` at the first authenticated Fly API request. The workflow did not obtain the database URL, did not connect to Neon, did not run `pg_dump`, did not restore data and did not publish an artifact. No database or Fly resource was changed. The credential itself was not printed.
+
+### Exact external action required
+
+Replace/refresh the repository Actions secret `FLY_API_TOKEN` with a valid Fly.io API token using GitHub repository Settings → Secrets and variables → Actions. Do not paste the token into chat or commit it to the repository. Then rerun the workflow above. Until that run succeeds and its restore test/artifact are verified, an independent backup does not exist and this gate remains open.
