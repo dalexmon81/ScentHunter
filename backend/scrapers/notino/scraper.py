@@ -1150,6 +1150,10 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             )
             break
 
+    # The page parser only returns a price when EUR is explicitly evidenced
+    # by JSON-LD priceCurrency or a visible EUR/€ marker on this same page.
+    currency_explicit = bool(currency_explicit or structured_price or _extract_price(text))
+
     # Product identity must come from the actual destination page, not from
     # the search-result card. Notino's reader/search output can accidentally
     # pair a perfume title with an unrelated product URL; falling back to the
