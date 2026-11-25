@@ -383,3 +383,40 @@ No scraper can be labelled fully end-to-end verified based on current evidence:
 - Notino direct storefront connector in PR #927: live acceptance failed; PR is not merged.
 
 No job queue was purged, retried, re-enqueued, or edited. No stores were enabled/disabled, no scraper was changed, and no offers were modified.
+
+
+
+## 13. Fifth verification pass — latest Neon branch and data comparison (25/11/2026)
+
+### Fresh operational counts
+A new read-only query against `offer-first-postgres-cutover` returned:
+- offers: 167
+- ingestion_runs: 63,250
+- ingestion_raw: 60,830
+
+The run/raw totals have continued to grow since the previous pass. Earlier counts in this report are timestamped observations and should not be mistaken for a frozen database state.
+
+### Complete Neon branch inventory
+The latest complete listing confirms exactly 10 active branches and no recoverable deleted branches:
+
+| Branch | Parent | Created UTC | Logical size |
+|---|---|---|---:|
+| `scenthunter-release-restore-check-2026-11-24` | operational | 24 Nov 19:05 | 328.8 MB |
+| `restore-test-isolated-2026-11-24` | operational | 24 Nov 18:19 | 328.8 MB |
+| `phase0-final-snapshot-2026-11-24-1000` | operational | 24 Nov 09:10 | 319.3 MB |
+| `phase0-restore-drill-2026-11-24` | operational | 24 Nov 06:54 | 317.3 MB |
+| `phase0-final-audit-backup-2026-11-24` | operational | 24 Nov 06:33 | 316.9 MB |
+| `phase0-verified-backup-2026-11-24-compute` | operational | 24 Nov 06:15 | 296.7 MB |
+| `phase0-verified-backup-2026-11-24` | operational | 24 Nov 06:14 | 296.7 MB |
+| `phase0-backup-2026-11-24` | operational | 24 Nov 05:32 | 296.2 MB |
+| `offer-first-postgres-cutover` | production | 21 Nov 10:17 | 395.2 MB |
+| `production` | none (default) | 04 Nov 09:24 | 35.8 MB |
+
+All eight non-root child branches have the operational branch as their parent. The two most recent branches were queried read-only:
+- `scenthunter-release-restore-check-2026-11-24`: 167 offers, 54,326 ingestion runs, 52,125 raw rows.
+- `restore-test-isolated-2026-11-24`: 167 offers, 54,325 ingestion runs, 52,125 raw rows.
+
+Compared with the operational branch's latest 63,250 runs and 60,830 raw rows, even these newest child branches are stale by 8,924/8,925 runs and 8,705 raw rows. They are not a current backup. The older branches are further behind; some no longer have an available compute endpoint for SQL verification. No branch was deleted, reset, or modified.
+
+### Backup decision
+The branch inventory identifies historical candidates for a future cleanup decision, but it does not establish that any branch is safe to delete. Names such as `restore-test`, `final-snapshot`, and `verified-backup` are not proof of independent restore points or that their purpose is obsolete. No candidate is selected for deletion. The project remains at its 10-branch limit, so creating a current child backup remains blocked until the owner explicitly approves a specific branch for deletion or supplies another authorized backup method.
