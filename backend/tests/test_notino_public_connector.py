@@ -4,6 +4,21 @@ import unittest
 from unittest.mock import patch
 
 from app.connectors.notino_public import NotinoPublicStorefrontConnector
+from scrapers.notino import scraper
+
+
+def test_product_offer_line_excludes_delivery_prices_and_preserves_size():
+    page_text = (
+        "100 ml 30,00€ En stock | 30,00€ / 100 ml, incl. TVA | Code: FRV00011 "
+        "Chronopost 5,99€ Retrait personnel 4,99€"
+    )
+    offer = scraper._extract_notino_product_offer(page_text)
+    assert offer == {
+        "price": "30.00",
+        "size_ml": 100.0,
+        "stock": False,
+        "currency_explicit": True,
+    }
 
 
 class NotinoPublicConnectorTests(unittest.IsolatedAsyncioTestCase):
