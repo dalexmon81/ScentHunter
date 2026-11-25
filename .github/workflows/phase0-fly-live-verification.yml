@@ -1,0 +1,49 @@
+name: Phase 0 Fly live frontend and API verification
+
+on:
+  push:
+    branches:
+      - docs/phase0-current-audit-2026-11-25
+    paths:
+      - .github/workflows/phase0-fly-live-verification.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe frontend and API endpoints directly on Fly
+        shell: bash
+        run: |
+          set -u
+          mkdir -p fly-live-verification
+          base="https://scenthunter.fly.dev"
+          endpoints=("/" "/health" "/api/catalog/status" "/catalog-demo")
+          : > fly-live-verification/results.txt
+          for path in "${endpoints[@]}"; do
+            safe_name="$(printf '%s' "$path" | sed 's#^/$#root#; s#^/##; s#/#_#g')"
+            body="fly-live-verification/${safe_name}.body"
+            headers="fly-live-verification/${safe_name}.headers"
+            code="$(curl --silent --show-error --location --connect-timeout 10 --max-time 30 -D "$headers" -o "$body" -w '%{http_code}' "$base$path" 2>"fly-live-verification/${safe_name}.error")"
+            curl_rc=$?
+            content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r",""); value=$0} END{print value}' "$headers" 2>/dev/null || true)"
+            bytes="$(wc -c < "$body" 2>/dev/null || echo 0)"
+            printf 'path=%s http_status=%s curl_exit=%s content_type=%s bytes=%s\n' "$path" "${code:-000}" "$curl_rc" "${content_type:-unknown}" "$bytes" | tee -a fly-live-verification/results.txt
+            if [ -s "$body" ]; then
+              head -c 1200 "$body" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' >> fly-live-verification/results.txt
+              printf '\n' >> fly-live-verification/results.txt
+            fi
+            if [ -s "fly-live-verification/${safe_name}.error" ]; then
+              sed -n '1,3p' "fly-live-verification/${safe_name}.error" >> fly-live-verification/results.txt
+            fi
+          done
+      - name: Publish Fly live verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-fly-live-verification
+          path: fly-live-verification/
+          retention-days: 30
