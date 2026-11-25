@@ -17,6 +17,8 @@ from test_bplatz_persistence_service import (
 import catalog_engine
 from app.api import catalog_search
 from app.models import IngestionRaw, MatchAudit, Offer, Store
+from app.connectors.notino_public import NotinoPublicStorefrontConnector
+from app.offers.ingestion import persist_connector_record
 from app.search.catalog import catalog_status, search_catalog, _display_offer_url
 from scrapers.notino.affiliate_feed import validated_cj_offer_url
 
@@ -180,6 +182,52 @@ def test_publication_gate_and_freshness(pilot):
         offer.availability = "in_stock"
         session.flush()
         assert count() == 1
+
+
+def test_direct_notino_record_matches_postgres_catalog_and_becomes_searchable(pilot):
+    engine, _ = pilot
+    now = datetime.now(timezone.utc)
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+    raw_record = {
+        "name": "French Avenue Liquid Brun mixte",
+        "brand": "French Avenue",
+        "sizeml": 100,
+        "concentration": "Eau de Parfum",
+        "price": "30.00",
+        "currency": "EUR",
+        "currency_explicit": True,
+        "availability": "in_stock",
+        "url": product_url,
+        "product_url": product_url,
+        "external_product_id": product_url,
+        "captured_at": now.isoformat(),
+        "source": "notino_public_storefront",
+    }
+    with Session(engine) as session:
+        existing = session.scalar(select(Offer))
+        store = session.get(Store, existing.store_id)
+        store.slug = "notino-fr"
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        session.flush()
+        result = persist_connector_record(
+            session,
+            connector=NotinoPublicStorefrontConnector(),
+            store_id=store.id,
+            raw_record=raw_record,
+            matcher=None,
+        )
+        assert result.status == "promoted"
+        assert result.offer_id is not None
+        session.flush()
+        search = search_catalog(
+            session, "French Avenue Liquid Brun EDP 100ml", now=now
+        )
+        assert search["count"] == search["offer_count"] == 1
+        visible_offer = search["results"][0]["offers"][0]
+        assert visible_offer["store"] == "Notino.fr"
+        assert visible_offer["url"] == product_url
+        assert Decimal(visible_offer["price"]) == Decimal("30.00")
 
 
 def test_direct_notino_capture_timestamp_passes_public_search_freshness_gate(pilot):
