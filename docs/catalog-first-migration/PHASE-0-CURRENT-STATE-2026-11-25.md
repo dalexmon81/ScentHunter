@@ -546,3 +546,47 @@ The database tree includes the canonical application tables and indexes. The new
 **Operational point-in-time clone: created and query-verified.** Parent LSN/time, schema revision, table counts and key references are recorded above.
 
 **Independent backup: not yet achieved.** No logical `pg_dump` export or off-platform copy has been produced in this session. Do not describe this clone as protection against loss of the entire Neon project/account. The backup is also currently unprotected by Neon because of the plan limit.
+
+
+## 17. Fly.io verification and independent-export capability check (25/11/2026)
+
+### Fly production configuration re-read from main
+
+The current `main` versions of `fly.toml` and `.github/workflows/fly.yml` were read directly from GitHub. They configure:
+- Fly app `scenthunter`, primary region `ams`.
+- Web process `uvicorn postgres_main:app` and worker process `python -m app.workers.postgres_worker`.
+- PostgreSQL queue backend and mandatory PostgreSQL catalog runtime.
+- Production deployment stages Notino CJ feed credentials and sets `SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1` before deploy.
+- Deployment then runs Alembic, catalog/store seeding and verification, health/catalog API checks, public search checks, and a Bplatz refresh-queue check.
+
+These are repository configuration facts only. They do not prove which machines are currently running, which secrets are present in Fly, or whether the deployed release matches `main`.
+
+### Available read-only Fly workflow
+
+`.github/workflows/scenthunter-readonly-fly-diagnostics.yml` is explicitly read-only. If manually dispatched, it checks:
+- Fly app status, machines, volumes and secret names (not secret values).
+- Runtime database backend/driver, database host/name and whether the database URL variables are configured.
+- Presence of the two legacy SQLite paths.
+
+It does not export the PostgreSQL database. Its current triggers are `workflow_dispatch` and a push to `main` changing `docs/PHASE_0_AUDIT_2026-11-24.md`; the current Phase 0 report is on a separate documentation branch and at a different path. The GitHub tools available in this session do not expose a workflow-dispatch action. The Fly.io plugin search returned no Fly.io integration. Therefore this workflow was not dispatched and no live Fly machine/volume/secret inventory is claimed.
+
+### Existing backup workflow is not suitable for the current production database
+
+The repository also contains `.github/workflows/scenthunter-postgres-precutover-backup.yml`. Inspection shows it snapshots a Fly volume and creates an SQLite online backup from `/data/catalog/catalog.sqlite3`, with assertions for old revision `0005_connector_quarantine` and old row counts. It is explicitly a pre-cutover workflow and does not run `pg_dump` or export the current Neon PostgreSQL database. It must not be treated as a current production PostgreSQL backup or run as a substitute.
+
+`.github/workflows/scenthunter-production-db-inventory.yml` is also read-only. It inventories Fly topology, volume snapshots and SQLite file state; it does not back up the current Neon PostgreSQL database.
+
+### Independent export result
+
+The available Neon integration exposes SQL, branch, snapshot and storage operations, but no logical PostgreSQL export/`pg_dump` operation. A Neon child branch is not an off-platform copy. No independent PostgreSQL dump or off-platform export has been created.
+
+### Phase 0 status after this pass
+
+- Repository configuration re-read: complete.
+- Suitable read-only Fly diagnostic workflow identified: complete.
+- Live Fly verification: blocked pending a secure Fly.io execution path (or a successful run of the existing read-only GitHub workflow).
+- Current production PostgreSQL logical export: blocked; no supported export path is available through the connected tools.
+- No Fly machine, volume, secret, deployment, production database, workflow, or production code was changed.
+- `main` remains untouched; this report update is documentation-only on `docs/phase0-current-audit-2026-11-25`.
+
+**Phase 0 remains open. Do not start Phase 1 until live Fly state and an independent PostgreSQL backup are verified, or the owner explicitly accepts a documented exception to the backup requirement.**
