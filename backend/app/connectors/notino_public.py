@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
@@ -28,6 +29,22 @@ class NotinoPublicStorefrontConnector(StoreConnector):
     def __init__(self) -> None:
         super().__init__()
         self._candidates: dict[str, dict[str, Any]] = {}
+
+    @staticmethod
+    def _brand_from_url_title(url: str, name: str) -> str:
+        """Use a URL brand slug only when the product title repeats that prefix."""
+        try:
+            segment = urlparse(url).path.strip("/").split("/", 1)[0]
+        except ValueError:
+            return ""
+        slug_words = [word for word in re.split(r"[-_]+", segment) if word]
+        if not slug_words or not name:
+            return ""
+        slug_prefix = " ".join(slug_words)
+        if not scraper._norm(name).startswith(scraper._norm(slug_prefix) + " "):
+            return ""
+        title_words = str(name).split()
+        return " ".join(title_words[:len(slug_words)])
 
     def _queries(self) -> tuple[str, ...]:
         raw = os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_NOTINO", "")
@@ -69,6 +86,13 @@ class NotinoPublicStorefrontConnector(StoreConnector):
                 if not url:
                     continue
                 row = dict(candidate)
+                name = str(row.get("name") or "").strip()
+                if scraper._has_non_perfume_marker(name):
+                    continue
+                if not row.get("brand"):
+                    brand = self._brand_from_url_title(url, name)
+                    if brand:
+                        row["brand"] = brand
                 row["query"] = query
                 candidates.setdefault(url, row)
 
