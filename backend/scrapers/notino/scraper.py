@@ -63,6 +63,9 @@ NON_PERFUME_MARKERS = {
     "lotion apres rasage", "soin apres rasage", "creme apres rasage",
     "creme corpo", "crema corpo", "gel doccia", "bagnoschiuma", "deodorante", "cofanetto", "estuche",
     "etui", "pochette", "miniature", "mini spray", "minispray",
+    # Face-care products that can rank for a fragrance query on Notino.fr.
+    "toner", "cleanser", "nettoyant visage", "lotion tonique", "eau micellaire",
+    "micellaire", "face wash", "face cleanser",
 }
 IN_STOCK_MARKERS = (
     "en stock", "ajouter au panier", "add to cart", "in stock", "disponible", "available",
@@ -357,6 +360,32 @@ def _extract_concentration(text: Any) -> str:
     if re.search(r"\bparfum\b", low):
         return "Parfum"
     return ""
+
+
+def _extract_notino_product_offer(text: Any) -> Optional[Dict[str, Any]]:
+    """Extract the retailer's product price/size line, not delivery prices."""
+    cleaned = _clean(text)
+    pattern = re.compile(
+        r"\b(en rupture de stock|rupture de stock|actuellement indisponible|"
+        r"out of stock|sold out|en stock|in stock|available|disponible)\s*\|\s*"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€\s*/\s*"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*ml",
+        re.I,
+    )
+    match = pattern.search(cleaned)
+    if not match:
+        return None
+    stock_label = _norm(match.group(1))
+    out_of_stock = any(
+        marker in stock_label
+        for marker in ("rupture de stock", "indisponible", "out of stock", "sold out")
+    )
+    return {
+        "price": match.group(2).replace(",", "."),
+        "size_ml": float(match.group(3).replace(",", ".")),
+        "stock": True if out_of_stock else False,
+        "currency_explicit": True,
+    }
 
 
 def _extract_price(text: Any) -> str:
@@ -1090,10 +1119,31 @@ def _extract_product_variant_urls(text: str, base_url: str) -> List[str]:
 
 
 def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str, _allow_variants: bool = True) -> Optional[Dict[str, Any]]:
-    try:
-        text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
-    except requests.RequestException:
-        return None
+    text = ""
+    if _allow_variants:
+        try:
+            text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
+        except requests.RequestException:
+            return None
+    else:
+        # Prefer the retailer HTML. Some Notino edge/CDN responses block
+        # automated clients; in that case use the public reader representation
+        # of this exact Notino URL, never an affiliate feed or search-card price.
+        try:
+            text = _request(session, candidate["url"], reader=False).text or ""
+        except requests.RequestException:
+            text = ""
+        if text:
+            page_text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+            has_product_offer = _extract_notino_product_offer(page_text) is not None
+            has_product_json = bool(_structured_product_records(text))
+            if not has_product_offer and not has_product_json:
+                text = ""
+        if not text:
+            try:
+                text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
+            except requests.RequestException:
+                return None
     if not text:
         return None
 
@@ -1132,16 +1182,38 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     structured_price = ""
     structured_size: Optional[float] = None
     structured_brand = ""
+    structured_gtin = ""
     structured_stock: Optional[bool] = None
+    currency_explicit = False
     for record in records:
         rec_name, rec_brand, rec_url, rec_price, rec_size = _structured_record_to_evidence(record)
+        candidate_url = normaliseurl(candidate["url"]).rstrip("/")
+        record_url = normaliseurl(rec_url).rstrip("/") if rec_url else ""
         if rec_name and _query_matches_name(rec_name, query):
             structured_name = rec_name
             structured_brand = rec_brand
-            structured_price = rec_price or ""
-            structured_size = rec_size
-            structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
+            # Trust structured commercial attributes only when JSON-LD points
+            # at this exact product URL (or omits a URL entirely).
+            if not record_url or record_url == candidate_url:
+                structured_gtin = _clean(
+                    record.get("gtin13") or record.get("gtin14")
+                    or record.get("gtin12") or record.get("gtin8")
+                    or record.get("gtin") or ""
+                )
+                structured_price = rec_price or ""
+                structured_size = rec_size
+                structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
+                record_offers = record.get("offers")
+                offer_rows = record_offers if isinstance(record_offers, list) else [record_offers]
+                currency_explicit = any(
+                    isinstance(offer, dict) and str(offer.get("priceCurrency") or "").upper() == "EUR"
+                    for offer in offer_rows
+                )
             break
+
+    # The page parser only returns a price when EUR is explicitly evidenced
+    # by JSON-LD priceCurrency or a visible EUR/€ marker on this same page.
+    currency_explicit = bool(currency_explicit or structured_price or _extract_price(text))
 
     # Product identity must come from the actual destination page, not from
     # the search-result card. Notino's reader/search output can accidentally
@@ -1149,6 +1221,14 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     # candidate name in that case creates false offers that the family matcher
     # may then incorrectly canonicalize.
     soup = BeautifulSoup(text, "html.parser")
+    if not _allow_variants:
+        page_offer = _extract_notino_product_offer(soup.get_text(" ", strip=True))
+        if page_offer:
+            structured_price = structured_price or str(page_offer["price"])
+            structured_size = structured_size or float(page_offer["size_ml"])
+            if structured_stock is None:
+                structured_stock = page_offer["stock"]
+            currency_explicit = currency_explicit or bool(page_offer["currency_explicit"])
     authoritative_titles: List[str] = []
     primary_headings: List[str] = []
     for tag in soup.find_all(["h1", "title"], limit=20):
@@ -1205,7 +1285,9 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if page_size_conflicts:
         return None
 
-    variant_offers = _extract_variant_offers(text)
+    # The direct storefront connector requests one exact product URL. Do not
+    # turn a page's size-selector list into multiple offers tied to that same URL.
+    variant_offers = _extract_variant_offers(text) if _allow_variants else []
     if variant_offers:
         output = []
         for variant_size, variant_price in variant_offers:
@@ -1214,7 +1296,9 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             output.append(result(
                 name, variant_price, structured_stock if structured_stock is not None else _stock(text),
                 candidate["url"], variant_size, _extract_concentration(text) or _extract_concentration(name),
-                _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", "")
+                _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", ""),
+                currency_explicit=currency_explicit,
+                gtin=structured_gtin,
             ))
         if output:
             return output
@@ -1223,17 +1307,31 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     # Never borrow the search-card price: Notino can pair a correct title/URL with
     # an unrelated promotional price, leaving price_num null or publishing a false offer.
     candidate_price = "" if str(candidate.get("source") or "") in {"known-product-url", "product-variant-url"} else str(candidate.get("price") or "")
-    price = structured_price or _extract_price(text) or candidate_price
+    price = structured_price or (_extract_price(text) if _allow_variants else "") or candidate_price
     if not price:
         return None
 
-    stock = structured_stock if structured_stock is not None else (_stock(text) if _stock(text) is not None else candidate.get("stock"))
-    size = structured_size or page_size or candidate.get("size_ml")
+    stock = structured_stock if structured_stock is not None else (
+        _stock(text) if _stock(text) is not None else (candidate.get("stock") if _allow_variants else None)
+    )
+    if _allow_variants:
+        size = structured_size or page_size or candidate.get("size_ml")
+    else:
+        heading_size = next(
+            (_extract_size(title) for title in primary_headings if _extract_size(title) is not None),
+            None,
+        )
+        size = structured_size or heading_size
     if not _price_is_plausible(price, size):
         return None
     concentration = _extract_concentration(text) or _extract_concentration(name) or _extract_concentration(candidate.get("card_text"))
     gender = _gender_marker(text) or _gender_marker(name) or _gender_marker(candidate.get("card_text"))
-    return result(name, price, stock, candidate["url"], size, concentration, gender, brand=structured_brand or candidate.get("brand", ""))
+    return result(
+        name, price, stock, candidate["url"], size, concentration, gender,
+        brand=structured_brand or candidate.get("brand", ""),
+        currency_explicit=currency_explicit,
+        gtin=structured_gtin,
+    )
 
 
 def result(
@@ -1246,6 +1344,8 @@ def result(
     gender: str,
     *,
     brand: str = "",
+    currency_explicit: bool = False,
+    gtin: str = "",
 ) -> Dict[str, Any]:
     availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
     display = _display_name(name, url)
@@ -1257,6 +1357,9 @@ def result(
         "brand": _clean(brand),
         "url": normaliseurl(url),
         "price": price,
+        "currency": "EUR",
+        "currency_explicit": bool(currency_explicit),
+        "gtin": gtin or None,
         "availability": availability,
         "available": False if stock is True else True if stock is False else None,
         "sizeml": size,

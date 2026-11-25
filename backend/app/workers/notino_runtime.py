@@ -1,4 +1,4 @@
-"""Notino feed handlers for the catalog-first background worker."""
+"""Direct Notino storefront handlers for the catalog-first background worker."""
 from __future__ import annotations
 
 import asyncio
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
 
 from app.db import make_engine
@@ -19,7 +19,7 @@ from app.repositories.ingestion_runs import (
 )
 from app.workers.queueing import enqueue_discovery, enqueue_offer_fetch
 from app.workers.runtime import register_handler
-from app.connectors.notino_feed import NotinoAffiliateFeedConnector
+from app.connectors.notino_public import NotinoPublicStorefrontConnector
 from app.discovery.dispatch import dispatch_discovered_products
 from app.extraction.product import extract_product_record, extract_price_stock_observation
 from app.offers.ingestion import persist_connector_record
@@ -28,7 +28,7 @@ from app.monitoring.connector_health import record_connector_failure, record_con
 from app.pricing.offer_refresh import refresh_offer_observation
 
 _SESSION_FACTORY = None
-_CONNECTOR: NotinoAffiliateFeedConnector | None = None
+_CONNECTOR: NotinoPublicStorefrontConnector | None = None
 _MATCHER: LegacyOfferMatcher | None = None
 
 
@@ -39,15 +39,15 @@ def _sessions():
     return _SESSION_FACTORY
 
 
-def _connector() -> NotinoAffiliateFeedConnector:
+def _connector() -> NotinoPublicStorefrontConnector:
     global _CONNECTOR
     if _CONNECTOR is None:
-        _CONNECTOR = NotinoAffiliateFeedConnector()
+        _CONNECTOR = NotinoPublicStorefrontConnector()
     return _CONNECTOR
 
 
 def _matcher() -> LegacyOfferMatcher:
-    """Load the read-only legacy matcher through the isolated matching adapter."""
+    """Keep the legacy catalog matcher available to non-Notino retailer adapters."""
     global _MATCHER
     if _MATCHER is None:
         catalog_path = Path(__file__).resolve().parents[2] / "product_catalog.json"
@@ -155,7 +155,7 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
             with _sessions()() as session, session.begin():
                 record_ingestion_progress(
                     session, run_id=run_id, products_discovered=1,
-                    offers_rejected=1, error="notino_offer_not_found_in_latest_feed_snapshot",
+                    offers_rejected=1, error="notino_public_product_not_found",
                 )
                 finish_ingestion_run(session, run_id=run_id, status="partial")
             return {"status": "not_found", "run_id": str(run_id), "external_product_id": external_id}
@@ -173,7 +173,7 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
                 connector=_connector(),
                 store_id=store.id,
                 raw_record=dict(raw_record),
-                matcher=_matcher(),
+                matcher=None,
             )
             promoted = result.status == "promoted"
             record_ingestion_progress(
@@ -222,7 +222,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         store = _active_notino_store(session, store_id)
         offer = session.scalar(select(Offer).where(
             Offer.store_id == store.id,
-            Offer.external_product_id == external_id,
+            or_(Offer.external_product_id == external_id, Offer.url == external_id),
             Offer.status == "active",
         ).limit(1))
         if offer is None:
@@ -253,7 +253,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
                     "captured_at": observation.get("captured_at"),
                     "source_updated_at": observation.get("source_updated_at"),
                     "raw_xml": observation.get("raw_xml"),
-                }, source=str(parsed.get("source") or "notino_authorized_cj_viv_xml_feed"),
+                }, source=str(parsed.get("source") or "notino_public_storefront"),
                 currency_explicit=parsed.get("currency_explicit") is True,
             )
             record_ingestion_progress(session, run_id=run_id, offers_updated=1)

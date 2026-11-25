@@ -57,8 +57,8 @@ def _schedule_daily_discovery(session_factory) -> None:
 
 
 def _refresh_external_id(store_slug: str, external_product_id: str | None, product_url: str | None) -> str:
-    """Choose the stable fetch key; Bplatz requires its product URL, not its GTIN."""
-    value = product_url if store_slug == "bplatz" else external_product_id
+    """Choose the stable fetch key; Bplatz and Notino require their product URLs."""
+    value = product_url if store_slug in {"bplatz", "notino-fr"} else external_product_id
     return str(value or "").strip()
 
 

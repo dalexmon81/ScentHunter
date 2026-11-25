@@ -64,6 +64,11 @@ def _notino_source_timestamp(raw: IngestionRaw) -> datetime | None:
             xml = observation.get("raw_xml")
         match = re.search(r"<last_updated>\s*([^<]+?)\s*</last_updated>", str(xml or ""), re.I)
         value = match.group(1) if match else None
+    # Direct storefront captures have no retailer feed timestamp. Accept only
+    # their own persisted capture timestamp; never substitute download time for
+    # legacy CJ/VIV records, whose source freshness must remain independently proven.
+    if not value and payload.get("source") == "notino_public_storefront":
+        value = payload.get("captured_at")
     if not value:
         return None
     try:

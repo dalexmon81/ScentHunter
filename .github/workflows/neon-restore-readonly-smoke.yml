@@ -18,7 +18,7 @@ on:
         description: "Representative catalog search term"
         required: true
         type: string
-        default: "Vulcan Feu"
+        default: "Liquid Brun"
 
 permissions:
   contents: read
@@ -54,7 +54,7 @@ jobs:
       SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL: "1"
       PGOPTIONS: "-c default_transaction_read_only=on"
       RESTORE_EXPECTED_DATABASE: ${{ inputs.expected_database || 'scenthunter_offerfirst' }}
-      RESTORE_SMOKE_SEARCH_QUERY: ${{ inputs.search_query || 'Vulcan Feu' }}
+      RESTORE_SMOKE_SEARCH_QUERY: ${{ inputs.search_query || 'Liquid Brun' }}
       PYTHONPATH: backend
     steps:
       - name: Checkout tested branch

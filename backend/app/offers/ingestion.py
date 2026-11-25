@@ -33,7 +33,7 @@ class ConnectorIngestionResult:
 
 def persist_connector_record(
     session: Session, *, connector: StoreConnector, store_id: UUID,
-    raw_record: dict, matcher: LegacyOfferMatcher,
+    raw_record: dict, matcher: LegacyOfferMatcher | None = None,
 ) -> ConnectorIngestionResult:
     """Stage, normalize, match and optionally publish one connector record.
 
@@ -59,7 +59,18 @@ def persist_connector_record(
     )
 
     source_store = session.get(Store, store_id)
-    if connector.store_key == "notino" and source_store is not None and source_store.slug == "notino-fr" and not raw_record.get("source_updated_at"):
+    direct_notino_observation = (
+        connector.store_key == "notino"
+        and raw_record.get("source") == "notino_public_storefront"
+        and bool(raw_record.get("captured_at"))
+    )
+    if (
+        connector.store_key == "notino"
+        and source_store is not None
+        and source_store.slug == "notino-fr"
+        and not raw_record.get("source_updated_at")
+        and not direct_notino_observation
+    ):
         reason = "missing_retailer_source_updated_at"
         record_match(
             session, ingestion_raw_id=raw_id, product_variant_id=None,
@@ -154,6 +165,17 @@ def persist_connector_record(
         return ConnectorIngestionResult(
             raw_id, "promoted", offer_id=offer_id,
             product_variant_id=resolved_variant_id,
+        )
+
+    if matcher is None:
+        record_match(
+            session, ingestion_raw_id=raw_id, product_variant_id=None,
+            method=f"{connector.store_key}_canonical_matcher",
+            reason="no_canonical_variant_match_legacy_fallback_disabled",
+            unresolved_status="pending",
+        )
+        return ConnectorIngestionResult(
+            raw_id, "pending", reason="no_canonical_variant_match_legacy_fallback_disabled",
         )
 
     legacy_match = resolve_legacy_catalog_match(matcher, normalized)

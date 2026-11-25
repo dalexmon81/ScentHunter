@@ -6,7 +6,7 @@ three queue stages: `discover`, `fetch` and `refresh`.
 
 ## Runtime boundary
 
-Notino and the four legacy retailer adapters (Deloox, Sabina, Easycosmetic and
+Notino and the five retailer adapters (Bplatz, Deloox, Sabina, Easycosmetic and
 Parfum-Zentrum) register handlers for discovery, fetch and refresh.
 
 A product fetch first uses `app.extraction.product.extract_product_record` to
@@ -31,30 +31,35 @@ quarantined store is an explicit operator action.
 
 ## Queue and deployment gates
 
-The isolated single-machine pilot uses a durable SQLite queue on its existing
-Fly volume. Redis/Celery is the optional multi-machine backend. The Celery
-configuration exposes only the three implemented queues and uses persistent
-delivery, late acknowledgements, worker-loss rejection, prefetch=1 and bounded
-exponential retry with jitter.
+The production Fly deployment runs the dedicated PostgreSQL worker process
+from `app.workers.postgres_worker`. `fly.toml` explicitly sets
+`SCENTHUNTER_QUEUE_BACKEND=postgres`; jobs are persisted in
+`ingestion_queue_jobs`, claimed with PostgreSQL locking, retried with bounded
+backoff and recovered when a worker lease becomes stale.
 
-Before enabling a separate Redis/Celery worker:
+The production worker schedules daily discovery for the active Notino.fr store
+and for other explicitly seeded retailers with configured query seeds. It also
+schedules active-offer refresh every 30 minutes. Discovery, fetch and refresh
+are the only implemented queue stages. Normalization, canonical matching,
+validation and publication remain inside the fetch transaction; they are not
+separate queue consumers today.
 
-1. Move the pilot catalog from its machine-local SQLite volume to shared
-   PostgreSQL. A separate Fly machine cannot share the app machine's SQLite
-   volume; do not start a second worker against a separate local database.
-2. Provision a dedicated Redis instance and set `SCENTHUNTER_REDIS_URL` only
-   on the pilot app and worker.
-3. Add a separate worker process/deployment; do not run ingestion inside
-   FastAPI.
-4. Verify idempotency and recovery against a disposable PostgreSQL database
-   and a real Redis broker.
-5. Complete backup/restore and canary/rollback checks before any production
-   activation.
+SQLite and Redis/Celery remain available as alternate backends for isolated
+tests or pilots. They are not the production Fly queue. Do not start another
+worker with a local SQLite queue against the production PostgreSQL catalog.
+Redis/Celery requires an explicitly configured broker and a separately
+deployed worker; adding queue names alone does not create working consumers.
+
+Before changing the production queue backend or adding another worker:
+
+1. Define durable stage inputs/outputs, idempotent retries and recovery.
+2. Verify queue behavior against a disposable PostgreSQL database.
+3. Complete backup/restore and canary/rollback checks.
+4. Confirm that only one intended production worker is claiming each queue.
 
 No Redis connection is attempted at import time. Queue submission fails closed
-when no explicit Redis URL exists. A successful CI worker smoke test proves
-broker-to-worker execution in CI only; it does not prove a Fly worker is
-deployed or connected to a shared database.
+when Redis is selected but no explicit Redis URL exists. CI worker smoke tests
+do not prove a Fly worker is deployed or connected to production.
 
 Run focused tests from `backend` with:
 
@@ -70,18 +75,48 @@ transactions, retains bounded error messages and closes each run as
 `completed`, `partial` or `failed`. The helpers never commit on behalf of
 the caller.
 
-## Notino pilot
+## Notino direct storefront connector
 
-The Notino connector reads the authorized CJ/VIV feed snapshot. Discovery
-queues one fetch task per retailer product. Fetch stages the original evidence,
-uses the database-native canonical matcher first, and retains the legacy
-catalog matcher only as a conservative fallback through explicit persisted ID
-maps. Publication requires a resolved canonical UUID, explicit currency
-provenance, valid positive price, valid URL and explicit stock. Unmatched or
-ambiguous products remain in staging.
+Production Notino discovery, fetch and refresh use
+`app.connectors.notino_public.NotinoPublicStorefrontConnector`. The PostgreSQL
+worker runtime does not import or instantiate the CJ/VIV feed connector.
 
-The pilot catalog must explicitly seed the `notino-fr` store before discovery.
-To add only the missing store row (without re-importing canonical identities):
+Discovery runs bounded public Notino.fr searches using
+`SCENTHUNTER_DISCOVERY_QUERIES_NOTINO`. If that setting is empty, the connector
+uses a small five-query pilot seed. Search candidates are deduplicated by their
+Notino product URL and known face-care/non-perfume result markers are rejected.
+A candidate's brand can be recovered from the first URL path segment only when
+the product title repeats that same brand prefix.
+
+Fetch and refresh read the exact HTTPS Notino.fr product page through the
+existing Notino parser, preferring the retailer HTML and falling back to its
+public reader representation when the edge blocks direct requests. The parser
+uses the product's stock/price-per-ml line or matching Product JSON-LD for price,
+size and stock; it does not use delivery charges or search-card prices. The
+connector preserves the product URL and extracts the product name, brand,
+concentration, size, price, explicit EUR evidence and explicit stock state.
+It never downloads or parses the CJ/VIV feed.
+
+Publication requires a database-native canonical variant match, explicit EUR
+evidence, positive price, valid product URL, explicit stock state and a current
+capture timestamp. Notino does not use the legacy JSON catalog matcher as a
+fallback. Unknown or ambiguous identities remain pending for review. Public
+search accepts the direct connector's own `captured_at` timestamp, but does
+not use download time as freshness evidence for legacy CJ/VIV records.
+
+The live connector smoke test is read-only and must not touch PostgreSQL:
+
+```bash
+cd backend
+PYTHONPATH=. python scripts/notino_direct_connector_smoke.py
+```
+
+The production scheduled CJ/VIV feed writer has been retired. The old feed
+parser and its tests remain isolated as legacy compatibility code; the
+historical feed monitor is manual-only and is not part of production ingestion.
+
+The Notino store must still be explicitly provisioned before discovery. To add
+only the missing store row (without re-importing canonical identities):
 
 ```bash
 cd backend
@@ -89,33 +124,22 @@ python scripts/seed_notino_store.py --confirm
 ```
 
 The command is idempotent, refuses to reactivate an inactive or quarantined row,
-and does not contact the CJ feed. The broader catalog seed remains available
+and does not contact any retailer. The broader catalog seed remains available
 as `seed_catalog.py --apply --seed-notino-store`.
-
-After shared PostgreSQL, Redis and a separate worker are ready, the first
-Notino run is an explicit operator action:
-
-```bash
-cd backend
-python scripts/enqueue_notino_discovery.py --limit 100
-```
-
-The command only enqueues discovery. It fails closed if Redis is not configured
-or the active `notino-fr` store has not been seeded.
 
 ## Offer refresh
 
-The isolated SQLite pilot registers the Notino refresh handler. Every 30 minutes
-the single-machine worker queues up to 200 oldest active offers per enabled
-retailer with a stable external product ID. Active duplicate jobs are coalesced
-by the durable queue. Refresh reads the latest authorized feed snapshot,
-requires explicit price, currency provenance, URL and stock, and updates the
-existing offer without changing its canonical variant. A successful
-observation is retained in `price_history` and raw refresh evidence is staged
-in `ingestion_raw`.
+The PostgreSQL worker schedules active-offer refresh every 30 minutes when
+`SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1`. Notino refresh uses the stored
+canonical product URL, including for legacy offers whose external IDs were CJ
+identifiers. It re-fetches the public product page, requires explicit price,
+EUR currency evidence, URL and stock, and updates the existing offer without
+changing its canonical variant. A successful observation is retained in
+`price_history` and raw refresh evidence is staged in `ingestion_raw`.
 
-This schedule is limited to the pilot. It does not claim a 15-minute freshness
-guarantee or establish that all retailer refreshes are active in production.
+The 30-minute scheduling interval is a queueing cadence, not a freshness
+guarantee. Public search independently enforces the 24-hour publication window
+and the stricter Notino source-observation checks.
 
 ## Legacy retailer adapters
 

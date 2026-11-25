@@ -12,10 +12,10 @@ import re
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Brand, Fragrance, Offer, ProductVariant
+from app.models import Brand, Fragrance, Offer, ProductVariant, StoreProduct
 from app.catalog.normalization import (
     build_identity, extract_concentration, normalize_brand, normalize_fragrance_name, normalize_text,
 )
@@ -54,6 +54,19 @@ def _gtin(value: Any) -> str | None:
     return digits if expected == int(digits[-1]) else None
 
 
+def _fragrance_from_title(title: Any, brand_value: Any) -> str:
+    """Strip an exact brand prefix and trailing retailer gender descriptors."""
+    normalized_title = normalize_text(str(title or ""))
+    normalized_brand = normalize_brand(str(brand_value or ""))
+    if normalized_brand and normalized_title.startswith(normalized_brand + " "):
+        normalized_title = normalized_title[len(normalized_brand) + 1:]
+    return re.sub(
+        r"\s+(?:pour\s+(?:homme|femme)|for\s+(?:men|women)|mixte|unisexe|unisex)$",
+        "",
+        normalized_title,
+    ).strip()
+
+
 def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: dict) -> list[str]:
     """Reject a valid GTIN when supplied product metadata contradicts its variant."""
     fragrance = session.get(Fragrance, variant.fragrance_id)
@@ -65,11 +78,7 @@ def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: 
     brand_value = record.get("brand") or record.get("brand_raw")
     fragrance_value = record.get("fragrance")
     if not fragrance_value and title:
-        normalized_title = normalize_text(str(title))
-        normalized_brand = normalize_brand(str(brand_value or ""))
-        if normalized_brand and normalized_title.startswith(normalized_brand + " "):
-            normalized_title = normalized_title[len(normalized_brand) + 1:]
-        fragrance_value = normalized_title
+        fragrance_value = _fragrance_from_title(title, brand_value)
 
     identity = build_identity(
         brand=str(brand_value) if brand_value else None,
@@ -95,7 +104,9 @@ def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: 
     for field_name in ("is_tester", "is_refill", "is_gift_set", "is_mini"):
         source_value = getattr(identity, field_name)
         canonical_value = getattr(variant, field_name)
-        if source_value is not None and canonical_value is not None and source_value is not canonical_value:
+        if source_value is True and canonical_value is None:
+            conflicts.append(field_name + "_canonical_unknown")
+        elif source_value is not None and canonical_value is not None and source_value is not canonical_value:
             conflicts.append(field_name)
     return conflicts
 
@@ -125,6 +136,50 @@ def resolve_canonical_variant(
 
     external_id = str(external_product_id or record.get("external_product_id") or "").strip()
     if external_id:
+        # Reuse an explicit store-product identity mapping before attempting
+        # deterministic matching. This is how a direct storefront URL can
+        # refresh a previously reviewed Notino item whose legacy external ID
+        # was a CJ SKU; the mapping is still checked against page metadata.
+        mapped_variant_ids = set(session.scalars(
+            select(StoreProduct.product_variant_id)
+            .where(
+                StoreProduct.store_id == store_id,
+                or_(
+                    StoreProduct.external_product_id == external_id,
+                    StoreProduct.canonical_url == external_id,
+                ),
+                StoreProduct.product_variant_id.is_not(None),
+                StoreProduct.status == "active",
+            )
+            .distinct()
+        ).all())
+        if len(mapped_variant_ids) > 1:
+            return CanonicalMatchResult(None, "ambiguous_store_product_identity")
+        if len(mapped_variant_ids) == 1:
+            mapped_variant = session.get(ProductVariant, next(iter(mapped_variant_ids)))
+            if mapped_variant is None:
+                return CanonicalMatchResult(None, "store_product_variant_missing")
+            title = record.get("title") or record.get("raw_name")
+            brand_value = record.get("brand") or record.get("brand_raw")
+            fragrance_value = record.get("fragrance") or (
+                _fragrance_from_title(title, brand_value) if title else None
+            )
+            concentration = record.get("concentration") or (
+                extract_concentration(str(title)) if title else None
+            )
+            size_ml = record.get("size_ml")
+            if not all((title, brand_value, fragrance_value, concentration, size_ml)):
+                return CanonicalMatchResult(None, "incomplete_store_product_metadata")
+            conflicts = _gtin_metadata_conflicts(session, mapped_variant, record)
+            if conflicts:
+                return CanonicalMatchResult(
+                    None, "store_product_metadata_conflict:" + ",".join(conflicts)
+                )
+            return CanonicalMatchResult(CanonicalMatch(
+                mapped_variant.id, "store_product_identity",
+                Decimal("0.990"), "reviewed_store_product_mapping"
+            ), "matched")
+
         existing = session.scalar(select(Offer).where(
             Offer.store_id == store_id,
             Offer.external_product_id == external_id,
@@ -140,11 +195,7 @@ def resolve_canonical_variant(
     brand_value = record.get("brand") or record.get("brand_raw")
     fragrance_value = record.get("fragrance")
     if not fragrance_value and title:
-        normalized_title = normalize_text(str(title))
-        normalized_brand = normalize_brand(str(brand_value or ""))
-        if normalized_title.startswith(normalized_brand + " "):
-            normalized_title = normalized_title[len(normalized_brand) + 1:]
-        fragrance_value = normalized_title
+        fragrance_value = _fragrance_from_title(title, brand_value)
     # Some retailer feeds expose concentration only in the product title
     # (for example "... Eau de Parfum") rather than a dedicated field.
     # Derive it from that explicit source text before declaring the identity

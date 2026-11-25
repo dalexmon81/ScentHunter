@@ -70,6 +70,22 @@ class OfferRefreshPersistenceTests(unittest.TestCase):
             self.assertEqual(raw.status, "promoted")
             self.assertIs(raw.raw_payload["currency_explicit"], True)
 
+    def test_direct_notino_refresh_accepts_its_own_capture_timestamp(self):
+        with self.sessions() as session, session.begin():
+            result = refresh_offer_observation(
+                session, offer_id=self.offer_id,
+                observation={"price": "78.90", "currency": "EUR",
+                             "availability": "in_stock",
+                             "product_url": "https://www.notino.fr/p/123",
+                             "captured_at": "2026-11-25T09:00:00+00:00"},
+                source="notino_public_storefront", currency_explicit=True,
+            )
+            self.assertEqual(result, self.offer_id)
+        with self.sessions() as session:
+            offer = session.get(Offer, self.offer_id)
+            self.assertEqual(offer.price, Decimal("78.90"))
+            self.assertEqual(offer.source, "notino_public_storefront")
+
     def test_refresh_rejects_currency_not_explicit_in_source(self):
         with self.sessions() as session, session.begin():
             with self.assertRaisesRegex(ValueError, "currency must be explicit"):

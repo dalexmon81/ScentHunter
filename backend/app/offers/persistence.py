@@ -174,6 +174,19 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         captured_at = parsed_source_time.astimezone(timezone.utc)
         if captured_at > datetime.now(timezone.utc) + timedelta(minutes=5):
             raise PromotionRejected("retailer_source_updated_at_in_future")
+    elif store.slug == "notino-fr" and row.raw_payload.get("source") == "notino_public_storefront":
+        direct_capture = row.raw_payload.get("captured_at")
+        if not direct_capture:
+            raise PromotionRejected("missing_direct_storefront_capture_timestamp")
+        try:
+            parsed_capture = datetime.fromisoformat(str(direct_capture).replace("Z", "+00:00"))
+        except ValueError:
+            raise PromotionRejected("direct_storefront_capture_timestamp_invalid") from None
+        if parsed_capture.tzinfo is None:
+            raise PromotionRejected("direct_storefront_capture_timestamp_missing_timezone")
+        captured_at = parsed_capture.astimezone(timezone.utc)
+        if captured_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+            raise PromotionRejected("direct_storefront_capture_timestamp_in_future")
     elif store.slug == "notino-fr":
         raise PromotionRejected("missing_retailer_source_updated_at")
 
