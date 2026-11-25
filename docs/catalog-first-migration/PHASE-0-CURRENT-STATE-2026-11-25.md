@@ -471,3 +471,22 @@ Limitations:
 - It is not a platform snapshot object and must not be described as an independent backup.
 
 **Decision:** This is the strongest candidate for owner-approved deletion to free one branch slot, but it has not been deleted. Deleting a Neon branch is destructive and disconnects its clients; explicit approval naming this exact branch is required. No other branch is recommended for deletion on the evidence currently available.
+
+
+## 15. Owner-approved Neon branch removal — verified (25/11/2026)
+
+The owner explicitly approved deletion of exactly:
+- Name: `phase0-final-snapshot-2026-11-24-1000`
+- Branch ID: `br-frosty-leaf-ba2f6e47`
+- Project: `square-math-01119225`
+
+Immediately before deletion, branch metadata was re-read and confirmed the exact name, operational parent `br-red-night-ba3reqhp`, and that it was neither the default nor primary branch. The Neon delete operation returned the target branch with state `storage_deleted`.
+
+Post-operation verification:
+- Neon branch inventory now contains 9 branches (one slot freed).
+- The deleted branch name and ID are absent from the branch inventory.
+- No compute endpoint remains attached to the deleted branch.
+- The operational branch `offer-first-postgres-cutover` was not the deletion target.
+- No other branch was deleted; no database tables, rows, workflows, Git branches, Fly machines, or secrets were changed by this action.
+
+This deletion is complete. The remaining nine branches are retained pending further dependency analysis.
