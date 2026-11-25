@@ -11,15 +11,22 @@ class NotinoPublicConnectorTests(unittest.IsolatedAsyncioTestCase):
         connector = NotinoPublicStorefrontConnector()
         candidate = {
             "url": "https://www.notino.fr/dior/sauvage/p-123/",
-            "name": "Dior Sauvage Eau de Parfum",
+            "name": "DIOR Sauvage Eau de Parfum",
             "score": 200,
         }
+        skincare = {
+            "url": "https://www.notino.fr/dior/sauvage-the-toner/p-456/",
+            "name": "DIOR Sauvage The Toner lotion tonique visage",
+            "score": 190,
+        }
         with patch.dict("os.environ", {"SCENTHUNTER_DISCOVERY_QUERIES_NOTINO": "Dior Sauvage Eau de Parfum"}):
-            with patch("app.connectors.notino_public.scraper._discover", return_value=([candidate], {})):
+            with patch("app.connectors.notino_public.scraper._discover", return_value=([candidate, skincare], {})):
                 rows = await connector.discover_products(limit=10)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].external_product_id, candidate["url"])
         self.assertEqual(rows[0].product_url, candidate["url"])
+        self.assertEqual(connector._candidates[candidate["url"]]["brand"], "DIOR")
+        self.assertNotIn(skincare["url"], connector._candidates)
 
     async def test_fetch_requires_exact_notino_url_and_explicit_currency_evidence(self):
         connector = NotinoPublicStorefrontConnector()
