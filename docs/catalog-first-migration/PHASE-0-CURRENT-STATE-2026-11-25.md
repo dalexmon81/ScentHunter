@@ -720,3 +720,36 @@ GitHub Actions run: [45684432525](https://github.com/dalexmon81/ScentHunter/acti
 ### Exact external action required
 
 Replace/refresh the repository Actions secret `FLY_API_TOKEN` with a valid Fly.io API token using GitHub repository Settings → Secrets and variables → Actions. Do not paste the token into chat or commit it to the repository. Then rerun the workflow above. Until that run succeeds and its restore test/artifact are verified, an independent backup does not exist and this gate remains open.
+
+
+## 22. Independent PostgreSQL backup — completed and restore-verified (25/11/2026)
+
+The earlier credential and restore-test failures recorded in section 21 were resolved on the audit branch. The final workflow run is [45686870169](https://github.com/dalexmon81/ScentHunter/actions/runs/45686870169), commit `ff676d90d9d190345a47072f10b3e85d80443d19`.
+
+- Runtime database URL obtained from the Fly worker; credentials remained masked.
+- PostgreSQL 18 custom-format dump created: `scenthunter_offerfirst-20261125T193726Z.dump`.
+- Dump size: `68,356,995` bytes.
+- Dump SHA-256: `92eef458deb614f062d94771008d554cd911aeb994ae0d69a49eddf6187a28a1`.
+- Archive listing check: passed.
+- Restore into isolated PostgreSQL 18 with Neon ownership roles excluded: passed.
+- Data verification returned: `RESTORE_OK|scenthunter_offerfirst|65|1403|556|167|10843|63053|65519` for brands, fragrances, variants, offers, price history, ingestion raw rows and ingestion runs respectively.
+- GitHub Actions artifact `scenthunter-postgresql-independent-backup`, ID `15057351168`, size 68,291,910 bytes, SHA-256 `89e22350000d27c589f30892500d831fdda3af2ebee0be63e39b4ef885c712ad`, retention through 2027-02-23.
+
+This is an independent logical export outside the Neon project. It is currently retained as a GitHub Actions artifact and should be copied to durable external storage before its expiry.
+
+## 23. Live Fly frontend and API verification (25/11/2026)
+
+Direct HTTPS probes from GitHub Actions to `https://scenthunter.fly.dev` completed successfully in run [45688269503](https://github.com/dalexmon81/ScentHunter/actions/runs/45688269503). Report artifact: [scenthunter-fly-live-verification](https://github.com/dalexmon81/ScentHunter/actions/runs/45688269503/artifacts/15056483927).
+
+| Endpoint | HTTP | Result |
+|---|---:|---|
+| `/` | 200 | HTML frontend returned |
+| `/health` | 200 | `healthy`, architecture `postgresql-catalog-only` |
+| `/api/catalog/status` | 200 | `ready` |
+| `/catalog-demo` | 200 | HTML frontend returned |
+| `/api/catalog/search?q=Dior%20Sauvage` | 200 | 2 catalog results, 6 offers |
+| `/api/catalog/search?q=Chanel%20No.5` | 200 | Completed search, 0 results |
+
+At the time of the status probe: 1,403 canonical products, 556 variants, 6 active stores and 162 published offers. Store offer counts: Bplatz 28, Notino.fr 105, Parfumzentrum.de 5, Sabina.es 24, Deloox.be 0 and Easycosmetic.de 0. Five active offers were not currently publishable; 52,240 match reviews remained unresolved.
+
+The live frontend and API checks passed at HTTP level, and the public search endpoint returned structured product/offer data for Dior Sauvage. The zero-result Chanel No. 5 query is a valid completed search response, not an HTTP/API failure. These probes do not constitute a full browser-based visual/interaction test or an end-to-end checkout test.
