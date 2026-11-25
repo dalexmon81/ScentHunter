@@ -157,3 +157,39 @@ This audit closes the Phase 1 *mapping* gate, not the later retirement gate. Dir
 - [x] Relevant Phase 1 domain/contract regression workflows listed above passed on the PR head.
 
 **Safety:** This document does not authorize deletion, data migration, feed removal, workflow disablement or production changes.
+
+## PR #927 direct Notino cutover delta — 25 November 2026
+
+This section records the proposed branch state; it does not claim that the
+change has been merged or deployed.
+
+- `backend/app/workers/notino_runtime.py` now routes Notino discovery, fetch
+  and refresh through `app.connectors.notino_public`. The production Notino
+  runtime no longer imports the CJ/VIV feed connector or loads
+  `product_catalog.json` as a Notino fallback matcher.
+- The direct connector searches public Notino.fr pages, filters known
+  non-perfume results, fetches the exact product URL, and requires product-page
+  evidence for price, size, currency and stock. It tries retailer HTML first
+  and uses the public reader representation only when direct requests are
+  blocked. It does not use CJ/VIV.
+- The strict read-only live smoke verified 8 of 10 discovered candidates.
+  Two candidates did not provide sufficient page evidence and were rejected.
+  The smoke touched no database. This verifies extraction, not canonical
+  publication.
+- Existing Notino `store_products` associations can be reused only when the
+  URL identity and supplied page metadata agree. New or ambiguous products
+  without a GTIN or reviewed store-product mapping remain pending; do not
+  weaken the canonical matcher to force publication.
+- The operational Neon branch snapshot showed 28,012 Notino store-product
+  rows, but only 108 with a canonical variant link. It also showed 539 of 556
+  canonical variants with at least one unknown tester/refill/gift/mini flag.
+  This is a separate catalog-identity reconciliation task, not a reason to
+  guess variant flags.
+- The PR removes the scheduled CJ/VIV production writer, removes CJ feed
+  credentials/URL from the Fly deployment workflow, and makes the historical
+  CJ monitor manual-only. The feed parser remains in the repository as
+  isolated legacy compatibility code.
+- `main` and Fly production remain unchanged until PR #927 is reviewed and
+  merged. No production database write or deploy was performed as part of
+  this branch work.
+
