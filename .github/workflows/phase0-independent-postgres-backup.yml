@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
-          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"from app.db import database_url; print(\\\\\"BACKUP_DATABASE_URL=\\\\\"+database_url())\"'"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"from app.db import database_url; print(\\\"BACKUP_DATABASE_URL=\\\"+database_url())\"'"
           DB_URL="$(flyctl ssh console --app scenthunter --select=false -C "$remote_command" | sed -n 's/^BACKUP_DATABASE_URL=//p' | tail -n 1)"
           case "$DB_URL" in
             postgres://*|postgresql://*) ;;
