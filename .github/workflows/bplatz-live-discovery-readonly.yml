@@ -26,6 +26,7 @@ jobs:
           set -euo pipefail
           test -n "$FLY_API_TOKEN"
           probe_b64=$(base64 -w0 backend/scripts/check_bplatz_live_discovery_readonly.py)
-          remote_python="import os,base64; ns={'__file__':os.path.join(os.getcwd(),'backend/scripts/check_bplatz_live_discovery_readonly.py')}; exec(compile(base64.b64decode('$probe_b64'),ns['__file__'],'exec'),ns)"
-          remote_cmd="/bin/sh -lc 'ROOT=\$(readlink /proc/\$(pgrep -o uvicorn)/cwd); export PYTHONPATH=\"\$ROOT/backend:\$ROOT\"; cd \"\$ROOT\"; python3 -c \"$remote_python\"'"
+          remote_python="import os,sys,glob,base64; ps=[p for p in glob.glob('/proc/[0-9]*') if open(p+'/comm').read().strip() in ('uvicorn','python','python3') and os.path.exists(p+'/cwd')]; assert ps,'No Python app process found'; roots=[os.readlink(p+'/cwd') for p in ps]; root=next((r for r in roots if os.path.isdir(r+'/backend/scrapers/bplatz')),roots[0]); os.chdir(root); sys.path[:0]=[root+'/backend',root]; ns={'__file__':root+'/backend/scripts/check_bplatz_live_discovery_readonly.py','__name__':'__main__'}; exec(compile(base64.b64decode('$probe_b64'),ns['__file__'],'exec'),ns)"
+          remote_b64=$(printf '%s' "$remote_python" | base64 -w0)
+          remote_cmd="/bin/sh -lc 'echo $remote_b64 | base64 -d | python3'"
           timeout 10m flyctl ssh console --app "$FLY_APP" --select=false -C "$remote_cmd"
