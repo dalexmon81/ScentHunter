@@ -71,6 +71,7 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls, 1)
         self.assertEqual(set(selected), {"SAUVAGE100"})
         self.assertEqual(selected["SAUVAGE100"]["gtin"], "3348901368247")
+        self.assertEqual(selected["SAUVAGE100"]["currency"], "EUR")
         self.assertEqual(connector._snapshot, ())
         self.assertEqual(connector._snapshot_by_id, {})
 
