@@ -22,7 +22,7 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: restore-test
           POSTGRES_DB: postgres
@@ -61,9 +61,9 @@ jobs:
           docker run --rm --network host \
             -e DATABASE_URL="$DATABASE_URL" \
             -v "$GITHUB_WORKSPACE:/backup" \
-            postgres:17 sh -lc "pg_dump \"\$DATABASE_URL\" --format=custom --no-owner --no-acl --file=/backup/$file"
+            postgres:18 sh -lc "pg_dump \"\$DATABASE_URL\" --format=custom --no-owner --no-acl --file=/backup/$file"
           test -s "$file"
-          docker run --rm -v "$GITHUB_WORKSPACE:/backup" postgres:17 pg_restore --list "/backup/$file" > archive-list.txt
+          docker run --rm -v "$GITHUB_WORKSPACE:/backup" postgres:18 pg_restore --list "/backup/$file" > archive-list.txt
           grep -q 'TABLE DATA' archive-list.txt
           sha256sum "$file" | tee "$file.sha256"
           stat -c 'BACKUP_SIZE_BYTES=%s' "$file"
@@ -75,8 +75,8 @@ jobs:
           set -euo pipefail
           docker run --rm --network host \
             -v "$GITHUB_WORKSPACE:/backup" \
-            postgres:17 sh -lc "PGPASSWORD=restore-test pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --create --clean --if-exists --exit-on-error /backup/$BACKUP_FILE"
-          docker run --rm --network host postgres:17 \
+            postgres:18 sh -lc "PGPASSWORD=restore-test pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --create --clean --if-exists --exit-on-error /backup/$BACKUP_FILE"
+          docker run --rm --network host postgres:18 \
             psql "postgresql://postgres:restore-test@127.0.0.1:5432/scenthunter_offerfirst" \
             -v ON_ERROR_STOP=1 -Atc "SELECT 'RESTORE_OK', current_database(), (SELECT count(*) FROM brands), (SELECT count(*) FROM fragrances), (SELECT count(*) FROM product_variants), (SELECT count(*) FROM offers), (SELECT count(*) FROM price_history), (SELECT count(*) FROM ingestion_raw), (SELECT count(*) FROM ingestion_runs), (SELECT count(*) FROM queue_jobs);" | tee restore-verification.txt
           grep -q '^RESTORE_OK|scenthunter_offerfirst|' restore-verification.txt
