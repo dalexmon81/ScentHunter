@@ -63,6 +63,9 @@ NON_PERFUME_MARKERS = {
     "lotion apres rasage", "soin apres rasage", "creme apres rasage",
     "creme corpo", "crema corpo", "gel doccia", "bagnoschiuma", "deodorante", "cofanetto", "estuche",
     "etui", "pochette", "miniature", "mini spray", "minispray",
+    # Face-care products that can rank for a fragrance query on Notino.fr.
+    "toner", "cleanser", "nettoyant visage", "lotion tonique", "eau micellaire",
+    "micellaire", "face wash", "face cleanser",
 }
 IN_STOCK_MARKERS = (
     "en stock", "ajouter au panier", "add to cart", "in stock", "disponible", "available",
