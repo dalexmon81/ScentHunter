@@ -490,3 +490,59 @@ Post-operation verification:
 - No other branch was deleted; no database tables, rows, workflows, Git branches, Fly machines, or secrets were changed by this action.
 
 This deletion is complete. The remaining nine branches are retained pending further dependency analysis.
+
+
+## 16. Operational Neon backup created and verified (25/11/2026)
+
+After the owner-approved deletion freed one branch slot, a new point-in-time child clone was created from the live operational branch.
+
+### Backup identity
+
+- Project: `square-math-01119225`
+- New backup branch: `phase0-operational-backup-2026-11-25`
+- Branch ID: `br-lingering-sky-baehcw2s`
+- Parent: `offer-first-postgres-cutover` (`br-red-night-ba3reqhp`)
+- Parent LSN: `0/2F3F3EA8`
+- Parent timestamp: `2026-11-25T17:44:24Z`
+- Creation time: `2026-11-25T17:44:35Z`
+- Neon state: `ready`
+- Database inspected: `scenthunter_offerfirst`
+- Alembic revision: `0007_catalog_identity`
+
+### Data verification
+
+Read-only count comparison was run against the operational parent and the new backup. All listed counts matched exactly at verification time:
+
+| Object | Operational parent | New backup |
+|---|---:|---:|
+| Brands | 65 | 65 |
+| Fragrances | 1,403 | 1,403 |
+| Product variants | 556 | 556 |
+| Stores | 10 | 10 |
+| Active offers | 167 | 167 |
+| Price history | 10,832 | 10,832 |
+| Raw ingestion records | 62,151 | 62,151 |
+| Ingestion runs | 64,601 | 64,601 |
+| Match audit | 354 | 354 |
+| Queue jobs | 188,915 | 188,915 |
+
+Five referential-integrity checks on the backup returned zero:
+- Offers without a canonical variant.
+- Offers without a valid store.
+- Price-history rows without an offer.
+- Raw ingestion records without a valid store.
+- Product variants without a fragrance.
+
+The database tree includes the canonical application tables and indexes. The new branch is a point-in-time Neon copy-on-write clone of the operational database, not an independent logical export or off-platform backup.
+
+### Protection and cost state
+
+- Neon refused to mark the new branch as protected because the plan's protected-branch limit has been reached. No existing protected branch was changed.
+- Its read-write compute endpoint was suspended after the verification queries. The data branch remains `ready`; its compute can be started if a future restore/read test requires it.
+- The project is again at 10 active branches out of 10. Do not create another branch until a slot is deliberately freed or the plan limit changes.
+
+### Result and remaining limitation
+
+**Operational point-in-time clone: created and query-verified.** Parent LSN/time, schema revision, table counts and key references are recorded above.
+
+**Independent backup: not yet achieved.** No logical `pg_dump` export or off-platform copy has been produced in this session. Do not describe this clone as protection against loss of the entire Neon project/account. The backup is also currently unprotected by Neon because of the plan limit.
