@@ -1133,6 +1133,7 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     structured_size: Optional[float] = None
     structured_brand = ""
     structured_stock: Optional[bool] = None
+    currency_explicit = False
     for record in records:
         rec_name, rec_brand, rec_url, rec_price, rec_size = _structured_record_to_evidence(record)
         if rec_name and _query_matches_name(rec_name, query):
@@ -1141,6 +1142,12 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             structured_price = rec_price or ""
             structured_size = rec_size
             structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
+            record_offers = record.get("offers")
+            offer_rows = record_offers if isinstance(record_offers, list) else [record_offers]
+            currency_explicit = any(
+                isinstance(offer, dict) and str(offer.get("priceCurrency") or "").upper() == "EUR"
+                for offer in offer_rows
+            )
             break
 
     # Product identity must come from the actual destination page, not from
@@ -1214,7 +1221,8 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             output.append(result(
                 name, variant_price, structured_stock if structured_stock is not None else _stock(text),
                 candidate["url"], variant_size, _extract_concentration(text) or _extract_concentration(name),
-                _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", "")
+                _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", ""),
+                currency_explicit=currency_explicit,
             ))
         if output:
             return output
@@ -1233,7 +1241,11 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         return None
     concentration = _extract_concentration(text) or _extract_concentration(name) or _extract_concentration(candidate.get("card_text"))
     gender = _gender_marker(text) or _gender_marker(name) or _gender_marker(candidate.get("card_text"))
-    return result(name, price, stock, candidate["url"], size, concentration, gender, brand=structured_brand or candidate.get("brand", ""))
+    return result(
+        name, price, stock, candidate["url"], size, concentration, gender,
+        brand=structured_brand or candidate.get("brand", ""),
+        currency_explicit=currency_explicit,
+    )
 
 
 def result(
@@ -1246,6 +1258,7 @@ def result(
     gender: str,
     *,
     brand: str = "",
+    currency_explicit: bool = False,
 ) -> Dict[str, Any]:
     availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
     display = _display_name(name, url)
@@ -1257,6 +1270,8 @@ def result(
         "brand": _clean(brand),
         "url": normaliseurl(url),
         "price": price,
+        "currency": "EUR",
+        "currency_explicit": bool(currency_explicit),
         "availability": availability,
         "available": False if stock is True else True if stock is False else None,
         "sizeml": size,
