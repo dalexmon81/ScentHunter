@@ -642,3 +642,36 @@ The three unattached volumes have not been mounted, inspected, snapshotted, dele
 - No production resources or `main` branch were changed by this diagnostic.
 
 **Phase 0 remains open.** The remaining critical blocker is a verified independent PostgreSQL backup/export. The unattached Fly volumes also need provenance/content verification before they can be classified as backups. Do not begin Phase 1 until these are resolved or the owner explicitly accepts a documented exception.
+
+
+## 19. Neon snapshot and branch inventory rechecked (25/11/2026)
+
+A fresh read-only inventory was performed after the Fly diagnostic.
+
+### Snapshot inventory
+
+The Neon project currently exposes one snapshot:
+
+- Name: `scenthunter-phase0-before-cleanup-2026-11-24`
+- ID: `snap-wandering-silence-bah0m86y`
+- Created: `2026-11-24T05:31:44Z`
+- Source branch ID: `br-dry-water-ban3a63s` (`production`, the Neon default branch)
+- Manual snapshot; reported full size 35,782,656 bytes.
+
+This snapshot is **not** sourced from the live operational branch `offer-first-postgres-cutover` (`br-red-night-ba3reqhp`). It must not be represented as a snapshot of the current operational database.
+
+### Snapshot schedules
+
+A fresh schedule read returned an empty schedule for both:
+- Operational branch `offer-first-postgres-cutover` (`br-red-night-ba3reqhp`).
+- Default branch `production` (`br-dry-water-ban3a63s`).
+
+Thus no automatic snapshot schedule is currently configured for either branch.
+
+### Branch capacity
+
+The fresh branch inventory contains 10 branches, matching the project's 10-branch limit. The operational backup clone `phase0-operational-backup-2026-11-25` remains `ready`, unprotected, and a child of the operational branch. No branch was created, deleted, reset, or modified during this inventory.
+
+### Consequence
+
+There is still no verified independent export, and the only listed Neon snapshot belongs to the default `production` branch rather than the operational database. The child clone is the only newly verified point-in-time copy of the operational database, but it remains inside the same Neon project and is not protected. Phase 0 backup acceptance criteria therefore remain unmet.
