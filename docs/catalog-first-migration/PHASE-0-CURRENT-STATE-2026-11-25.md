@@ -420,3 +420,54 @@ Compared with the operational branch's latest 63,250 runs and 60,830 raw rows, e
 
 ### Backup decision
 The branch inventory identifies historical candidates for a future cleanup decision, but it does not establish that any branch is safe to delete. Names such as `restore-test`, `final-snapshot`, and `verified-backup` are not proof of independent restore points or that their purpose is obsolete. No candidate is selected for deletion. The project remains at its 10-branch limit, so creating a current child backup remains blocked until the owner explicitly approves a specific branch for deletion or supplies another authorized backup method.
+
+
+## 14. Sixth verification pass — candidate branch dependency assessment (25/11/2026)
+
+This pass was specifically performed to avoid asking the project owner to choose a Neon branch without evidence.
+
+### Compute endpoint and usage inventory
+
+The project-wide endpoint listing shows a read-write compute endpoint for:
+- `scenthunter-release-restore-check-2026-11-24`
+- `restore-test-isolated-2026-11-24`
+- `phase0-restore-drill-2026-11-24`
+- `phase0-final-audit-backup-2026-11-24`
+- `phase0-verified-backup-2026-11-24-compute`
+- `production`
+- `offer-first-postgres-cutover`
+
+No compute endpoint is registered for:
+- `phase0-final-snapshot-2026-11-24-1000`
+- `phase0-verified-backup-2026-11-24`
+- `phase0-backup-2026-11-24`
+
+Branch metadata also shows:
+- `phase0-final-snapshot-2026-11-24-1000`: 0 CPU seconds, 0 compute seconds, 0 active seconds, 0 bytes written and 0 data-transfer bytes since creation; no compute endpoint; no child branches; created 24 Nov 09:10 UTC.
+- `phase0-verified-backup-2026-11-24`: 0 CPU/compute/active seconds and no endpoint, but it is explicitly named as a verified backup and is paired with the compute-enabled verified-backup clone. Existing repository documentation explicitly says not to delete either verified-backup branch.
+- `phase0-backup-2026-11-24`: 0 CPU/compute/active seconds and no endpoint, but it is the earliest named backup clone and the GitHub audit records a separate Git snapshot branch relationship. It is not selected as a deletion candidate.
+- The restore-drill branch has substantial recorded compute/active time and data transfer and has a successful isolated API read-only smoke test documented in `docs/PHASE_0_RESTORE_DRILL_AUDIT.md`. It must be preserved.
+- `phase0-final-audit-backup`, `restore-test-isolated` and `scenthunter-release-restore-check` all have compute endpoints and recent endpoint activity timestamps; none is selected.
+
+### GitHub dependency search
+
+Repository-wide searches on the default branch for the exact name `phase0-final-snapshot-2026-11-24-1000` and its branch ID found no workflow, source, configuration, PR documentation or other code reference beyond the historical inventory table in `docs/PHASE_0_RESTORE_DRILL_AUDIT.md`. This search is evidence of no checked-in reference on `main`; it cannot prove that no person has a manually saved connection URL or external operational dependency.
+
+### Recommended candidate — NOT deleted
+
+**Lowest observed operational-dependency candidate:** `phase0-final-snapshot-2026-11-24-1000` (`br-frosty-leaf-ba2f6e47`).
+
+Reasons:
+1. It is a later point-in-time child clone of the operational branch, not the operational branch itself.
+2. It has no Neon compute endpoint.
+3. Neon reports zero CPU, compute, active time, writes and transfer since creation.
+4. It has no child branches.
+5. No checked-in code/workflow/PR reference to its exact name or ID was found.
+6. Its name and audit entry indicate a historical clone, not the documented API restore-drill branch or the verified-backup pair.
+
+Limitations:
+- It remains a point-in-time clone containing historical data; absence of compute or Git references is not proof that nobody relies on it manually.
+- Its contents could not be queried because it has no compute endpoint. It is therefore not certified as a valid or invalid restore point.
+- It is not a platform snapshot object and must not be described as an independent backup.
+
+**Decision:** This is the strongest candidate for owner-approved deletion to free one branch slot, but it has not been deleted. Deleting a Neon branch is destructive and disconnects its clients; explicit approval naming this exact branch is required. No other branch is recommended for deletion on the evidence currently available.
