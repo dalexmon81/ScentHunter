@@ -29,6 +29,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
     def __init__(self) -> None:
         super().__init__()
         self._candidates: dict[str, dict[str, Any]] = {}
+        self._discovery_diagnostics: list[dict[str, Any]] = []
 
     @staticmethod
     def _brand_from_url_title(url: str, name: str) -> str:
@@ -79,8 +80,19 @@ class NotinoPublicStorefrontConnector(StoreConnector):
             raise ValueError("cursor must be a non-negative integer")
 
         candidates: dict[str, dict[str, Any]] = {}
+        self._discovery_diagnostics = []
         for query in self._queries():
-            rows, _diagnostics = await asyncio.to_thread(self._discover_query, query)
+            rows, diagnostics = await asyncio.to_thread(self._discover_query, query)
+            self._discovery_diagnostics.append({
+                "query": query,
+                "candidate_count": len(rows),
+                "strategy": diagnostics.get("strategy"),
+                "direct": diagnostics.get("direct", []),
+                "reader": diagnostics.get("reader", []),
+                "sitemap_used": diagnostics.get("sitemap_used", False),
+                "sitemap_error": diagnostics.get("sitemap_error"),
+                "known_product_seed": diagnostics.get("known_product_seed"),
+            })
             for candidate in rows:
                 url = scraper._allowed_url(str(candidate.get("url") or ""), scraper.BASE_URL)
                 if not url:
