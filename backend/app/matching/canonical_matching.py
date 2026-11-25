@@ -61,7 +61,7 @@ def _fragrance_from_title(title: Any, brand_value: Any) -> str:
     if normalized_brand and normalized_title.startswith(normalized_brand + " "):
         normalized_title = normalized_title[len(normalized_brand) + 1:]
     return re.sub(
-        r"\\s+(?:pour\\s+(?:homme|femme)|for\\s+(?:men|women)|mixte|unisexe|unisex)$",
+        r"\s+(?:pour\s+(?:homme|femme)|for\s+(?:men|women)|mixte|unisexe|unisex)$",
         "",
         normalized_title,
     ).strip()
