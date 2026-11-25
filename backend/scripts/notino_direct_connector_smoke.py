@@ -67,13 +67,8 @@ async def run() -> int:
         print("NOTINO_DIRECT_CONNECTOR_SMOKE=" + json.dumps(result, ensure_ascii=False), flush=True)
         return 1
 
-    discovered_brands = {
-        str(candidate.raw_payload.get("name") or "").strip().casefold()
-        for candidate in candidates
-        if candidate.raw_payload.get("name")
-    }
-    # Brand diversity is evaluated on fetched product evidence below, not on
-    # query labels or URL slugs, which are not authoritative product identity.
+    # Brand diversity is evaluated on fetched product evidence, not query labels
+    # or URL slugs, which are not authoritative product identity.
     verified = 0
     verified_brands: set[str] = set()
     for candidate in candidates:
