@@ -295,3 +295,28 @@ Fase 0 remains open. The new pass improves the data comparison and corrects the 
 2. A fresh logical or platform-supported backup of `br-red-night-ba3reqhp` must be produced and verified. Existing child branches are stale relative to the current operational counts; the sole manual snapshot belongs to the wrong branch.
 
 No deletions, branch cleanup, workflow changes, deployments, imports, schema changes, or production writes were performed.
+
+
+## 11. Third verification pass — 25/11/2026
+
+### Neon branch-capacity check
+A complete branch listing including recoverable/deleted branches returned exactly 10 active branches and no deleted branches:
+- 1 default/root branch: `production`
+- 1 operational branch: `offer-first-postgres-cutover`
+- 8 child branches created on 24 November.
+
+A further attempt to create a no-compute child branch directly from the operational branch was rejected with Neon error `branches limit exceeded`. No branch was deleted or modified. This confirms that a current Neon point-in-time child copy cannot be created through the available Neon connector without first freeing a branch slot; freeing a slot requires an explicit, dependency-informed decision and is not part of this audit.
+
+### Workflow dispatch check
+The GitHub connector was checked for a workflow-dispatch operation. It exposes workflow run, job, log and artifact reads, plus rerun operations, but no workflow dispatch/start action. The latest 100 workflow runs returned no run for the read-only Fly diagnostics workflow or the phase-0 live baseline workflow. No unrelated workflow was rerun.
+
+The read-only Fly diagnostic workflow remains available for manual launch in GitHub Actions:
+`.github/workflows/scenthunter-readonly-fly-diagnostics.yml`
+It performs only status, machines, volumes, secret-name inventory and runtime DB configuration/file-presence checks.
+
+### Current hard blockers (confirmed again)
+1. Fly production state is not yet verified live because this session cannot dispatch the workflow and no Fly connector is installed.
+2. A fresh operational Neon backup cannot be created through the available connector while the project branch limit is reached. Existing child branches are stale, and the existing manual snapshot is from the wrong root branch.
+3. No branch deletion or replacement has been authorized or performed.
+
+This pass made no changes to `main`, production, Neon data, Fly machines, deployments, secrets, or scheduled jobs.
