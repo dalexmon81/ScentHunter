@@ -538,7 +538,7 @@ def _fetch_feed(deadline=None) -> bytes:
     return output.getvalue()
 
 
-def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str], *, deadline=None) -> dict[str, NotinoOffer]:
+def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str], deadline=None) -> dict[str, NotinoOffer]:
     """Parse only selected product IDs from a feed without materializing the full catalog."""
     wanted = {str(value or "").strip() for value in external_ids if str(value or "").strip()}
     if not wanted:
