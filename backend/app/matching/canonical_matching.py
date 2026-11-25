@@ -104,7 +104,9 @@ def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: 
     for field_name in ("is_tester", "is_refill", "is_gift_set", "is_mini"):
         source_value = getattr(identity, field_name)
         canonical_value = getattr(variant, field_name)
-        if source_value is not None and canonical_value is not None and source_value is not canonical_value:
+        if source_value is True and canonical_value is None:
+            conflicts.append(field_name + "_canonical_unknown")
+        elif source_value is not None and canonical_value is not None and source_value is not canonical_value:
             conflicts.append(field_name)
     return conflicts
 
@@ -153,6 +155,17 @@ def resolve_canonical_variant(
             mapped_variant = session.get(ProductVariant, mapped_products[0].product_variant_id)
             if mapped_variant is None:
                 return CanonicalMatchResult(None, "store_product_variant_missing")
+            title = record.get("title") or record.get("raw_name")
+            brand_value = record.get("brand") or record.get("brand_raw")
+            fragrance_value = record.get("fragrance") or (
+                _fragrance_from_title(title, brand_value) if title else None
+            )
+            concentration = record.get("concentration") or (
+                extract_concentration(str(title)) if title else None
+            )
+            size_ml = record.get("size_ml")
+            if not all((title, brand_value, fragrance_value, concentration, size_ml)):
+                return CanonicalMatchResult(None, "incomplete_store_product_metadata")
             conflicts = _gtin_metadata_conflicts(session, mapped_variant, record)
             if conflicts:
                 return CanonicalMatchResult(
