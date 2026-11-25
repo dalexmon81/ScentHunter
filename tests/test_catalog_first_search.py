@@ -16,7 +16,7 @@ from test_bplatz_persistence_service import (
 )
 import catalog_engine
 from app.api import catalog_search
-from app.models import IngestionRaw, MatchAudit, Offer, Store
+from app.models import IngestionRaw, MatchAudit, Offer, Store, StoreProduct
 from app.connectors.notino_public import NotinoPublicStorefrontConnector
 from app.offers.ingestion import persist_connector_record
 from app.search.catalog import catalog_status, search_catalog, _display_offer_url
@@ -209,6 +209,14 @@ def test_direct_notino_record_matches_postgres_catalog_and_becomes_searchable(pi
         store.slug = "notino-fr"
         store.name = "Notino.fr"
         store.domain = "www.notino.fr"
+        session.add(StoreProduct(
+            store_id=store.id,
+            external_product_id=product_url,
+            canonical_url=product_url,
+            raw_title=raw_record["name"],
+            product_variant_id=existing.product_variant_id,
+            status="active",
+        ))
         session.flush()
         result = persist_connector_record(
             session,
