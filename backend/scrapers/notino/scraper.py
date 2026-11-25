@@ -366,10 +366,10 @@ def _extract_notino_product_offer(text: Any) -> Optional[Dict[str, Any]]:
     """Extract the retailer's product price/size line, not delivery prices."""
     cleaned = _clean(text)
     pattern = re.compile(
-        r"\\b(en rupture de stock|rupture de stock|actuellement indisponible|"
-        r"out of stock|sold out|en stock|in stock|available|disponible)\\s*\\|\\s*"
-        r"(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*€\\s*/\\s*"
-        r"(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*ml",
+        r"\b(en rupture de stock|rupture de stock|actuellement indisponible|"
+        r"out of stock|sold out|en stock|in stock|available|disponible)\s*\|\s*"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€\s*/\s*"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*ml",
         re.I,
     )
     match = pattern.search(cleaned)
