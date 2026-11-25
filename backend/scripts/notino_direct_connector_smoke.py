@@ -50,6 +50,9 @@ async def run() -> int:
         try:
             row = await connector.fetch_product(candidate.external_product_id)
             item = compact(row)
+            item["candidate_name"] = candidate.raw_payload.get("name")
+            item["candidate_query"] = candidate.raw_payload.get("query")
+            item["candidate_url"] = candidate.product_url
             valid = bool(
                 isinstance(row, dict)
                 and row.get("source") == "notino_public_storefront"
@@ -63,10 +66,23 @@ async def run() -> int:
                 and row.get("url") == candidate.product_url
             )
             item["verified"] = valid
+            if not valid:
+                item["failed_checks"] = [
+                    name for name, passed in {
+                        "direct_source": isinstance(row, dict) and row.get("source") == "notino_public_storefront",
+                        "explicit_eur": isinstance(row, dict) and row.get("currency") == "EUR" and row.get("currency_explicit") is True,
+                        "explicit_stock": isinstance(row, dict) and row.get("availability") in {"in_stock", "out_of_stock"},
+                        "positive_price": isinstance(row, dict) and float(row.get("price") or 0) > 0,
+                        "perfume_identity": isinstance(row, dict) and bool((row.get("size_ml") or row.get("sizeml")) and row.get("concentration") and row.get("brand")),
+                        "exact_product_url": isinstance(row, dict) and row.get("url") == candidate.product_url,
+                    }.items() if not passed
+                ]
             verified += int(valid)
             report.append(item)
         except Exception as exc:
             report.append({
+                "candidate_name": candidate.raw_payload.get("name"),
+                "candidate_query": candidate.raw_payload.get("query"),
                 "url": candidate.product_url,
                 "verified": False,
                 "error": f"{type(exc).__name__}: {exc}",
