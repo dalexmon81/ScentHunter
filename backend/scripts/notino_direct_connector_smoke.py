@@ -18,6 +18,7 @@ def compact(row: Any) -> dict[str, Any]:
         "brand": row.get("brand"),
         "size_ml": row.get("size_ml") or row.get("sizeml"),
         "concentration": row.get("concentration"),
+        "gtin": row.get("gtin"),
         "price": row.get("price"),
         "currency": row.get("currency"),
         "currency_explicit": row.get("currency_explicit"),
