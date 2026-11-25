@@ -1,0 +1,94 @@
+name: Phase 0 independent PostgreSQL backup
+
+on:
+  push:
+    branches:
+      - docs/phase0-current-audit-2026-11-25
+    paths:
+      - .github/workflows/phase0-independent-postgres-backup.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase0-independent-postgres-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLY_API_TOKEN: \${{ secrets.FLY_API_TOKEN }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore-test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify access and extract the runtime database URL without logging it
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python -c \"from app.db import database_url; print(\\\\\"BACKUP_DATABASE_URL=\\\\\"+database_url())\"'"
+          DB_URL="$(flyctl ssh console --app scenthunter --select=false -C "$remote_command" | sed -n 's/^BACKUP_DATABASE_URL=//p' | tail -n 1)"
+          case "$DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::Could not obtain a PostgreSQL URL from the running Fly worker."; exit 1 ;;
+          esac
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+          echo "Runtime database target acquired from Fly worker; credentials masked."
+
+      - name: Export operational PostgreSQL database
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          file="scenthunter_offerfirst-$stamp.dump"
+          docker run --rm --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -v "$GITHUB_WORKSPACE:/backup" \
+            postgres:17 sh -lc "pg_dump \"\$DATABASE_URL\" --format=custom --no-owner --no-acl --file=/backup/$file"
+          test -s "$file"
+          docker run --rm -v "$GITHUB_WORKSPACE:/backup" postgres:17 pg_restore --list "/backup/$file" > archive-list.txt
+          grep -q 'TABLE DATA' archive-list.txt
+          sha256sum "$file" | tee "$file.sha256"
+          stat -c 'BACKUP_SIZE_BYTES=%s' "$file"
+          echo "BACKUP_FILE=$file" >> "$GITHUB_ENV"
+
+      - name: Restore-test the dump in an isolated PostgreSQL 17 service
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE:/backup" \
+            postgres:17 sh -lc "PGPASSWORD=restore-test pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --create --clean --if-exists --exit-on-error /backup/$BACKUP_FILE"
+          docker run --rm --network host postgres:17 \
+            psql "postgresql://postgres:restore-test@127.0.0.1:5432/scenthunter_offerfirst" \
+            -v ON_ERROR_STOP=1 -Atc "SELECT 'RESTORE_OK', current_database(), (SELECT count(*) FROM brands), (SELECT count(*) FROM fragrances), (SELECT count(*) FROM product_variants), (SELECT count(*) FROM offers), (SELECT count(*) FROM price_history), (SELECT count(*) FROM ingestion_raw), (SELECT count(*) FROM ingestion_runs), (SELECT count(*) FROM queue_jobs);" | tee restore-verification.txt
+          grep -q '^RESTORE_OK|scenthunter_offerfirst|' restore-verification.txt
+
+      - name: Publish independent backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-postgresql-independent-backup
+          path: |
+            \${{ env.BACKUP_FILE }}
+            \${{ env.BACKUP_FILE }}.sha256
+            restore-verification.txt
+            archive-list.txt
+          if-no-files-found: error
+          retention-days: 90
