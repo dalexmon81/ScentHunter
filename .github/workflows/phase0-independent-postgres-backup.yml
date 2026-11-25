@@ -69,13 +69,13 @@ jobs:
           stat -c 'BACKUP_SIZE_BYTES=%s' "$file"
           echo "BACKUP_FILE=$file" >> "$GITHUB_ENV"
 
-      - name: Restore-test the dump in an isolated PostgreSQL 17 service
+      - name: Restore-test the dump in an isolated PostgreSQL 18 service
         shell: bash
         run: |
           set -euo pipefail
           docker run --rm --network host \
             -v "$GITHUB_WORKSPACE:/backup" \
-            postgres:18 sh -lc "PGPASSWORD=restore-test pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --create --clean --if-exists --exit-on-error /backup/$BACKUP_FILE"
+            postgres:18 sh -lc "PGPASSWORD=restore-test pg_restore --host=127.0.0.1 --username=postgres --dbname=postgres --create --clean --if-exists --no-owner --exit-on-error /backup/$BACKUP_FILE"
           docker run --rm --network host postgres:18 \
             psql "postgresql://postgres:restore-test@127.0.0.1:5432/scenthunter_offerfirst" \
             -v ON_ERROR_STOP=1 -Atc "SELECT 'RESTORE_OK', current_database(), (SELECT count(*) FROM brands), (SELECT count(*) FROM fragrances), (SELECT count(*) FROM product_variants), (SELECT count(*) FROM offers), (SELECT count(*) FROM price_history), (SELECT count(*) FROM ingestion_raw), (SELECT count(*) FROM ingestion_runs), (SELECT count(*) FROM queue_jobs);" | tee restore-verification.txt
