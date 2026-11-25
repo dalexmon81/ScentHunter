@@ -1135,6 +1135,7 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     structured_price = ""
     structured_size: Optional[float] = None
     structured_brand = ""
+    structured_gtin = ""
     structured_stock: Optional[bool] = None
     currency_explicit = False
     for record in records:
@@ -1142,6 +1143,11 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         if rec_name and _query_matches_name(rec_name, query):
             structured_name = rec_name
             structured_brand = rec_brand
+            structured_gtin = _clean(
+                record.get("gtin13") or record.get("gtin14")
+                or record.get("gtin12") or record.get("gtin8")
+                or record.get("gtin") or ""
+            )
             structured_price = rec_price or ""
             structured_size = rec_size
             structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
@@ -1230,6 +1236,7 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
                 candidate["url"], variant_size, _extract_concentration(text) or _extract_concentration(name),
                 _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", ""),
                 currency_explicit=currency_explicit,
+                gtin=structured_gtin,
             ))
         if output:
             return output
@@ -1252,6 +1259,7 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         name, price, stock, candidate["url"], size, concentration, gender,
         brand=structured_brand or candidate.get("brand", ""),
         currency_explicit=currency_explicit,
+        gtin=structured_gtin,
     )
 
 
@@ -1266,6 +1274,7 @@ def result(
     *,
     brand: str = "",
     currency_explicit: bool = False,
+    gtin: str = "",
 ) -> Dict[str, Any]:
     availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
     display = _display_name(name, url)
@@ -1279,6 +1288,7 @@ def result(
         "price": price,
         "currency": "EUR",
         "currency_explicit": bool(currency_explicit),
+        "gtin": gtin or None,
         "availability": availability,
         "available": False if stock is True else True if stock is False else None,
         "sizeml": size,
