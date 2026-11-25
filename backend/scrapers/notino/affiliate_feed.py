@@ -531,10 +531,33 @@ def _download_feed(destination, deadline=None) -> int:
             response.close()
 
 
-def _fetch_feed() -> bytes:
+def _fetch_feed(deadline=None) -> bytes:
+    """Download one authorized feed snapshot, optionally with a hard wall-clock deadline."""
     output = io.BytesIO()
-    _download_feed(output)
+    _download_feed(output, deadline=deadline)
     return output.getvalue()
+
+
+def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str]) -> dict[str, NotinoOffer]:
+    """Parse only selected product IDs from a feed without materializing the full catalog."""
+    wanted = {str(value or "").strip() for value in external_ids if str(value or "").strip()}
+    if not wanted:
+        return {}
+    if not isinstance(data, (bytes, bytearray)) or not data:
+        raise FeedImportError("notino_feed_empty")
+    found: dict[str, NotinoOffer] = {}
+    with _xml_stream(io.BytesIO(data)) as stream:
+        for node in _feed_items(stream):
+            fields = _field_map(node)
+            external_id = _first(node, "id", "offerid", "productid", fields=fields).strip()
+            if external_id not in wanted or external_id in found:
+                continue
+            offer = _parse_item(node, fields)
+            if offer is not None:
+                found[external_id] = offer
+                if len(found) == len(wanted):
+                    break
+    return found
 
 
 def _stable_variant_key(offer: NotinoOffer) -> str:
