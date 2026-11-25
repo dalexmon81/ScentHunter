@@ -124,7 +124,9 @@ async def run() -> int:
         "database_touched": False,
         "cj_feed_used": False,
         "discovery_queries": list(DISCOVERY_QUERIES),
+        "query_diagnostics": connector._discovery_diagnostics,
         "discovered": len(candidates),
+        "distinct_discovered_urls": len({candidate.product_url for candidate in candidates}),
         "distinct_verified_brands": len(verified_brands),
         "verified": verified,
         "minimums": {
