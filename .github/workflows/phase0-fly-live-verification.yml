@@ -24,7 +24,7 @@ jobs:
           endpoints=("/" "/health" "/api/catalog/status" "/catalog-demo" "/api/catalog/search?q=Dior%20Sauvage" "/api/catalog/search?q=Chanel%20No.5")
           : > fly-live-verification/results.txt
           for path in "${endpoints[@]}"; do
-            safe_name="$(printf '%s' "$path" | sed 's#^/$#root#; s#^/##; s#/#_#g')"
+            safe_name="$(printf '%s' "$path" | sed 's#^/$#root#; s#^/##; s#/#_#g; s#[^A-Za-z0-9_.-]#_#g')"
             body="fly-live-verification/${safe_name}.body"
             headers="fly-live-verification/${safe_name}.headers"
             code="$(curl --silent --show-error --location --connect-timeout 10 --max-time 30 -D "$headers" -o "$body" -w '%{http_code}' "$base$path" 2>"fly-live-verification/${safe_name}.error")"
