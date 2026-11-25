@@ -128,7 +128,7 @@ def main() -> int:
         host = (parsed_url.hostname or "").lower().rstrip(".")
         valid = (
             parsed_url.scheme in {"http", "https"}
-            and host in {"en.bplatz.de", "www.bplatz.de", "bplatz.de", "www.bplatz.de"}
+            and host in {"en.bplatz.de", "bplatz.de", "www.bplatz.de"}
             and "/products/" in parsed_url.path.lower()
         )
         if not valid:
