@@ -590,3 +590,55 @@ The available Neon integration exposes SQL, branch, snapshot and storage operati
 - `main` remains untouched; this report update is documentation-only on `docs/phase0-current-audit-2026-11-25`.
 
 **Phase 0 remains open. Do not start Phase 1 until live Fly state and an independent PostgreSQL backup are verified, or the owner explicitly accepts a documented exception to the backup requirement.**
+
+
+## 18. Live Fly diagnostic rerun completed (25/11/2026, 18:59 UTC)
+
+The existing workflow `.github/workflows/scenthunter-readonly-fly-diagnostics.yml` was rerun as GitHub Actions run [45353437876, attempt 2](https://github.com/dalexmon81/ScentHunter/actions/runs/45353437876). This is the same read-only workflow already present in the repository; no workflow file or production code was changed to run it.
+
+### Current Fly inventory observed by the workflow
+
+- Fly app: `scenthunter`; hostname `scenthunter.fly.dev`.
+- App machine `2861625cd341d8`: `started`, process group `app`, region `ams`, release image `deployment-01M88E539J2KP1NQK35MVB0FFT`.
+- Worker machine `78455def0d0368`: `started`, process group `worker`, region `ams`, same release image.
+- Standby worker `784ee395a5d028`: `stopped`, marked by Fly as standby.
+- All three machines report release version `2528`.
+- Three encrypted Fly volumes were listed, all in `ams`, and none attached to a VM at the time of the check:
+  - `vol_vwn91672oj9d1z9v`, `scenthunter_data`, 5 GB.
+  - `vol_rkg3w2my7exjk864`, `scenthunter_data_recovery`, 2 GB.
+  - `vol_491p1y217q8ln75r`, `scenthunter_data`, 1 GB.
+- The workflow listed secret names only. It showed nine secrets as staged/not deployed, including the Notino CJ feed settings, active-offer-refresh flag and five retailer discovery-query settings. Secret values were not read or exposed.
+
+### Runtime database and legacy-file check
+
+The workflow connected read-only to the running worker and reported:
+
+- `CANONICAL_BACKEND=postgresql`
+- `CANONICAL_DRIVER=postgresql+psycopg`
+- Database host: `ep-aged-thunder-ba5bz2vz.c-8.eu-central-1.aws.neon.tech`
+- Database name: `scenthunter_offerfirst`
+- `SCENTHUNTER_CATALOG_DATABASE_URL` configured: true.
+- General `SCENTHUNTER_DATABASE_URL` configured: false.
+- `SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL=1`.
+- `/data/catalog/catalog.sqlite3` absent.
+- `/data/store_catalog.sqlite3` absent.
+
+This verifies the running worker's configured canonical database backend and the absence of those two specific SQLite paths. It does not prove that every legacy SQLite database, JSON file, or legacy code path has been removed from all machines or external storage.
+
+### Diagnostic safety and result
+
+The workflow completed successfully. It performed no deploy, restart, migration, import, secret update, or database write. The run and decoded job logs are available from the GitHub Actions link above.
+
+The three unattached volumes have not been mounted, inspected, snapshotted, deleted, or modified. Their names alone do not establish that they contain usable backups. No claim is made that they are recoverable snapshots.
+
+### Updated Phase 0 status
+
+- Live Fly app/machine/volume inventory: **verified read-only**.
+- Running worker's PostgreSQL backend and canonical database target: **verified read-only**.
+- Two configured legacy SQLite paths: **absent on the inspected worker**.
+- Full legacy-file inventory across every machine and volume: **not yet verified**.
+- Independent logical PostgreSQL export outside Neon: **still not produced**.
+- Current production frontend route/browser rendering: **not independently verified by this diagnostic**.
+- No production resources or `main` branch were changed by this diagnostic.
+
+**Phase 0 remains open.** The remaining critical blocker is a verified independent PostgreSQL backup/export. The unattached Fly volumes also need provenance/content verification before they can be classified as backups. Do not begin Phase 1 until these are resolved or the owner explicitly accepts a documented exception.
