@@ -182,6 +182,31 @@ def test_publication_gate_and_freshness(pilot):
         assert count() == 1
 
 
+def test_direct_notino_capture_timestamp_passes_public_search_freshness_gate(pilot):
+    engine, result = pilot
+    now = datetime.now(timezone.utc)
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+    with Session(engine) as session:
+        offer = session.get(Offer, result.offer_id)
+        store = session.get(Store, offer.store_id)
+        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+        store.slug = "notino-fr"
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        offer.url = product_url
+        offer.captured_at = now
+        raw.raw_payload = {
+            **dict(raw.raw_payload),
+            "source": "notino_public_storefront",
+            "captured_at": now.isoformat(),
+            "currency_explicit": True,
+        }
+        session.flush()
+        result = search_catalog(session, "French Avenue Liquid Brun EDP 100ml", now=now)
+        assert result["count"] == result["offer_count"] == 1
+        assert result["results"][0]["offers"][0]["url"] == product_url
+
+
 def test_bplatz_catalog_parser_preserves_explicit_title_size_and_concentration():
     html = b'''<h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
     <script type="application/ld+json">{"@type":"Product",
