@@ -362,6 +362,32 @@ def _extract_concentration(text: Any) -> str:
     return ""
 
 
+def _extract_notino_product_offer(text: Any) -> Optional[Dict[str, Any]]:
+    """Extract the retailer's product price/size line, not delivery prices."""
+    cleaned = _clean(text)
+    pattern = re.compile(
+        r"\\b(en rupture de stock|rupture de stock|actuellement indisponible|"
+        r"out of stock|sold out|en stock|in stock|available|disponible)\\s*\\|\\s*"
+        r"(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*€\\s*/\\s*"
+        r"(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*ml",
+        re.I,
+    )
+    match = pattern.search(cleaned)
+    if not match:
+        return None
+    stock_label = _norm(match.group(1))
+    out_of_stock = any(
+        marker in stock_label
+        for marker in ("rupture de stock", "indisponible", "out of stock", "sold out")
+    )
+    return {
+        "price": match.group(2).replace(",", "."),
+        "size_ml": float(match.group(3).replace(",", ".")),
+        "stock": True if out_of_stock else False,
+        "currency_explicit": True,
+    }
+
+
 def _extract_price(text: Any) -> str:
     cleaned = _clean(text)
     matches = list(PRICE_RE.finditer(cleaned))
@@ -1181,6 +1207,14 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     # candidate name in that case creates false offers that the family matcher
     # may then incorrectly canonicalize.
     soup = BeautifulSoup(text, "html.parser")
+    if not _allow_variants:
+        page_offer = _extract_notino_product_offer(soup.get_text(" ", strip=True))
+        if page_offer:
+            structured_price = structured_price or str(page_offer["price"])
+            structured_size = structured_size or float(page_offer["size_ml"])
+            if structured_stock is None:
+                structured_stock = page_offer["stock"]
+            currency_explicit = currency_explicit or bool(page_offer["currency_explicit"])
     authoritative_titles: List[str] = []
     primary_headings: List[str] = []
     for tag in soup.find_all(["h1", "title"], limit=20):
