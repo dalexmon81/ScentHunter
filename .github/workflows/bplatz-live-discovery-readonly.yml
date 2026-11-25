@@ -13,16 +13,19 @@ concurrency:
 jobs:
   bplatz-live-discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install parser dependencies
-        run: python -m pip install requests==2.32.3 beautifulsoup4==4.12.3
-      - name: Run live discovery, extraction and catalog matching (no database)
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Execute Bplatz discovery from the existing Fly app machine
         env:
-          PYTHONPATH: backend
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: python backend/scripts/check_bplatz_live_discovery_readonly.py
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: scenthunter
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          probe_b64=$(base64 -w0 backend/scripts/check_bplatz_live_discovery_readonly.py)
+          remote_python="import os,base64; ns={'__file__':os.path.join(os.getcwd(),'backend/scripts/check_bplatz_live_discovery_readonly.py')}; exec(compile(base64.b64decode('$probe_b64'),ns['__file__'],'exec'),ns)"
+          remote_cmd="/bin/sh -lc 'ROOT=\$(readlink /proc/\$(pgrep -o uvicorn)/cwd); export PYTHONPATH=\"\$ROOT/backend:\$ROOT\"; cd \"\$ROOT\"; python3 -c \"$remote_python\"'"
+          timeout 10m flyctl ssh console --app "$FLY_APP" --select=false -C "$remote_cmd"
