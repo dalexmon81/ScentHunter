@@ -217,7 +217,7 @@ def test_direct_notino_record_matches_postgres_catalog_and_becomes_searchable(pi
             raw_record=raw_record,
             matcher=None,
         )
-        assert result.status == "promoted"
+        assert result.status == "promoted", result.reason
         assert result.offer_id is not None
         session.flush()
         search = search_catalog(
