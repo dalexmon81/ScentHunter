@@ -53,33 +53,24 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      # The dedicated Notino CJ Feed Import workflow is the sole production
-      # writer for the authenticated feed in /data/store_catalog.sqlite3.
-      # Stage credentials for this release; do not print or persist them.
-      - name: Configure authorized Notino CJ feed for production
+      # Notino now uses the direct public storefront connector in the PostgreSQL worker.
+      # No CJ/VIV feed URL or credentials are configured by production deployment.
+      - name: Configure PostgreSQL retailer discovery and offer refresh
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
-          CJ_HTTP_PASSWORD: ${{ secrets.CJ_HTTP_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${CJ_HTTP_USERNAME}" || -z "${CJ_HTTP_PASSWORD}" ]]; then
-            echo "::error::Missing CJ_HTTP_USERNAME or CJ_HTTP_PASSWORD Actions secret; production Notino feed import cannot be configured."
-            exit 1
-          fi
           flyctl secrets set --stage \
-            "NOTINO_CJ_FEED_URL=https://datatransfer.cj.com/datatransfer/files/8115142/outgoing/productcatalog/324587/NOTINO_fr-NotinoFR_google_all-shopping.xml.zip" \
-            "NOTINO_CJ_FEED_USERNAME=${CJ_HTTP_USERNAME}" \
-            "NOTINO_CJ_FEED_PASSWORD=${CJ_HTTP_PASSWORD}" \
             "SCENTHUNTER_ACTIVE_OFFER_REFRESH_ENABLED=1" \
+            "SCENTHUNTER_DISCOVERY_QUERIES_NOTINO=French Avenue Liquid Brun Eau de Parfum;Dior Sauvage Eau de Parfum;Bleu de Chanel Eau de Parfum;Yves Saint Laurent Y Eau de Parfum;Acqua di Gio Profondo Eau de Parfum" \
             "SCENTHUNTER_DISCOVERY_QUERIES_BPLATZ=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_SABINA=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_EASYCOSMETIC=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             "SCENTHUNTER_DISCOVERY_QUERIES_PARFUMZENTRUM=Dior Sauvage;Guerlain Shalimar;Guerlain La Petite Robe Noire;Creed Aventus;Lancome La Vie Est Belle;Armani Acqua di Gio Profondo;Yves Saint Laurent Y Eau de Parfum;Azzaro Wanted;Givenchy Gentleman Society;Armaf Club de Nuit Intense Man" \
             --app scenthunter
-          echo "Notino CJ feed URL and credentials staged for the production release."
+          echo "PostgreSQL retailer discovery and offer refresh settings staged."
 
       - name: Deploy ScentHunter
         env:
