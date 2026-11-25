@@ -36,6 +36,8 @@ class NotinoPublicStorefrontConnector(StoreConnector):
 
     @staticmethod
     def _discover_query(query: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        previous_limits = (scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT)
+        scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = 4, 6, 0
         session = scraper._new_session()
         try:
             return scraper._discover(query, session, query_limit=1, allow_sitemap=False)
@@ -45,6 +47,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
             ) from exc
         finally:
             session.close()
+            scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = previous_limits
 
     async def discover_products(
         self, *, cursor: str | None = None, limit: int = 100
@@ -95,6 +98,8 @@ class NotinoPublicStorefrontConnector(StoreConnector):
         request_candidate = dict(candidate)
         request_candidate.update({"url": url, "name": candidate.get("name") or scraper._slug_name(url),
                                   "source": "known-product-url"})
+        previous_limits = (scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT)
+        scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = 4, 6, 0
         session = scraper._new_session()
         try:
             result = scraper._reader_product(session, request_candidate, query, _allow_variants=False)
@@ -104,6 +109,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
             ) from exc
         finally:
             session.close()
+            scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = previous_limits
 
         if isinstance(result, list):
             matching = [
