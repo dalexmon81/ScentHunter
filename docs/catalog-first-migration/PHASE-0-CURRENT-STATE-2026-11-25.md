@@ -320,3 +320,66 @@ It performs only status, machines, volumes, secret-name inventory and runtime DB
 3. No branch deletion or replacement has been authorized or performed.
 
 This pass made no changes to `main`, production, Neon data, Fly machines, deployments, secrets, or scheduled jobs.
+
+
+## 12. Fourth verification pass — scraper and ingestion evidence (25/11/2026)
+
+### Live operational database: per-store state
+Fresh read-only queries against `offer-first-postgres-cutover` returned:
+
+| Store | State | Active offers | Completed runs | Partial runs | Failed runs |
+|---|---|---:|---:|---:|---:|
+| Bplatz | active | 28 | 1,450 | 572 | 5 |
+| Deloox.be | active | 0 | 14 | 1,380 | 0 |
+| Easycosmetic.de | active | 0 | 42 | 4,712 | 4 |
+| Notino.fr | active | 108 | 7,657 | 42,736 | 0 |
+| Parfum-Zentrum.de | active | 7 | 371 | 1,588 | 5 |
+| Sabina.es | active | 24 | 1,282 | 635 | 5 |
+| Deloox.com / .es / .lu / .nl | inactive | 0 | 0 | 197 combined | 0 |
+
+`last_successful_sync_at` is recent for active rows, but this is not proof of fresh offer publication. Latest per-store runs show:
+- Bplatz: latest completed run discovered 8 products, created/updated 0 offers; preceding single-product runs are partial.
+- Deloox.be: latest three runs completed but discovered 0 products and changed 0 offers.
+- Easycosmetic.de: latest completed run discovered 100 products but created/updated 0 offers; preceding runs are partial.
+- Notino.fr: latest runs are partial; each rejected a product for `incomplete_variant_identity`.
+- Parfum-Zentrum.de: latest completed run updated 1 offer; an immediately preceding run rejected an offer because retailer currency evidence was not explicit.
+- Sabina.es: latest completed runs updated 1 existing offer each; no new offers were created in those runs.
+
+### Queue and ingestion health
+Latest `ingestion_runs` status counts:
+- completed: 10,817
+- partial: 51,852
+- failed: 19
+- running: 34
+
+Of the 34 running ingestion runs, 24 are older than 24 hours and 8 are older than 72 hours. Store breakdown: Notino 20 (13 older than 24h, 7 older than 72h), Deloox.be 5 (all older than 24h), Easycosmetic 5 (3 older than 24h, 1 older than 72h), Sabina 2 (both older than 24h), plus one each for inactive Deloox.com and Parfum-Zentrum.de.
+
+Queue status counts:
+- completed: 60,409
+- failed: 51,421
+- queued: 75,321
+- running: 1
+
+Queue stage counts:
+- discover: 262 completed, 8 failed, 33 queued
+- fetch: 49,852 completed, 50,934 failed, 75,115 queued, 1 running
+- refresh: 10,301 completed, 479 failed, 167 queued
+
+The largest failed-job class is 45,321 fetch jobs explicitly cancelled because the Deloox market was disabled (Belgian storefront only). Other major failed classes are missing connector registrations for inactive Deloox markets and product-not-found fetches. The queue is not healthy enough to declare the ingestion pipeline fully operational.
+
+### Scraper package / test evidence
+Nine scraper packages exist in source: Bplatz, Deloox, Easycosmetic, Notino, Orioudh, Parfumcity, Parfumzentrum, PerfumeMarket, Sabina.
+- Five legacy retailers (Bplatz, Deloox BE, Easycosmetic, Parfumzentrum, Sabina) are routed through the generic legacy adapter. Regression tests exercise adapter behavior with fixtures/mocks; they are not end-to-end live retailer acceptance tests.
+- Notino has the dedicated CJ/VIV feed parser/connector and fixture-based parser tests.
+- Orioudh, Parfumcity and PerfumeMarket have scraper source files but no active store rows or active PostgreSQL connector adapters in this runtime.
+- The latest PR #927 CI checks on branch `fix/notino-direct-postgres-runtime` (not merged to main) show the queue-contract suite passing, canonical Notino discovery regression passing, and isolated disposable-Neon API smoke passing. The same PR's direct Notino storefront live acceptance job failed: five product searches returned zero candidates; Notino endpoints returned HTTP 403 and the Jina reader returned HTTP 401. The separate parser-regression job passed its fixture tests and public fallback probe; its live direct-connector job is the failing job.
+- The Bplatz live-offer pilot step in that parser workflow was skipped. No CI evidence here proves all nine scraper packages work against their live retailers.
+
+### Fase 0 scraper verdict
+No scraper can be labelled fully end-to-end verified based on current evidence:
+- Evidence of active offers and recent successful updates: Bplatz, Notino CJ/VIV, Parfumzentrum, Sabina — but with material partial/rejection/backlog issues.
+- Not currently producing offers: Deloox.be and Easycosmetic.de.
+- Not enabled in the active PostgreSQL runtime: Orioudh, Parfumcity, PerfumeMarket and the four inactive Deloox international market rows.
+- Notino direct storefront connector in PR #927: live acceptance failed; PR is not merged.
+
+No job queue was purged, retried, re-enqueued, or edited. No stores were enabled/disabled, no scraper was changed, and no offers were modified.
