@@ -58,6 +58,23 @@ class NotinoAffiliateFeedConnectorTests(unittest.IsolatedAsyncioTestCase):
             await connector.fetch_product("SAUVAGE100"),
         )
 
+    async def test_fetch_products_by_ids_uses_selective_parser_without_full_snapshot(self) -> None:
+        calls = 0
+
+        def load_feed() -> bytes:
+            nonlocal calls
+            calls += 1
+            return DIOR_FEED
+
+        connector = NotinoAffiliateFeedConnector(feed_loader=load_feed)
+        selected = await connector.fetch_products_by_ids(["SAUVAGE100", "NOT-IN-FEED"])
+        self.assertEqual(calls, 1)
+        self.assertEqual(set(selected), {"SAUVAGE100"})
+        self.assertEqual(selected["SAUVAGE100"]["gtin"], "3348901368247")
+        self.assertEqual(selected["SAUVAGE100"]["currency"], "EUR")
+        self.assertEqual(connector._snapshot, ())
+        self.assertEqual(connector._snapshot_by_id, {})
+
     async def test_fetch_parse_and_validate_dior_edp_100ml(self) -> None:
         connector = NotinoAffiliateFeedConnector(feed_loader=lambda: DIOR_FEED)
         raw = await connector.fetch_product("SAUVAGE100")

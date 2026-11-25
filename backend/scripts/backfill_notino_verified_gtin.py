@@ -88,11 +88,15 @@ def _payload_identity_matches(payload: dict, expected: dict) -> bool:
 
 
 async def _fetch_current_feed_records(connector) -> dict[str, dict]:
-    """Fetch only the four reviewed IDs from one freshly loaded feed snapshot."""
+    """Fetch only the four reviewed IDs without materializing the full feed catalog."""
+    selected = await connector.fetch_products_by_ids(
+        [item["external_product_id"] for item in VERIFIED_GTINS.values()],
+        timeout_seconds=240,
+    )
     records = {}
     for gtin, expected in VERIFIED_GTINS.items():
         external_id = expected["external_product_id"]
-        raw = await connector.fetch_product(external_id)
+        raw = selected.get(external_id)
         if not isinstance(raw, dict):
             continue
         if str(raw.get("external_product_id") or "") != external_id:

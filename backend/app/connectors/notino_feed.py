@@ -28,6 +28,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
         super().__init__()
         if cache_ttl_seconds < 0:
             raise ValueError("cache_ttl_seconds must not be negative")
+        self._uses_default_feed_loader = feed_loader is None
         self._feed_loader = feed_loader or affiliate_feed._fetch_feed
         self._cache_ttl_seconds = cache_ttl_seconds
         self._cached_at = 0.0
@@ -99,6 +100,39 @@ class NotinoAffiliateFeedConnector(StoreConnector):
     async def refresh_snapshot(self) -> int:
         """Force one feed download at the start of a scheduled ingestion cycle."""
         return len(await self._get_snapshot(force=True))
+
+    async def fetch_products_by_ids(
+        self, external_product_ids: Sequence[str], *, timeout_seconds: int = 240
+    ) -> Mapping[str, Mapping[str, Any]]:
+        """Fetch a small reviewed ID set without building the full Notino catalog snapshot."""
+        ids = tuple(dict.fromkeys(str(value or "").strip() for value in external_product_ids if str(value or "").strip()))
+        if not ids:
+            return {}
+        if timeout_seconds < 1 or timeout_seconds > 600:
+            raise ValueError("timeout_seconds must be between 1 and 600")
+        deadline = time.monotonic() + timeout_seconds
+        try:
+            if self._uses_default_feed_loader:
+                payload = await asyncio.to_thread(affiliate_feed._fetch_feed, deadline)
+            else:
+                payload = await asyncio.wait_for(
+                    asyncio.to_thread(self._feed_loader), timeout=timeout_seconds
+                )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Notino targeted feed deadline exceeded")
+            selected = await asyncio.wait_for(
+                asyncio.to_thread(affiliate_feed.parse_feed_for_external_ids, payload, ids, deadline),
+                timeout=remaining,
+            )
+            return {
+                external_id: self._to_record(offer)
+                for external_id, offer in selected.items()
+            }
+        except Exception as exc:
+            raise ConnectorUnavailable(
+                f"Notino targeted feed unavailable or invalid: {type(exc).__name__}: {exc}"
+            ) from exc
 
     async def discover_products(
         self, *, cursor: str | None = None, limit: int = 100

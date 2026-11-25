@@ -79,16 +79,18 @@ def test_current_feed_lookup_fetches_only_the_four_reviewed_external_ids():
         def __init__(self):
             self.requested = []
 
-        async def fetch_product(self, external_product_id):
-            self.requested.append(external_product_id)
-            for gtin, expected in VERIFIED_GTINS.items():
-                if expected["external_product_id"] == external_product_id:
-                    return {
-                        "external_product_id": external_product_id,
-                        "gtin": gtin,
-                        "source": "authorized_cj_viv_xml_feed",
-                    }
-            return None
+        async def fetch_products_by_ids(self, external_product_ids, *, timeout_seconds):
+            self.requested.extend(external_product_ids)
+            assert timeout_seconds == 240
+            return {
+                item["external_product_id"]: {
+                    "external_product_id": item["external_product_id"],
+                    "gtin": gtin,
+                    "source": "authorized_cj_viv_xml_feed",
+                }
+                for gtin, item in VERIFIED_GTINS.items()
+                if item["external_product_id"] in external_product_ids
+            }
 
     connector = FakeFeedConnector()
     records = asyncio.run(_fetch_current_feed_records(connector))
@@ -106,11 +108,15 @@ def test_current_feed_lookup_rejects_external_id_and_gtin_mismatches():
     from scripts.backfill_notino_verified_gtin import _fetch_current_feed_records
 
     class MismatchedFeedConnector:
-        async def fetch_product(self, external_product_id):
+        async def fetch_products_by_ids(self, external_product_ids, *, timeout_seconds):
+            assert timeout_seconds == 240
             return {
-                "external_product_id": external_product_id,
-                "gtin": "0000000000000",
-                "source": "authorized_cj_viv_xml_feed",
+                external_id: {
+                    "external_product_id": external_id,
+                    "gtin": "0000000000000",
+                    "source": "authorized_cj_viv_xml_feed",
+                }
+                for external_id in external_product_ids
             }
 
     records = asyncio.run(_fetch_current_feed_records(MismatchedFeedConnector()))
