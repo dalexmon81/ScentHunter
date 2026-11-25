@@ -140,19 +140,23 @@ def resolve_canonical_variant(
         # deterministic matching. This is how a direct storefront URL can
         # refresh a previously reviewed Notino item whose legacy external ID
         # was a CJ SKU; the mapping is still checked against page metadata.
-        mapped_products = session.scalars(select(StoreProduct).where(
-            StoreProduct.store_id == store_id,
-            or_(
-                StoreProduct.external_product_id == external_id,
-                StoreProduct.canonical_url == external_id,
-            ),
-            StoreProduct.product_variant_id.is_not(None),
-            StoreProduct.status == "active",
-        ).limit(2)).all()
-        if len(mapped_products) > 1:
+        mapped_variant_ids = set(session.scalars(
+            select(StoreProduct.product_variant_id)
+            .where(
+                StoreProduct.store_id == store_id,
+                or_(
+                    StoreProduct.external_product_id == external_id,
+                    StoreProduct.canonical_url == external_id,
+                ),
+                StoreProduct.product_variant_id.is_not(None),
+                StoreProduct.status == "active",
+            )
+            .distinct()
+        ).all())
+        if len(mapped_variant_ids) > 1:
             return CanonicalMatchResult(None, "ambiguous_store_product_identity")
-        if len(mapped_products) == 1:
-            mapped_variant = session.get(ProductVariant, mapped_products[0].product_variant_id)
+        if len(mapped_variant_ids) == 1:
+            mapped_variant = session.get(ProductVariant, next(iter(mapped_variant_ids)))
             if mapped_variant is None:
                 return CanonicalMatchResult(None, "store_product_variant_missing")
             title = record.get("title") or record.get("raw_name")
