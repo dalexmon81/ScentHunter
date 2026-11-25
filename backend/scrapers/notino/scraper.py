@@ -1119,17 +1119,31 @@ def _extract_product_variant_urls(text: str, base_url: str) -> List[str]:
 
 
 def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str, _allow_variants: bool = True) -> Optional[Dict[str, Any]]:
-    try:
-        if _allow_variants:
-            response = _request(session, READER_BASE + candidate["url"], reader=True)
-        else:
-            # Production direct connector fetches the retailer page itself.
-            # Jina Reader can append navigation/shipping prices and lose the
-            # product's exact size/offer structure.
-            response = _request(session, candidate["url"], reader=False)
-        text = response.text or ""
-    except requests.RequestException:
-        return None
+    text = ""
+    if _allow_variants:
+        try:
+            text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
+        except requests.RequestException:
+            return None
+    else:
+        # Prefer the retailer HTML. Some Notino edge/CDN responses block
+        # automated clients; in that case use the public reader representation
+        # of this exact Notino URL, never an affiliate feed or search-card price.
+        try:
+            text = _request(session, candidate["url"], reader=False).text or ""
+        except requests.RequestException:
+            text = ""
+        if text:
+            page_text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+            has_product_offer = _extract_notino_product_offer(page_text) is not None
+            has_product_json = bool(_structured_product_records(text))
+            if not has_product_offer and not has_product_json:
+                text = ""
+        if not text:
+            try:
+                text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
+            except requests.RequestException:
+                return None
     if not text:
         return None
 
