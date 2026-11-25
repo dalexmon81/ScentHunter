@@ -1,4 +1,5 @@
 name: Phase 0 independent PostgreSQL backup
+# Uses PostgreSQL 18 client/server; restore ownership is normalized for isolated verification.
 
 on:
   push:
