@@ -122,7 +122,7 @@ class NotinoAffiliateFeedConnector(StoreConnector):
             if remaining <= 0:
                 raise TimeoutError("Notino targeted feed deadline exceeded")
             selected = await asyncio.wait_for(
-                asyncio.to_thread(affiliate_feed.parse_feed_for_external_ids, payload, ids),
+                asyncio.to_thread(affiliate_feed.parse_feed_for_external_ids, payload, ids, deadline),
                 timeout=remaining,
             )
             return {
