@@ -231,3 +231,67 @@ Evidenza runtime DB:
 5. Eseguire la matrice live scraper in modo controllato, un retailer per volta.
 
 **Decisione:** Fase 0 resta aperta. Non iniziare Fase 1, non rimuovere CJ, non modificare workflow, non fare cleanup e non avviare il refactoring finché i gate sopra non sono chiusi e documentati.
+
+
+## 9. Second verification pass — 25/11/2026 (after initial report)
+
+A fresh read-only query was executed after the first inventory. Counts have continued to change, so the earlier counts in section 3 are an earlier observation, not the latest value.
+
+### Latest operational branch counts
+Branch: `offer-first-postgres-cutover` (`br-red-night-ba3reqhp`), database `scenthunter_offerfirst`.
+
+| Object | First pass | Second pass |
+|---|---:|---:|
+| brands | 65 | 65 |
+| fragrances | 1,403 | 1,403 |
+| variants | 556 | 556 |
+| stores | 10 | 10 |
+| offers | 167 | 167 |
+| ingestion_runs | 62,500 | 62,538 |
+| ingestion_raw | 60,089 | 60,126 |
+| ingestion_queue_jobs | 187,062 | 187,062 |
+
+The operational database is still receiving writes while this audit is in progress. This is why a point-in-time copy is required before any migration/cleanup work.
+
+### Existing backup branches compared against operational branch
+
+| Branch | offers | runs | raw | queue jobs |
+|---|---:|---:|---:|---:|
+| Operational `offer-first-postgres-cutover` | 167 | 62,538 | 60,126 | 187,062 |
+| `phase0-verified-backup-2026-11-24-compute` | 163 | 50,128 | 48,100 | 173,039 |
+| `phase0-restore-drill-2026-11-24` | 163 | 50,443 | 48,400 | 173,365 |
+| `phase0-final-audit-backup-2026-11-24` | 163 | 50,291 | 48,257 | 173,202 |
+| `scenthunter-release-restore-check-2026-11-24` | 167 | 54,326 | 52,125 | 178,305 |
+| `restore-test-isolated-2026-11-24` | 167 | 54,325 | 52,125 | 178,255 |
+
+All these child branches report `init_source=parent-data` and a parent timestamp on `offer-first-postgres-cutover`. They are point-in-time child branches, **not evidence of a snapshot restore drill**. In particular, the name `phase0-restore-drill-2026-11-24` must not be interpreted as proof that a snapshot restore was executed. The branch contents were inspected read-only; no restore was finalized and no operational branch was replaced.
+
+### Snapshot policy
+- The project currently has one manual snapshot: `scenthunter-phase0-before-cleanup-2026-11-24`.
+- Its source is `production` (`br-dry-water-ban3a63s`), not the operational branch.
+- Snapshot schedule for both `production` and `offer-first-postgres-cutover`: empty.
+- The attempted snapshot of the non-root operational branch was rejected by Neon.
+- The attempted new branch was rejected because the project is at its branch limit.
+
+Therefore, the project has no verified current snapshot schedule or fresh backup of the operational branch as of this second pass.
+
+### Frontend source mapping — verified statically
+- `postgres_main.py` redirects `/` and `/frontend` to `/catalog-demo`.
+- `app/api/catalog_search.py` serves `/catalog-demo` as inline HTML.
+- The page calls `/api/catalog/search`.
+- The same router exposes `/api/catalog/status`.
+- This confirms the source-level route wiring, not the response currently served by Fly. Live production HTTP access remains unverified.
+
+### Tooling constraints confirmed
+- Available GitHub actions connector exposes workflow-run/artifact/log reads and rerun actions, but no `workflow_dispatch` action.
+- Available Neon connector exposes branch/snapshot operations, but no logical database dump/export operation.
+- No Fly.io connector was found in plugin discovery; the available hosting results did not include Fly.io.
+- No command was issued that changes Fly, Neon data, production secrets, deployments, or workflows.
+
+## 10. Updated exit decision
+
+Fase 0 remains open. The new pass improves the data comparison and corrects the interpretation of the historical restore-test branches, but does not remove the two external blockers:
+1. The Fly read-only diagnostic workflow must be run from GitHub Actions (or through an authorized Fly CLI session) to capture actual machine/volume/secret-name/runtime connection details.
+2. A fresh logical or platform-supported backup of `br-red-night-ba3reqhp` must be produced and verified. Existing child branches are stale relative to the current operational counts; the sole manual snapshot belongs to the wrong branch.
+
+No deletions, branch cleanup, workflow changes, deployments, imports, schema changes, or production writes were performed.
