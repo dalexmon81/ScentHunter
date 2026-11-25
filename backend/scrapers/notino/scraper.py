@@ -1142,25 +1142,26 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         rec_name, rec_brand, rec_url, rec_price, rec_size = _structured_record_to_evidence(record)
         candidate_url = normaliseurl(candidate["url"]).rstrip("/")
         record_url = normaliseurl(rec_url).rstrip("/") if rec_url else ""
-        if rec_name and _query_matches_name(rec_name, query) and (
-            not record_url or record_url == candidate_url
-        ):
+        if rec_name and _query_matches_name(rec_name, query):
             structured_name = rec_name
             structured_brand = rec_brand
-            structured_gtin = _clean(
-                record.get("gtin13") or record.get("gtin14")
-                or record.get("gtin12") or record.get("gtin8")
-                or record.get("gtin") or ""
-            )
-            structured_price = rec_price or ""
-            structured_size = rec_size
-            structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
-            record_offers = record.get("offers")
-            offer_rows = record_offers if isinstance(record_offers, list) else [record_offers]
-            currency_explicit = any(
-                isinstance(offer, dict) and str(offer.get("priceCurrency") or "").upper() == "EUR"
-                for offer in offer_rows
-            )
+            # Trust structured commercial attributes only when JSON-LD points
+            # at this exact product URL (or omits a URL entirely).
+            if not record_url or record_url == candidate_url:
+                structured_gtin = _clean(
+                    record.get("gtin13") or record.get("gtin14")
+                    or record.get("gtin12") or record.get("gtin8")
+                    or record.get("gtin") or ""
+                )
+                structured_price = rec_price or ""
+                structured_size = rec_size
+                structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
+                record_offers = record.get("offers")
+                offer_rows = record_offers if isinstance(record_offers, list) else [record_offers]
+                currency_explicit = any(
+                    isinstance(offer, dict) and str(offer.get("priceCurrency") or "").upper() == "EUR"
+                    for offer in offer_rows
+                )
             break
 
     # The page parser only returns a price when EUR is explicitly evidenced
@@ -1255,8 +1256,17 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if not price:
         return None
 
-    stock = structured_stock if structured_stock is not None else (_stock(text) if _stock(text) is not None else candidate.get("stock"))
-    size = structured_size or page_size or candidate.get("size_ml")
+    stock = structured_stock if structured_stock is not None else (
+        _stock(text) if _stock(text) is not None else (candidate.get("stock") if _allow_variants else None)
+    )
+    if _allow_variants:
+        size = structured_size or page_size or candidate.get("size_ml")
+    else:
+        heading_size = next(
+            (_extract_size(title) for title in primary_headings if _extract_size(title) is not None),
+            None,
+        )
+        size = structured_size or heading_size
     if not _price_is_plausible(price, size):
         return None
     concentration = _extract_concentration(text) or _extract_concentration(name) or _extract_concentration(candidate.get("card_text"))
