@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 
 STORE = "Bplatz"
-BASE_URL = "https://en.bplatz.de"
+BASE_URL = "https://bplatz.de"
 TIMEOUT = (2.5, 6.0)
 MAX_CANDIDATES = 40
 MAX_CATALOG_PAGES = 12
