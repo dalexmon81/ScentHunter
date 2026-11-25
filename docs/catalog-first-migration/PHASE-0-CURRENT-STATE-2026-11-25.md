@@ -753,3 +753,92 @@ Direct HTTPS probes from GitHub Actions to `https://scenthunter.fly.dev` complet
 At the time of the status probe: 1,403 canonical products, 556 variants, 6 active stores and 162 published offers. Store offer counts: Bplatz 28, Notino.fr 105, Parfumzentrum.de 5, Sabina.es 24, Deloox.be 0 and Easycosmetic.de 0. Five active offers were not currently publishable; 52,240 match reviews remained unresolved.
 
 The live frontend and API checks passed at HTTP level, and the public search endpoint returned structured product/offer data for Dior Sauvage. The zero-result Chanel No. 5 query is a valid completed search response, not an HTTP/API failure. These probes do not constitute a full browser-based visual/interaction test or an end-to-end checkout test.
+
+
+## 24. Four requested Phase 0 points — consolidated verification (25/11/2026)
+
+Scope: points 1, 3, 5 and 6 of the owner's original Phase 0 checklist. This addendum is documentation-only on `docs/phase0-current-audit-2026-11-25`; it does not change `main`, runtime code, secrets, workflows, database rows, Fly resources or retailer state.
+
+### 1. Freeze unnecessary changes
+
+- The audit activity itself is frozen to read-only inspection and documentation on the audit branch. No merges, production deploys, restarts, imports, schema changes, secret changes or cleanup were performed for this four-point pass.
+- The repository's earlier inventory reports `main` as protected. This pass did not change branch protection or repository rules.
+- Work is **not globally frozen**: the repository still has multiple open PRs and a large set of active branches. The open-PR search returned seven open PRs at this check; branch search returned 78 named branches.
+- Operational rule for this audit: no unrelated feature work is undertaken here; any production change or merge requires a separate explicit decision. This is a working freeze, not proof that GitHub blocks every contributor from pushing to every non-main branch.
+
+### 3. Old-system dependencies — consolidated dependency inventory
+
+The main dependency map is `docs/PHASE_1_LEGACY_DEPENDENCY_MAP.md`; the structure/ownership map is `docs/PHASE_1_STRUCTURE_MAP.md`. Their static import graph records 191 Python modules, 447 local import edges, zero syntax errors and zero unresolved relative imports on the audited PR commit. It is a static graph, not a complete runtime trace; dynamic imports and plugin loading are not represented.
+
+| Legacy component | Confirmed dependency/callers | Why it cannot be removed now |
+|---|---|---|
+| `backend/main.py` | Legacy API routes, diagnostics, scripts/tests; imports catalog engine and matcher | Compatibility entrypoint and legacy route surface |
+| `backend/catalog_engine.py` | `main.py`, family coverage, Next Engine runtime/URL hygiene/targeted refresh, Notino feed helper paths, scripts and diagnostics | Still provides shared legacy discovery, URL, parser and DB helper functions |
+| `backend/product_matcher.py` | Legacy `main.py`, old matching/search paths and tests | Compatibility matching and characterization surface |
+| `backend/product_catalog.json` | Legacy runtime, Next Engine, Notino fallback, bootstrap/seed/backfill and comparison tools | Still supplies identity/fallback data |
+| `backend/family_registry.json` | Family coverage, matcher, hydration tests and diagnostics | Still supplies family aliases/variant resolution |
+| `backend/scrapers/*` | Current adapters, legacy engine, scripts and tests | Existing parser implementations are reused by adapters; do not fork or remove |
+| `scrapers/notino/affiliate_feed.py` | Current Notino connector/runtime plus legacy persistence helpers | Authorized CJ/VIV XML feed is still the production Notino ingestion source |
+| `app.matching.legacy_fallback` / `scenthunter_next_engine` | Canonical matching fallback and compatibility/shadow/diagnostic callers | Fallback remains deliberate when canonical matching cannot resolve |
+| `backend/offer_engine/refresh_worker.py` | Legacy refresh configuration/scripts; imports Next Engine repository | Not the declared production worker; prove no external schedules/callers before retirement |
+| `backend/phase0_baseline_worker.py` | Old SQLite baseline jobs and old admin route family | Not the production PostgreSQL worker; legacy baseline workflow expects routes not mounted by current app |
+| `product_catalog.json` / SQLite baseline scripts | Notino/bootstrap/backfill and CSV baseline/report generation | Preserve as migration input and historical diagnostic path until replacement parity is proven |
+| Diagnostic/debug tools | Import legacy functions and preserve repair/recovery procedures | Operational knowledge and recovery paths are not disposable |
+
+Additional workflow-level dependencies:
+- `.github/workflows/fly.yml` stages CJ/VIV Notino feed settings for production deployment.
+- `.github/workflows/notino-cj-feed-import.yml` is the scheduled Notino feed import.
+- `.github/workflows/notino-cj-production-feed-monitor.yml` is a six-hour read-only monitor; its old `/catalog-status` path was found stale relative to `/api/catalog/status`.
+- `.github/workflows/phase-0-smoke-test.yml` and the SQLite baseline worker belong to the old baseline route family; do not run them against the current PostgreSQL app without adapting and verifying their endpoints.
+- CSV is currently a baseline/report output; XML is a live Notino CJ/VIV input. They are not interchangeable import mechanisms.
+
+### 5. Scraper inventory and actual evidence status
+
+Important distinction: parser/fixture CI, database offer counts and successful ingestion runs are separate evidence. None alone proves the full live chain (discovery → product page → price/currency/stock → URL validation → persistence/publication).
+
+| Retailer | Source package / runtime wiring | Current evidence | Honest status |
+|---|---|---|---|
+| Bplatz | Scraper package; PostgreSQL persistence is separately guarded; adapter/test paths exist | 28 active offers in the operational DB; previous production Bplatz refresh/search checks passed; parser fixture/contract checks exist | **Operational evidence present**, but this pass did not execute a fresh complete live discovery-to-publication test |
+| Deloox.be | Scraper package; generic PostgreSQL adapter | 0 active offers; parser/hydration regression CI exists; prior parser error records and targeted fixes exist | **Not proven live end-to-end**; zero offers is not by itself proof of a broken scraper |
+| Easycosmetic.de | Scraper package; generic PostgreSQL adapter | 0 active offers despite active store row and recorded sync activity | **Not proven live end-to-end**; needs bounded live discovery and product-page test |
+| Notino.fr | CJ/VIV XML parser + dedicated PostgreSQL connector/runtime | Feed diagnostic parsed 77,015 offers and validated 77,013 click destinations; import workflow succeeded; 105–108 live offers in the nearby observations; public direct Notino discovery previously returned 403 and alternative reader 401 | **CJ/VIV path operationally evidenced**; direct public scraper path is not proven and must not replace the authorized feed yet |
+| Orioudh | Scraper source package | No current PostgreSQL adapter mapping and no active store row; diagnostic history records an extraction signature error | **Code present, not wired/active; live operation unverified** |
+| Parfumcity | Scraper source package | Search code present; no current PostgreSQL adapter mapping and no active store row | **Code present, not wired/active; live operation unverified** |
+| Parfumzentrum.de | Scraper package; generic PostgreSQL adapter | 5 active offers; prior parser diagnostics identify product-parser-not-found cases even when HTTP 200/JSON-LD Product exists | **Partial operational evidence; parser coverage not fully proven** |
+| PerfumeMarket | Scraper source package | No current PostgreSQL adapter mapping and no active store row; diagnostic recovery map records a prior `STORE` NameError | **Code present, not wired/active; live operation unverified** |
+| Sabina.es | Scraper package; generic PostgreSQL adapter | 24 active offers and recorded ingestion activity; fixture/adapter tests exist | **Operational evidence present**, but this pass did not execute a fresh complete live discovery-to-publication test |
+
+No live scraper requests were launched during this four-point pass: current supported retailer acceptance should be performed as a separately bounded, retailer-by-retailer test with explicit limits and no uncontrolled queue writes. The table does not falsely promote fixture tests into live certification.
+
+### 6. Code classification and retirement boundary
+
+**Reuse / keep as canonical**
+- `backend/postgres_main.py`, `backend/app/api/catalog_search.py`, `backend/app/search/catalog.py`.
+- PostgreSQL models, schemas, Alembic migrations, repositories and canonical catalog tables.
+- `app.catalog`, `app.matching`, `app.offers`, `app.pricing`, `app.monitoring`, `app.discovery`, `app.extraction`.
+- `backend/app/connectors/base.py`, current retailer adapters and `backend/app/workers/postgres_worker.py`.
+- Existing retailer parser implementations and their fixtures until parity is demonstrated.
+
+**Modify / isolate, but preserve during Phase 0**
+- `backend/main.py`, `backend/catalog_engine.py`, `backend/product_matcher.py`: progressively extract responsibilities behind the existing imports/contracts; no mass rewrite.
+- Notino CJ/XML transport/parser vs legacy SQLite helper paths: separate persistence only after equivalent feed tests.
+- `backend/offer_engine/refresh_worker.py`, `backend/phase0_baseline_worker.py`, old SQLite/CSV baseline route and workflows: isolate and replace only after checking schedules, callers and output parity.
+- `scenthunter_next_engine` compatibility fallback, diagnostic and repair utilities: map each caller before any retirement.
+- Store mappings and adapter registrations: reconcile against the approved retailer scope before changing them.
+
+**Preserve as migration evidence / compatibility**
+- `product_catalog.json`, `family_registry.json`, raw XML/feed snapshots, retailer URL mappings, legacy ID maps.
+- All nine scraper packages, tests/fixtures, diagnostic and debug scripts.
+- Workflow history, ingestion raw evidence, ingestion runs, queue history and price history.
+- Historical branches and database records unless a separate dependency review and explicit approval authorizes a specific removal.
+
+**Eligible for deletion now: none.** The current evidence does not establish a zero-reference, replaceable-and-rollback-safe candidate. This is an intentional safety result, not an unfinished cleanup instruction.
+
+### Four-point result
+
+1. Change freeze: **working freeze applied to this audit; repository-wide freeze not technically enforced**.
+3. Legacy dependencies: **mapped at static source/workflow level; dynamic runtime references remain outside the graph**.
+5. Scrapers: **nine inventoried and evidence classified; not all nine certified live end-to-end**.
+6. Classification: **reuse / modify-isolate / preserve completed; no deletion candidate approved**.
+
+No further acceptance criteria are added by this addendum. The limits above describe the evidence level of these four requested points; they do not authorize cleanup or production changes.
