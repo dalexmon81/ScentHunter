@@ -1140,7 +1140,11 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     currency_explicit = False
     for record in records:
         rec_name, rec_brand, rec_url, rec_price, rec_size = _structured_record_to_evidence(record)
-        if rec_name and _query_matches_name(rec_name, query):
+        candidate_url = normaliseurl(candidate["url"]).rstrip("/")
+        record_url = normaliseurl(rec_url).rstrip("/") if rec_url else ""
+        if rec_name and _query_matches_name(rec_name, query) and (
+            not record_url or record_url == candidate_url
+        ):
             structured_name = rec_name
             structured_brand = rec_brand
             structured_gtin = _clean(
@@ -1225,7 +1229,9 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if page_size_conflicts:
         return None
 
-    variant_offers = _extract_variant_offers(text)
+    # The direct storefront connector requests one exact product URL. Do not
+    # turn a page's size-selector list into multiple offers tied to that same URL.
+    variant_offers = _extract_variant_offers(text) if _allow_variants else []
     if variant_offers:
         output = []
         for variant_size, variant_price in variant_offers:
