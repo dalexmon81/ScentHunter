@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
 
 from app.db import make_engine
@@ -222,7 +222,7 @@ def handle_notino_refresh(payload: Mapping[str, Any]) -> dict[str, Any]:
         store = _active_notino_store(session, store_id)
         offer = session.scalar(select(Offer).where(
             Offer.store_id == store.id,
-            Offer.external_product_id == external_id,
+            or_(Offer.external_product_id == external_id, Offer.url == external_id),
             Offer.status == "active",
         ).limit(1))
         if offer is None:
