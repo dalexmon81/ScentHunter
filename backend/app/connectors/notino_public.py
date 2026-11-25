@@ -17,6 +17,13 @@ from scrapers.notino import scraper
 
 class NotinoPublicStorefrontConnector(StoreConnector):
     store_key = "notino"
+    DEFAULT_QUERIES = (
+        "French Avenue Liquid Brun Eau de Parfum",
+        "Dior Sauvage Eau de Parfum",
+        "Bleu de Chanel Eau de Parfum",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Acqua di Gio Profondo Eau de Parfum",
+    )
 
     def __init__(self) -> None:
         super().__init__()
@@ -25,11 +32,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
     def _queries(self) -> tuple[str, ...]:
         raw = os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_NOTINO", "")
         values = tuple(dict.fromkeys(item.strip() for item in raw.split(";") if item.strip()))
-        if not values:
-            raise ValueError(
-                "SCENTHUNTER_DISCOVERY_QUERIES_NOTINO must contain operator-approved perfume queries"
-            )
-        return values
+        return values or self.DEFAULT_QUERIES
 
     @staticmethod
     def _discover_query(query: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -80,7 +83,10 @@ class NotinoPublicStorefrontConnector(StoreConnector):
         return tuple(discovered)
 
     def _fetch_sync(self, url: str, candidate: Mapping[str, Any]) -> Mapping[str, Any] | None:
-        parsed = urlparse(url)
+        safe_url = scraper._allowed_url(url, scraper.BASE_URL)
+        if not safe_url or safe_url.rstrip("/") != url.rstrip("/"):
+            raise ValueError("Notino external_product_id must be a safe HTTPS Notino.fr product URL")
+        parsed = urlparse(safe_url)
         if parsed.scheme != "https" or parsed.hostname not in {"www.notino.fr", "notino.fr"}:
             raise ValueError("Notino external_product_id must be an HTTPS Notino.fr product URL")
         query = str(candidate.get("query") or candidate.get("name") or scraper._slug_name(url)).strip()
@@ -91,7 +97,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
                                   "source": "known-product-url"})
         session = scraper._new_session()
         try:
-            result = scraper._reader_product(session, request_candidate, query)
+            result = scraper._reader_product(session, request_candidate, query, _allow_variants=False)
         except Exception as exc:
             raise ConnectorUnavailable(
                 f"Notino public product fetch failed: {type(exc).__name__}: {exc}"
