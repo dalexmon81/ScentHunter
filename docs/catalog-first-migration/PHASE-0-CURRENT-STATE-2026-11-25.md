@@ -675,3 +675,27 @@ The fresh branch inventory contains 10 branches, matching the project's 10-branc
 ### Consequence
 
 There is still no verified independent export, and the only listed Neon snapshot belongs to the default `production` branch rather than the operational database. The child clone is the only newly verified point-in-time copy of the operational database, but it remains inside the same Neon project and is not protected. Phase 0 backup acceptance criteria therefore remain unmet.
+
+
+## 20. Final blocker triage — backup workflow and frontend reachability (25/11/2026)
+
+### Backup workflow suitability rechecked
+
+The repository workflow directory was re-read. The only similarly named PostgreSQL backup workflow, `.github/workflows/scenthunter-postgres-precutover-backup.yml`, was inspected in full. It is a legacy pre-cutover routine that:
+- snapshots Fly volume `vol_vwn91672oj9d1z9v`;
+- attempts an SQLite online backup from `/data/catalog/catalog.sqlite3`;
+- asserts old Alembic revision `0005_connector_quarantine` and old SQLite row counts.
+
+The latest successful Fly worker diagnostic reports that `/data/catalog/catalog.sqlite3` is absent on the inspected production worker and that the active canonical backend is PostgreSQL. Therefore this old workflow is not a valid backup path for the current Neon database and was deliberately not run. Running it would not satisfy the independent PostgreSQL export requirement and could create misleading backup evidence.
+
+The GitHub Actions artifact listing for diagnostic run `45353437876` returned no artifacts. Its decoded logs remain available through the run/job log endpoint.
+
+### Frontend live reachability
+
+A direct HTTPS probe of `/`, `/health`, `/api/catalog/status` and `/catalog-demo` could not resolve the Fly hostname from the available execution environment (DNS resolution failure). This is an environment/network limitation, not evidence that the production site is down or healthy. Live browser rendering and API response remain unverified.
+
+### Phase 0 status
+
+This pass rules out the legacy pre-cutover SQLite workflow as a safe substitute for a current PostgreSQL backup. It does not produce an independent database export or verify the frontend live. No workflow was dispatched, no deploy/restart was made, no production data or secrets were changed, and `main` remains untouched.
+
+**Remaining hard blockers:** (1) an authorized execution path that can produce and verify a logical export of `scenthunter_offerfirst` outside the Neon project; (2) live frontend/API verification from a network that can resolve `scenthunter.fly.dev`. The Fly machine/worker inventory itself is now verified by the successful read-only diagnostic in section 18.
