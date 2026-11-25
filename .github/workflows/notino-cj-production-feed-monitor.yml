@@ -1,11 +1,6 @@
 name: Legacy Notino CJ feed monitor (manual diagnostics only)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/notino-cj-production-feed-monitor.yml
   workflow_dispatch:
 
 permissions:
