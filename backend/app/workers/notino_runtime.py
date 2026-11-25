@@ -143,7 +143,7 @@ def handle_notino_fetch(payload: Mapping[str, Any]) -> dict[str, Any]:
             with _sessions()() as session, session.begin():
                 record_ingestion_progress(
                     session, run_id=run_id, products_discovered=1,
-                    offers_rejected=1, error="notino_offer_not_found_in_latest_feed_snapshot",
+                    offers_rejected=1, error="notino_public_product_not_found",
                 )
                 finish_ingestion_run(session, run_id=run_id, status="partial")
             return {"status": "not_found", "run_id": str(run_id), "external_product_id": external_id}
