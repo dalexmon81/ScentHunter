@@ -21,7 +21,7 @@ jobs:
           set -u
           mkdir -p fly-live-verification
           base="https://scenthunter.fly.dev"
-          endpoints=("/" "/health" "/api/catalog/status" "/catalog-demo")
+          endpoints=("/" "/health" "/api/catalog/status" "/catalog-demo" "/api/catalog/search?q=Dior%20Sauvage" "/api/catalog/search?q=Chanel%20No.5")
           : > fly-live-verification/results.txt
           for path in "${endpoints[@]}"; do
             safe_name="$(printf '%s' "$path" | sed 's#^/$#root#; s#^/##; s#/#_#g')"
