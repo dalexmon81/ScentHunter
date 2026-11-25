@@ -538,7 +538,7 @@ def _fetch_feed(deadline=None) -> bytes:
     return output.getvalue()
 
 
-def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str]) -> dict[str, NotinoOffer]:
+def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str], *, deadline=None) -> dict[str, NotinoOffer]:
     """Parse only selected product IDs from a feed without materializing the full catalog."""
     wanted = {str(value or "").strip() for value in external_ids if str(value or "").strip()}
     if not wanted:
@@ -546,7 +546,7 @@ def parse_feed_for_external_ids(data: bytes, external_ids: Iterable[str]) -> dic
     if not isinstance(data, (bytes, bytearray)) or not data:
         raise FeedImportError("notino_feed_empty")
     found: dict[str, NotinoOffer] = {}
-    with _xml_stream(io.BytesIO(data)) as stream:
+    with _xml_stream(io.BytesIO(data), deadline=deadline) as stream:
         for node in _feed_items(stream):
             fields = _field_map(node)
             external_id = _first(node, "id", "offerid", "productid", fields=fields).strip()
