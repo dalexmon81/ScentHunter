@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 EXPECTED_DATABASE = os.environ.get("RESTORE_EXPECTED_DATABASE", "scenthunter_offerfirst")
-SEARCH_QUERY = os.environ.get("RESTORE_SMOKE_SEARCH_QUERY", "Vulcan Feu")
+SEARCH_QUERY = os.environ.get("RESTORE_SMOKE_SEARCH_QUERY", "Liquid Brun")
 
 
 def fail(message: str) -> None:
@@ -75,7 +75,9 @@ def main() -> int:
             if revision == "0006_postgres_ingestion_queue":
                 # The historical restore clone predates Phase 2's additive
                 # store_product_id columns. Do not migrate it: validate its
-                # catalog and a known publishable offer using read-only SQL.
+                # catalog and a structurally valid historical offer using read-only SQL.
+                # Restored snapshots can be older than the 24-hour publication window;
+                # this diagnostic must not confuse backup integrity with live freshness.
                 counts = conn.execute(text("""
                     SELECT
                         (SELECT count(*) FROM fragrances) AS canonical_products,
@@ -103,7 +105,6 @@ def main() -> int:
                       AND o.availability = 'in_stock'
                       AND o.price > 0
                       AND o.currency = 'EUR'
-                      AND o.captured_at >= now() - interval '24 hours'
                       AND o.captured_at <= now()
                       AND (o.valid_until IS NULL OR o.valid_until > now())
                       AND raw.raw_payload ->> 'currency_explicit' = 'true'
@@ -128,7 +129,7 @@ def main() -> int:
                     "first_result": dict(valid_rows[0]) if valid_rows else None,
                 })
                 if not valid_rows:
-                    fail(f"Read-only catalog search found no publishable offer for {SEARCH_QUERY!r}")
+                    fail(f"Read-only restore check found no valid historical offer for {SEARCH_QUERY!r}")
             elif revision != "0007_catalog_identity":
                 fail(f"Unsupported restore-clone Alembic revision: {revision!r}")
 
