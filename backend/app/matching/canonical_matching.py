@@ -12,10 +12,10 @@ import re
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Brand, Fragrance, Offer, ProductVariant
+from app.models import Brand, Fragrance, Offer, ProductVariant, StoreProduct
 from app.catalog.normalization import (
     build_identity, extract_concentration, normalize_brand, normalize_fragrance_name, normalize_text,
 )
@@ -134,6 +134,35 @@ def resolve_canonical_variant(
 
     external_id = str(external_product_id or record.get("external_product_id") or "").strip()
     if external_id:
+        # Reuse an explicit store-product identity mapping before attempting
+        # deterministic matching. This is how a direct storefront URL can
+        # refresh a previously reviewed Notino item whose legacy external ID
+        # was a CJ SKU; the mapping is still checked against page metadata.
+        mapped_products = session.scalars(select(StoreProduct).where(
+            StoreProduct.store_id == store_id,
+            or_(
+                StoreProduct.external_product_id == external_id,
+                StoreProduct.canonical_url == external_id,
+            ),
+            StoreProduct.product_variant_id.is_not(None),
+            StoreProduct.status == "active",
+        ).limit(2)).all()
+        if len(mapped_products) > 1:
+            return CanonicalMatchResult(None, "ambiguous_store_product_identity")
+        if len(mapped_products) == 1:
+            mapped_variant = session.get(ProductVariant, mapped_products[0].product_variant_id)
+            if mapped_variant is None:
+                return CanonicalMatchResult(None, "store_product_variant_missing")
+            conflicts = _gtin_metadata_conflicts(session, mapped_variant, record)
+            if conflicts:
+                return CanonicalMatchResult(
+                    None, "store_product_metadata_conflict:" + ",".join(conflicts)
+                )
+            return CanonicalMatchResult(CanonicalMatch(
+                mapped_variant.id, "store_product_identity",
+                Decimal("0.990"), "reviewed_store_product_mapping"
+            ), "matched")
+
         existing = session.scalar(select(Offer).where(
             Offer.store_id == store_id,
             Offer.external_product_id == external_id,
