@@ -139,7 +139,6 @@ class ParfumCityScraperTests(unittest.TestCase):
                 raw_name=item["name"],
                 brand_raw=item["brand"],
                 size_ml=item["size_ml"],
-                concentration=item["concentration"],
             )
             result = matcher.match(offer)
         self.assertIs(result.status, MatchStatus.MATCHED)
