@@ -209,10 +209,15 @@ def discover(session, query):
         ):
             try:
                 r = _get(session, BASE_URL + "/search/suggest.json", params)
-                discovery_verified = True
                 try:
                     data = r.json()
-                    products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
+                    if not isinstance(data, dict):
+                        raise ValueError("Shopify predictive search returned a non-object JSON payload")
+                    resources = data.get("resources")
+                    if not isinstance(resources, dict):
+                        raise ValueError("Shopify predictive search JSON has no resources object")
+                    discovery_verified = True
+                    products = (((resources.get("results") or {}).get("products") or []))
                     for p in products:
                         if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
                             candidate_url = p.get("url") or p.get("product_url")
@@ -224,6 +229,8 @@ def discover(session, query):
                     r.close()
             except StoreRequestError as exc:
                 record("shopify_predictive_search", exc)
+            except (ValueError, TypeError) as exc:
+                errors.append({"source": "shopify_predictive_search", "status": "invalid_response", "error": f"{type(exc).__name__}: {exc}"})
 
         if product_cache:
             return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache

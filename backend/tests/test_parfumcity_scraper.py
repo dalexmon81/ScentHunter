@@ -242,6 +242,41 @@ class ParfumCityScraperTests(unittest.TestCase):
         )
         self.assertTrue(any(url.endswith("/search.json") for url in session.requested))
 
+    def test_invalid_predictive_search_json_falls_back_to_full_search_json(self):
+        class InvalidPredictiveResponse(FakeResponse):
+            def json(self):
+                raise json.JSONDecodeError("not JSON", "<html>blocked</html>", 0)
+
+        self_product = dict(
+            self.product,
+            title="Liquid Brun French Avenue 100ML",
+            handle="liquid-brun-french-avenue-100ml",
+            variants=[dict(self.product["variants"][0])],
+        )
+
+        class DiscoverySession:
+            def __init__(self):
+                self.requested = []
+                self.suggest_calls = 0
+
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith("/search/suggest.json"):
+                    self.suggest_calls += 1
+                    return InvalidPredictiveResponse(text="<html>challenge</html>")
+                if url.endswith("/search.json"):
+                    return FakeResponse(payload={"products": [self_product]})
+                raise AssertionError(f"Unexpected request: {url}")
+
+        session = DiscoverySession()
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        self.assertTrue(verified)
+        self.assertEqual(len(urls), 1)
+        self.assertEqual(product_cache[urls[0]]["variants"][0]["id"], 301)
+        self.assertEqual(session.suggest_calls, 2)
+        self.assertTrue(any(e["source"] == "shopify_predictive_search" for e in errors))
+        self.assertTrue(any(url.endswith("/search.json") for url in session.requested))
+
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
             scraper.extract_product_page(
