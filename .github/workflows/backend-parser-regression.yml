@@ -57,7 +57,8 @@ jobs:
           (
             github.event.pull_request.head.ref == 'fix/parfumcity-shopify-ingestion' ||
             github.event.pull_request.head.ref == 'fix/parfumcity-shopify-search-json-fallback' ||
-          github.event.pull_request.head.ref == 'fix/parfumcity-final-audit'
+          github.event.pull_request.head.ref == 'fix/parfumcity-final-audit' ||
+            github.event.pull_request.head.ref == 'fix/parfumcity-final-audit-v2'
           )
         timeout-minutes: 2
         env:
