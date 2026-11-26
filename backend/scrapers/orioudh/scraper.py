@@ -469,6 +469,8 @@ def _raw_offer(
     product: Dict[str, Any],
     variant: Dict[str, Any],
     url: str,
+    *,
+    evidence_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     product_name = _clean(product.get("title"))
     variant_name = _clean(variant.get("title"))
@@ -489,7 +491,7 @@ def _raw_offer(
     # Preserve the variant query for the rendered page so currency evidence
     # is matched against the exact Shopify variant being fetched.
     evidence_url = url
-    evidence = _product_page_currency_evidence(session, evidence_url, price)
+    evidence = _product_page_currency_evidence(session, evidence_url or url, price)
 
     return {
         "store": STORE,
@@ -569,7 +571,7 @@ def _extract_product(
     for variant in variants:
         if not isinstance(variant, dict):
             continue
-        item = _raw_offer(product, variant, canonical_url)
+        item = _raw_offer(product, variant, canonical_url, evidence_url=url)
         if item["offer"]["price"] is None:
             continue
         results.append(item)
