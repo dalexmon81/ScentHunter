@@ -82,6 +82,24 @@ class OrioudhCurrencyEvidenceTests(unittest.TestCase):
             "44.90",
         )
 
+    def test_non_default_selected_variant_gets_its_own_price_evidence(self):
+        session = FakeSession(
+            '<div class="price"><span class="price-item--regular">44,90 €</span></div>'
+        )
+        with patch.object(scraper, "_product_json", return_value=self.product):
+            rows = scraper._extract_product(
+                session,
+                "https://orioudh.com/products/liquid-brun?variant=202",
+                "Liquid Brun",
+            )
+
+        by_variant = {row["identity"]["store_variant_id"]["value"]: row for row in rows}
+        self.assertEqual(
+            by_variant[202]["raw_data"]["currency_evidence"]["matched_price"],
+            "44.90",
+        )
+        self.assertIsNone(by_variant[101]["raw_data"]["currency_evidence"])
+
     def test_jsonld_currency_requires_matching_offer_price(self):
         payload = {
             "@type": "Product",
