@@ -14,10 +14,11 @@ from scrapers.parfumcity import scraper
 
 
 class FakeResponse:
-    def __init__(self, *, payload=None, text="", status_code=200):
+    def __init__(self, *, payload=None, text="", status_code=200, headers=None):
         self._payload = payload
         self.text = text
         self.status_code = status_code
+        self.headers = headers or {}
 
     def json(self):
         return self._payload
@@ -201,6 +202,30 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], 301)
         self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
 
+    def test_product_429_honors_retry_after_without_calling_search_fallback(self):
+        class RetryAfterSession(FakeSession):
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith(".js"):
+                    return FakeResponse(
+                        text="rate limited",
+                        status_code=429,
+                        headers={"Retry-After": "60"},
+                    )
+                raise AssertionError("Do not call another endpoint during Retry-After")
+
+        session = RetryAfterSession(self.product, self.html)
+        with self.assertRaises(scraper.StoreRequestError) as raised:
+            scraper.extract_product_page(
+                session,
+                "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+            )
+
+        self.assertEqual(raised.exception.status, "blocked")
+        self.assertEqual(raised.exception.retry_after_seconds, 60)
+        self.assertIn("Retry-After: 60s", str(raised.exception))
+        self.assertEqual(len(session.requested), 1)
+
     def test_invalid_search_json_after_product_429_preserves_blocked_error(self):
         class InvalidSearchJsonResponse(FakeResponse):
             def json(self):
@@ -266,6 +291,60 @@ class ParfumCityScraperTests(unittest.TestCase):
             self_product["variants"][0]["id"],
         )
         self.assertTrue(any(url.endswith("/search.json") for url in session.requested))
+
+    def test_predictive_search_429_honors_retry_after_without_fallback_requests(self):
+        class RateLimitedDiscoverySession:
+            def __init__(self):
+                self.requested = []
+
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                return FakeResponse(
+                    text='{"errors":[{"message":"too many requests"}]}',
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
+
+        session = RateLimitedDiscoverySession()
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        self.assertEqual(urls, [])
+        self.assertFalse(verified)
+        self.assertEqual(product_cache, {})
+        self.assertEqual(len(session.requested), 1)
+        self.assertEqual(errors[0]["retry_after_seconds"], 60)
+
+    def test_predictive_search_stops_after_first_valid_variant_response(self):
+        class DiscoverySession:
+            def __init__(self):
+                self.requested = []
+                self.suggest_calls = 0
+
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith("/search/suggest.json"):
+                    self.suggest_calls += 1
+                    return FakeResponse(payload={
+                        "resources": {
+                            "results": {
+                                "products": [{
+                                    "title": "Liquid Brun French Avenue 100ML",
+                                    "vendor": "French Avenue",
+                                    "url": "/products/liquid-brun-french-avenue-100ml",
+                                    "variants": [dict(self_product["variants"][0])],
+                                }]
+                            }
+                        }
+                    })
+                raise AssertionError(f"Unexpected extra request: {url}")
+
+        self_product = dict(self.product)
+        session = DiscoverySession()
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        self.assertTrue(verified)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(urls), 1)
+        self.assertEqual(session.suggest_calls, 1)
+        self.assertEqual(product_cache[urls[0]]["variants"][0]["id"], 301)
 
     def test_invalid_predictive_search_json_falls_back_to_full_search_json(self):
         class InvalidPredictiveResponse(FakeResponse):

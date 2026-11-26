@@ -8,6 +8,8 @@ import socket
 import time
 import traceback
 from datetime import datetime, timezone
+from uuid import UUID
+from uuid import UUID
 
 from sqlalchemy import select
 from app.models import Offer, Store
@@ -128,10 +130,25 @@ def main() -> None:
                      job["id"], job["stage"], result)
         except Exception as exc:
             if job is not None:
+                retry_after_seconds = getattr(exc, "retry_after_seconds", None)
+                cooldown_store_id = None
+                if retry_after_seconds is not None:
+                    try:
+                        candidate_store_id = UUID(str(job.get("payload", {}).get("store_id")))
+                        with session_factory() as session:
+                            store_slug = session.scalar(select(Store.slug).where(Store.id == candidate_store_id))
+                        if store_slug == "parfumcity-nl":
+                            cooldown_store_id = str(candidate_store_id)
+                        else:
+                            retry_after_seconds = None
+                    except (TypeError, ValueError):
+                        retry_after_seconds = None
                 status = fail_or_retry(
                     str(job["id"]), int(job["attempts"]),
                     f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
                     retryable=not isinstance(exc, (ValueError, TypeError, LookupError)),
+                    retry_after_seconds=retry_after_seconds,
+                    cooldown_store_id=cooldown_store_id,
                 )
                 log.exception("PostgreSQL job=%s stage=%s status=%s",
                               job["id"], job["stage"], status)

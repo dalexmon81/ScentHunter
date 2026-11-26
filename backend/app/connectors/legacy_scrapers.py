@@ -138,7 +138,16 @@ class LegacyScraperConnector(StoreConnector):
                     status = str(report.get("status") or "").lower()
                     details = report.get("details") if isinstance(report.get("details"), Mapping) else {}
                     if status in {"timeout", "unavailable", "blocked", "error"} or details.get("technical_failure"):
-                        raise ConnectorUnavailable(f"{self.store_key} discovery failed: {report.get('error') or status}")
+                        unavailable = ConnectorUnavailable(f"{self.store_key} discovery failed: {report.get('error') or status}")
+                        if self.store_key == "parfumcity":
+                            failures = list(details.get("discovery_errors") or []) + list(details.get("fetch_errors") or [])
+                            retry_after = next(
+                                (item.get("retry_after_seconds") for item in failures
+                                 if isinstance(item, Mapping) and item.get("retry_after_seconds") is not None),
+                                None,
+                            )
+                            unavailable.retry_after_seconds = retry_after
+                        raise unavailable
                     batch = report.get("results") or []
                 elif callable(search):
                     batch = search(query)
@@ -285,9 +294,11 @@ class LegacyScraperConnector(StoreConnector):
         except Exception as exc:
             request_error = getattr(self._scraper, "StoreRequestError", ())
             if request_error and isinstance(exc, request_error):
-                raise ConnectorUnavailable(
+                unavailable = ConnectorUnavailable(
                     f"{self.store_key} product endpoint unavailable: {type(exc).__name__}: {exc}"
-                ) from exc
+                )
+                unavailable.retry_after_seconds = getattr(exc, "retry_after_seconds", None)
+                raise unavailable from exc
             raise
         if isinstance(record, Mapping):
             enriched = dict(record)

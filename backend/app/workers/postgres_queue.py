@@ -203,12 +203,21 @@ def finish(job_id: str) -> None:
         engine.dispose()
 
 
-def fail_or_retry(job_id: str, attempts: int, error: str, *, retryable: bool = True) -> str:
+def fail_or_retry(
+    job_id: str, attempts: int, error: str, *, retryable: bool = True,
+    retry_after_seconds: int | None = None, cooldown_store_id: str | None = None,
+) -> str:
     _require_postgresql()
     terminal = not retryable or attempts >= MAX_ATTEMPTS
     status = "failed" if terminal else "queued"
     now = _now()
-    available = now if terminal else now + timedelta(seconds=min(900, 2 ** attempts * 15))
+    backoff_seconds = min(900, 2 ** attempts * 15)
+    if retry_after_seconds is not None:
+        try:
+            backoff_seconds = max(backoff_seconds, min(3600, max(0, int(retry_after_seconds))))
+        except (TypeError, ValueError):
+            pass
+    available = now if terminal else now + timedelta(seconds=backoff_seconds)
     engine = make_engine()
     try:
         with engine.begin() as conn:
@@ -219,6 +228,16 @@ def fail_or_retry(job_id: str, attempts: int, error: str, *, retryable: bool = T
                      last_error=str(error)[:4000]))
             if result.rowcount != 1:
                 raise RuntimeError("job is not currently running")
+            # A retailer-wide Retry-After applies to its sibling discovery/fetch
+            # jobs too. Keep the cooldown scoped to the same store ID.
+            if not terminal and retry_after_seconds is not None and cooldown_store_id:
+                conn.execute(text("""
+                    UPDATE ingestion_queue_jobs
+                    SET available_at = GREATEST(available_at, :available_at)
+                    WHERE payload->>'store_id' = :store_id
+                      AND stage IN ('discover', 'fetch')
+                      AND status = 'queued'
+                """), {"available_at": available, "store_id": str(cooldown_store_id)})
         return status
     finally:
         engine.dispose()
