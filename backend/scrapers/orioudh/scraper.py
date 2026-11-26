@@ -2,6 +2,7 @@ import json
 import re
 import html
 from typing import List, Dict, Optional, Any
+from decimal import Decimal, InvalidOperation
 from urllib.parse import quote_plus, urljoin
 
 import requests
@@ -346,6 +347,124 @@ def _discovery(session: requests.Session, query: str):
 
     return urls, errors, discovery_verified
 
+def _decimal_price(value) -> Optional[Decimal]:
+    if value in (None, ""):
+        return None
+    raw = _clean(value).replace("€", "").replace("EUR", "").replace(" ", "")
+    if "," in raw and "." in raw:
+        raw = raw.replace(".", "").replace(",", ".") if raw.rfind(",") > raw.rfind(".") else raw.replace(",", "")
+    elif "," in raw:
+        raw = raw.replace(",", ".")
+    try:
+        amount = Decimal(raw)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return amount if amount.is_finite() and amount > 0 else None
+
+
+def _jsonld_currency_evidence(value, expected_price):
+    expected = _decimal_price(expected_price)
+    if expected is None:
+        return None
+    if isinstance(value, list):
+        for child in value:
+            evidence = _jsonld_currency_evidence(child, expected)
+            if evidence:
+                return evidence
+    elif isinstance(value, dict):
+        currency = value.get("priceCurrency")
+        price = _decimal_price(value.get("price"))
+        if (
+            isinstance(currency, str)
+            and re.fullmatch(r"[A-Z]{3}", currency.strip().upper())
+            and price == expected
+        ):
+            return {
+                "currency": currency.strip().upper(),
+                "source": "jsonld_offer_price",
+                "displayed_price": str(value.get("price")),
+                "matched_price": str(expected),
+            }
+        for child in value.values():
+            evidence = _jsonld_currency_evidence(child, expected)
+            if evidence:
+                return evidence
+    return None
+
+
+def _product_page_currency_evidence(session, url: str, expected_price):
+    """Read currency evidence tied to the exact displayed variant price.
+
+    The Shopify .js endpoint returns variant prices in cents but does not prove
+    the currency. Accept only product-page metadata/JSON-LD or a price element
+    that displays the same amount together with an explicit currency symbol.
+    """
+    expected = _decimal_price(expected_price)
+    if expected is None:
+        return None
+    try:
+        response = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+    except requests.RequestException:
+        return None
+    try:
+        if not getattr(response, "ok", False):
+            return None
+        soup = BeautifulSoup(response.text or "", "html.parser")
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                payload = json.loads(script.string or script.get_text())
+            except (ValueError, TypeError):
+                continue
+            evidence = _jsonld_currency_evidence(payload, expected)
+            if evidence:
+                return evidence
+
+        metas = {}
+        for meta in soup.select("meta[property], meta[name], meta[itemprop]"):
+            key = (meta.get("property") or meta.get("name") or meta.get("itemprop") or "").strip().lower()
+            content = _clean(meta.get("content"))
+            if key and content:
+                metas[key] = content
+        currency = (
+            metas.get("product:price:currency")
+            or metas.get("og:price:currency")
+            or metas.get("pricecurrency")
+        )
+        amount = (
+            metas.get("product:price:amount")
+            or metas.get("og:price:amount")
+            or metas.get("price")
+        )
+        if currency and re.fullmatch(r"[A-Z]{3}", currency.upper()):
+            if _decimal_price(amount) == expected:
+                return {
+                    "currency": currency.upper(),
+                    "source": "product_price_meta",
+                    "displayed_price": amount,
+                    "matched_price": str(expected),
+                }
+
+        # Fallback only to a price-labelled element, never arbitrary page text.
+        for node in soup.select('[class*="price"], [id*="price"], [itemprop="price"]'):
+            display = _clean(node.get_text(" ", strip=True))
+            if "€" not in display:
+                continue
+            match = re.search(r"\d[\d., ]*", display)
+            if match and _decimal_price(match.group(0)) == expected:
+                return {
+                    "currency": "EUR",
+                    "source": "product_price_display",
+                    "displayed_price": display,
+                    "matched_price": str(expected),
+                }
+        return None
+    finally:
+        close = getattr(response, "close", None)
+        if callable(close):
+            close()
+
+
 def _raw_offer(
     product: Dict[str, Any],
     variant: Dict[str, Any],
@@ -367,6 +486,10 @@ def _raw_offer(
     concentration = _concentration(variant_name, product_name)
     gender = _gender(variant_name, product_name)
     price = _price(variant.get("price"))
+    # Preserve the variant query for the rendered page so currency evidence
+    # is matched against the exact Shopify variant being fetched.
+    evidence_url = url
+    evidence = _product_page_currency_evidence(session, evidence_url, price)
 
     return {
         "store": STORE,
@@ -412,6 +535,7 @@ def _raw_offer(
         "raw_data": {
             "product": product,
             "variant": variant,
+            "currency_evidence": evidence,
         },
         # Compatibility fields for the current API during migration.
         "name": source_name,
@@ -426,7 +550,8 @@ def _extract_product(
     url: str,
     query: str,
 ) -> List[Dict[str, Any]]:
-    product = _product_json(session, url)
+    canonical_url = url.split("?", 1)[0]
+    product = _product_json(session, canonical_url)
     if not product:
         return []
 
@@ -444,7 +569,7 @@ def _extract_product(
     for variant in variants:
         if not isinstance(variant, dict):
             continue
-        item = _raw_offer(product, variant, url)
+        item = _raw_offer(product, variant, canonical_url)
         if item["offer"]["price"] is None:
             continue
         results.append(item)
