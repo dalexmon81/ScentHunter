@@ -135,9 +135,13 @@ jobs:
                           ORDER BY created_at DESC
                           LIMIT 1
                       """), {"store_id": STORE_ID}).mappings().first()
+                  latest = dict(state) if state else None
+                  if latest and latest.get("status") == "queued":
+                      print("PARFUMCITY_PILOT_DEFERRED_COOLDOWN=" + json.dumps(latest, default=str))
+                      raise SystemExit(0)
                   raise RuntimeError(
                       "No eligible queued ParfumCity discovery job; latest state="
-                      + json.dumps(dict(state) if state else None, default=str)
+                      + json.dumps(latest, default=str)
                   )
 
               discovery_result = execute_job(discovery)
