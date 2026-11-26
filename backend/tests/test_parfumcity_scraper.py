@@ -292,6 +292,27 @@ class ParfumCityScraperTests(unittest.TestCase):
         )
         self.assertTrue(any(url.endswith("/search.json") for url in session.requested))
 
+    def test_predictive_search_429_honors_retry_after_without_fallback_requests(self):
+        class RateLimitedDiscoverySession:
+            def __init__(self):
+                self.requested = []
+
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                return FakeResponse(
+                    text='{"errors":[{"message":"too many requests"}]}',
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
+
+        session = RateLimitedDiscoverySession()
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        self.assertEqual(urls, [])
+        self.assertFalse(verified)
+        self.assertEqual(product_cache, {})
+        self.assertEqual(len(session.requested), 1)
+        self.assertEqual(errors[0]["retry_after_seconds"], 60)
+
     def test_predictive_search_stops_after_first_valid_variant_response(self):
         class DiscoverySession:
             def __init__(self):
