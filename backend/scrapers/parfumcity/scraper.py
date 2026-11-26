@@ -310,7 +310,13 @@ def product_from_search_json(session, url):
         return None
     r = _get(session, BASE_URL + "/search.json", {"q": handle, "type": "product", "limit": 20})
     try:
-        data = r.json()
+        try:
+            data = r.json()
+        except (ValueError, TypeError):
+            # Shopify may return an HTML challenge page with HTTP 200 here.
+            # Treat it as an unusable fallback and preserve the original .js
+            # rate-limit error at the caller instead of leaking JSONDecodeError.
+            return None
         products = data.get("products") if isinstance(data, dict) else None
         if not isinstance(products, list):
             return None
