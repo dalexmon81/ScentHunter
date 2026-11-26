@@ -56,7 +56,13 @@ def main() -> int:
         size = attributes.get("size_ml")
         concentration = attributes.get("concentration")
 
-        if "liquid brun" not in name.lower() or EXPECTED_BRAND.lower() not in brand.lower():
+        normalized_name = name.lower()
+        if (
+            "liquid brun" not in normalized_name
+            or EXPECTED_BRAND.lower() not in brand.lower()
+            or "limited edition" in normalized_name
+            or "100 ml" not in normalized_name
+        ):
             continue
         if parsed_url.scheme != "https" or parsed_url.netloc not in {"orioudh.com", "www.orioudh.com"}:
             continue
