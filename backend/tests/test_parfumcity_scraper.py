@@ -7,10 +7,10 @@ from scrapers.parfumcity import scraper
 
 
 class FakeResponse:
-    def __init__(self, *, payload=None, text=""):
+    def __init__(self, *, payload=None, text="", status_code=200):
         self._payload = payload
         self.text = text
-        self.status_code = 200
+        self.status_code = status_code
 
     def json(self):
         return self._payload
@@ -116,6 +116,63 @@ class ParfumCityScraperTests(unittest.TestCase):
         )
         self.assertEqual(len(records), 2)
         self.assertNotIn("currency_evidence", records[0]["raw_data"])
+
+    def test_product_json_429_falls_back_to_exact_handle_search_json(self):
+        class RateLimitedSession(FakeSession):
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith(".js"):
+                    return FakeResponse(text="rate limited", status_code=429)
+                if url.endswith("/search.json"):
+                    return FakeResponse(payload={"products": [self.product]})
+                return FakeResponse(text=self.html)
+
+        session = RateLimitedSession(self.product, self.html)
+        records = scraper.extract_product_page(
+            session,
+            "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+        )
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], 301)
+        self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
+
+    def test_product_html_jsonld_fallback_keeps_exact_selected_variant(self):
+        html = (
+            '<html><head><script type="application/ld+json">'
+            + json.dumps({
+                "@type": "Product",
+                "name": "Liquid Brun French Avenue 100ML",
+                "brand": {"@type": "Brand", "name": "French Avenue"},
+                "sku": "PC-999",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "29.99",
+                    "priceCurrency": "EUR",
+                    "availability": "https://schema.org/OutOfStock",
+                },
+            })
+            + '</script></head><body><h1>Liquid Brun French Avenue 100ML</h1>'
+            + '<input type="hidden" name="id" value="999"></body></html>'
+        )
+
+        class HtmlFallbackSession(FakeSession):
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith(".js"):
+                    return FakeResponse(text="rate limited", status_code=429)
+                if url.endswith("/search.json"):
+                    return FakeResponse(payload={"products": []})
+                return FakeResponse(text=html)
+
+        records = scraper.extract_product_page(
+            HtmlFallbackSession(self.product, html),
+            "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+        )
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], "999")
+        self.assertEqual(records[0]["price_num"], 29.99)
+        self.assertEqual(records[0]["availability"], "out_of_stock")
+        self.assertEqual(records[0]["raw_data"]["currency_evidence"]["currency"], "EUR")
 
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):

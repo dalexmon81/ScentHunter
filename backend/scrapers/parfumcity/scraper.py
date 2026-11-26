@@ -127,7 +127,7 @@ def _add_candidate(url, urls, seen):
     return True
 
 
-def _discover_products_json(session, query, urls, seen):
+def _discover_products_json(session, query, urls, seen, product_cache):
     """Generic Shopify catalog fallback; no product-specific knowledge."""
     for page in range(1, MAX_CATALOG_PAGES + 1):
         r = _get(
@@ -154,7 +154,10 @@ def _discover_products_json(session, query, urls, seen):
             title = clean(p.get("title")); vendor = clean(p.get("vendor")); handle = clean(p.get("handle"))
             u = p.get("url") or ("/products/" + handle if handle else "")
             if matches(f"{title} {vendor} {handle} {u}", query):
+                canonical = _canonical_product_url(u)
                 _add_candidate(u, urls, seen)
+                if isinstance(p.get("variants"), list) and p.get("variants"):
+                    product_cache[canonical] = p
                 if len(urls) >= MAX_CANDIDATES:
                     return
 
@@ -193,6 +196,7 @@ def _discover_from_sitemap(session, query, urls, seen):
 
 def discover(session, query):
     urls, seen, errors = [], set(), []
+    product_cache = {}
     discovery_verified = False
 
     def record(source, exc):
@@ -211,11 +215,18 @@ def discover(session, query):
                     products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
                     for p in products:
                         if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
-                            _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
+                            candidate_url = p.get("url") or p.get("product_url")
+                            canonical = _canonical_product_url(candidate_url) if candidate_url else None
+                            _add_candidate(candidate_url, urls, seen)
+                            if canonical and isinstance(p.get("variants"), list) and p.get("variants"):
+                                product_cache[canonical] = p
                 finally:
                     r.close()
             except StoreRequestError as exc:
                 record("shopify_predictive_search", exc)
+
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
         try:
             r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
@@ -228,7 +239,10 @@ def discover(session, query):
                     if p.get("handle") and (not u or not str(u).startswith("/products/")):
                         u = "/products/" + str(p["handle"])
                     if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
+                        canonical = _canonical_product_url(u)
                         _add_candidate(u, urls, seen)
+                        if isinstance(p.get("variants"), list) and p.get("variants"):
+                            product_cache[canonical] = p
             finally:
                 r.close()
         except (StoreRequestError, ValueError, TypeError) as exc:
@@ -237,11 +251,17 @@ def discover(session, query):
             else:
                 errors.append({"source": "shopify_search_json", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
+
         try:
-            _discover_products_json(session, query, urls, seen)
+            _discover_products_json(session, query, urls, seen, product_cache)
             discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_products_json", exc)
+
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
         try:
             _discover_from_sitemap(session, query, urls, seen)
@@ -264,7 +284,7 @@ def discover(session, query):
     except Exception as exc:
         errors.append({"source": "discovery", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
-    return urls[:MAX_CANDIDATES], errors, discovery_verified
+    return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
 
 def product_json(session, url):
@@ -275,6 +295,24 @@ def product_json(session, url):
     except (ValueError, TypeError): return None
     finally: r.close()
 
+
+def product_from_search_json(session, url):
+    """Fallback to Shopify search JSON when a product .js endpoint is rate-limited."""
+    handle = urlparse(_canonical_product_url(url)).path.rstrip("/").split("/")[-1]
+    if not handle:
+        return None
+    r = _get(session, BASE_URL + "/search.json", {"q": handle, "type": "product", "limit": 20})
+    try:
+        data = r.json()
+        products = data.get("products") if isinstance(data, dict) else None
+        if not isinstance(products, list):
+            return None
+        for product in products:
+            if isinstance(product, dict) and clean(product.get("handle")) == handle:
+                return product if isinstance(product.get("variants"), list) and product.get("variants") else None
+        return None
+    finally:
+        r.close()
 
 def _matching_currency_evidence(html, price):
     """Return currency proof only when page metadata ties it to this exact price."""
@@ -355,6 +393,11 @@ def make_item(product, variant, url, query, html=None):
     p = parse_price(variant.get("price"))
     size = size_ml(variant_name, name)
     conc = concentration(variant_name, name)
+    concentration_source = "product_title"
+    if not conc and product.get("product_type"):
+        conc = concentration(product.get("product_type"))
+        if conc:
+            concentration_source = "product_type"
     available = variant.get("available")
     stock = "in_stock" if available is True else "out_of_stock" if available is False else "unknown"
     image = product.get("featured_image")
@@ -369,7 +412,7 @@ def make_item(product, variant, url, query, html=None):
         "store": STORE,
         "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
-        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
+        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": concentration_source} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
@@ -377,20 +420,122 @@ def make_item(product, variant, url, query, html=None):
     }
 
 
+def _product_from_html(html, url):
+    """Build a single exact Shopify variant from page JSON-LD and its selected variant ID."""
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    def find_product(value):
+        if isinstance(value, dict):
+            kind = value.get("@type")
+            if kind == "Product" or isinstance(kind, list) and "Product" in kind:
+                return value
+            for child in value.values():
+                found = find_product(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_product(child)
+                if found:
+                    return found
+        return None
+
+    for script in soup.select('script[type="application/json"], script[id*="ProductJson"]'):
+        try:
+            embedded = json.loads(script.string or script.get_text())
+        except (TypeError, ValueError):
+            continue
+        if isinstance(embedded, dict) and isinstance(embedded.get("variants"), list) and embedded["variants"]:
+            return embedded
+
+    product_data = None
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            product_data = find_product(json.loads(script.string or script.get_text()))
+        except (TypeError, ValueError):
+            continue
+        if product_data:
+            break
+    if not product_data:
+        return None
+
+    selected = soup.select_one('input[name="id"][value]')
+    variant_id = selected.get("value") if selected else None
+    if not variant_id:
+        selected_option = soup.select_one('select[name="id"] option[selected][value]')
+        if selected_option:
+            variant_id = selected_option.get("value")
+    if not variant_id:
+        options = soup.select('select[name="id"] option[value]')
+        if len(options) == 1:
+            variant_id = options[0].get("value")
+
+    offers = product_data.get("offers")
+    if isinstance(offers, list):
+        offers = offers[0] if len(offers) == 1 else None
+    if not isinstance(offers, dict) or not variant_id or offers.get("price") in (None, ""):
+        return None
+    availability = str(offers.get("availability") or "")
+    if "InStock" in availability:
+        available = True
+    elif "OutOfStock" in availability or "SoldOut" in availability:
+        available = False
+    else:
+        return None
+
+    brand = product_data.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+    heading = soup.select_one("h1")
+    title = clean(product_data.get("name")) or clean(heading.get_text(" ", strip=True) if heading else "")
+    if not title:
+        return None
+    meta_type = soup.select_one('meta[property="product:category"], meta[name="product:type"]')
+    product_type = clean(meta_type.get("content")) if meta_type else clean(product_data.get("category"))
+    variant = {
+        "id": str(variant_id),
+        "sku": product_data.get("sku"),
+        "title": "Default Title",
+        "price": offers.get("price"),
+        "available": available,
+    }
+    return {
+        "id": product_data.get("productID") or product_data.get("sku"),
+        "title": title,
+        "vendor": clean(brand),
+        "product_type": product_type,
+        "handle": urlparse(_canonical_product_url(url)).path.rstrip("/").split("/")[-1],
+        "variants": [variant],
+        "images": [product_data.get("image")] if product_data.get("image") else [],
+    }
+
 def extract_product_page(session, url, query=""):
     """Fetch one Shopify product and preserve each exact variant identity."""
     canonical_url = _canonical_product_url(url)
     parsed = urlparse(canonical_url)
     if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
         raise ValueError("ParfumCity product URL must use the canonical HTTPS retailer host")
-    product = product_json(session, canonical_url)
-    if not product:
-        return []
     response = _get(session, canonical_url)
     try:
         html = response.text or ""
     finally:
         response.close()
+
+    product = None
+    try:
+        product = product_json(session, canonical_url)
+    except StoreRequestError as exc:
+        if exc.status != "blocked":
+            raise
+        product = product_from_search_json(session, canonical_url)
+        if not product:
+            product = _product_from_html(html, canonical_url)
+            if not product:
+                raise exc
+    if not product or not product.get("variants"):
+        product = _product_from_html(html, canonical_url)
+    if not product:
+        return []
     items = []
     for variant in product.get("variants") or []:
         if not isinstance(variant, dict):
@@ -410,17 +555,34 @@ def _search_report(query):
     results, seen = [], set()
     fetch_errors = []
     try:
-        urls, discovery_errors, discovery_verified = discover(session, query)
+        urls, discovery_errors, discovery_verified, product_cache = discover(session, query)
         for url in urls:
             try:
-                data = product_json(session, url)
-                if not data:
-                    fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
+                data = product_cache.get(url)
+                if data is None:
+                    try:
+                        data = product_json(session, url)
+                    except StoreRequestError as exc:
+                        if exc.status != "blocked":
+                            raise
+                        data = product_from_search_json(session, url)
+                        if not data:
+                            data = None
+                html = ""
+                if not data or not data.get("variants"):
+                    response = _get(session, url)
+                    try:
+                        html = response.text or ""
+                    finally:
+                        response.close()
+                    data = _product_from_html(html, url) or data
+                if not data or not data.get("variants"):
+                    fetch_errors.append({"status": "error", "url": url, "error": "no_variant_data_from_shopify_json_or_product_html"})
                     continue
                 for variant in data.get("variants") or []:
                     if not isinstance(variant, dict):
                         continue
-                    item = make_item(data, variant, url, query)
+                    item = make_item(data, variant, url, query, html=html)
                     if not item:
                         continue
                     key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
