@@ -33,10 +33,10 @@ jobs:
 
           base = "https://www.parfumcity.nl"
           handle = "liquid-brun-limited-edition-french-avenue-100-ml"
+          # One request only: allow the retailer's Retry-After window to expire
+          # without probing the blocked JSON endpoints again.
           probes = [
               ("product_html", f"{base}/products/{handle}"),
-              ("product_json", f"{base}/products/{handle}.js"),
-              ("search_json", f"{base}/search.json?q={handle}&type=product&limit=20"),
           ]
 
           session = requests.Session()
