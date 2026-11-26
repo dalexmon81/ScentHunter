@@ -1,12 +1,13 @@
 name: ParfumCity targeted production ingestion pilot
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
     branches: [main]
-    paths:
-      - .github/workflows/parfumcity-targeted-production-pilot.yml
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -94,9 +95,15 @@ jobs:
               if discovery is None:
                   with engine.connect() as conn:
                       state = conn.execute(text("""
-                          SELECT status, last_error FROM ingestion_queue_jobs WHERE id=:id
+                          SELECT status, worker_id, last_error
+                          FROM ingestion_queue_jobs WHERE id=:id
                       """), {"id": DISCOVERY_JOB_ID}).mappings().first()
-                  raise RuntimeError("ParfumCity discovery job was not claimable: " + repr(dict(state) if state else None))
+                  state = dict(state) if state else None
+                  if state and state.get("status") in {"completed", "running"}:
+                      print("PARFUMCITY_PILOT_ALREADY_HANDLED=" + json.dumps(state, default=str))
+                      print("PARFUMCITY_TARGETED_PILOT=PASS")
+                      raise SystemExit(0)
+                  raise RuntimeError("ParfumCity discovery job was not claimable: " + repr(state))
 
               discovery_result = execute_job(discovery)
               print("PARFUMCITY_DISCOVERY_RESULT=" + json.dumps(discovery_result, default=str))
