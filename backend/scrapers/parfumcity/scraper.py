@@ -313,13 +313,16 @@ def product_from_search_json(session, url):
         return None
     r = _get(session, BASE_URL + "/search.json", {"q": handle, "type": "product", "limit": 20})
     try:
-        data = r.json()
+        try:
+            data = r.json()
+        except (ValueError, TypeError):
+            return None
         products = data.get("products") if isinstance(data, dict) else None
         if not isinstance(products, list):
             return None
         for product in products:
             if isinstance(product, dict) and clean(product.get("handle")) == handle:
-                return product if isinstance(product.get("variants"), list) else None
+                return product if isinstance(product.get("variants"), list) and product.get("variants") else None
         return None
     finally:
         r.close()
