@@ -369,9 +369,14 @@ def _product_brand(product, html=None):
         def find_brand(value):
             if isinstance(value, dict):
                 brand = value.get("brand")
-                if isinstance(brand, str) and brand.strip():
+                if isinstance(brand, str) and brand.strip() and norm(brand) not in {"parfum city", "parfumcity"}:
                     return brand.strip()
-                if isinstance(brand, dict) and isinstance(brand.get("name"), str):
+                if (
+                    isinstance(brand, dict)
+                    and isinstance(brand.get("name"), str)
+                    and brand["name"].strip()
+                    and norm(brand["name"]) not in {"parfum city", "parfumcity"}
+                ):
                     return brand["name"].strip()
                 for child in value.values():
                     found = find_brand(child)
