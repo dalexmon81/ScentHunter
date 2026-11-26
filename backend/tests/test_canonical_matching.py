@@ -80,6 +80,19 @@ class CanonicalMatchingTests(unittest.TestCase):
         self.assertEqual(result.match.product_variant_id, self.variant.id)
         self.assertEqual(result.match.method, "deterministic_variant")
 
+    def test_shopify_brand_attribution_title_matches_exact_variant(self):
+        result = resolve_canonical_variant(
+            self.session, store_id=self.store.id, external_product_id="SHOPIFY-1",
+            record={
+                "brand_raw": "Dior",
+                "raw_name": "Sauvage by Dior - Men Perfume - EDP - 100 ml",
+                "concentration": "EDP",
+                "size_ml": 100,
+            },
+        )
+        self.assertEqual(result.match.product_variant_id, self.variant.id)
+        self.assertEqual(result.match.method, "deterministic_variant")
+
     def test_unknown_identity_does_not_guess(self):
         result = resolve_canonical_variant(
             self.session, store_id=self.store.id, external_product_id="SKU-3",
