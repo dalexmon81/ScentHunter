@@ -276,6 +276,24 @@ def product_json(session, url):
     finally: r.close()
 
 
+def product_from_search_json(session, url):
+    """Fallback to Shopify search JSON when a product .js endpoint is rate-limited."""
+    handle = urlparse(_canonical_product_url(url)).path.rstrip("/").split("/")[-1]
+    if not handle:
+        return None
+    r = _get(session, BASE_URL + "/search.json", {"q": handle, "type": "product", "limit": 20})
+    try:
+        data = r.json()
+        products = data.get("products") if isinstance(data, dict) else None
+        if not isinstance(products, list):
+            return None
+        for product in products:
+            if isinstance(product, dict) and clean(product.get("handle")) == handle:
+                return product if isinstance(product.get("variants"), list) else None
+        return None
+    finally:
+        r.close()
+
 def _matching_currency_evidence(html, price):
     """Return currency proof only when page metadata ties it to this exact price."""
     if not html or price is None:
@@ -383,7 +401,14 @@ def extract_product_page(session, url, query=""):
     parsed = urlparse(canonical_url)
     if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
         raise ValueError("ParfumCity product URL must use the canonical HTTPS retailer host")
-    product = product_json(session, canonical_url)
+    try:
+        product = product_json(session, canonical_url)
+    except StoreRequestError as exc:
+        if exc.status != "blocked":
+            raise
+        product = product_from_search_json(session, canonical_url)
+        if not product:
+            raise exc
     if not product:
         return []
     response = _get(session, canonical_url)
