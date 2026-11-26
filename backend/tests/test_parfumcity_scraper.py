@@ -14,10 +14,10 @@ from scrapers.parfumcity import scraper
 
 
 class FakeResponse:
-    def __init__(self, *, payload=None, text=""):
+    def __init__(self, *, payload=None, text="", status_code=200):
         self._payload = payload
         self.text = text
-        self.status_code = 200
+        self.status_code = status_code
 
     def json(self):
         return self._payload
