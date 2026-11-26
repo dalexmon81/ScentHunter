@@ -156,7 +156,7 @@ def _discover_products_json(session, query, urls, seen, product_cache):
             if matches(f"{title} {vendor} {handle} {u}", query):
                 canonical = _canonical_product_url(u)
                 _add_candidate(u, urls, seen)
-                if isinstance(p.get("variants"), list):
+                if isinstance(p.get("variants"), list) and p.get("variants"):
                     product_cache[canonical] = p
                 if len(urls) >= MAX_CANDIDATES:
                     return
@@ -218,7 +218,7 @@ def discover(session, query):
                             candidate_url = p.get("url") or p.get("product_url")
                             canonical = _canonical_product_url(candidate_url) if candidate_url else None
                             _add_candidate(candidate_url, urls, seen)
-                            if canonical and isinstance(p.get("variants"), list):
+                            if canonical and isinstance(p.get("variants"), list) and p.get("variants"):
                                 product_cache[canonical] = p
                 finally:
                     r.close()
@@ -241,7 +241,7 @@ def discover(session, query):
                     if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
                         canonical = _canonical_product_url(u)
                         _add_candidate(u, urls, seen)
-                        if isinstance(p.get("variants"), list):
+                        if isinstance(p.get("variants"), list) and p.get("variants"):
                             product_cache[canonical] = p
             finally:
                 r.close()
@@ -309,7 +309,7 @@ def product_from_search_json(session, url):
             return None
         for product in products:
             if isinstance(product, dict) and clean(product.get("handle")) == handle:
-                return product if isinstance(product.get("variants"), list) else None
+                return product if isinstance(product.get("variants"), list) and product.get("variants") else None
         return None
     finally:
         r.close()
