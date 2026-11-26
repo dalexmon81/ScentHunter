@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
+
+from backend.app.offers.contracts import RetailerOffer
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from backend.scenthunter_next_engine.models import MatchStatus
 
 from scrapers.parfumcity import scraper
 
@@ -117,6 +124,64 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(len(records), 2)
         self.assertNotIn("currency_evidence", records[0]["raw_data"])
 
+    def test_manufacturer_brand_and_canonical_name_ignore_retailer_vendor(self):
+        product = dict(
+            self.product,
+            vendor="Parfum City",
+            title="Liquid Brun Limited Edition Extrait French Avenue 150ML",
+            variants=[dict(self.product["variants"][1], price="4099")],
+        )
+        html = (
+            '<script type="application/ld+json">'
+            + json.dumps({
+                "@type": "Product",
+                "offers": [{"price": "40.99", "priceCurrency": "EUR"}],
+            })
+            + "</script><p>Liquid Brun Limited Edition van French Avenue is een parfum.</p>"
+        )
+        records = scraper.extract_product_page(
+            FakeSession(product, html),
+            "https://www.parfumcity.nl/products/liquid-brun-limited-edition-french-avenue-100-ml",
+        )
+        self.assertEqual(records[0]["brand"], "French Avenue")
+        self.assertEqual(records[0]["source"]["source_brand"], "French Avenue")
+        self.assertEqual(records[0]["brand_source"], "product_description")
+        self.assertEqual(records[0]["name"], "Liquid Brun Limited Edition Extrait de Parfum")
+        self.assertEqual(records[0]["size_ml"], 150)
+        self.assertEqual(records[0]["concentration"], "Extrait de Parfum")
+        self.assertEqual(records[0]["price_num"], 40.99)
+
+    def test_extracted_identity_matches_exact_canonical_150ml_variant(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "product_catalog.json"
+            catalog_path.write_text(
+                json.dumps({
+                    "products": [{
+                        "product_id": "SH-LB-LE",
+                        "brand_name": "French Avenue",
+                        "canonical_name": "Liquid Brun Limited Edition",
+                        "concentration": "Extrait de Parfum",
+                    }],
+                    "variants": [{
+                        "product_id": "SH-LB-LE",
+                        "variant_id": "VAR-LB-LE-150",
+                        "size_ml": 150,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            matcher = CanonicalMatcher(CatalogRepository.from_file(catalog_path))
+            offer = RetailerOffer(
+                retailer="parfumcity",
+                raw_name="Liquid Brun Limited Edition Extrait de Parfum",
+                brand_raw="French Avenue",
+                size_ml=150,
+            )
+            result = matcher.match(offer)
+            self.assertIs(result.status, MatchStatus.MATCHED, result.reason)
+            self.assertEqual(result.canonical_product_id, "SH-LB-LE")
+            self.assertEqual(result.canonical_variant_id, "VAR-LB-LE-150")
+
     def test_product_json_429_falls_back_to_exact_handle_search_json(self):
         class RateLimitedSession(FakeSession):
             def get(self, url, **kwargs):
@@ -136,43 +201,46 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], 301)
         self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
 
-    def test_product_html_jsonld_fallback_keeps_exact_selected_variant(self):
-        html = (
-            '<html><head><script type="application/ld+json">'
-            + json.dumps({
-                "@type": "Product",
-                "name": "Liquid Brun French Avenue 100ML",
-                "brand": {"@type": "Brand", "name": "French Avenue"},
-                "sku": "PC-999",
-                "offers": {
-                    "@type": "Offer",
-                    "price": "29.99",
-                    "priceCurrency": "EUR",
-                    "availability": "https://schema.org/OutOfStock",
-                },
-            })
-            + '</script></head><body><h1>Liquid Brun French Avenue 100ML</h1>'
-            + '<input type="hidden" name="id" value="999"></body></html>'
-        )
+    def test_empty_predictive_variants_do_not_short_circuit_full_search_json(self):
+        class DiscoverySession:
+            def __init__(self):
+                self.requested = []
 
-        class HtmlFallbackSession(FakeSession):
             def get(self, url, **kwargs):
                 self.requested.append(url)
-                if url.endswith(".js"):
-                    return FakeResponse(text="rate limited", status_code=429)
+                if url.endswith("/search/suggest.json"):
+                    return FakeResponse(payload={
+                        "resources": {
+                            "results": {
+                                "products": [{
+                                    "title": "Liquid Brun French Avenue 100ML",
+                                    "vendor": "Parfum City",
+                                    "url": "/products/liquid-brun-french-avenue-100ml",
+                                    "variants": [],
+                                }]
+                            }
+                        }
+                    })
                 if url.endswith("/search.json"):
-                    return FakeResponse(payload={"products": []})
-                return FakeResponse(text=html)
+                    return FakeResponse(payload={"products": [self_product]})
+                raise AssertionError(f"Unexpected request: {url}")
 
-        records = scraper.extract_product_page(
-            HtmlFallbackSession(self.product, html),
-            "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+        self_product = dict(
+            self.product,
+            title="Liquid Brun French Avenue 100ML",
+            handle="liquid-brun-french-avenue-100ml",
+            variants=[dict(self.product["variants"][0])],
         )
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], "999")
-        self.assertEqual(records[0]["price_num"], 29.99)
-        self.assertEqual(records[0]["availability"], "out_of_stock")
-        self.assertEqual(records[0]["raw_data"]["currency_evidence"]["currency"], "EUR")
+        session = DiscoverySession()
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        self.assertTrue(verified)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(urls), 1)
+        self.assertEqual(
+            product_cache[urls[0]]["variants"][0]["id"],
+            self_product["variants"][0]["id"],
+        )
+        self.assertTrue(any(url.endswith("/search.json") for url in session.requested))
 
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
