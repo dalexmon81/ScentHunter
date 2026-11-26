@@ -204,14 +204,14 @@ jobs:
           remote_command="/bin/sh -lc 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
           remote_output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 180 2>&1)" || {
             if grep -Fq "PARFUMCITY_PILOT_DEFERRED_COOLDOWN=" <<< "$remote_output"; then
-              printf '%s\\n' "$remote_output"
+              printf '%s\n' "$remote_output"
               echo "PARFUMCITY_TARGETED_PILOT=DEFERRED_COOLDOWN"
               exit 0
             fi
-            printf '%s\\n' "$remote_output" >&2
+            printf '%s\n' "$remote_output" >&2
             exit 1
           }
-          printf '%s\\n' "$remote_output"
+          printf '%s\n' "$remote_output"
           if grep -Fq "PARFUMCITY_PILOT_DEFERRED_COOLDOWN=" <<< "$remote_output"; then
             echo "PARFUMCITY_TARGETED_PILOT=DEFERRED_COOLDOWN"
             exit 0
