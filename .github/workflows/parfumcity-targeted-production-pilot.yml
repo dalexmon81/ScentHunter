@@ -126,6 +126,13 @@ jobs:
                       continue
                   fetch_results.append(execute_job(job))
 
+              if discovery_result.get("status") != "completed":
+                  raise RuntimeError("ParfumCity discovery did not complete: " + json.dumps(discovery_result, default=str))
+              if not fetch_ids:
+                  raise RuntimeError("ParfumCity discovery produced no fetch jobs")
+              if not any(result.get("status") == "completed" for result in fetch_results):
+                  raise RuntimeError("No ParfumCity fetch job completed: " + json.dumps(fetch_results, default=str))
+
               with engine.connect() as conn:
                   counts = conn.execute(text("""
                       SELECT stage, status, count(*) AS jobs
