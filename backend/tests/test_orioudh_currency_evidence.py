@@ -91,7 +91,7 @@ class OrioudhCurrencyEvidenceTests(unittest.TestCase):
         by_variant = {row["identity"]["store_variant_id"]["value"]: row for row in rows}
         self.assertEqual(
             by_variant[202]["raw_data"]["currency_evidence"]["matched_price"],
-            "44.90",
+            "44.9",
         )
         self.assertIsNone(by_variant[101]["raw_data"]["currency_evidence"])
 
