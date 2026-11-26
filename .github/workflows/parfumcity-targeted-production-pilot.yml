@@ -49,7 +49,20 @@ jobs:
                           started_at=now(), finished_at=NULL,
                           worker_id=:worker_id, last_error=NULL
                       WHERE id=:job_id AND stage=:stage AND status='queued'
-                      RETURNING id::text AS id, payload, attempts
+                      RETURNING id::text AS id, stage, payload, attempts
+                  """), {
+                      "job_id": job_id,
+                      "stage": stage,
+                      "worker_id": PILOT_WORKER,
+                  }).mappings().first()
+              if row:
+                  return dict(row)
+              with engine.connect() as conn:
+                  row = conn.execute(text("""
+                      SELECT id::text AS id, stage, payload, attempts
+                      FROM ingestion_queue_jobs
+                      WHERE id=:job_id AND stage=:stage
+                        AND status='running' AND worker_id=:worker_id
                   """), {
                       "job_id": job_id,
                       "stage": stage,
