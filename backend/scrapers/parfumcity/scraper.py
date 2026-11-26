@@ -409,7 +409,7 @@ def _resolved_brand(product, title):
     vendor = clean(product.get("vendor"))
     if vendor and norm(vendor) not in {"parfum city", "parfumcity"}:
         return vendor
-    title_without_size = re.sub(r"\\b\\d+(?:[.,]\\d+)?\\s*(?:ml|cl|dl|l)\\b", " ", clean(title), flags=re.I)
+    title_without_size = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l)\b", " ", clean(title), flags=re.I)
     normalized_title = norm(title_without_size)
     candidates = sorted(CANONICAL_BRANDS, key=lambda value: len(norm(value)), reverse=True)
     for brand in candidates:
