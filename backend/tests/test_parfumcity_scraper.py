@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
+
+from backend.app.offers.contracts import RetailerOffer
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from backend.scenthunter_next_engine.models import MatchStatus
 
 from scrapers.parfumcity import scraper
 
@@ -89,6 +96,55 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(item["source"]["source_brand"], "French Avenue")
         self.assertEqual(item["size_ml"], 150)
         self.assertEqual(item["concentration"], "Extrait de Parfum")
+
+    def test_extracted_liquid_brun_limited_edition_matches_exact_canonical_variant(self):
+        product = {
+            "title": "Liquid Brun Limited Edition Extrait French Avenue 150ML",
+            "vendor": "Parfum City",
+            "variants": [],
+        }
+        variant = {
+            "id": 57687820403075,
+            "title": "Default Title",
+            "price": "4099",
+            "available": True,
+        }
+        item = scraper.make_item(
+            product,
+            variant,
+            "https://www.parfumcity.nl/products/liquid-brun-limited-edition-french-avenue-100-ml",
+            query="Liquid Brun",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "product_catalog.json"
+            catalog_path.write_text(
+                json.dumps({
+                    "products": [{
+                        "product_id": "SH-LB-LE",
+                        "brand_name": "French Avenue",
+                        "canonical_name": "Liquid Brun Limited Edition",
+                        "concentration": "Extrait de Parfum",
+                    }],
+                    "variants": [{
+                        "product_id": "SH-LB-LE",
+                        "variant_id": "VAR-f5aff76b4bb5de8a",
+                        "size_ml": 150,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            matcher = CanonicalMatcher(CatalogRepository.from_file(catalog_path))
+            offer = RetailerOffer(
+                retailer="parfumcity",
+                raw_name=item["name"],
+                brand_raw=item["brand"],
+                size_ml=item["size_ml"],
+                concentration=item["concentration"],
+            )
+            result = matcher.match(offer)
+        self.assertIs(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "SH-LB-LE")
+        self.assertEqual(result.canonical_variant_id, "VAR-f5aff76b4bb5de8a")
 
     def test_normalization_and_query_matching_handle_compact_sizes(self):
         self.assertEqual(scraper.norm("100ML"), "100 ml")
