@@ -101,6 +101,11 @@ class DataForSEOParfumcitySource:
         self.sleeper = sleeper
         self.poll_timeout = poll_timeout
 
+    def close(self) -> None:
+        close = getattr(self.session, "close", None)
+        if callable(close):
+            close()
+
     def _request(self, method: str, path: str, payload: Any | None = None) -> Mapping[str, Any]:
         try:
             response = self.session.request(
