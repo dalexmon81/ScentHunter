@@ -48,7 +48,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(connector_key_for_store_slug(slug))
 
     async def test_factory_loads_all_existing_retailer_scraper_modules(self):
-        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum"):
+        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum", "orioudh"):
             with self.subTest(store_key=store_key):
                 connector = build_legacy_connector(store_key)
                 self.assertEqual(connector.store_key, store_key)
@@ -160,6 +160,87 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
             from app.connectors.base import ConnectorUnavailable
             with self.assertRaises(ConnectorUnavailable):
                 await self.connector.discover_products()
+
+
+    async def test_orioudh_discovery_and_fetch_preserve_each_shopify_variant(self):
+        product_url = "https://orioudh.com/products/liquid-brun"
+        variants = []
+        for variant_id, sku, price, size in (
+            (101, "ORI-101", 31.85, 100),
+            (202, "ORI-202", 44.90, 150),
+        ):
+            variants.append({
+                "store": "Orioudh",
+                "source": {
+                    "source_name": f"Liquid Brun French Avenue {size} ml",
+                    "source_brand": "French Avenue",
+                    "url": product_url,
+                },
+                "identity": {
+                    "sku": {"value": sku, "source": "shopify_variant"},
+                    "store_variant_id": {"value": variant_id, "source": "shopify_variant"},
+                },
+                "attributes": {
+                    "size_ml": {"value": size, "source": "product_source"},
+                    "concentration": {"value": "Eau de Parfum", "source": "product_source"},
+                },
+                "offer": {
+                    "price": price, "currency": "EUR", "availability": "in_stock",
+                },
+                "raw_data": {"product": {}, "variant": {"id": variant_id}},
+                "name": f"Liquid Brun French Avenue {size} ml",
+                "url": product_url,
+                "available": True,
+            })
+
+        scraper = SimpleNamespace(
+            search_stream=lambda query: {
+                "status": "success", "verified": True, "results": variants,
+                "error": None, "details": {"count": len(variants)},
+            },
+            extract_product_page=lambda session, url, query: variants,
+        )
+        connector = LegacyScraperConnector("orioudh", scraper)
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH": "Liquid Brun"
+        }):
+            products = await connector.discover_products(limit=10)
+
+        self.assertEqual(len(products), 2)
+        self.assertEqual(
+            [item.external_product_id for item in products],
+            [
+                product_url + "?variant=101",
+                product_url + "?variant=202",
+            ],
+        )
+        self.assertTrue(all(item.product_url == product_url for item in products))
+
+        first = await connector.fetch_product(products[0].external_product_id)
+        self.assertEqual(
+            first["identity"]["store_variant_id"]["value"], 101
+        )
+        self.assertEqual(first["external_product_id"], product_url + "?variant=101")
+        self.assertEqual(first["product_url"], product_url)
+
+        observation = await connector.fetch_price_and_stock(products[0].external_product_id)
+        self.assertEqual(observation["price"], "31.85")
+        self.assertEqual(observation["currency"], "EUR")
+        self.assertEqual(observation["availability"], "in_stock")
+        # Shopify product JSON alone does not prove the shop currency. Keep the
+        # shared ingestion currency-evidence gate closed until separately sourced.
+        self.assertFalse(observation["currency_explicit"])
+
+        # Orioudh is not yet enabled as a scheduled production store.
+        self.assertIsNone(connector_key_for_store_slug("orioudh"))
+
+    async def test_orioudh_variant_fetch_rejects_non_retailer_hosts(self):
+        connector = LegacyScraperConnector(
+            "orioudh",
+            SimpleNamespace(extract_product_page=lambda session, url, query: []),
+        )
+        with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
+            await connector.fetch_product("https://example.com/products/liquid-brun?variant=101")
 
 
 if __name__ == "__main__":
