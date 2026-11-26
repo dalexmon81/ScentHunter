@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   parfumcity:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, 'Complete ParfumCity live discovery') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -51,6 +51,20 @@ jobs:
                           started_at=now(), finished_at=NULL,
                           worker_id=:worker_id, last_error=NULL
                       WHERE id=:job_id AND stage=:stage AND status='queued'
+                      RETURNING id::text AS id, stage, payload, attempts
+                  """), {
+                      "job_id": job_id,
+                      "stage": stage,
+                      "worker_id": PILOT_WORKER,
+                  }).mappings().first()
+              if row:
+                  return dict(row)
+              with engine.begin() as conn:
+                  row = conn.execute(text("""
+                      UPDATE ingestion_queue_jobs
+                      SET worker_id=:worker_id, started_at=now()
+                      WHERE id=:job_id AND stage=:stage
+                        AND status='running' AND worker_id='parfumcity-pilot-hold'
                       RETURNING id::text AS id, stage, payload, attempts
                   """), {
                       "job_id": job_id,
