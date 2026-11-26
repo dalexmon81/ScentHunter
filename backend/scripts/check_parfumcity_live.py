@@ -68,6 +68,8 @@ def main() -> int:
             fail(f"manufacturer brand attribution is incorrect: {extracted.get('brand')!r}")
         if extracted.get("size_ml") != 150 or extracted.get("concentration") != "Extrait de Parfum":
             fail(f"variant identity is not the expected Liquid Brun Limited Edition 150 ml Extrait: size={extracted.get('size_ml')} concentration={extracted.get('concentration')}")
+        if extracted.get("name") != "Liquid Brun Limited Edition Extrait de Parfum":
+            fail(f"canonical-ready product name is not normalized exactly: {extracted.get('name')!r}")
         url = str(extracted.get("url") or "")
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
