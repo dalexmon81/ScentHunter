@@ -240,9 +240,12 @@ def discover(session, query):
 
         try:
             r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
-            discovery_verified = True
             try:
-                for p in r.json().get("products") or []:
+                data = r.json()
+                if not isinstance(data, dict):
+                    raise ValueError("Shopify search.json response was not a JSON object")
+                discovery_verified = True
+                for p in data.get("products") or []:
                     if not isinstance(p, dict):
                         continue
                     u = p.get("url") or p.get("handle")
