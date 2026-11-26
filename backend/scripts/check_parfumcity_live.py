@@ -66,6 +66,10 @@ def main() -> int:
             fail(f"availability is not explicit: {extracted.get('availability')}")
         if extracted.get("brand") != "French Avenue":
             fail(f"manufacturer brand attribution is incorrect: {extracted.get('brand')!r}")
+        if extracted.get("size_ml") != 150 or extracted.get("concentration") != "Extrait de Parfum":
+            fail(f"variant identity is not the expected Liquid Brun Limited Edition 150 ml Extrait: size={extracted.get('size_ml')} concentration={extracted.get('concentration')}")
+        if extracted.get("name") != "Liquid Brun Limited Edition Extrait de Parfum":
+            fail(f"canonical match name is not normalized exactly: {extracted.get('name')!r}")
         url = str(extracted.get("url") or "")
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
@@ -79,6 +83,8 @@ def main() -> int:
             "brand_source": extracted.get("brand_source"),
             "variant_id": extracted.get("identity", {}).get("store_variant_id", {}).get("value"),
             "size_ml": extracted.get("size_ml"),
+            "concentration": extracted.get("concentration"),
+            "canonical_match_name": extracted.get("name"),
             "price": str(price),
             "currency": offer.get("currency"),
             "availability": extracted.get("availability"),
