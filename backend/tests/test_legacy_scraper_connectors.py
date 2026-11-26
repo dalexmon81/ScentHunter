@@ -162,5 +162,22 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
                 await self.connector.discover_products()
 
 
+    async def test_partial_unverified_empty_discovery_fails_closed(self):
+        self.scraper.search_stream = lambda query: {
+            "status": "partial",
+            "verified": False,
+            "results": [],
+            "error": None,
+            "details": {"count": 0, "reason": "no_results_without_authoritative_empty_verification"},
+        }
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_DELOOX": "Liquid Brun"
+        }):
+            from app.connectors.base import ConnectorUnavailable
+            with self.assertRaisesRegex(ConnectorUnavailable, "partial and unverified"):
+                await self.connector.discover_products()
+
+
+
 if __name__ == "__main__":
     unittest.main()
