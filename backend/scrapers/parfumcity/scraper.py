@@ -127,7 +127,7 @@ def _add_candidate(url, urls, seen):
     return True
 
 
-def _discover_products_json(session, query, urls, seen):
+def _discover_products_json(session, query, urls, seen, product_cache):
     """Generic Shopify catalog fallback; no product-specific knowledge."""
     for page in range(1, MAX_CATALOG_PAGES + 1):
         r = _get(
@@ -154,7 +154,10 @@ def _discover_products_json(session, query, urls, seen):
             title = clean(p.get("title")); vendor = clean(p.get("vendor")); handle = clean(p.get("handle"))
             u = p.get("url") or ("/products/" + handle if handle else "")
             if matches(f"{title} {vendor} {handle} {u}", query):
+                canonical = _canonical_product_url(u)
                 _add_candidate(u, urls, seen)
+                if isinstance(p.get("variants"), list):
+                    product_cache[canonical] = p
                 if len(urls) >= MAX_CANDIDATES:
                     return
 
@@ -193,6 +196,7 @@ def _discover_from_sitemap(session, query, urls, seen):
 
 def discover(session, query):
     urls, seen, errors = [], set(), []
+    product_cache = {}
     discovery_verified = False
 
     def record(source, exc):
@@ -211,7 +215,11 @@ def discover(session, query):
                     products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
                     for p in products:
                         if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
-                            _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
+                            candidate_url = p.get("url") or p.get("product_url")
+                            canonical = _canonical_product_url(candidate_url) if candidate_url else None
+                            _add_candidate(candidate_url, urls, seen)
+                            if canonical and isinstance(p.get("variants"), list):
+                                product_cache[canonical] = p
                 finally:
                     r.close()
             except StoreRequestError as exc:
@@ -228,7 +236,10 @@ def discover(session, query):
                     if p.get("handle") and (not u or not str(u).startswith("/products/")):
                         u = "/products/" + str(p["handle"])
                     if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
+                        canonical = _canonical_product_url(u)
                         _add_candidate(u, urls, seen)
+                        if isinstance(p.get("variants"), list):
+                            product_cache[canonical] = p
             finally:
                 r.close()
         except (StoreRequestError, ValueError, TypeError) as exc:
@@ -238,7 +249,7 @@ def discover(session, query):
                 errors.append({"source": "shopify_search_json", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
         try:
-            _discover_products_json(session, query, urls, seen)
+            _discover_products_json(session, query, urls, seen, product_cache)
             discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_products_json", exc)
@@ -264,7 +275,7 @@ def discover(session, query):
     except Exception as exc:
         errors.append({"source": "discovery", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
-    return urls[:MAX_CANDIDATES], errors, discovery_verified
+    return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
 
 def product_json(session, url):
@@ -435,10 +446,12 @@ def _search_report(query):
     results, seen = [], set()
     fetch_errors = []
     try:
-        urls, discovery_errors, discovery_verified = discover(session, query)
+        urls, discovery_errors, discovery_verified, product_cache = discover(session, query)
         for url in urls:
             try:
-                data = product_json(session, url)
+                data = product_cache.get(url)
+                if data is None:
+                    data = product_json(session, url)
                 if not data:
                     fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
                     continue
