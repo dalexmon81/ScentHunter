@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
+
+from backend.app.offers.contracts import RetailerOffer
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from backend.scenthunter_next_engine.models import MatchStatus
 
 from scrapers.parfumcity import scraper
 
@@ -143,6 +150,37 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(records[0]["size_ml"], 150)
         self.assertEqual(records[0]["concentration"], "Extrait de Parfum")
         self.assertEqual(records[0]["price_num"], 40.99)
+
+    def test_extracted_identity_matches_exact_canonical_150ml_variant(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "product_catalog.json"
+            catalog_path.write_text(
+                json.dumps({
+                    "products": [{
+                        "product_id": "SH-LB-LE",
+                        "brand_name": "French Avenue",
+                        "canonical_name": "Liquid Brun Limited Edition",
+                        "concentration": "Extrait de Parfum",
+                    }],
+                    "variants": [{
+                        "product_id": "SH-LB-LE",
+                        "variant_id": "VAR-LB-LE-150",
+                        "size_ml": 150,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            matcher = CanonicalMatcher(CatalogRepository.from_file(catalog_path))
+            offer = RetailerOffer(
+                retailer="parfumcity",
+                raw_name="Liquid Brun Limited Edition Extrait de Parfum",
+                brand_raw="French Avenue",
+                size_ml=150,
+            )
+            result = matcher.match(offer)
+            self.assertIs(result.status, MatchStatus.MATCHED)
+            self.assertEqual(result.canonical_product_id, "SH-LB-LE")
+            self.assertEqual(result.canonical_variant_id, "VAR-LB-LE-150")
 
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
