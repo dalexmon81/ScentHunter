@@ -1,0 +1,78 @@
+name: ParfumCity endpoint diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/parfumcity-endpoint-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read-only probe of ParfumCity product endpoints from the production app machine
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="app"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started app machine found." >&2; exit 1; }
+
+          python_script="$(cat <<'PY'
+          import json
+          import requests
+          from scrapers.parfumcity.scraper import HEADERS, TIMEOUT
+
+          base = "https://www.parfumcity.nl"
+          handle = "liquid-brun-limited-edition-french-avenue-100-ml"
+          probes = [
+              ("product_html", f"{base}/products/{handle}"),
+              ("product_json", f"{base}/products/{handle}.js"),
+              ("search_json", f"{base}/search.json?q={handle}&type=product&limit=20"),
+          ]
+
+          session = requests.Session()
+          try:
+              for label, url in probes:
+                  try:
+                      response = session.get(
+                          url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
+                      )
+                      body = response.text or ""
+                      result = {
+                          "endpoint": label,
+                          "status_code": response.status_code,
+                          "final_host": response.url.split("/", 3)[2],
+                          "content_type": response.headers.get("content-type"),
+                          "retry_after": response.headers.get("retry-after"),
+                          "body_bytes": len(response.content or b""),
+                          "body_prefix": body[:100].replace("\\n", " "),
+                      }
+                      print("PARFUMCITY_ENDPOINT=" + json.dumps(result, ensure_ascii=False))
+                      response.close()
+                  except Exception as exc:
+                      print("PARFUMCITY_ENDPOINT=" + json.dumps({
+                          "endpoint": label,
+                          "error": type(exc).__name__ + ": " + str(exc),
+                      }, ensure_ascii=False))
+          finally:
+              session.close()
+          print("PARFUMCITY_ENDPOINT_DIAGNOSTIC=COMPLETE")
+          PY
+          )"
+          encoded="$(printf '%s' "$python_script" | base64 -w0)"
+          remote_command="/bin/sh -lc 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
+          output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 60 2>&1)" || {
+            printf '%s\\n' "$output" >&2
+            exit 1
+          }
+          printf '%s\\n' "$output"
+          grep -Fq "PARFUMCITY_ENDPOINT_DIAGNOSTIC=COMPLETE" <<< "$output"
