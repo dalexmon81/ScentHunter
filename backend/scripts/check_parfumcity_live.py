@@ -64,6 +64,8 @@ def main() -> int:
             fail("currency evidence does not match the exact extracted price")
         if extracted.get("availability") not in {"in_stock", "out_of_stock"}:
             fail(f"availability is not explicit: {extracted.get('availability')}")
+        if extracted.get("brand") != "French Avenue":
+            fail(f"manufacturer brand attribution is incorrect: {extracted.get('brand')!r}")
         url = str(extracted.get("url") or "")
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
@@ -74,6 +76,7 @@ def main() -> int:
             "discovery_candidates": len(discovered),
             "product": extracted.get("name"),
             "brand": extracted.get("brand"),
+            "brand_source": extracted.get("brand_source"),
             "variant_id": extracted.get("identity", {}).get("store_variant_id", {}).get("value"),
             "size_ml": extracted.get("size_ml"),
             "price": str(price),
