@@ -28,6 +28,7 @@ STORE_SLUGS = {
     # Controlled initial production activation: one explicitly verified seed query.
     "orioudh": "orioudh",
     "parfumcity-nl": "parfumcity",
+    "perfumemarket": "perfumemarket",
 }
 
 SCRAPER_MODULES = {
@@ -38,6 +39,7 @@ SCRAPER_MODULES = {
     "parfumzentrum": "scrapers.parfumzentrum.scraper",
     "orioudh": "scrapers.orioudh.scraper",
     "parfumcity": "scrapers.parfumcity.scraper",
+    "perfumemarket": "scrapers.perfumemarket.scraper",
 }
 
 
@@ -235,8 +237,23 @@ class LegacyScraperConnector(StoreConnector):
             raise ValueError("external_product_id must be an absolute product URL")
         session = requests.Session()
         try:
+            if self.store_key == "perfumemarket":
+                allowed_hosts = {
+                    "perfumemarket.eu", "www.perfumemarket.eu",
+                    "perfumemarket.nl", "www.perfumemarket.nl",
+                }
+                if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
+                    raise ValueError("perfumemarket external_product_id must use the canonical HTTPS retailer host")
+                parser = getattr(self._scraper, "extract_product_page", None)
+                if not callable(parser):
+                    raise RuntimeError("perfumemarket scraper has no product-page parser")
+                return parser(session, url, query="")
+
             if self.store_key in {"orioudh", "parfumcity"}:
-                allowed_hosts = {"orioudh.com", "www.orioudh.com"} if self.store_key == "orioudh" else {"parfumcity.nl", "www.parfumcity.nl"}
+                allowed_hosts = {
+                    "orioudh": {"orioudh.com", "www.orioudh.com"},
+                    "parfumcity": {"parfumcity.nl", "www.parfumcity.nl"},
+                }[self.store_key]
                 if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
                     raise ValueError(f"{self.store_key} external_product_id must use the canonical HTTPS retailer host")
                 variant_ids = parse_qs(parsed.query).get("variant", [])

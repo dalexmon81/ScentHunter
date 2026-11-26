@@ -4,10 +4,10 @@ import unicodedata
 import time
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote, quote_plus, urljoin
+from urllib.parse import quote, quote_plus, urljoin, urlparse
 
 STORE = "PerfumeMarket"
-BASE_URL = "https://www.perfumemarket.nl"
+BASE_URL = "https://www.perfumemarket.eu"
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
 
@@ -839,6 +839,8 @@ def _pm_extract_image(product, response_url):
 
 
 def _pm_extract_availability(product, offer, soup):
+    # Availability must come from product-bound structured offer data.
+    # Generic page copy such as "available support" is not stock evidence.
     values = []
     for source in (offer.get("availability"), product.get("availability")):
         if source:
@@ -851,14 +853,33 @@ def _pm_extract_availability(product, offer, soup):
         return "preorder"
     if any(marker in text for marker in ("instock", "in stock")):
         return "in_stock"
-
-    # Do not treat the generic word "available" in arbitrary page text as
-    # proof of stock; it can occur in unrelated content.
-    page_text = soup.get_text(" ", strip=True).lower()
-    if re.search(r"\bavailable\b", page_text) and not re.search(r"\bunavailable\b", page_text):
-        return "in_stock"
-
     return "unknown"
+
+
+def _pm_extract_size_ml(title):
+    match = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b", str(title or ""), re.I)
+    if not match:
+        return None
+    amount = float(match.group(1).replace(",", "."))
+    unit = match.group(2).lower()
+    if unit == "cl":
+        amount *= 10
+    elif unit == "l":
+        amount *= 1000
+    return int(amount) if amount.is_integer() else amount
+
+
+def _pm_extract_concentration(title):
+    value = _normalize_text(title)
+    if re.search(r"\b(extrait|parfum extract)\b", value):
+        return "Extrait de Parfum"
+    if re.search(r"\b(edp|eau de parfum)\b", value):
+        return "Eau de Parfum"
+    if re.search(r"\b(edt|eau de toilette)\b", value):
+        return "Eau de Toilette"
+    if re.search(r"\b(eau de cologne|edc)\b", value):
+        return "Eau de Cologne"
+    return None
 
 
 def extract_product_page(session, url, query):
@@ -892,6 +913,9 @@ def extract_product_page(session, url, query):
         return None
 
     final_url = (response.url or url).split("?", 1)[0].rstrip("/")
+    final_host = (urlparse(final_url).hostname or "").lower()
+    if final_host not in {"perfumemarket.eu", "www.perfumemarket.eu", "perfumemarket.nl", "www.perfumemarket.nl"}:
+        return None
     if "/products/" not in final_url.lower():
         return None
 
@@ -935,9 +959,13 @@ def extract_product_page(session, url, query):
     if price is None:
         return None
 
-    currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
+    currency_source = offer.get("priceCurrency") or product.get("priceCurrency")
+    currency = str(currency_source or "EUR").strip().upper()
+    currency_explicit = isinstance(currency_source, str) and len(currency_source.strip()) == 3
     availability = _pm_extract_availability(product, offer, soup)
     image = _pm_extract_image(product, response.url)
+    size_ml = _pm_extract_size_ml(title)
+    concentration = _pm_extract_concentration(title)
 
     sku = str(product.get("sku") or "").strip()
     gtin = str(
@@ -958,9 +986,12 @@ def extract_product_page(session, url, query):
         "sku": sku,
         "gtin": gtin,
         "mpn": mpn,
+        "size_ml": size_ml,
+        "concentration": concentration,
         "price_num": price,
         "price": price,
         "currency": currency,
+        "currency_explicit": currency_explicit,
         "availability": availability,
         "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
         "source": {
@@ -974,6 +1005,11 @@ def extract_product_page(session, url, query):
             "gtin": {"value": gtin, "source": "shopify_jsonld"} if gtin else None,
             "mpn": {"value": mpn, "source": "shopify_jsonld"} if mpn else None,
         },
+        "attributes": {
+            "size_ml": {"value": size_ml, "source": "product_title"} if size_ml is not None else None,
+            "concentration": {"value": concentration, "source": "product_title"} if concentration else None,
+        },
+        "raw_data": {"jsonld": product},
         "offer": {
             "price": price,
             "currency": currency,
