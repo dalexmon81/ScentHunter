@@ -386,9 +386,42 @@ def _matching_currency_evidence(html, price):
     return None
 
 
+CANONICAL_BRANDS = (
+    "Salvatore Ferragamo", "Jean Paul Gaultier", "Yves Saint Laurent",
+    "Ahmed Al Maghribi", "Narciso Rodriguez", "Carolina Herrera",
+    "Jo Malone London", "Parfums de Marly", "Ard Al Zaafaran",
+    "Dolce & Gabbana", "Maison Alhambra", "Maison Margiela",
+    "Tiziana Terenzi", "French Avenue", "Niche Emarati",
+    "Viktor & Rolf", "Calvin Klein", "Issey Miyake", "Paco Rabanne",
+    "Ralph Lauren", "Roja Parfums", "Serge Lutens", "Marc Jacobs",
+    "Royal Blend", "Jil Sander", "Nina Ricci", "Elie Saab",
+    "Hugo Boss", "Milestone", "Montblanc", "Rue Broca", "Valentino",
+    "Al Fares", "Burberry", "Davidoff", "Givenchy", "Guerlain",
+    "Moschino", "Tom Ford", "Bvlgari", "Cartier", "Khadlaj",
+    "Lacoste", "Lancome", "Lattafa", "Mancera", "Miu Miu",
+    "Rayhaan", "Versace", "Armani", "Azzaro", "Chanel", "Dumont",
+    "Hermes", "Rasasi", "Afnan", "Armaf", "Chloé", "Creed",
+    "Emper", "Gucci", "Jovoy", "Kenzo", "Prada", "Dior",
+)
+
+
+def _resolved_brand(product, title):
+    vendor = clean(product.get("vendor"))
+    if vendor and norm(vendor) not in {"parfum city", "parfumcity"}:
+        return vendor
+    title_without_size = re.sub(r"\\b\\d+(?:[.,]\\d+)?\\s*(?:ml|cl|dl|l)\\b", " ", clean(title), flags=re.I)
+    normalized_title = norm(title_without_size)
+    candidates = sorted(CANONICAL_BRANDS, key=lambda value: len(norm(value)), reverse=True)
+    for brand in candidates:
+        normalized_brand = norm(brand)
+        if re.search(rf"(?<![a-z0-9]){re.escape(normalized_brand)}(?![a-z0-9])", normalized_title):
+            return brand
+    return None if not vendor or norm(vendor) in {"parfum city", "parfumcity"} else vendor
+
 def make_item(product, variant, url, query, html=None):
     name = clean(product.get("title")); variant_name = clean(variant.get("title"))
     if query and not matches(f"{name} {product.get('vendor','')} {url}", query): return None
+    brand = _resolved_brand(product, name)
     source_name = name if not variant_name or variant_name.lower() == "default title" else f"{name} {variant_name}"
     p = parse_price(variant.get("price"))
     size = size_ml(variant_name, name)
@@ -410,13 +443,13 @@ def make_item(product, variant, url, query, html=None):
         raw_data["currency_evidence"] = currency_evidence
     return {
         "store": STORE,
-        "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
+        "source": {"source_name": source_name, "source_brand": brand or None, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
         "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": concentration_source} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
-        "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
+        "name": name, "brand": brand, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
 
 
