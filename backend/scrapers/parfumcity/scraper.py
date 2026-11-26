@@ -22,8 +22,8 @@ STOPWORDS = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
 def clean(v): return re.sub(r"\s+", " ", str(v or "")).strip()
 def norm(v):
     text = re.sub(r"[^a-z0-9]+", " ", clean(v).lower())
-    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
-    return re.sub(r"\\s+", " ", text).strip()
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def tokens(q):
