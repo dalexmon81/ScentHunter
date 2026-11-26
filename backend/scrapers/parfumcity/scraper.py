@@ -422,9 +422,9 @@ def make_item(product, variant, url, query, html=None):
     match_name = name
     if brand:
         match_name = re.sub(re.escape(brand), " ", match_name, flags=re.I)
-    match_name = re.sub(r"\\s+\\d+(?:[.,]\\d+)?\\s*(?:ml|cl|dl|l)\\b", " ", match_name, flags=re.I)
-    if conc == "Extrait de Parfum" and not re.search(r"extrait\\s+de\\s+parfum", match_name, re.I):
-        match_name = re.sub(r"\\bextrait\\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
+    match_name = re.sub(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l)\b", " ", match_name, flags=re.I)
+    if conc == "Extrait de Parfum" and not re.search(r"extrait\s+de\s+parfum", match_name, re.I):
+        match_name = re.sub(r"\bextrait\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
     match_name = clean(match_name)
     raw_data = {"product": product, "variant": variant}
     if currency_evidence:
