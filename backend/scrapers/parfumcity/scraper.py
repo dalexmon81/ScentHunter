@@ -419,6 +419,13 @@ def make_item(product, variant, url, query, html=None):
     image = urljoin(BASE_URL, str(image)) if image else None
     currency_evidence = _matching_currency_evidence(html, p)
     brand, brand_source = _product_brand(product, html)
+    match_name = name
+    if brand:
+        match_name = re.sub(re.escape(brand), " ", match_name, flags=re.I)
+    match_name = re.sub(r"\\s+\\d+(?:[.,]\\d+)?\\s*(?:ml|cl|dl|l)\\b", " ", match_name, flags=re.I)
+    if conc == "Extrait de Parfum" and not re.search(r"extrait\\s+de\\s+parfum", match_name, re.I):
+        match_name = re.sub(r"\\bextrait\\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
+    match_name = clean(match_name)
     raw_data = {"product": product, "variant": variant}
     if currency_evidence:
         raw_data["currency_evidence"] = currency_evidence
@@ -430,7 +437,7 @@ def make_item(product, variant, url, query, html=None):
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
-        "name": name, "brand": brand, "brand_source": brand_source, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
+        "name": match_name, "brand": brand, "brand_source": brand_source, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
 
 
