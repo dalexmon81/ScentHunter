@@ -232,7 +232,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(observation["currency_explicit"])
 
         # Orioudh is not yet enabled as a scheduled production store.
-        self.assertIsNone(connector_key_for_store_slug("orioudh"))
+        self.assertEqual(connector_key_for_store_slug("orioudh"), "orioudh")
 
     async def test_orioudh_currency_evidence_must_match_exact_price_and_currency(self):
         connector = LegacyScraperConnector("orioudh", SimpleNamespace())
