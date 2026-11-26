@@ -486,7 +486,8 @@ def _product_from_html(html, url):
     brand = product_data.get("brand")
     if isinstance(brand, dict):
         brand = brand.get("name")
-    title = clean(product_data.get("name")) or clean((soup.select_one("h1") or {}).get_text(" ", strip=True))
+    heading = soup.select_one("h1")
+    title = clean(product_data.get("name")) or clean(heading.get_text(" ", strip=True) if heading else "")
     if not title:
         return None
     meta_type = soup.select_one('meta[property="product:category"], meta[name="product:type"]')
@@ -514,6 +515,13 @@ def extract_product_page(session, url, query=""):
     parsed = urlparse(canonical_url)
     if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
         raise ValueError("ParfumCity product URL must use the canonical HTTPS retailer host")
+    response = _get(session, canonical_url)
+    try:
+        html = response.text or ""
+    finally:
+        response.close()
+
+    product = None
     try:
         product = product_json(session, canonical_url)
     except StoreRequestError as exc:
@@ -521,14 +529,13 @@ def extract_product_page(session, url, query=""):
             raise
         product = product_from_search_json(session, canonical_url)
         if not product:
-            raise exc
+            product = _product_from_html(html, canonical_url)
+            if not product:
+                raise exc
+    if not product or not product.get("variants"):
+        product = _product_from_html(html, canonical_url)
     if not product:
         return []
-    response = _get(session, canonical_url)
-    try:
-        html = response.text or ""
-    finally:
-        response.close()
     items = []
     for variant in product.get("variants") or []:
         if not isinstance(variant, dict):
@@ -560,14 +567,22 @@ def _search_report(query):
                             raise
                         data = product_from_search_json(session, url)
                         if not data:
-                            raise exc
-                if not data:
-                    fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
+                            data = None
+                html = ""
+                if not data or not data.get("variants"):
+                    response = _get(session, url)
+                    try:
+                        html = response.text or ""
+                    finally:
+                        response.close()
+                    data = _product_from_html(html, url) or data
+                if not data or not data.get("variants"):
+                    fetch_errors.append({"status": "error", "url": url, "error": "no_variant_data_from_shopify_json_or_product_html"})
                     continue
                 for variant in data.get("variants") or []:
                     if not isinstance(variant, dict):
                         continue
-                    item = make_item(data, variant, url, query)
+                    item = make_item(data, variant, url, query, html=html)
                     if not item:
                         continue
                     key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
