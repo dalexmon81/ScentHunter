@@ -125,6 +125,31 @@ class LegacyScraperConnector(StoreConnector):
         return queries
 
     def _search_snapshot(self) -> tuple[dict[str, Any], ...]:
+        if self.store_key == "parfumcity":
+            queries = tuple(dict.fromkeys(
+                item.strip()
+                for item in os.getenv("SCENTHUNTER_DATAFORSEO_PARFUMCITY_QUERIES", "").split(";")
+                if item.strip()
+            ))
+            if not queries:
+                raise ValueError(
+                    "SCENTHUNTER_DATAFORSEO_PARFUMCITY_QUERIES must contain approved pilot queries"
+                )
+            from app.connectors.dataforseo_parfumcity import DataForSEOParfumcitySource
+            source = DataForSEOParfumcitySource()
+            try:
+                rows: list[dict[str, Any]] = []
+                seen_urls: set[str] = set()
+                for query in queries:
+                    for row in source.discover(query):
+                        url = self._product_url(row)
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            rows.append(row)
+                return tuple(rows)
+            finally:
+                source.close()
+
         rows: list[dict[str, Any]] = []
         seen: set[str] = set()
         search_stream = getattr(self._scraper, "search_stream", None)
@@ -174,7 +199,12 @@ class LegacyScraperConnector(StoreConnector):
                 # Shopify exposes one product URL for all variants. Keep each
                 # each Shopify variant addressable with its stable variant ID.
                 variant_id = _identity_value(_nested(row, "identity", "store_variant_id"))
-                external_id = url
+                provider_external_id = str(row.get("external_product_id") or "")
+                external_id = (
+                    provider_external_id
+                    if self.store_key == "parfumcity" and provider_external_id.startswith("dataforseo:")
+                    else url
+                )
                 if self.store_key in {"orioudh", "parfumcity"} and variant_id not in (None, ""):
                     external_id = urlunparse(parsed._replace(
                         query=urlencode({"variant": str(variant_id)}), fragment=""
@@ -288,7 +318,13 @@ class LegacyScraperConnector(StoreConnector):
         if not url:
             raise ValueError("external_product_id is required")
         try:
-            record = await asyncio.to_thread(self._fetch_product_sync, url)
+            if self.store_key == "parfumcity" and url.startswith("dataforseo:"):
+                product_id = url.split(":", 1)[1].strip()
+                if not product_id:
+                    raise ValueError("DataForSEO product ID is required")
+                record = await asyncio.to_thread(self._fetch_dataforseo_product_sync, product_id)
+            else:
+                record = await asyncio.to_thread(self._fetch_product_sync, url)
         except ConnectorUnavailable:
             raise
         except Exception as exc:
@@ -308,6 +344,15 @@ class LegacyScraperConnector(StoreConnector):
             return enriched
         return record
 
+    @staticmethod
+    def _fetch_dataforseo_product_sync(product_id: str) -> Mapping[str, Any] | None:
+        from app.connectors.dataforseo_parfumcity import DataForSEOParfumcitySource
+        source = DataForSEOParfumcitySource()
+        try:
+            return source.fetch_product(product_id)
+        finally:
+            source.close()
+
     async def fetch_offers(self, product_key: str) -> Sequence[Mapping[str, Any]]:
         record = await self.fetch_product(product_key)
         return (record,) if isinstance(record, Mapping) else ()
@@ -326,7 +371,11 @@ class LegacyScraperConnector(StoreConnector):
             "currency_explicit": parsed["currency_explicit"],
             "availability": parsed["availability"],
             "captured_at": time.time(),
-            "source": f"{self.store_key}_legacy_scraper",
+            "source": (
+                "parfumcity_dataforseo"
+                if self.store_key == "parfumcity" and str(offer_id).startswith("dataforseo:")
+                else f"{self.store_key}_legacy_scraper"
+            ),
             "raw_record": dict(record),
         }
 
