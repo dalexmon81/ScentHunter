@@ -75,7 +75,12 @@ class OrioudhCurrencyEvidenceTests(unittest.TestCase):
                 "Liquid Brun",
             )
 
-        self.assertTrue(all(row["raw_data"]["currency_evidence"] is None for row in rows))
+        by_variant = {row["identity"]["store_variant_id"]["value"]: row for row in rows}
+        self.assertIsNone(by_variant[101]["raw_data"]["currency_evidence"])
+        self.assertEqual(
+            by_variant[202]["raw_data"]["currency_evidence"]["matched_price"],
+            "44.90",
+        )
 
     def test_jsonld_currency_requires_matching_offer_price(self):
         payload = {
