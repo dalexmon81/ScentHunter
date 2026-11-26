@@ -585,11 +585,11 @@ def extract_product_page(
     query: str = "",
     html: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Catalog-engine adapter for the existing Shopify product JSON parser.
+    """Catalog-engine adapter for Shopify product JSON plus page evidence.
 
-    The catalog engine supplies the URL slug as its query and may pass already
-    fetched HTML. Orioudh's authoritative data is the Shopify .js product JSON,
-    so the HTML is intentionally not fetched or parsed a second time.
+    Shopify's .js endpoint supplies variant facts and prices in cents. The
+    rendered product page is also read to obtain currency evidence tied to the
+    selected variant's exact displayed price; absence of evidence is fail-closed.
     """
     effective_query = _clean(query) or _clean(url.rsplit("/", 1)[-1].split("?", 1)[0].replace("-", " "))
     return _extract_product(session, url, effective_query)
