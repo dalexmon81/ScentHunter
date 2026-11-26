@@ -7,10 +7,10 @@ from scrapers.parfumcity import scraper
 
 
 class FakeResponse:
-    def __init__(self, *, payload=None, text=""):
+    def __init__(self, *, payload=None, text="", status_code=200):
         self._payload = payload
         self.text = text
-        self.status_code = 200
+        self.status_code = status_code
 
     def json(self):
         return self._payload
@@ -116,6 +116,25 @@ class ParfumCityScraperTests(unittest.TestCase):
         )
         self.assertEqual(len(records), 2)
         self.assertNotIn("currency_evidence", records[0]["raw_data"])
+
+    def test_product_json_429_falls_back_to_exact_handle_search_json(self):
+        class RateLimitedSession(FakeSession):
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith(".js"):
+                    return FakeResponse(text="rate limited", status_code=429)
+                if url.endswith("/search.json"):
+                    return FakeResponse(payload={"products": [self.product]})
+                return FakeResponse(text=self.html)
+
+        session = RateLimitedSession(self.product, self.html)
+        records = scraper.extract_product_page(
+            session,
+            "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+        )
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], 301)
+        self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
 
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
