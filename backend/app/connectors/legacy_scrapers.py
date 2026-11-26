@@ -135,6 +135,14 @@ class LegacyScraperConnector(StoreConnector):
                     if status in {"timeout", "unavailable", "blocked", "error"} or details.get("technical_failure"):
                         raise ConnectorUnavailable(f"{self.store_key} discovery failed: {report.get('error') or status}")
                     batch = report.get("results") or []
+                    # An unverified empty/partial report is not proof that the
+                    # retailer has no products. Fail closed instead of caching
+                    # an empty snapshot that ingestion could treat as complete.
+                    if not batch and status == "partial" and report.get("verified") is not True:
+                        raise ConnectorUnavailable(
+                            f"{self.store_key} discovery was partial and unverified; "
+                            "refusing to accept an empty catalog snapshot"
+                        )
                 elif callable(search):
                     batch = search(query)
                 else:
