@@ -87,10 +87,13 @@ jobs:
                   return {"id": job["id"], "stage": job["stage"], "status": "completed", "result": result}
               except Exception as exc:
                   retryable = not isinstance(exc, (ValueError, TypeError, LookupError))
+                  retry_after_seconds = getattr(exc, "retry_after_seconds", None)
                   status = fail_or_retry(
                       job["id"], int(job["attempts"]),
                       type(exc).__name__ + ": " + str(exc),
                       retryable=retryable,
+                      retry_after_seconds=retry_after_seconds,
+                      cooldown_store_id=STORE_ID if retry_after_seconds is not None else None,
                   )
                   return {"id": job["id"], "stage": job["stage"], "status": status,
                           "error": type(exc).__name__ + ": " + str(exc)}
