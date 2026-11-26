@@ -1,0 +1,144 @@
+name: ParfumCity targeted production ingestion pilot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/parfumcity-targeted-production-pilot.yml
+
+permissions:
+  contents: read
+
+jobs:
+  parfumcity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Process only the approved ParfumCity discovery and its fetch jobs
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="app"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "No started app machine found." >&2; exit 1; }
+
+          python_script="$(cat <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from sqlalchemy import text
+          from app.db import make_engine
+          from app.workers import tasks as _registered_tasks
+          from app.workers.runtime import get_handler
+          from app.workers.postgres_queue import finish, fail_or_retry
+
+          STORE_ID = "bd8c751f-d9a5-48d4-b308-914e2dad9992"
+          DISCOVERY_JOB_ID = "77b33066-3357-47c5-bccc-66cbfb405b0c"
+          PILOT_WORKER = "parfumcity-targeted-pilot"
+
+          engine = make_engine()
+
+          def claim_specific(job_id, stage):
+              with engine.begin() as conn:
+                  row = conn.execute(text("""
+                      UPDATE ingestion_queue_jobs
+                      SET status='running', attempts=attempts+1,
+                          started_at=now(), finished_at=NULL,
+                          worker_id=:worker_id, last_error=NULL
+                      WHERE id=:job_id AND stage=:stage AND status='queued'
+                      RETURNING id::text AS id, payload, attempts
+                  """), {
+                      "job_id": job_id,
+                      "stage": stage,
+                      "worker_id": PILOT_WORKER,
+                  }).mappings().first()
+              return dict(row) if row else None
+
+          def execute_job(job):
+              handler = get_handler(job["stage"])
+              if handler is None:
+                  raise RuntimeError("No handler registered for " + job["stage"])
+              try:
+                  result = handler(job["payload"])
+                  finish(job["id"])
+                  return {"id": job["id"], "stage": job["stage"], "status": "completed", "result": result}
+              except Exception as exc:
+                  retryable = not isinstance(exc, (ValueError, TypeError, LookupError))
+                  status = fail_or_retry(
+                      job["id"], int(job["attempts"]),
+                      type(exc).__name__ + ": " + str(exc),
+                      retryable=retryable,
+                  )
+                  return {"id": job["id"], "stage": job["stage"], "status": status,
+                          "error": type(exc).__name__ + ": " + str(exc)}
+
+          try:
+              discovery_started = datetime.now(timezone.utc)
+              discovery = claim_specific(DISCOVERY_JOB_ID, "discover")
+              if discovery is None:
+                  with engine.connect() as conn:
+                      state = conn.execute(text("""
+                          SELECT status, last_error FROM ingestion_queue_jobs WHERE id=:id
+                      """), {"id": DISCOVERY_JOB_ID}).mappings().first()
+                  raise RuntimeError("ParfumCity discovery job was not claimable: " + repr(dict(state) if state else None))
+
+              discovery_result = execute_job(discovery)
+              print("PARFUMCITY_DISCOVERY_RESULT=" + json.dumps(discovery_result, default=str))
+
+              with engine.begin() as conn:
+                  fetch_ids = conn.execute(text("""
+                      SELECT id::text FROM ingestion_queue_jobs
+                      WHERE stage='fetch' AND status='queued'
+                        AND payload->>'store_id'=:store_id
+                        AND created_at >= :since
+                      ORDER BY created_at, id
+                      LIMIT 10
+                  """), {"store_id": STORE_ID, "since": discovery_started}).scalars().all()
+                  for job_id in fetch_ids:
+                      conn.execute(text("""
+                          UPDATE ingestion_queue_jobs
+                          SET available_at='2020-01-01T00:00:00Z'
+                          WHERE id=:id AND status='queued' AND stage='fetch'
+                            AND payload->>'store_id'=:store_id
+                      """), {"id": job_id, "store_id": STORE_ID})
+
+              fetch_results = []
+              for job_id in fetch_ids:
+                  job = claim_specific(job_id, "fetch")
+                  if job is None:
+                      fetch_results.append({"id": job_id, "status": "already_claimed_or_finished"})
+                      continue
+                  fetch_results.append(execute_job(job))
+
+              with engine.connect() as conn:
+                  counts = conn.execute(text("""
+                      SELECT stage, status, count(*) AS jobs
+                      FROM ingestion_queue_jobs
+                      WHERE payload->>'store_id'=:store_id
+                      GROUP BY stage, status ORDER BY stage, status
+                  """), {"store_id": STORE_ID}).mappings().all()
+
+              summary = {
+                  "store_id": STORE_ID,
+                  "discovery": discovery_result,
+                  "fetch_jobs_found": len(fetch_ids),
+                  "fetch_results": fetch_results,
+                  "queue_counts": [dict(row) for row in counts],
+              }
+              print("PARFUMCITY_PILOT_SUMMARY=" + json.dumps(summary, default=str))
+              print("PARFUMCITY_TARGETED_PILOT=PASS")
+          finally:
+              engine.dispose()
+          PY
+          )"
+          encoded="$(printf '%s' "$python_script" | base64 -w0)"
+          remote_command="/bin/sh -lc 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
+          remote_output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 180 2>&1)" || {
+            printf '%s\n' "$remote_output" >&2
+            exit 1
+          }
+          printf '%s\n' "$remote_output"
+          grep -Fq "PARFUMCITY_TARGETED_PILOT=PASS" <<< "$remote_output"
