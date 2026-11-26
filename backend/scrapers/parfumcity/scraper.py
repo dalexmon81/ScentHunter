@@ -212,7 +212,10 @@ def discover(session, query):
     discovery_verified = False
 
     def record(source, exc):
-        errors.append({"source": source, "status": exc.status, "error": str(exc)})
+        entry = {"source": source, "status": exc.status, "error": str(exc)}
+        if exc.retry_after_seconds is not None:
+            entry["retry_after_seconds"] = exc.retry_after_seconds
+        errors.append(entry)
 
     try:
         for params in (
@@ -246,6 +249,8 @@ def discover(session, query):
                     break
             except StoreRequestError as exc:
                 record("shopify_predictive_search", exc)
+                if exc.retry_after_seconds is not None:
+                    return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
             except (ValueError, TypeError) as exc:
                 errors.append({"source": "shopify_predictive_search", "status": "invalid_response", "error": f"{type(exc).__name__}: {exc}"})
 
@@ -272,6 +277,8 @@ def discover(session, query):
         except (StoreRequestError, ValueError, TypeError) as exc:
             if isinstance(exc, StoreRequestError):
                 record("shopify_search_json", exc)
+                if exc.retry_after_seconds is not None:
+                    return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
             else:
                 errors.append({"source": "shopify_search_json", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
@@ -283,6 +290,8 @@ def discover(session, query):
             discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_products_json", exc)
+            if exc.retry_after_seconds is not None:
+                return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
         if product_cache:
             return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
@@ -292,6 +301,8 @@ def discover(session, query):
             discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_sitemap", exc)
+            if exc.retry_after_seconds is not None:
+                return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
         try:
             r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
@@ -305,6 +316,8 @@ def discover(session, query):
                 r.close()
         except StoreRequestError as exc:
             record("html_search", exc)
+            if exc.retry_after_seconds is not None:
+                return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
     except Exception as exc:
         errors.append({"source": "discovery", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
