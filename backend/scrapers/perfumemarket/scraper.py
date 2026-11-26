@@ -4,7 +4,7 @@ import unicodedata
 import time
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote, quote_plus, urljoin
+from urllib.parse import quote, quote_plus, urljoin, urlparse
 
 STORE = "PerfumeMarket"
 BASE_URL = "https://www.perfumemarket.eu"
