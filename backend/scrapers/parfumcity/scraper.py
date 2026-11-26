@@ -225,6 +225,9 @@ def discover(session, query):
             except StoreRequestError as exc:
                 record("shopify_predictive_search", exc)
 
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
+
         try:
             r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
             discovery_verified = True
@@ -248,11 +251,17 @@ def discover(session, query):
             else:
                 errors.append({"source": "shopify_search_json", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
+
         try:
             _discover_products_json(session, query, urls, seen, product_cache)
             discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_products_json", exc)
+
+        if product_cache:
+            return urls[:MAX_CANDIDATES], errors, discovery_verified, product_cache
 
         try:
             _discover_from_sitemap(session, query, urls, seen)
