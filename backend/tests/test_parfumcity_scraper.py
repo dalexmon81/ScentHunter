@@ -117,6 +117,27 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(len(records), 2)
         self.assertNotIn("currency_evidence", records[0]["raw_data"])
 
+    def test_manufacturer_brand_uses_description_not_shopify_retailer_vendor(self):
+        product = dict(self.product, vendor="Parfum City")
+        html = (
+            '<script type="application/ld+json">'
+            + json.dumps({
+                "@type": "Product",
+                "offers": [{"price": "29.99", "priceCurrency": "EUR"}],
+            })
+            + "</script><p>Liquid Brun Limited Edition van French Avenue is een parfum.</p>"
+        )
+        records = scraper.extract_product_page(
+            FakeSession(product, html),
+            "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+        )
+        self.assertEqual(records[0]["brand"], "French Avenue")
+        self.assertEqual(
+            records[0]["source"]["source_brand"],
+            "French Avenue",
+        )
+        self.assertEqual(records[0]["brand_source"], "product_description")
+
     def test_non_retailer_product_urls_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
             scraper.extract_product_page(
