@@ -395,7 +395,7 @@ def _product_brand(product, html=None):
         description = " ".join(soup.stripped_strings)
         # ParfumCity descriptions use Dutch "van <brand>" and English "by <brand>".
         match = re.search(
-            r"\\b(?:by|van)\\s+([A-Z][A-Za-z0-9&'’.-]*(?:\\s+[A-Z][A-Za-z0-9&'’.-]*){0,3})(?=\\s+(?:is|was|for|geur|is\\s+een)\\b|[.,;]|$)",
+            r"\b(?:by|van)\s+([A-Z][A-Za-z0-9&'’.-]*(?:\s+[A-Z][A-Za-z0-9&'’.-]*){0,3})(?=\s+(?:is|was|for|geur|is\s+een)\b|[.,;]|$)",
             description,
         )
         if match:
