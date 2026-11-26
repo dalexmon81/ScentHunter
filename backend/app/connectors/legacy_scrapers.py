@@ -12,7 +12,7 @@ import time
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 
@@ -33,6 +33,7 @@ SCRAPER_MODULES = {
     "sabina": "scrapers.sabina.scraper",
     "easycosmetic": "scrapers.easycosmetic.scraper",
     "parfumzentrum": "scrapers.parfumzentrum.scraper",
+    "orioudh": "scrapers.orioudh.scraper",
 }
 
 
@@ -156,11 +157,20 @@ class LegacyScraperConnector(StoreConnector):
                     continue
                 if len(url) > 240:
                     continue
-                if url in seen:
+
+                # Shopify exposes one product URL for all variants. Keep each
+                # Orioudh variant addressable with its stable Shopify variant ID.
+                variant_id = _identity_value(_nested(row, "identity", "store_variant_id"))
+                external_id = url
+                if self.store_key == "orioudh" and variant_id not in (None, ""):
+                    external_id = urlunparse(parsed._replace(
+                        query=urlencode({"variant": str(variant_id)}), fragment=""
+                    ))
+                if external_id in seen:
                     continue
-                seen.add(url)
+                seen.add(external_id)
                 record = dict(row)
-                record["external_product_id"] = url
+                record["external_product_id"] = external_id
                 record["product_url"] = url
                 rows.append(record)
         return tuple(rows)
@@ -212,6 +222,37 @@ class LegacyScraperConnector(StoreConnector):
             raise ValueError("external_product_id must be an absolute product URL")
         session = requests.Session()
         try:
+            if self.store_key == "orioudh":
+                if parsed.scheme != "https" or parsed.hostname not in {"orioudh.com", "www.orioudh.com"}:
+                    raise ValueError("orioudh external_product_id must use the canonical HTTPS retailer host")
+                variant_ids = parse_qs(parsed.query).get("variant", [])
+                product_url = urlunparse(parsed._replace(query="", fragment=""))
+                parser_url = (
+                    product_url + "?variant=" + variant_ids[0]
+                    if variant_ids else product_url
+                )
+                parser = getattr(self._scraper, "extract_product_page", None)
+                if not callable(parser):
+                    raise RuntimeError("orioudh scraper has no product-page parser")
+                records = parser(session, parser_url, query="")
+                if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
+                    raise ConnectorUnavailable("orioudh product parser returned malformed variant results")
+                if variant_ids:
+                    wanted = str(variant_ids[0])
+                    matches = [
+                        row for row in records
+                        if isinstance(row, Mapping)
+                        and str(_identity_value(_nested(row, "identity", "store_variant_id")) or "") == wanted
+                    ]
+                    if len(matches) != 1:
+                        raise LookupError("orioudh_shopify_variant_not_found_or_ambiguous")
+                    return dict(matches[0])
+                if len(records) == 1 and isinstance(records[0], Mapping):
+                    return dict(records[0])
+                if records:
+                    raise ValueError("orioudh variant ID is required when a product has multiple variants")
+                return None
+
             parser = getattr(self._scraper, "extract_product_page", None)
             if self.store_key == "easycosmetic":
                 if not callable(parser):
@@ -285,10 +326,29 @@ class LegacyScraperConnector(StoreConnector):
         raw_data = raw.get("raw_data") if isinstance(raw.get("raw_data"), Mapping) else {}
         jsonld = raw_data.get("jsonld") or raw_data.get("jsonld_product") or {}
         currency = str(offer.get("currency") or raw.get("currency") or "EUR").strip().upper()
-        explicit_currency = raw.get("currency_explicit") is True or _jsonld_has_currency(jsonld)
         price = _price_decimal(offer.get("price") if offer.get("price") is not None else raw.get("price_num"))
         if price is None:
             price = _price_decimal(raw.get("price"))
+        evidence = raw_data.get("currency_evidence")
+        evidence_source = evidence.get("source") if isinstance(evidence, Mapping) else None
+        evidence_price = _price_decimal(evidence.get("matched_price")) if isinstance(evidence, Mapping) else None
+        evidence_currency = str(evidence.get("currency") or "").strip().upper() if isinstance(evidence, Mapping) else ""
+        accepted_evidence_sources = {
+            "jsonld_offer_price",
+            "product_price_meta",
+            "product_price_display",
+        }
+        currency_evidence_valid = (
+            evidence_source in accepted_evidence_sources
+            and evidence_currency == currency
+            and price is not None
+            and evidence_price == price
+        )
+        explicit_currency = (
+            raw.get("currency_explicit") is True
+            or _jsonld_has_currency(jsonld)
+            or currency_evidence_valid
+        )
         url = self._product_url(raw)
         return {
             "external_product_id": str(raw.get("external_product_id") or url),

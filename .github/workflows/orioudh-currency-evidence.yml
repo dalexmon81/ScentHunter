@@ -1,0 +1,31 @@
+name: Orioudh currency evidence (read-only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/scrapers/orioudh/**"
+      - "backend/app/connectors/legacy_scrapers.py"
+      - "backend/scripts/check_orioudh_currency_evidence.py"
+      - ".github/workflows/orioudh-currency-evidence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  orioudh-currency-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scraper dependencies
+        run: python -m pip install requests==2.32.3 beautifulsoup4==4.12.3
+      - name: Verify live price-currency evidence (public GET only)
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_orioudh_currency_evidence.py
