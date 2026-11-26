@@ -178,7 +178,7 @@ class ParfumCityScraperTests(unittest.TestCase):
                 size_ml=150,
             )
             result = matcher.match(offer)
-            self.assertIs(result.status, MatchStatus.MATCHED)
+            self.assertIs(result.status, MatchStatus.MATCHED, result.reason)
             self.assertEqual(result.canonical_product_id, "SH-LB-LE")
             self.assertEqual(result.canonical_variant_id, "VAR-LB-LE-150")
 
