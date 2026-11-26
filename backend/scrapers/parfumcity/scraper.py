@@ -138,14 +138,17 @@ def _discover_products_json(session, query, urls, seen, product_cache):
         if not r:
             return
         try:
-            data = r.json()
+            try:
+                data = r.json()
+            except (ValueError, TypeError) as exc:
+                raise StoreRequestError("error", f"ParfumCity products.json returned invalid JSON: {exc}") from exc
             products = data.get("products") if isinstance(data, dict) else None
-        except (ValueError, TypeError):
-            products = None
+            if not isinstance(products, list):
+                raise StoreRequestError("error", "ParfumCity products.json returned no products list")
         finally:
             r.close()
 
-        if not isinstance(products, list) or not products:
+        if not products:
             return
 
         for p in products:
@@ -209,9 +212,16 @@ def discover(session, query):
         ):
             try:
                 r = _get(session, BASE_URL + "/search/suggest.json", params)
-                discovery_verified = True
                 try:
-                    data = r.json()
+                    try:
+                        data = r.json()
+                    except (ValueError, TypeError) as exc:
+                        errors.append({"source": "shopify_predictive_search", "status": "invalid_json", "error": f"{type(exc).__name__}: {exc}"})
+                        continue
+                    if not isinstance(data, dict):
+                        errors.append({"source": "shopify_predictive_search", "status": "invalid_json", "error": "response was not a JSON object"})
+                        continue
+                    discovery_verified = True
                     products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
                     for p in products:
                         if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
