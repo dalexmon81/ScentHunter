@@ -54,6 +54,22 @@ def _gtin(value: Any) -> str | None:
     return digits if expected == int(digits[-1]) else None
 
 
+def _fragrance_name_from_title(title: str, brand: str | None) -> str:
+    """Remove an explicit retailer brand attribution before exact name matching.
+
+    Some Shopify titles use "Fragrance by Brand" rather than prefixing the
+    brand. Only the literal, source-supplied brand phrase is removed.
+    """
+    normalized_title = normalize_text(title)
+    normalized_brand = normalize_brand(brand or "")
+    if normalized_brand and normalized_title.startswith(normalized_brand + " "):
+        return normalized_title[len(normalized_brand) + 1:]
+    attribution = f" by {normalized_brand}" if normalized_brand else ""
+    if attribution and attribution in f" {normalized_title} ":
+        normalized_title = normalized_title.split(attribution, 1)[0].strip()
+    return normalized_title
+
+
 def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: dict) -> list[str]:
     """Reject a valid GTIN when supplied product metadata contradicts its variant."""
     fragrance = session.get(Fragrance, variant.fragrance_id)
@@ -65,11 +81,7 @@ def _gtin_metadata_conflicts(session: Session, variant: ProductVariant, record: 
     brand_value = record.get("brand") or record.get("brand_raw")
     fragrance_value = record.get("fragrance")
     if not fragrance_value and title:
-        normalized_title = normalize_text(str(title))
-        normalized_brand = normalize_brand(str(brand_value or ""))
-        if normalized_brand and normalized_title.startswith(normalized_brand + " "):
-            normalized_title = normalized_title[len(normalized_brand) + 1:]
-        fragrance_value = normalized_title
+        fragrance_value = _fragrance_name_from_title(str(title), str(brand_value or ""))
 
     identity = build_identity(
         brand=str(brand_value) if brand_value else None,
@@ -140,11 +152,7 @@ def resolve_canonical_variant(
     brand_value = record.get("brand") or record.get("brand_raw")
     fragrance_value = record.get("fragrance")
     if not fragrance_value and title:
-        normalized_title = normalize_text(str(title))
-        normalized_brand = normalize_brand(str(brand_value or ""))
-        if normalized_title.startswith(normalized_brand + " "):
-            normalized_title = normalized_title[len(normalized_brand) + 1:]
-        fragrance_value = normalized_title
+        fragrance_value = _fragrance_name_from_title(str(title), str(brand_value or ""))
     # Some retailer feeds expose concentration only in the product title
     # (for example "... Eau de Parfum") rather than a dedicated field.
     # Derive it from that explicit source text before declaring the identity
