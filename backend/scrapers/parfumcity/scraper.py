@@ -1,6 +1,6 @@
 import json
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,8 +22,8 @@ STOPWORDS = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
 def clean(v): return re.sub(r"\s+", " ", str(v or "")).strip()
 def norm(v):
     text = re.sub(r"[^a-z0-9]+", " ", clean(v).lower())
-    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
-    return re.sub(r"\\s+", " ", text).strip()
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def tokens(q):
@@ -34,10 +34,11 @@ def matches(text, q):
     wanted = tokens(q)
     if not wanted:
         return False
-    hay = set(norm(text).split())
+    hay_tokens = norm(text).split()
+    hay = set(hay_tokens)
     if all(x in hay for x in wanted):
         return True
-    compact_hay = "".join(hay)
+    compact_hay = "".join(hay_tokens)
     compact_wanted = "".join(wanted)
     return bool(compact_wanted and compact_wanted in compact_hay)
 
@@ -275,9 +276,81 @@ def product_json(session, url):
     finally: r.close()
 
 
-def make_item(product, variant, url, query):
+def _matching_currency_evidence(html, price):
+    """Return currency proof only when page metadata ties it to this exact price."""
+    if not html or price is None:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    meta = {}
+    for node in soup.select("meta[property], meta[name]"):
+        key = clean(node.get("property") or node.get("name")).lower()
+        value = clean(node.get("content"))
+        if key and value:
+            meta[key] = value
+
+    currency = (
+        meta.get("product:price:currency")
+        or meta.get("og:price:currency")
+        or meta.get("currency")
+    )
+    amount = (
+        meta.get("product:price:amount")
+        or meta.get("og:price:amount")
+        or meta.get("product:price")
+    )
+    if currency and parse_price(amount) == price:
+        return {
+            "currency": currency.upper(),
+            "source": "product_price_meta",
+            "displayed_price": amount,
+            "matched_price": f"{price:.2f}",
+        }
+
+    def walk(value):
+        if isinstance(value, dict):
+            offer = value.get("offers")
+            if isinstance(offer, list):
+                for child in offer:
+                    found = walk(child)
+                    if found:
+                        return found
+            elif isinstance(offer, dict):
+                found = walk(offer)
+                if found:
+                    return found
+            candidate_currency = value.get("priceCurrency")
+            candidate_price = value.get("price")
+            if candidate_currency and parse_price(candidate_price) == price:
+                return {
+                    "currency": str(candidate_currency).upper(),
+                    "source": "jsonld_offer_price",
+                    "displayed_price": str(candidate_price),
+                    "matched_price": f"{price:.2f}",
+                }
+            for child in value.values():
+                found = walk(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = walk(child)
+                if found:
+                    return found
+        return None
+
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            evidence = walk(json.loads(script.string or script.get_text()))
+        except (TypeError, ValueError):
+            continue
+        if evidence:
+            return evidence
+    return None
+
+
+def make_item(product, variant, url, query, html=None):
     name = clean(product.get("title")); variant_name = clean(variant.get("title"))
-    if not matches(f"{name} {product.get('vendor','')} {url}", query): return None
+    if query and not matches(f"{name} {product.get('vendor','')} {url}", query): return None
     source_name = name if not variant_name or variant_name.lower() == "default title" else f"{name} {variant_name}"
     p = parse_price(variant.get("price"))
     size = size_ml(variant_name, name)
@@ -288,6 +361,10 @@ def make_item(product, variant, url, query):
     if isinstance(image, dict): image = image.get("src") or image.get("url")
     if not image and product.get("images"): image = product["images"][0]
     image = urljoin(BASE_URL, str(image)) if image else None
+    currency_evidence = _matching_currency_evidence(html, p)
+    raw_data = {"product": product, "variant": variant}
+    if currency_evidence:
+        raw_data["currency_evidence"] = currency_evidence
     return {
         "store": STORE,
         "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
@@ -295,9 +372,33 @@ def make_item(product, variant, url, query):
         "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
-        "raw_data": {"product": product, "variant": variant},
+        "raw_data": raw_data,
         "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
+
+
+def extract_product_page(session, url, query=""):
+    """Fetch one Shopify product and preserve each exact variant identity."""
+    canonical_url = _canonical_product_url(url)
+    parsed = urlparse(canonical_url)
+    if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
+        raise ValueError("ParfumCity product URL must use the canonical HTTPS retailer host")
+    product = product_json(session, canonical_url)
+    if not product:
+        return []
+    response = _get(session, canonical_url)
+    try:
+        html = response.text or ""
+    finally:
+        response.close()
+    items = []
+    for variant in product.get("variants") or []:
+        if not isinstance(variant, dict):
+            continue
+        item = make_item(product, variant, canonical_url, query, html=html)
+        if item:
+            items.append(item)
+    return items
 
 
 def _search_report(query):
