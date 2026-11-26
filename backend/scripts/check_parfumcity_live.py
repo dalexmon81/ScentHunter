@@ -81,6 +81,15 @@ def main() -> int:
             "availability": extracted.get("availability"),
             "url": url,
             "currency_evidence_source": evidence.get("source"),
+            "shopify_vendor": (extracted.get("raw_data") or {}).get("product", {}).get("vendor"),
+            "shopify_product_type": (extracted.get("raw_data") or {}).get("product", {}).get("product_type"),
+            "shopify_tags": (extracted.get("raw_data") or {}).get("product", {}).get("tags"),
+            "description_text": " ".join(
+                __import__("bs4").BeautifulSoup(
+                    str((extracted.get("raw_data") or {}).get("product", {}).get("body_html") or ""),
+                    "html.parser",
+                ).stripped_strings
+            )[:1000],
         }
         print("PARFUMCITY_LIVE_AUDIT=" + json.dumps(result, ensure_ascii=False))
         return 0
