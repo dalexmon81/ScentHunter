@@ -25,6 +25,8 @@ STORE_SLUGS = {
     "sabina-es": "sabina",
     "easycosmetic-de": "easycosmetic",
     "parfumzentrum-de": "parfumzentrum",
+    # Controlled initial production activation: one explicitly verified seed query.
+    "orioudh": "orioudh",
 }
 
 SCRAPER_MODULES = {
