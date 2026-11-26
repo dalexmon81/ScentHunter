@@ -285,9 +285,11 @@ class LegacyScraperConnector(StoreConnector):
         except Exception as exc:
             request_error = getattr(self._scraper, "StoreRequestError", ())
             if request_error and isinstance(exc, request_error):
-                raise ConnectorUnavailable(
+                unavailable = ConnectorUnavailable(
                     f"{self.store_key} product endpoint unavailable: {type(exc).__name__}: {exc}"
-                ) from exc
+                )
+                unavailable.retry_after_seconds = getattr(exc, "retry_after_seconds", None)
+                raise unavailable from exc
             raise
         if isinstance(record, Mapping):
             enriched = dict(record)
