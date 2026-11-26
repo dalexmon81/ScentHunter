@@ -491,7 +491,6 @@ def _raw_offer(
     price = _price(variant.get("price"))
     # Preserve the variant query for the rendered page so currency evidence
     # is matched against the exact Shopify variant being fetched.
-    evidence_url = url
     evidence = _product_page_currency_evidence(session, evidence_url or url, price)
 
     return {
