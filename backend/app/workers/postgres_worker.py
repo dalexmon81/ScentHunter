@@ -8,6 +8,7 @@ import socket
 import time
 import traceback
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import select
 from app.models import Offer, Store
