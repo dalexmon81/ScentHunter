@@ -17,6 +17,8 @@ primary_region = "ams"
 [env]
   SCENTHUNTER_QUEUE_BACKEND = "postgres"
   SCENTHUNTER_CATALOG_REQUIRE_POSTGRESQL = "1"
+  # Controlled first ingestion: start with one known product; expand only after validation.
+  SCENTHUNTER_DISCOVERY_QUERIES_ORIOUDH = "Liquid Brun"
   # Preserve all pre-pilot queue rows but do not claim them; only newly created post-cutover jobs are eligible.
   SCENTHUNTER_QUEUE_MIN_CREATED_AT = "2026-11-23T08:27:00Z"
 
