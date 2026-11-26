@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   parfumcity:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, 'ParfumCity brand attribution') }}
+    # Production writes stay disabled unless an operator explicitly enables the repository variable.
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, 'ParfumCity brand attribution') && vars.SCENTHUNTER_PARFUMCITY_PILOT_APPROVED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
