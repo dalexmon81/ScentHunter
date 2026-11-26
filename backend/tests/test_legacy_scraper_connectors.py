@@ -48,7 +48,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(connector_key_for_store_slug(slug))
 
     async def test_factory_loads_all_existing_retailer_scraper_modules(self):
-        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum", "orioudh"):
+        for store_key in ("bplatz", "deloox", "sabina", "easycosmetic", "parfumzentrum", "orioudh", "parfumcity"):
             with self.subTest(store_key=store_key):
                 connector = build_legacy_connector(store_key)
                 self.assertEqual(connector.store_key, store_key)
@@ -287,6 +287,87 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
             await connector.fetch_product("https://example.com/products/liquid-brun?variant=101")
 
+
+
+    async def test_parfumcity_discovery_and_fetch_preserve_shopify_variant_identity(self):
+        product_url = "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
+        variants = []
+        for variant_id, sku, price, size in (
+            (301, "PC-301", 29.99, 100),
+            (302, "PC-302", 39.99, 150),
+        ):
+            variants.append({
+                "store": "ParfumCity",
+                "source": {
+                    "source_name": f"Liquid Brun French Avenue {size} ml",
+                    "source_brand": "French Avenue",
+                    "url": product_url,
+                },
+                "identity": {
+                    "sku": {"value": sku, "source": "shopify_variant"},
+                    "store_variant_id": {"value": variant_id, "source": "shopify_variant"},
+                },
+                "attributes": {
+                    "size_ml": {"value": size, "source": "product_variant"},
+                    "concentration": {"value": "Eau de Parfum", "source": "product_title"},
+                },
+                "offer": {"price": price, "currency": "EUR", "availability": "out_of_stock"},
+                "raw_data": {
+                    "currency_evidence": {
+                        "currency": "EUR",
+                        "source": "product_price_meta",
+                        "displayed_price": str(price),
+                        "matched_price": str(price),
+                    }
+                },
+                "name": "Liquid Brun French Avenue",
+                "brand": "French Avenue",
+                "price_num": price,
+                "url": product_url,
+                "available": False,
+            })
+
+        scraper = SimpleNamespace(
+            search_stream=lambda query: {
+                "status": "success", "verified": True, "results": variants,
+                "error": None, "details": {"count": len(variants)},
+            },
+            extract_product_page=lambda session, url, query: variants,
+        )
+        connector = LegacyScraperConnector("parfumcity", scraper)
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_QUERIES_PARFUMCITY": "Liquid Brun"
+        }):
+            products = await connector.discover_products(limit=10)
+
+        self.assertEqual(len(products), 2)
+        self.assertEqual(
+            [item.external_product_id for item in products],
+            [product_url + "?variant=301", product_url + "?variant=302"],
+        )
+        self.assertTrue(all(item.product_url == product_url for item in products))
+
+        first = await connector.fetch_product(products[0].external_product_id)
+        second = await connector.fetch_product(products[1].external_product_id)
+        self.assertEqual(first["identity"]["store_variant_id"]["value"], 301)
+        self.assertEqual(second["identity"]["store_variant_id"]["value"], 302)
+        self.assertEqual(first["external_product_id"], product_url + "?variant=301")
+        self.assertEqual(first["product_url"], product_url)
+        parsed = connector.parse_raw(first)
+        self.assertEqual(parsed["price"], "29.99")
+        self.assertEqual(parsed["currency"], "EUR")
+        self.assertTrue(parsed["currency_explicit"])
+        self.assertEqual(parsed["availability"], "out_of_stock")
+
+    async def test_parfumcity_fetch_rejects_non_retailer_hosts(self):
+        connector = LegacyScraperConnector(
+            "parfumcity",
+            SimpleNamespace(extract_product_page=lambda session, url, query: []),
+        )
+        with self.assertRaisesRegex(ValueError, "canonical HTTPS retailer host"):
+            await connector.fetch_product(
+                "https://example.com/products/liquid-brun?variant=301"
+            )
 
 if __name__ == "__main__":
     unittest.main()
