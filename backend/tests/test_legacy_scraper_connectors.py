@@ -234,6 +234,51 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         # Orioudh is not yet enabled as a scheduled production store.
         self.assertIsNone(connector_key_for_store_slug("orioudh"))
 
+    async def test_orioudh_currency_evidence_must_match_exact_price_and_currency(self):
+        connector = LegacyScraperConnector("orioudh", SimpleNamespace())
+        raw = {
+            "name": "Liquid Brun French Avenue 100 ml",
+            "url": "https://orioudh.com/products/liquid-brun",
+            "offer": {"price": 31.85, "currency": "EUR", "availability": "in_stock"},
+            "raw_data": {
+                "currency_evidence": {
+                    "currency": "EUR",
+                    "source": "product_price_display",
+                    "displayed_price": "31,85 €",
+                    "matched_price": "31.85",
+                }
+            },
+        }
+        parsed = connector.parse_raw(raw)
+        self.assertTrue(parsed["currency_explicit"])
+
+        wrong_price = dict(raw)
+        wrong_price["raw_data"] = {
+            "currency_evidence": {
+                "currency": "EUR",
+                "source": "product_price_display",
+                "displayed_price": "44,90 €",
+                "matched_price": "44.90",
+            }
+        }
+        self.assertFalse(connector.parse_raw(wrong_price)["currency_explicit"])
+
+        wrong_currency = dict(raw)
+        wrong_currency["offer"] = dict(raw["offer"], currency="USD")
+        self.assertFalse(connector.parse_raw(wrong_currency)["currency_explicit"])
+
+        untrusted_source = dict(raw)
+        untrusted_source["raw_data"] = {
+            "currency_evidence": {
+                "currency": "EUR",
+                "source": "hardcoded_default",
+                "displayed_price": "31,85 €",
+                "matched_price": "31.85",
+            }
+        }
+        self.assertFalse(connector.parse_raw(untrusted_source)["currency_explicit"])
+
+
     async def test_orioudh_variant_fetch_rejects_non_retailer_hosts(self):
         connector = LegacyScraperConnector(
             "orioudh",
