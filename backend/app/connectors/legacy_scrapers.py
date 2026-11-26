@@ -237,14 +237,22 @@ class LegacyScraperConnector(StoreConnector):
             raise ValueError("external_product_id must be an absolute product URL")
         session = requests.Session()
         try:
-            if self.store_key in {"orioudh", "parfumcity", "perfumemarket"}:
+            if self.store_key == "perfumemarket":
+                allowed_hosts = {
+                    "perfumemarket.eu", "www.perfumemarket.eu",
+                    "perfumemarket.nl", "www.perfumemarket.nl",
+                }
+                if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
+                    raise ValueError("perfumemarket external_product_id must use the canonical HTTPS retailer host")
+                parser = getattr(self._scraper, "extract_product_page", None)
+                if not callable(parser):
+                    raise RuntimeError("perfumemarket scraper has no product-page parser")
+                return parser(session, url, query="")
+
+            if self.store_key in {"orioudh", "parfumcity"}:
                 allowed_hosts = {
                     "orioudh": {"orioudh.com", "www.orioudh.com"},
                     "parfumcity": {"parfumcity.nl", "www.parfumcity.nl"},
-                    "perfumemarket": {
-                        "perfumemarket.eu", "www.perfumemarket.eu",
-                        "perfumemarket.nl", "www.perfumemarket.nl",
-                    },
                 }[self.store_key]
                 if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
                     raise ValueError(f"{self.store_key} external_product_id must use the canonical HTTPS retailer host")
