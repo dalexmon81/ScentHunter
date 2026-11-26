@@ -201,6 +201,31 @@ class ParfumCityScraperTests(unittest.TestCase):
         self.assertEqual(records[0]["identity"]["store_variant_id"]["value"], 301)
         self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
 
+    def test_invalid_search_json_after_product_429_preserves_blocked_error(self):
+        class InvalidSearchJsonResponse(FakeResponse):
+            def json(self):
+                raise json.JSONDecodeError("not JSON", "<html>challenge</html>", 0)
+
+        class InvalidFallbackSession(FakeSession):
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith(".js"):
+                    return FakeResponse(text="rate limited", status_code=429)
+                if url.endswith("/search.json"):
+                    return InvalidSearchJsonResponse(text="<html>challenge</html>")
+                return FakeResponse(text=self.html)
+
+        session = InvalidFallbackSession(self.product, self.html)
+        with self.assertRaises(scraper.StoreRequestError) as raised:
+            scraper.extract_product_page(
+                session,
+                "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml",
+            )
+
+        self.assertEqual(raised.exception.status, "blocked")
+        self.assertIn("HTTP 429", str(raised.exception))
+        self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
+
     def test_empty_predictive_variants_do_not_short_circuit_full_search_json(self):
         class DiscoverySession:
             def __init__(self):
