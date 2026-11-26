@@ -466,6 +466,7 @@ def _product_page_currency_evidence(session, url: str, expected_price):
 
 
 def _raw_offer(
+    session: requests.Session,
     product: Dict[str, Any],
     variant: Dict[str, Any],
     url: str,
@@ -571,7 +572,7 @@ def _extract_product(
     for variant in variants:
         if not isinstance(variant, dict):
             continue
-        item = _raw_offer(product, variant, canonical_url, evidence_url=url)
+        item = _raw_offer(session, product, variant, canonical_url, evidence_url=url)
         if item["offer"]["price"] is None:
             continue
         results.append(item)
