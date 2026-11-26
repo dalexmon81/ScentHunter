@@ -64,6 +64,12 @@ def main() -> int:
             fail("currency evidence does not match the exact extracted price")
         if extracted.get("availability") not in {"in_stock", "out_of_stock"}:
             fail(f"availability is not explicit: {extracted.get('availability')}")
+        if extracted.get("brand") != "French Avenue":
+            fail(f"manufacturer brand attribution is incorrect: {extracted.get('brand')!r}")
+        if extracted.get("size_ml") != 150 or extracted.get("concentration") != "Extrait de Parfum":
+            fail(f"variant identity is not the expected Liquid Brun Limited Edition 150 ml Extrait: size={extracted.get('size_ml')} concentration={extracted.get('concentration')}")
+        if extracted.get("name") != "Liquid Brun Limited Edition Extrait de Parfum":
+            fail(f"canonical match name is not normalized exactly: {extracted.get('name')!r}")
         url = str(extracted.get("url") or "")
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
@@ -74,13 +80,25 @@ def main() -> int:
             "discovery_candidates": len(discovered),
             "product": extracted.get("name"),
             "brand": extracted.get("brand"),
+            "brand_source": extracted.get("brand_source"),
             "variant_id": extracted.get("identity", {}).get("store_variant_id", {}).get("value"),
             "size_ml": extracted.get("size_ml"),
+            "concentration": extracted.get("concentration"),
+            "canonical_match_name": extracted.get("name"),
             "price": str(price),
             "currency": offer.get("currency"),
             "availability": extracted.get("availability"),
             "url": url,
             "currency_evidence_source": evidence.get("source"),
+            "shopify_vendor": (extracted.get("raw_data") or {}).get("product", {}).get("vendor"),
+            "shopify_product_type": (extracted.get("raw_data") or {}).get("product", {}).get("product_type"),
+            "shopify_tags": (extracted.get("raw_data") or {}).get("product", {}).get("tags"),
+            "description_text": " ".join(
+                __import__("bs4").BeautifulSoup(
+                    str((extracted.get("raw_data") or {}).get("product", {}).get("body_html") or ""),
+                    "html.parser",
+                ).stripped_strings
+            )[:1000],
         }
         print("PARFUMCITY_LIVE_AUDIT=" + json.dumps(result, ensure_ascii=False))
         return 0

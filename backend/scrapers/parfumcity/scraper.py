@@ -241,7 +241,7 @@ def discover(session, query):
                     if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
                         canonical = _canonical_product_url(u)
                         _add_candidate(u, urls, seen)
-                        if isinstance(p.get("variants"), list) and p.get("variants"):
+                        if isinstance(p.get("variants"), list):
                             product_cache[canonical] = p
             finally:
                 r.close()
@@ -309,7 +309,7 @@ def product_from_search_json(session, url):
             return None
         for product in products:
             if isinstance(product, dict) and clean(product.get("handle")) == handle:
-                return product if isinstance(product.get("variants"), list) and product.get("variants") else None
+                return product if isinstance(product.get("variants"), list) else None
         return None
     finally:
         r.close()
@@ -386,6 +386,66 @@ def _matching_currency_evidence(html, price):
     return None
 
 
+def _product_brand(product, html=None):
+    """Prefer manufacturer evidence; never mistake the Shopify retailer vendor for the brand."""
+    vendor = clean(product.get("vendor"))
+    if vendor and norm(vendor) not in {"parfum city", "parfumcity"}:
+        return vendor, "shopify_vendor"
+
+    tags = product.get("tags") or []
+    if isinstance(tags, str):
+        tags = [item.strip() for item in tags.split(",")]
+    for tag in tags:
+        candidate = clean(tag)
+        if candidate and norm(candidate) not in {"parfum city", "parfumcity"} and len(candidate.split()) <= 4:
+            if norm(candidate) in norm(product.get("title")):
+                return candidate, "shopify_product_tag"
+
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+
+        def find_brand(value):
+            if isinstance(value, dict):
+                brand = value.get("brand")
+                if isinstance(brand, str) and brand.strip() and norm(brand) not in {"parfum city", "parfumcity"}:
+                    return brand.strip()
+                if (
+                    isinstance(brand, dict)
+                    and isinstance(brand.get("name"), str)
+                    and brand["name"].strip()
+                    and norm(brand["name"]) not in {"parfum city", "parfumcity"}
+                ):
+                    return brand["name"].strip()
+                for child in value.values():
+                    found = find_brand(child)
+                    if found:
+                        return found
+            elif isinstance(value, list):
+                for child in value:
+                    found = find_brand(child)
+                    if found:
+                        return found
+            return None
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                candidate = find_brand(json.loads(script.string or script.get_text()))
+            except (TypeError, ValueError):
+                candidate = None
+            if candidate:
+                return candidate, "jsonld_product_brand"
+
+        description = " ".join(soup.stripped_strings)
+        match = re.search(
+            r"\b(?:by|van)\s+([A-Z][A-Za-z0-9&'’.-]*(?:\s+[A-Z][A-Za-z0-9&'’.-]*){0,3})(?=\s+(?:is|was|for|geur|is\s+een)\b|[.,;]|$)",
+            description,
+        )
+        if match:
+            return clean(match.group(1)), "product_description"
+
+    return None, None
+
+
 def make_item(product, variant, url, query, html=None):
     name = clean(product.get("title")); variant_name = clean(variant.get("title"))
     if query and not matches(f"{name} {product.get('vendor','')} {url}", query): return None
@@ -393,11 +453,6 @@ def make_item(product, variant, url, query, html=None):
     p = parse_price(variant.get("price"))
     size = size_ml(variant_name, name)
     conc = concentration(variant_name, name)
-    concentration_source = "product_title"
-    if not conc and product.get("product_type"):
-        conc = concentration(product.get("product_type"))
-        if conc:
-            concentration_source = "product_type"
     available = variant.get("available")
     stock = "in_stock" if available is True else "out_of_stock" if available is False else "unknown"
     image = product.get("featured_image")
@@ -405,109 +460,28 @@ def make_item(product, variant, url, query, html=None):
     if not image and product.get("images"): image = product["images"][0]
     image = urljoin(BASE_URL, str(image)) if image else None
     currency_evidence = _matching_currency_evidence(html, p)
+    brand, brand_source = _product_brand(product, html)
+    match_name = name
+    if brand:
+        match_name = re.sub(re.escape(brand), " ", match_name, flags=re.I)
+    match_name = re.sub(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l)\b", " ", match_name, flags=re.I)
+    if conc == "Extrait de Parfum" and not re.search(r"extrait\s+de\s+parfum", match_name, re.I):
+        match_name = re.sub(r"\bextrait\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
+    match_name = clean(match_name)
     raw_data = {"product": product, "variant": variant}
     if currency_evidence:
         raw_data["currency_evidence"] = currency_evidence
     return {
         "store": STORE,
-        "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
+        "source": {"source_name": source_name, "source_brand": brand, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
-        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": concentration_source} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
+        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
-        "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
+        "name": match_name, "brand": brand, "brand_source": brand_source, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
 
-
-def _product_from_html(html, url):
-    """Build a single exact Shopify variant from page JSON-LD and its selected variant ID."""
-    soup = BeautifulSoup(html or "", "html.parser")
-
-    def find_product(value):
-        if isinstance(value, dict):
-            kind = value.get("@type")
-            if kind == "Product" or isinstance(kind, list) and "Product" in kind:
-                return value
-            for child in value.values():
-                found = find_product(child)
-                if found:
-                    return found
-        elif isinstance(value, list):
-            for child in value:
-                found = find_product(child)
-                if found:
-                    return found
-        return None
-
-    for script in soup.select('script[type="application/json"], script[id*="ProductJson"]'):
-        try:
-            embedded = json.loads(script.string or script.get_text())
-        except (TypeError, ValueError):
-            continue
-        if isinstance(embedded, dict) and isinstance(embedded.get("variants"), list) and embedded["variants"]:
-            return embedded
-
-    product_data = None
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            product_data = find_product(json.loads(script.string or script.get_text()))
-        except (TypeError, ValueError):
-            continue
-        if product_data:
-            break
-    if not product_data:
-        return None
-
-    selected = soup.select_one('input[name="id"][value]')
-    variant_id = selected.get("value") if selected else None
-    if not variant_id:
-        selected_option = soup.select_one('select[name="id"] option[selected][value]')
-        if selected_option:
-            variant_id = selected_option.get("value")
-    if not variant_id:
-        options = soup.select('select[name="id"] option[value]')
-        if len(options) == 1:
-            variant_id = options[0].get("value")
-
-    offers = product_data.get("offers")
-    if isinstance(offers, list):
-        offers = offers[0] if len(offers) == 1 else None
-    if not isinstance(offers, dict) or not variant_id or offers.get("price") in (None, ""):
-        return None
-    availability = str(offers.get("availability") or "")
-    if "InStock" in availability:
-        available = True
-    elif "OutOfStock" in availability or "SoldOut" in availability:
-        available = False
-    else:
-        return None
-
-    brand = product_data.get("brand")
-    if isinstance(brand, dict):
-        brand = brand.get("name")
-    heading = soup.select_one("h1")
-    title = clean(product_data.get("name")) or clean(heading.get_text(" ", strip=True) if heading else "")
-    if not title:
-        return None
-    meta_type = soup.select_one('meta[property="product:category"], meta[name="product:type"]')
-    product_type = clean(meta_type.get("content")) if meta_type else clean(product_data.get("category"))
-    variant = {
-        "id": str(variant_id),
-        "sku": product_data.get("sku"),
-        "title": "Default Title",
-        "price": offers.get("price"),
-        "available": available,
-    }
-    return {
-        "id": product_data.get("productID") or product_data.get("sku"),
-        "title": title,
-        "vendor": clean(brand),
-        "product_type": product_type,
-        "handle": urlparse(_canonical_product_url(url)).path.rstrip("/").split("/")[-1],
-        "variants": [variant],
-        "images": [product_data.get("image")] if product_data.get("image") else [],
-    }
 
 def extract_product_page(session, url, query=""):
     """Fetch one Shopify product and preserve each exact variant identity."""
@@ -515,13 +489,6 @@ def extract_product_page(session, url, query=""):
     parsed = urlparse(canonical_url)
     if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
         raise ValueError("ParfumCity product URL must use the canonical HTTPS retailer host")
-    response = _get(session, canonical_url)
-    try:
-        html = response.text or ""
-    finally:
-        response.close()
-
-    product = None
     try:
         product = product_json(session, canonical_url)
     except StoreRequestError as exc:
@@ -529,13 +496,14 @@ def extract_product_page(session, url, query=""):
             raise
         product = product_from_search_json(session, canonical_url)
         if not product:
-            product = _product_from_html(html, canonical_url)
-            if not product:
-                raise exc
-    if not product or not product.get("variants"):
-        product = _product_from_html(html, canonical_url)
+            raise exc
     if not product:
         return []
+    response = _get(session, canonical_url)
+    try:
+        html = response.text or ""
+    finally:
+        response.close()
     items = []
     for variant in product.get("variants") or []:
         if not isinstance(variant, dict):
@@ -567,22 +535,14 @@ def _search_report(query):
                             raise
                         data = product_from_search_json(session, url)
                         if not data:
-                            data = None
-                html = ""
-                if not data or not data.get("variants"):
-                    response = _get(session, url)
-                    try:
-                        html = response.text or ""
-                    finally:
-                        response.close()
-                    data = _product_from_html(html, url) or data
-                if not data or not data.get("variants"):
-                    fetch_errors.append({"status": "error", "url": url, "error": "no_variant_data_from_shopify_json_or_product_html"})
+                            raise exc
+                if not data:
+                    fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
                     continue
                 for variant in data.get("variants") or []:
                     if not isinstance(variant, dict):
                         continue
-                    item = make_item(data, variant, url, query, html=html)
+                    item = make_item(data, variant, url, query)
                     if not item:
                         continue
                     key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
