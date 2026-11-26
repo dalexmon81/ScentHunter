@@ -431,6 +431,20 @@ def make_item(product, variant, url, query, html=None):
         conc = concentration(product.get("product_type"))
         if conc:
             concentration_source = "product_type"
+    # Keep the source title intact in provenance, but emit a canonical-ready
+    # name with retailer brand attribution, size and concentration separated.
+    match_name = name
+    if brand:
+        match_name = re.sub(re.escape(brand), " ", match_name, flags=re.I)
+    match_name = re.sub(
+        r"\\s+\\d+(?:[.,]\\d+)?\\s*(?:ml|cl|dl|l)\\b",
+        " ",
+        match_name,
+        flags=re.I,
+    )
+    if conc == "Extrait de Parfum" and not re.search(r"extrait\\s+de\\s+parfum", match_name, re.I):
+        match_name = re.sub(r"\\bextrait\\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
+    match_name = clean(match_name)
     available = variant.get("available")
     stock = "in_stock" if available is True else "out_of_stock" if available is False else "unknown"
     image = product.get("featured_image")
@@ -449,7 +463,7 @@ def make_item(product, variant, url, query, html=None):
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
-        "name": name, "brand": brand, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
+        "name": match_name, "brand": brand, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
 
 
