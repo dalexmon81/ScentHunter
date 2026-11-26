@@ -27,6 +27,7 @@ STORE_SLUGS = {
     "parfumzentrum-de": "parfumzentrum",
     # Controlled initial production activation: one explicitly verified seed query.
     "orioudh": "orioudh",
+    "parfumcity-nl": "parfumcity",
 }
 
 SCRAPER_MODULES = {
@@ -36,6 +37,7 @@ SCRAPER_MODULES = {
     "easycosmetic": "scrapers.easycosmetic.scraper",
     "parfumzentrum": "scrapers.parfumzentrum.scraper",
     "orioudh": "scrapers.orioudh.scraper",
+    "parfumcity": "scrapers.parfumcity.scraper",
 }
 
 
@@ -161,10 +163,10 @@ class LegacyScraperConnector(StoreConnector):
                     continue
 
                 # Shopify exposes one product URL for all variants. Keep each
-                # Orioudh variant addressable with its stable Shopify variant ID.
+                # each Shopify variant addressable with its stable variant ID.
                 variant_id = _identity_value(_nested(row, "identity", "store_variant_id"))
                 external_id = url
-                if self.store_key == "orioudh" and variant_id not in (None, ""):
+                if self.store_key in {"orioudh", "parfumcity"} and variant_id not in (None, ""):
                     external_id = urlunparse(parsed._replace(
                         query=urlencode({"variant": str(variant_id)}), fragment=""
                     ))
@@ -224,9 +226,10 @@ class LegacyScraperConnector(StoreConnector):
             raise ValueError("external_product_id must be an absolute product URL")
         session = requests.Session()
         try:
-            if self.store_key == "orioudh":
-                if parsed.scheme != "https" or parsed.hostname not in {"orioudh.com", "www.orioudh.com"}:
-                    raise ValueError("orioudh external_product_id must use the canonical HTTPS retailer host")
+            if self.store_key in {"orioudh", "parfumcity"}:
+                allowed_hosts = {"orioudh.com", "www.orioudh.com"} if self.store_key == "orioudh" else {"parfumcity.nl", "www.parfumcity.nl"}
+                if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
+                    raise ValueError(f"{self.store_key} external_product_id must use the canonical HTTPS retailer host")
                 variant_ids = parse_qs(parsed.query).get("variant", [])
                 product_url = urlunparse(parsed._replace(query="", fragment=""))
                 parser_url = (
@@ -235,10 +238,10 @@ class LegacyScraperConnector(StoreConnector):
                 )
                 parser = getattr(self._scraper, "extract_product_page", None)
                 if not callable(parser):
-                    raise RuntimeError("orioudh scraper has no product-page parser")
+                    raise RuntimeError(f"{self.store_key} scraper has no product-page parser")
                 records = parser(session, parser_url, query="")
                 if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
-                    raise ConnectorUnavailable("orioudh product parser returned malformed variant results")
+                    raise ConnectorUnavailable(f"{self.store_key} product parser returned malformed variant results")
                 if variant_ids:
                     wanted = str(variant_ids[0])
                     matches = [
@@ -247,12 +250,12 @@ class LegacyScraperConnector(StoreConnector):
                         and str(_identity_value(_nested(row, "identity", "store_variant_id")) or "") == wanted
                     ]
                     if len(matches) != 1:
-                        raise LookupError("orioudh_shopify_variant_not_found_or_ambiguous")
+                        raise LookupError(f"{self.store_key}_shopify_variant_not_found_or_ambiguous")
                     return dict(matches[0])
                 if len(records) == 1 and isinstance(records[0], Mapping):
                     return dict(records[0])
                 if records:
-                    raise ValueError("orioudh variant ID is required when a product has multiple variants")
+                    raise ValueError(f"{self.store_key} variant ID is required when a product has multiple variants")
                 return None
 
             parser = getattr(self._scraper, "extract_product_page", None)
