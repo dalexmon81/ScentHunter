@@ -451,7 +451,14 @@ def _search_report(query):
             try:
                 data = product_cache.get(url)
                 if data is None:
-                    data = product_json(session, url)
+                    try:
+                        data = product_json(session, url)
+                    except StoreRequestError as exc:
+                        if exc.status != "blocked":
+                            raise
+                        data = product_from_search_json(session, url)
+                        if not data:
+                            raise exc
                 if not data:
                     fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
                     continue
