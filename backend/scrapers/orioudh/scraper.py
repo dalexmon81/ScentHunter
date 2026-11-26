@@ -3,7 +3,7 @@ import re
 import html
 from typing import List, Dict, Optional, Any
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import parse_qs, quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -471,7 +471,7 @@ def _raw_offer(
     variant: Dict[str, Any],
     url: str,
     *,
-    evidence_url: Optional[str] = None,
+    currency_evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     product_name = _clean(product.get("title"))
     variant_name = _clean(variant.get("title"))
@@ -489,10 +489,6 @@ def _raw_offer(
     concentration = _concentration(variant_name, product_name)
     gender = _gender(variant_name, product_name)
     price = _price(variant.get("price"))
-    # Preserve the variant query for the rendered page so currency evidence
-    # is matched against the exact Shopify variant being fetched.
-    evidence = _product_page_currency_evidence(session, evidence_url or url, price)
-
     return {
         "store": STORE,
         "source": {
@@ -537,7 +533,7 @@ def _raw_offer(
         "raw_data": {
             "product": product,
             "variant": variant,
-            "currency_evidence": evidence,
+            "currency_evidence": currency_evidence,
         },
         # Compatibility fields for the current API during migration.
         "name": source_name,
@@ -567,11 +563,37 @@ def _extract_product(
     if not isinstance(variants, list):
         return []
 
+    selected_ids = parse_qs(url.split("?", 1)[1] if "?" in url else "").get("variant", [])
+    selected_variant_id = str(selected_ids[0]) if selected_ids else None
+    # Without an explicit variant selector, Shopify may render its default
+    # variant. Do not attribute that page's displayed price to every variant.
+    selected_variants = [
+        variant for variant in variants
+        if isinstance(variant, dict)
+        and selected_variant_id is not None
+        and str(variant.get("id")) == selected_variant_id
+    ]
+    if selected_variant_id is None and len(variants) == 1 and isinstance(variants[0], dict):
+        selected_variants = [variants[0]]
+
+    evidence_by_variant = {}
+    if len(selected_variants) == 1:
+        selected = selected_variants[0]
+        evidence_by_variant[str(selected.get("id"))] = _product_page_currency_evidence(
+            session, url, _price(selected.get("price"))
+        )
+
     results = []
     for variant in variants:
         if not isinstance(variant, dict):
             continue
-        item = _raw_offer(session, product, variant, canonical_url, evidence_url=url)
+        item = _raw_offer(
+            session,
+            product,
+            variant,
+            canonical_url,
+            currency_evidence=evidence_by_variant.get(str(variant.get("id"))),
+        )
         if item["offer"]["price"] is None:
             continue
         results.append(item)
