@@ -420,6 +420,94 @@ def make_item(product, variant, url, query, html=None):
     }
 
 
+def _product_from_html(html, url):
+    """Build a single exact Shopify variant from page JSON-LD and its selected variant ID."""
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    def find_product(value):
+        if isinstance(value, dict):
+            kind = value.get("@type")
+            if kind == "Product" or isinstance(kind, list) and "Product" in kind:
+                return value
+            for child in value.values():
+                found = find_product(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_product(child)
+                if found:
+                    return found
+        return None
+
+    for script in soup.select('script[type="application/json"], script[id*="ProductJson"]'):
+        try:
+            embedded = json.loads(script.string or script.get_text())
+        except (TypeError, ValueError):
+            continue
+        if isinstance(embedded, dict) and isinstance(embedded.get("variants"), list) and embedded["variants"]:
+            return embedded
+
+    product_data = None
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            product_data = find_product(json.loads(script.string or script.get_text()))
+        except (TypeError, ValueError):
+            continue
+        if product_data:
+            break
+    if not product_data:
+        return None
+
+    selected = soup.select_one('input[name="id"][value]')
+    variant_id = selected.get("value") if selected else None
+    if not variant_id:
+        selected_option = soup.select_one('select[name="id"] option[selected][value]')
+        if selected_option:
+            variant_id = selected_option.get("value")
+    if not variant_id:
+        options = soup.select('select[name="id"] option[value]')
+        if len(options) == 1:
+            variant_id = options[0].get("value")
+
+    offers = product_data.get("offers")
+    if isinstance(offers, list):
+        offers = offers[0] if len(offers) == 1 else None
+    if not isinstance(offers, dict) or not variant_id or offers.get("price") in (None, ""):
+        return None
+    availability = str(offers.get("availability") or "")
+    if "InStock" in availability:
+        available = True
+    elif "OutOfStock" in availability or "SoldOut" in availability:
+        available = False
+    else:
+        return None
+
+    brand = product_data.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+    title = clean(product_data.get("name")) or clean((soup.select_one("h1") or {}).get_text(" ", strip=True))
+    if not title:
+        return None
+    meta_type = soup.select_one('meta[property="product:category"], meta[name="product:type"]')
+    product_type = clean(meta_type.get("content")) if meta_type else clean(product_data.get("category"))
+    variant = {
+        "id": str(variant_id),
+        "sku": product_data.get("sku"),
+        "title": "Default Title",
+        "price": offers.get("price"),
+        "available": available,
+    }
+    return {
+        "id": product_data.get("productID") or product_data.get("sku"),
+        "title": title,
+        "vendor": clean(brand),
+        "product_type": product_type,
+        "handle": urlparse(_canonical_product_url(url)).path.rstrip("/").split("/")[-1],
+        "variants": [variant],
+        "images": [product_data.get("image")] if product_data.get("image") else [],
+    }
+
 def extract_product_page(session, url, query=""):
     """Fetch one Shopify product and preserve each exact variant identity."""
     canonical_url = _canonical_product_url(url)
