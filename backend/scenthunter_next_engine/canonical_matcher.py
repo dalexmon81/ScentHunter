@@ -164,9 +164,15 @@ def _strict_name_forms(value: str, brand: str | None) -> set[str]:
 
 
 def _offer_name_forms(value: str, brand: str | None) -> set[str]:
-    """Add generic retailer-only suffix normalization to incoming offer titles."""
+    """Add generic suffix and explicit brand-attribution normalization."""
     forms = _strict_name_forms(value, brand)
-    core = _retailer_title_core(value)
+    attributed_title = normalize_identity_text(value)
+    brand_norm = normalize_identity_text(brand)
+    if brand_norm:
+        attribution = f" by {brand_norm}"
+        if attribution in f" {attributed_title} ":
+            attributed_title = attributed_title.split(attribution, 1)[0].strip()
+    core = _retailer_title_core(attributed_title)
     if core:
         forms.add(core)
         brand_norm = normalize_identity_text(brand)
