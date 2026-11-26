@@ -393,6 +393,11 @@ def make_item(product, variant, url, query, html=None):
     p = parse_price(variant.get("price"))
     size = size_ml(variant_name, name)
     conc = concentration(variant_name, name)
+    concentration_source = "product_title"
+    if not conc and product.get("product_type"):
+        conc = concentration(product.get("product_type"))
+        if conc:
+            concentration_source = "product_type"
     available = variant.get("available")
     stock = "in_stock" if available is True else "out_of_stock" if available is False else "unknown"
     image = product.get("featured_image")
@@ -407,7 +412,7 @@ def make_item(product, variant, url, query, html=None):
         "store": STORE,
         "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
-        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
+        "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": concentration_source} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
