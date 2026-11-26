@@ -67,6 +67,29 @@ class ParfumCityScraperTests(unittest.TestCase):
             + "</script></head><body>Liquid Brun</body></html>"
         )
 
+    def test_store_vendor_does_not_override_canonical_brand_in_product_title(self):
+        product = {
+            "title": "Liquid Brun Limited Edition Extrait French Avenue 150ML",
+            "vendor": "Parfum City",
+            "variants": [],
+        }
+        variant = {
+            "id": 57687820403075,
+            "title": "Default Title",
+            "price": "40.99",
+            "available": True,
+        }
+        item = scraper.make_item(
+            product,
+            variant,
+            "https://www.parfumcity.nl/products/liquid-brun-limited-edition-french-avenue-100-ml",
+            query="Liquid Brun",
+        )
+        self.assertEqual(item["brand"], "French Avenue")
+        self.assertEqual(item["source"]["source_brand"], "French Avenue")
+        self.assertEqual(item["size_ml"], 150)
+        self.assertEqual(item["concentration"], "Extrait de Parfum")
+
     def test_normalization_and_query_matching_handle_compact_sizes(self):
         self.assertEqual(scraper.norm("100ML"), "100 ml")
         self.assertTrue(
