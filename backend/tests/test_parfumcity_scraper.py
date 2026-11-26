@@ -74,6 +74,39 @@ class ParfumCityScraperTests(unittest.TestCase):
             + "</script></head><body>Liquid Brun</body></html>"
         )
 
+    def test_discovery_continues_to_search_json_when_predictive_search_returns_html(self):
+        class InvalidJsonResponse(FakeResponse):
+            def json(self):
+                raise json.JSONDecodeError("not JSON", self.text, 0)
+
+        class SearchJsonFallbackSession:
+            def __init__(self, product):
+                self.product = product
+                self.requested = []
+
+            def get(self, url, **kwargs):
+                self.requested.append(url)
+                if url.endswith("/search/suggest.json"):
+                    return InvalidJsonResponse(text="<html>bot challenge</html>")
+                if url.endswith("/search.json"):
+                    return FakeResponse(payload={"products": [self.product]})
+                return FakeResponse(text="")
+
+        session = SearchJsonFallbackSession(self.product)
+        urls, errors, verified, product_cache = scraper.discover(session, "Liquid Brun")
+        expected_url = "https://www.parfumcity.nl/products/liquid-brun-french-avenue-100ml"
+        self.assertTrue(verified)
+        self.assertEqual(urls, [expected_url])
+        self.assertIn(expected_url, product_cache)
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(all(error["status"] == "invalid_json" for error in errors))
+        self.assertEqual(
+            session.requested.count("https://www.parfumcity.nl/search/suggest.json"),
+            2,
+        )
+        self.assertIn("https://www.parfumcity.nl/search.json", session.requested)
+        self.assertNotIn("https://www.parfumcity.nl/products.json", session.requested)
+
     def test_normalization_and_query_matching_handle_compact_sizes(self):
         self.assertEqual(scraper.norm("100ML"), "100 ml")
         self.assertTrue(
