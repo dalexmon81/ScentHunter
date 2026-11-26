@@ -156,7 +156,7 @@ def _discover_products_json(session, query, urls, seen, product_cache):
             if matches(f"{title} {vendor} {handle} {u}", query):
                 canonical = _canonical_product_url(u)
                 _add_candidate(u, urls, seen)
-                if isinstance(p.get("variants"), list):
+                if isinstance(p.get("variants"), list) and p.get("variants"):
                     product_cache[canonical] = p
                 if len(urls) >= MAX_CANDIDATES:
                     return
@@ -218,7 +218,7 @@ def discover(session, query):
                             candidate_url = p.get("url") or p.get("product_url")
                             canonical = _canonical_product_url(candidate_url) if candidate_url else None
                             _add_candidate(candidate_url, urls, seen)
-                            if canonical and isinstance(p.get("variants"), list):
+                            if canonical and isinstance(p.get("variants"), list) and p.get("variants"):
                                 product_cache[canonical] = p
                 finally:
                     r.close()
@@ -386,6 +386,66 @@ def _matching_currency_evidence(html, price):
     return None
 
 
+def _product_brand(product, html=None):
+    """Prefer manufacturer evidence; never mistake the Shopify retailer vendor for the brand."""
+    vendor = clean(product.get("vendor"))
+    if vendor and norm(vendor) not in {"parfum city", "parfumcity"}:
+        return vendor, "shopify_vendor"
+
+    tags = product.get("tags") or []
+    if isinstance(tags, str):
+        tags = [item.strip() for item in tags.split(",")]
+    for tag in tags:
+        candidate = clean(tag)
+        if candidate and norm(candidate) not in {"parfum city", "parfumcity"} and len(candidate.split()) <= 4:
+            if norm(candidate) in norm(product.get("title")):
+                return candidate, "shopify_product_tag"
+
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+
+        def find_brand(value):
+            if isinstance(value, dict):
+                brand = value.get("brand")
+                if isinstance(brand, str) and brand.strip() and norm(brand) not in {"parfum city", "parfumcity"}:
+                    return brand.strip()
+                if (
+                    isinstance(brand, dict)
+                    and isinstance(brand.get("name"), str)
+                    and brand["name"].strip()
+                    and norm(brand["name"]) not in {"parfum city", "parfumcity"}
+                ):
+                    return brand["name"].strip()
+                for child in value.values():
+                    found = find_brand(child)
+                    if found:
+                        return found
+            elif isinstance(value, list):
+                for child in value:
+                    found = find_brand(child)
+                    if found:
+                        return found
+            return None
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                candidate = find_brand(json.loads(script.string or script.get_text()))
+            except (TypeError, ValueError):
+                candidate = None
+            if candidate:
+                return candidate, "jsonld_product_brand"
+
+        description = " ".join(soup.stripped_strings)
+        match = re.search(
+            r"\b(?:by|van)\s+([A-Z][A-Za-z0-9&'’.-]*(?:\s+[A-Z][A-Za-z0-9&'’.-]*){0,3})(?=\s+(?:is|was|for|geur|is\s+een)\b|[.,;]|$)",
+            description,
+        )
+        if match:
+            return clean(match.group(1)), "product_description"
+
+    return None, None
+
+
 def make_item(product, variant, url, query, html=None):
     name = clean(product.get("title")); variant_name = clean(variant.get("title"))
     if query and not matches(f"{name} {product.get('vendor','')} {url}", query): return None
@@ -400,18 +460,26 @@ def make_item(product, variant, url, query, html=None):
     if not image and product.get("images"): image = product["images"][0]
     image = urljoin(BASE_URL, str(image)) if image else None
     currency_evidence = _matching_currency_evidence(html, p)
+    brand, brand_source = _product_brand(product, html)
+    match_name = name
+    if brand:
+        match_name = re.sub(re.escape(brand), " ", match_name, flags=re.I)
+    match_name = re.sub(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l)\b", " ", match_name, flags=re.I)
+    if conc == "Extrait de Parfum" and not re.search(r"extrait\s+de\s+parfum", match_name, re.I):
+        match_name = re.sub(r"\bextrait\b", "Extrait de Parfum", match_name, count=1, flags=re.I)
+    match_name = clean(match_name)
     raw_data = {"product": product, "variant": variant}
     if currency_evidence:
         raw_data["currency_evidence"] = currency_evidence
     return {
         "store": STORE,
-        "source": {"source_name": source_name, "source_brand": clean(product.get("vendor")) or None, "url": url, "image": image},
+        "source": {"source_name": source_name, "source_brand": brand, "url": url, "image": image},
         "identity": {"gtin": None, "mpn": None, "sku": {"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None, "store_product_id": {"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None, "store_variant_id": {"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None},
         "attributes": {"size_ml": {"value": size, "source": "product_variant"} if size is not None else None, "concentration": {"value": conc, "source": "product_title"} if conc else None, "gender": {"value": "unknown", "source": "not_explicit"}, "packaging_type": {"value": "product", "source": "default"}},
         "offer": {"price": p, "currency": "EUR", "availability": stock},
         "provenance": {"source_page": url, "product_source": "shopify_product_json", "variant_source": "shopify_product_json"},
         "raw_data": raw_data,
-        "name": name, "brand": clean(product.get("vendor")), "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
+        "name": match_name, "brand": brand, "brand_source": brand_source, "price": f"{p:.2f}".replace(".", ",") + " €" if p is not None else None, "price_num": p, "url": url, "available": available, "availability": stock, "size_ml": size, "size": f"{int(size)} ml" if size is not None and float(size).is_integer() else (f"{size} ml" if size is not None else None), "concentration": conc, "image": image,
     }
 
 
