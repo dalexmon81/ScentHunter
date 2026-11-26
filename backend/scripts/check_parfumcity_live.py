@@ -64,6 +64,10 @@ def main() -> int:
             fail("currency evidence does not match the exact extracted price")
         if extracted.get("availability") not in {"in_stock", "out_of_stock"}:
             fail(f"availability is not explicit: {extracted.get('availability')}")
+        if extracted.get("brand") != "French Avenue":
+            fail(f"manufacturer brand attribution is incorrect: {extracted.get('brand')!r}")
+        if extracted.get("size_ml") != 150 or extracted.get("concentration") != "Extrait de Parfum":
+            fail(f"variant identity is not the expected Liquid Brun Limited Edition 150 ml Extrait: size={extracted.get('size_ml')} concentration={extracted.get('concentration')}")
         url = str(extracted.get("url") or "")
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in {"parfumcity.nl", "www.parfumcity.nl"}:
@@ -76,6 +80,8 @@ def main() -> int:
             "brand": extracted.get("brand"),
             "variant_id": extracted.get("identity", {}).get("store_variant_id", {}).get("value"),
             "size_ml": extracted.get("size_ml"),
+            "concentration": extracted.get("concentration"),
+            "brand_source": extracted.get("brand_source"),
             "price": str(price),
             "currency": offer.get("currency"),
             "availability": extracted.get("availability"),
