@@ -79,9 +79,10 @@ def parse_price(v):
 
 
 class StoreRequestError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, retry_after_seconds=None):
         super().__init__(message)
         self.status = status
+        self.retry_after_seconds = retry_after_seconds
 
 
 def _get(session, url, params=None):
@@ -94,8 +95,19 @@ def _get(session, url, params=None):
 
     if r.status_code >= 400:
         status = "blocked" if r.status_code in (401, 403, 429) else "unavailable" if r.status_code >= 500 else "error"
+        retry_after_seconds = None
+        raw_retry_after = getattr(r, "headers", {}).get("Retry-After")
+        if raw_retry_after:
+            try:
+                retry_after_seconds = max(0, int(raw_retry_after.strip()))
+            except (TypeError, ValueError):
+                retry_after_seconds = None
         r.close()
-        raise StoreRequestError(status, f"ParfumCity HTTP {r.status_code}: {url}")
+        suffix = f" (Retry-After: {retry_after_seconds}s)" if retry_after_seconds is not None else ""
+        raise StoreRequestError(
+            status, f"ParfumCity HTTP {r.status_code}: {url}{suffix}",
+            retry_after_seconds=retry_after_seconds,
+        )
     return r
 
 
@@ -227,6 +239,11 @@ def discover(session, query):
                                 product_cache[canonical] = p
                 finally:
                     r.close()
+                # One valid Shopify predictive-search response with variants is
+                # sufficient. A second identical request only increases the
+                # chance of triggering the retailer's rate limiter.
+                if product_cache:
+                    break
             except StoreRequestError as exc:
                 record("shopify_predictive_search", exc)
             except (ValueError, TypeError) as exc:
@@ -507,7 +524,16 @@ def extract_product_page(session, url, query=""):
     except StoreRequestError as exc:
         if exc.status != "blocked":
             raise
-        product = product_from_search_json(session, canonical_url)
+        # Shopify supplies Retry-After on 429. Do not immediately call another
+        # endpoint during that cooldown; it is the same rate-limited storefront.
+        if exc.retry_after_seconds is not None:
+            raise
+        try:
+            product = product_from_search_json(session, canonical_url)
+        except StoreRequestError as fallback_exc:
+            if fallback_exc.status == "blocked" and fallback_exc.retry_after_seconds is not None:
+                raise fallback_exc
+            raise exc
         if not product:
             raise exc
     if not product:
@@ -546,7 +572,14 @@ def _search_report(query):
                     except StoreRequestError as exc:
                         if exc.status != "blocked":
                             raise
-                        data = product_from_search_json(session, url)
+                        if exc.retry_after_seconds is not None:
+                            raise
+                        try:
+                            data = product_from_search_json(session, url)
+                        except StoreRequestError as fallback_exc:
+                            if fallback_exc.status == "blocked" and fallback_exc.retry_after_seconds is not None:
+                                raise fallback_exc
+                            raise exc
                         if not data:
                             raise exc
                 if not data:
