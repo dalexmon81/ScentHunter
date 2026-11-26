@@ -43,10 +43,35 @@ jobs:
           from app.workers.postgres_queue import finish, fail_or_retry
 
           STORE_ID = "bd8c751f-d9a5-48d4-b308-914e2dad9992"
-          DISCOVERY_JOB_ID = "77b33066-3357-47c5-bccc-66cbfb405b0c"
           PILOT_WORKER = "parfumcity-targeted-pilot"
 
           engine = make_engine()
+
+          def claim_queued_discovery():
+              with engine.begin() as conn:
+                  row = conn.execute(text("""
+                      WITH candidate AS (
+                          SELECT id
+                          FROM ingestion_queue_jobs
+                          WHERE stage='discover' AND status='queued'
+                            AND payload->>'store_id'=:store_id
+                            AND available_at <= now()
+                          ORDER BY created_at DESC, id
+                          FOR UPDATE SKIP LOCKED
+                          LIMIT 1
+                      )
+                      UPDATE ingestion_queue_jobs AS job
+                      SET status='running', attempts=attempts+1,
+                          started_at=now(), finished_at=NULL,
+                          worker_id=:worker_id, last_error=NULL
+                      FROM candidate
+                      WHERE job.id=candidate.id
+                      RETURNING job.id::text AS id, job.stage, job.payload, job.attempts
+                  """), {
+                      "store_id": STORE_ID,
+                      "worker_id": PILOT_WORKER,
+                  }).mappings().first()
+              return dict(row) if row else None
 
           def claim_specific(job_id, stage):
               with engine.begin() as conn:
@@ -100,19 +125,20 @@ jobs:
 
           try:
               discovery_started = datetime.now(timezone.utc)
-              discovery = claim_specific(DISCOVERY_JOB_ID, "discover")
+              discovery = claim_queued_discovery()
               if discovery is None:
                   with engine.connect() as conn:
                       state = conn.execute(text("""
-                          SELECT status, worker_id, last_error
-                          FROM ingestion_queue_jobs WHERE id=:id
-                      """), {"id": DISCOVERY_JOB_ID}).mappings().first()
-                  state = dict(state) if state else None
-                  if state and state.get("status") in {"completed", "running"}:
-                      print("PARFUMCITY_PILOT_ALREADY_HANDLED=" + json.dumps(state, default=str))
-                      print("PARFUMCITY_TARGETED_PILOT=PASS")
-                      raise SystemExit(0)
-                  raise RuntimeError("ParfumCity discovery job was not claimable: " + repr(state))
+                          SELECT id::text AS id, status, available_at, last_error
+                          FROM ingestion_queue_jobs
+                          WHERE stage='discover' AND payload->>'store_id'=:store_id
+                          ORDER BY created_at DESC
+                          LIMIT 1
+                      """), {"store_id": STORE_ID}).mappings().first()
+                  raise RuntimeError(
+                      "No eligible queued ParfumCity discovery job; latest state="
+                      + json.dumps(dict(state) if state else None, default=str)
+                  )
 
               discovery_result = execute_job(discovery)
               print("PARFUMCITY_DISCOVERY_RESULT=" + json.dumps(discovery_result, default=str))
