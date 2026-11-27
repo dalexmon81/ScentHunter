@@ -180,7 +180,11 @@ def test_public_offer_normalisation_rejects_foreign_urls_and_missing_prices():
         "name": "Dior Sauvage Eau de Parfum 100 ml",
         "brand": "Dior",
         "price": "89,90 €",
+        "price_num": 89.90,
+        "currency": "EUR",
         "size_ml": 100,
+        "availability": "in_stock",
+        "available": True,
         "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
     }
     assert scraper._normalise_public_offer(
@@ -188,6 +192,63 @@ def test_public_offer_normalisation_rejects_foreign_urls_and_missing_prices():
     ) is None
     assert scraper._normalise_public_offer(
         {**valid, "price": ""}, "Dior Sauvage"
+    ) is None
+
+
+def test_public_offer_normalisation_rejects_incomplete_identity_and_offer_evidence():
+    valid = {
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "brand": "Dior",
+        "price": "89,90 €",
+        "price_num": 89.90,
+        "currency": "EUR",
+        "size_ml": 100,
+        "availability": "in_stock",
+        "available": True,
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+    }
+    assert scraper._normalise_public_offer(
+        {**valid, "brand": ""}, "Dior Sauvage"
+    ) is None
+    assert scraper._normalise_public_offer(
+        {**valid, "currency": ""}, "Dior Sauvage"
+    ) is None
+    assert scraper._normalise_public_offer(
+        {**valid, "availability": "unknown", "available": None}, "Dior Sauvage"
+    ) is None
+    assert scraper._normalise_public_offer(
+        {**valid, "size_ml": None}, "Dior Sauvage"
+    ) is None
+
+
+def test_reader_rejects_product_without_explicit_currency_even_on_fr_market(monkeypatch):
+    product = {
+        "@type": "Product",
+        "name": "Sauvage Eau de Parfum 100 ml",
+        "brand": {"name": "Dior"},
+        "offers": {
+            "@type": "Offer",
+            "price": "89.90",
+            "availability": "https://schema.org/InStock",
+        },
+    }
+    html = (
+        f'<script type="application/ld+json">{json.dumps(product)}</script>'
+        '<h1>Sauvage Eau de Parfum 100 ml</h1>'
+    )
+
+    class Response:
+        text = html
+
+    monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: Response())
+    candidate = {
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-15676518/",
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "source": "reader-url-context",
+    }
+    assert scraper._reader_product(
+        object(), candidate, "Dior Sauvage Eau de Parfum 100 ml",
+        _allow_variants=False,
     ) is None
 
 
