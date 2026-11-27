@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PYTHONPATH: backend
+      PYTHONPATH: .:backend
       DATABASE_URL: ""
       NEON_API_KEY: ""
       FLY_API_TOKEN: ""
