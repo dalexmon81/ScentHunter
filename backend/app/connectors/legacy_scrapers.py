@@ -141,7 +141,7 @@ class LegacyScraperConnector(StoreConnector):
                     details = report.get("details") if isinstance(report.get("details"), Mapping) else {}
                     if status in {"timeout", "unavailable", "blocked", "error"} or details.get("technical_failure"):
                         unavailable = ConnectorUnavailable(f"{self.store_key} discovery failed: {report.get('error') or status}")
-                        if self.store_key == "parfumcity":
+                        if self.store_key in {"parfumcity", "perfumemarket"}:
                             failures = list(details.get("discovery_errors") or []) + list(details.get("fetch_errors") or [])
                             retry_after = next(
                                 (item.get("retry_after_seconds") for item in failures
