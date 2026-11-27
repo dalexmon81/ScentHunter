@@ -17,11 +17,7 @@ import requests
 
 from scrapers.sabina import scraper
 
-QUERIES = (
-    "Afnan 9 PM Eau de Parfum",
-    "Dior Sauvage Eau de Parfum",
-    "Davidoff Cool Water Eau de Toilette",
-)
+QUERIES = ("Afnan 9 pm", "Dior Sauvage", "Davidoff Cool Water")
 MAX_PRODUCT_FETCHES_PER_QUERY = 4
 NON_FRAGRANCE_PATH_TERMS = (
     "after-shave", "aftershave", "afeitado", "desodorante", "deodorante",
@@ -62,7 +58,6 @@ def _fragrance_candidate(url: str) -> bool:
     path = urlparse(url).path.lower()
     return (
         path.startswith("/es/")
-        and ("perfume" in path or "parfum" in path)
         and not any(term in path for term in NON_FRAGRANCE_PATH_TERMS)
     )
 
@@ -106,6 +101,7 @@ def main() -> int:
                 "fragrance_candidates": 0,
                 "product_pages_fetched": 0,
                 "verified_products": 0,
+                "candidate_urls": [],
                 "products": [],
             }
             try:
@@ -135,6 +131,7 @@ def main() -> int:
                 and urlparse(url).path.lower().startswith("/es/")
             ]
             qr["discovered_candidates"] = len(candidates)
+            qr["candidate_urls"] = candidates
             report["discovered_candidates"] += len(candidates)
             fragrance_candidates = [url for url in candidates if _fragrance_candidate(url)]
             qr["fragrance_candidates"] = len(fragrance_candidates)
