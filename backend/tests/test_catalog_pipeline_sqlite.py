@@ -125,9 +125,9 @@ def test_catalog_first_pipeline_promotes_searches_and_refreshes_without_network_
                 session, "Dior Sauvage EDP 100ml",
             )
             assert updated["count"] == 1
-            # Out-of-stock offers remain visible as a product observation but
-            # are excluded from the buyable/published-offer count.
-            assert updated["offer_count"] == 0
+            # Out-of-stock offers remain visible with their explicit stock state.
+            assert updated["offer_count"] == 1
+            assert updated["results"][0]["offers"][0]["availability"] == "out_of_stock"
             assert session.scalar(select(func.count()).select_from(Offer)) == 1
             assert session.scalar(select(func.count()).select_from(PriceHistory)) == 2
             offer = session.get(Offer, result.offer_id)
