@@ -2,10 +2,6 @@ name: PerfumeMarket single-request live ingestion
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/perfumemarket-runtime-check.yml"
 
 permissions:
   contents: read
@@ -215,4 +211,20 @@ jobs:
           PY
           )"
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
-          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 180
+          REMOTE_SCRIPT="cd /app/backend && printf '%s' '$ENCODED' | base64 -d | /app/.venv/bin/python"
+          printf -v REMOTE_COMMAND '/bin/sh -lc %q' "$REMOTE_SCRIPT"
+
+          set +e
+          OUTPUT="$(timeout 180s flyctl ssh console --app scenthunter --machine "$WORKER_ID" --pty=false --quiet -C "$REMOTE_COMMAND" 2>&1)"
+          STATUS=$?
+          set -e
+          printf '%s\\n' "$OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::PerfumeMarket remote verification process exited with status $STATUS."
+            exit "$STATUS"
+          fi
+          if ! grep -q "PERFUMEMARKET_FINAL_VERIFICATION=PASS" <<< "$OUTPUT"; then
+            echo "::error::PerfumeMarket remote process did not emit the final persisted-offer PASS marker."
+            exit 1
+          fi
