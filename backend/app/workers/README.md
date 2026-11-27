@@ -70,15 +70,19 @@ transactions, retains bounded error messages and closes each run as
 `completed`, `partial` or `failed`. The helpers never commit on behalf of
 the caller.
 
-## Notino pilot
+## Notino direct storefront
 
-The Notino connector reads the authorized CJ/VIV feed snapshot. Discovery
-queues one fetch task per retailer product. Fetch stages the original evidence,
-uses the database-native canonical matcher first, and retains the legacy
-catalog matcher only as a conservative fallback through explicit persisted ID
-maps. Publication requires a resolved canonical UUID, explicit currency
-provenance, valid positive price, valid URL and explicit stock. Unmatched or
-ambiguous products remain in staging.
+The production Notino connector uses direct Notino.fr storefront requests only.
+If the retailer blocks a request, the connector fails closed; it does not use a
+CJ/VIV feed, affiliate redirect, public reader or proxy. Discovery queues one
+fetch task per retailer product. Fetch stages the original evidence, uses the
+database-native canonical matcher first, and retains the legacy catalog matcher
+only as a conservative fallback through explicit persisted ID maps. Publication
+requires a resolved canonical UUID, explicit currency provenance, valid
+positive price, valid retailer URL and explicit stock. Unmatched or ambiguous
+products remain in staging. Public catalog search accepts only records whose
+source is `notino_public_storefront` and returns the direct retailer product URL.
+Historical CJ/VIV rows are not publishable.
 
 The pilot catalog must explicitly seed the `notino-fr` store before discovery.
 To add only the missing store row (without re-importing canonical identities):
