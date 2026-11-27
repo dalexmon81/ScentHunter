@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import unicodedata
 import time
@@ -552,6 +553,17 @@ def search(query):
             added += 1
             print(f"PERFUMEMARKET FOUND via {source}: {item.get('name')} | {item.get('url')}")
         return added
+
+    # An operator-approved product URL can seed discovery when Shopify's
+    # search/catalog indexes omit a product that is live in the storefront.
+    # The URL is still fetched and fully parsed below; no offer data is trusted
+    # from the seed configuration itself.
+    seeded_urls = os.environ.get(
+        "SCENTHUNTER_DISCOVERY_PRODUCT_URLS_PERFUMEMARKET", ""
+    )
+    for seeded_url in (value.strip() for value in seeded_urls.split(";")):
+        if seeded_url:
+            add_items([{"name": query, "url": seeded_url}], "operator-seed-url")
 
     # 1) Shopify predictive search. Always run it, but never stop the search
     # here: a partial predictive response must not hide a valid product found
