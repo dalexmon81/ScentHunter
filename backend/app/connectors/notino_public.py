@@ -155,6 +155,18 @@ class NotinoPublicStorefrontConnector(StoreConnector):
             result = matching[0] if matching else None
         if not isinstance(result, Mapping):
             return None
+        result = dict(result)
+        if not result.get("brand"):
+            # Discovery may have established the brand from the exact retailer
+            # URL/title pair. Preserve that evidence through product extraction;
+            # otherwise the live acceptance and canonical matcher see a blank brand.
+            brand = str(candidate.get("brand") or "").strip()
+            if not brand:
+                brand = self._brand_from_url_title(
+                    url, str(result.get("name") or candidate.get("name") or "")
+                )
+            if brand:
+                result["brand"] = brand
         result_url = scraper._allowed_url(str(result.get("url") or ""), scraper.BASE_URL)
         if not result_url or result_url.rstrip("/") != url.rstrip("/"):
             return None
