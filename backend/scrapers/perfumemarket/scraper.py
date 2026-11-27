@@ -25,7 +25,10 @@ def _retry_after_seconds(response):
     raw = str(response.headers.get("Retry-After") or "").strip()
     if raw.isdigit():
         return min(3600, max(30, int(raw)))
-    return 300
+    # If the server omits Retry-After or sends an HTTP date we cannot safely
+    # parse, use the maximum supported cooldown rather than retrying every few
+    # minutes against a retailer that is actively rate-limiting us.
+    return 3600
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
 
