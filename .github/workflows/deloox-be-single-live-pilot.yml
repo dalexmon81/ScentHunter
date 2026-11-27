@@ -40,6 +40,11 @@ jobs:
           )"
           echo "Selected worker machine: $WORKER_ID"
 
+          # The deployed worker image has Playwright installed but this machine
+          # is missing its matching Chromium build. Install only the pinned
+          # browser runtime before making the single Deloox product request.
+          flyctl machine exec "$WORKER_ID" "sh -lc '/app/.venv/bin/playwright install chromium'" --app scenthunter --timeout 300
+
           SCRIPT="$(cat <<'PY'
           from uuid import UUID
           import re
