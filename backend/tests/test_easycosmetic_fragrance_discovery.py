@@ -64,6 +64,8 @@ class EasycosmeticFragranceDiscoveryTests(unittest.TestCase):
             ("Eau Sauvage Seife", "/dior/eau-sauvage/seife.aspx"),
             ("Capture Totale Dreamskin 1-Minute Mask Pflegemaske", "/dior/capture-totale/dreamskin-mask.aspx"),
             ("Forever Glow Luminizer Highlighter", "/dior/forever-glow-luminizer.aspx"),
+            ("Forever Glow Star Filter Spezialprodukt", "/dior/forever-glow-star-filter.aspx"),
+            ("Homme Dermo System Sérum Yeux Tenseur Hydratant Augenserum", "/dior/homme-dermo-system-serum-yeux.aspx"),
         )
         html = "<html><body>" + "".join(
             f'<a href="{url}">{name}</a>' for name, url in observed_products

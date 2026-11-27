@@ -642,7 +642,8 @@ NON_FRAGRANCE_PRODUCT_MARKERS = (
     "pdrn-shot", "le sérum", "le serum", "pro-collagen shot",
     "pro collagen shot", "augenfluid", "retishot", "contour stick",
     "aftershave spray", "seife", "dreamskin", "mask", "pflegemaske",
-    "luminizer", "highlighter", "illuminator",
+    "luminizer", "highlighter", "illuminator", "star filter",
+    "spezialprodukt", "serum", "serum yeux", "augenserum", "dermo system",
     "nail polish", "nagellack", "sunscreen", "sun cream", "sonnencreme",
     "aftershave balm", "after shave balm", "aftershave lotion", "rasiergel",
 )
