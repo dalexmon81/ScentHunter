@@ -60,6 +60,8 @@ def _notino_source_timestamp(raw: IngestionRaw) -> datetime | None:
         value = match.group(1) if match else None
     if not value and payload.get("source") == "notino_public_storefront":
         value = payload.get("captured_at")
+        if not value and isinstance(observation, dict):
+            value = observation.get("captured_at")
     if not value:
         return None
     try:
