@@ -17,9 +17,11 @@ WORKDIR /app
 
 COPY --from=builder /app/.venv .venv/
 COPY . .
-# The restored Notino and Amazon public-search adapters require a real Chromium
-# runtime. Install the browser and OS libraries in the final image, not just the
-# Python Playwright package, so production behaves like the tested browser path.
+# The restored Notino, Amazon and Deloox public-page adapters require a real
+# Chromium runtime. Pin Playwright's browser cache to the same absolute path at
+# build time and runtime; Fly workers expose HOME=/, so the default /root cache
+# is not visible to the running scraper process.
+ENV PLAYWRIGHT_BROWSERS_PATH=/.cache/ms-playwright
 RUN /app/.venv/bin/playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 ENV PYTHONPATH=/app/backend
 
