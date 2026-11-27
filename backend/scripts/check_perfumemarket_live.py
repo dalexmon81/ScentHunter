@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
@@ -30,7 +31,6 @@ def main() -> int:
 
     parsed = LegacyScraperConnector("perfumemarket", scraper).parse_raw(record)
     expected = {
-        "price": "35.99",
         "currency": "EUR",
         "currency_explicit": True,
         "availability": "in_stock",
@@ -39,6 +39,14 @@ def main() -> int:
         "concentration": "Eau de Parfum",
         "product_url": PRODUCT_URL,
     }
+    try:
+        live_price = Decimal(str(parsed.get("price") or ""))
+    except InvalidOperation:
+        raise SystemExit("PERFUMEMARKET_LIVE_RESULT=FAIL: invalid live price")
+    if live_price <= 0:
+        raise SystemExit("PERFUMEMARKET_LIVE_RESULT=FAIL: non-positive live price")
+    print(f"price={live_price}")
+
     for key, value in expected.items():
         actual = parsed.get(key)
         if actual != value:
