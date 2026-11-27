@@ -55,6 +55,22 @@ class EasycosmeticFragranceDiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(candidates, [])
 
+    def test_live_observed_dior_non_fragrance_products_are_rejected(self):
+        observed_products = (
+            ("Capture Totale Pro-Collagen Shot Augenfluid", "/dior/capture-totale/pro-collagen-shot-augenfluid.aspx"),
+            ("Capture Totale Retishot Serum", "/dior/capture-totale/retishot-serum.aspx"),
+            ("Diorskin Forever Contour Stick", "/dior/diorskin/forever-contour-stick.aspx"),
+            ("Eau Sauvage Aftershave Spray", "/dior/eau-sauvage/aftershave-spray.aspx"),
+            ("Eau Sauvage Seife", "/dior/eau-sauvage/seife.aspx"),
+        )
+        html = "<html><body>" + "".join(
+            f'<a href="{url}">{name}</a>' for name, url in observed_products
+        ) + "</body></html>"
+        candidates = scraper._extract_candidate_links(
+            BeautifulSoup(html, "html.parser"), "Dior"
+        )
+        self.assertEqual(candidates, [])
+
     def test_unknown_product_category_is_not_rejected_by_default(self):
         html = """
         <html><body>
