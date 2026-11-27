@@ -11,7 +11,9 @@ from scrapers.easycosmetic import scraper
 
 
 QUERY = "Dior"
-SEARCH_URL = scraper.SEARCH_URL.format(quote_plus(QUERY))
+# Build the official search URL from the stable storefront base. This avoids
+# relying on an exported module constant that may not exist in older adapters.
+SEARCH_URL = f"{scraper.BASE_URL}/suche?searchfor={quote_plus(QUERY)}"
 
 
 def main() -> int:
