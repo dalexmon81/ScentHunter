@@ -107,9 +107,5 @@ jobs:
               session.close()
           PY
           )"
-          echo "WORKER_LOGS_BEGIN"
-          flyctl logs --app scenthunter --instance "$WORKER_ID" --no-tail -n 100 | grep -Ei 'perfumemarket|worker|discover|error' | tail -n 80 || true
-          echo "WORKER_LOGS_END"
-
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
-          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python'" --app scenthunter --timeout 120s
+          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python'" --app scenthunter --timeout 120
