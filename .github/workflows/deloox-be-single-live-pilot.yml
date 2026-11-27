@@ -2,7 +2,7 @@ name: Deloox.be single-product read-only verification
 
 on:
   push:
-    branches: [ops/deloox-be-offline-completion]
+    branches: [ops/deloox-be-finalization]
     paths:
       - ".github/workflows/deloox-be-single-live-pilot.yml"
 
