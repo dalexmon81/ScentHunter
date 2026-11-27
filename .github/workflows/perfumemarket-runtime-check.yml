@@ -2,10 +2,6 @@ name: PerfumeMarket single-request live ingestion
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/perfumemarket-runtime-check.yml"
 
 permissions:
   contents: read
