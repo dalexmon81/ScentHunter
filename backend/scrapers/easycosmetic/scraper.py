@@ -544,7 +544,7 @@ def _extract_selected_variant_price_evidence(
 
             evidence = None
             currency_text = visible_text or _clean(raw)
-            has_eur_marker = bool(re.search(r"€|\\bEUR\\b", currency_text, flags=re.I))
+            has_eur_marker = bool(re.search(r"€|\bEUR\b", currency_text, flags=re.I))
             visible_amount = _extract_price_from_text(currency_text)
             if visible_amount is None and has_eur_marker:
                 visible_amount = _price_to_float(currency_text)
