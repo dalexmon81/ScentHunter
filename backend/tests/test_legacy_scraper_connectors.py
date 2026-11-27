@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from app.connectors.legacy_scrapers import (
     LegacyScraperConnector,
+    STORE_SLUGS,
     build_legacy_connector,
     connector_key_for_store_slug,
 )
@@ -43,7 +44,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_only_approved_retailers_resolve_to_production_connectors(self):
         self.assertEqual(
-            set(__import__("app.connectors.legacy_scrapers", fromlist=["STORE_SLUGS"]).STORE_SLUGS),
+            set(STORE_SLUGS),
             {"bplatz", "deloox-be", "sabina-es", "easycosmetic-de", "parfumzentrum-de"},
         )
         for slug in ("orioudh", "parfumcity-nl", "perfumemarket"):
