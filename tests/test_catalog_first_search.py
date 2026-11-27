@@ -293,6 +293,33 @@ def test_notino_catalog_search_never_returns_affiliate_redirect(pilot, monkeypat
     assert returned["product_url"] == product_url
 
 
+def test_notino_refresh_capture_timestamp_in_nested_observation_passes_search_gate(pilot):
+    engine, result = pilot
+    now = datetime.now(timezone.utc)
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+    with Session(engine) as session:
+        offer = session.get(Offer, result.offer_id)
+        store = session.get(Store, offer.store_id)
+        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+        store.slug = "notino-fr"
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        offer.url = product_url
+        offer.captured_at = now
+        raw.raw_payload = {
+            **dict(raw.raw_payload),
+            "source": "notino_public_storefront",
+            "currency_explicit": True,
+            "refresh_observation": {"captured_at": now.isoformat()},
+        }
+        session.flush()
+        found = search_catalog(
+            session, "French Avenue Liquid Brun EDP 100ml", now=now
+        )
+        assert found["count"] == found["offer_count"] == 1
+        assert found["results"][0]["offers"][0]["url"] == product_url
+
+
 def test_notino_legacy_feed_rows_are_not_published(pilot):
     engine, result = pilot
     now = datetime.now(timezone.utc)
