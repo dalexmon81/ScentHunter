@@ -1789,7 +1789,12 @@ def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[s
 
     name = _clean(item.get("name") or item.get("title") or "")
     brand = _clean(item.get("brand") or "")
-    if not name or not _query_matches_name(f"{brand} {name}".strip(), query):
+    if not brand or not name or not _query_matches_name(f"{brand} {name}".strip(), query):
+        return None
+
+    # Public fallback rows are publishable only when the exact product offer
+    # carries explicit EUR evidence; a French storefront URL is not enough.
+    if str(item.get("currency") or "").strip().upper() != "EUR":
         return None
 
     price_num = _price(item.get("price_num") or item.get("price"))
@@ -1812,6 +1817,12 @@ def _normalise_public_offer(item: Dict[str, Any], query: str) -> Optional[Dict[s
     size_ml = item.get("size_ml")
     if size_ml is None:
         size_ml = item.get("sizeml") or item.get("size")
+    gtin = _clean(item.get("gtin") or item.get("ean") or "")
+    sku = _clean(item.get("sku") or "")
+    if size_ml is None and not gtin and not sku:
+        return None
+    if availability == "unknown":
+        return None
 
     return {
         **item,
