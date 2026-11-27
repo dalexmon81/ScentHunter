@@ -66,11 +66,21 @@ def main() -> int:
         brand_meta = soup.find(attrs={"itemprop": "brand"})
         brand_meta_text = brand_meta.get("content") or brand_meta.get_text(" ", strip=True) if brand_meta else None
         brand_nodes = []
-        for node in soup.select('[class*="brand" i], [id*="brand" i], [itemprop="brand"]')[:12]:
+        seen_brand_nodes = set()
+        for node in soup.select('[class*="brand" i], [id*="brand" i], [itemprop="brand"], a[href*="giorgio-armani"]')[:16]:
             value = node.get("content") or node.get_text(" ", strip=True)
             value = " ".join(str(value or "").split())
-            if value and value not in brand_nodes:
-                brand_nodes.append(value[:160])
+            key = (node.name, str(node.get("class") or ""), str(node.get("id") or ""), value)
+            if value and key not in seen_brand_nodes:
+                seen_brand_nodes.add(key)
+                brand_nodes.append({
+                    "tag": node.name,
+                    "class": node.get("class"),
+                    "id": node.get("id"),
+                    "href": node.get("href"),
+                    "text": value[:160],
+                    "parent_class": node.parent.get("class") if node.parent else None,
+                })
         report["brand_evidence"] = {
             "parsed_brand": normalized.get("brand_raw"),
             "jsonld_brand": jsonld.get("brand"),
