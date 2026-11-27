@@ -44,51 +44,9 @@ jobs:
           )"
           echo "Selected worker machine: $WORKER_ID"
 
-          # Install Chromium in the background: Fly Machine Exec has a short
-          # transport timeout even when the remote command is given a longer
-          # execution timeout. Poll a durable exit file instead.
-          INSTALL_SCRIPT="$(cat <<'REMOTE'
-          set -eu
-          mkdir -p /tmp/deloox-browser-install
-          rm -f /tmp/deloox-browser-install/exit /tmp/deloox-browser-install/log
-          nohup /bin/sh -c '
-            /app/.venv/bin/playwright install chromium
-            result=$?
-            echo "$result" > /tmp/deloox-browser-install/exit
-          ' </dev/null >/tmp/deloox-browser-install/log 2>&1 &
-          echo DELOOX_BROWSER_INSTALL_STARTED
-          REMOTE
-          )"
-          INSTALL_B64="$(printf '%s' "$INSTALL_SCRIPT" | base64 -w0)"
-          flyctl machine exec "$WORKER_ID" "sh -lc 'echo $INSTALL_B64 | base64 -d | sh'" --app scenthunter --timeout 30
-          for attempt in $(seq 1 60); do
-            POLL="$(flyctl machine exec "$WORKER_ID" "sh -lc 'if [ -f /tmp/deloox-browser-install/exit ]; then echo DELOOX_BROWSER_INSTALL_EXIT=\\$(cat /tmp/deloox-browser-install/exit); else echo DELOOX_BROWSER_INSTALL_RUNNING; fi'" --app scenthunter --timeout 30 2>&1)" || {
-              echo "Chromium install poll failed ($attempt/60): $POLL"
-              sleep 5
-              continue
-            }
-            printf '%s\\n' "$POLL"
-            if grep -q 'DELOOX_BROWSER_INSTALL_EXIT=0' <<< "$POLL"; then
-              echo "DELOOX_CHROMIUM_INSTALL=PASS"
-              break
-            fi
-            if grep -Eq 'DELOOX_BROWSER_INSTALL_EXIT=[1-9]' <<< "$POLL"; then
-              flyctl machine exec "$WORKER_ID" "tail -n 80 /tmp/deloox-browser-install/log" --app scenthunter --timeout 30 || true
-              exit 1
-            fi
-            if [ "$attempt" -eq 60 ]; then
-              flyctl machine exec "$WORKER_ID" "tail -n 80 /tmp/deloox-browser-install/log" --app scenthunter --timeout 30 || true
-              echo "Chromium installation did not finish within five minutes." >&2
-              exit 1
-            fi
-            sleep 5
-          done
-
           SCRIPT="$(cat <<'PY'
           from uuid import UUID
           import os
-          import subprocess
-          from pathlib import Path
           import requests
           from sqlalchemy import text
 
@@ -130,13 +88,10 @@ jobs:
           # Chromium binary is missing at Playwright's runtime cache path.
           # Install only that browser into the worker's existing cache; no
           # proxy, search, sitemap, retries, or other retailer is involved.
-          os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "/.cache/ms-playwright"
-          browser = Path("/.cache/ms-playwright/chromium-1091/chrome-linux/chrome")
-          if not browser.is_file():
-              subprocess.run(
-                  ["/app/.venv/bin/playwright", "install", "chromium"],
-                  check=True, timeout=240,
-              )
+          os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "/ms-playwright"
+          browser = "/ms-playwright/chromium-1091/chrome-linux/chrome"
+          if not os.path.isfile(browser):
+              raise RuntimeError("Chromium is missing from the deployed /ms-playwright image path")
 
           # Use the existing Deloox parser's normal product-page path. It makes
           # one direct request and uses its built-in headless render fallback
