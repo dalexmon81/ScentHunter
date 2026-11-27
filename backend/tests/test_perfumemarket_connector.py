@@ -133,6 +133,66 @@ class PerfumeMarketParserTests(unittest.TestCase):
         self.assertIsNone(record)
 
 
+
+    def test_search_uses_operator_seed_when_shopify_indexes_omit_product(self):
+        import json
+
+        product_url = "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp"
+        payload = {
+            "@type": "Product",
+            "name": "Rasasi Hawas London 100ml EDP - Men",
+            "brand": {"@type": "Brand", "name": "Rasasi"},
+            "gtin13": "614514465059",
+            "offers": {
+                "@type": "Offer",
+                "price": "30.59",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/InStock",
+            },
+        }
+        html = (
+            "<script type='application/ld+json'>"
+            + json.dumps(payload)
+            + "</script><h1>Rasasi Hawas London 100ml EDP - Men</h1>"
+        )
+
+        class FakeResponse:
+            def __init__(self, url):
+                self.url = url
+                self.status_code = 200 if url == product_url else 404
+                self.ok = self.status_code == 200
+                self.text = html if self.ok else "Not found"
+
+            def raise_for_status(self):
+                if not self.ok:
+                    import requests
+                    raise requests.HTTPError("404")
+
+        class FakeSession:
+            def __init__(self):
+                self.headers = {}
+
+            def get(self, url, **kwargs):
+                return FakeResponse(url)
+
+        session = FakeSession()
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_DISCOVERY_PRODUCT_URLS_PERFUMEMARKET": product_url
+        }), patch.object(scraper.requests, "Session", return_value=session), \
+             patch.object(scraper, "_parse_search_suggest", return_value=[]), \
+             patch.object(scraper, "_parse_search_html", return_value=[]), \
+             patch.object(scraper, "_find_candidates_from_catalog_json", return_value=[]), \
+             patch.object(scraper, "_find_candidates_from_sitemap", return_value=[]):
+            session.headers = {}
+            results = scraper.search("Rasasi Hawas London")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["url"], product_url)
+        self.assertEqual(results[0]["price_num"], 30.59)
+        self.assertEqual(results[0]["currency"], "EUR")
+        self.assertEqual(results[0]["availability"], "in_stock")
+        self.assertEqual(results[0]["gtin"], "614514465059")
+
     def test_plain_parfum_concentration_is_normalized(self):
         self.assertEqual(
             scraper._pm_extract_concentration("Dior Sauvage Parfum 60ml - Men"),
