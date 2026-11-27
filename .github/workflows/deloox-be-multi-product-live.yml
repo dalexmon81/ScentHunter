@@ -1,0 +1,70 @@
+name: Deloox.be bounded multi-product live acceptance
+
+on:
+  push:
+    branches: [investigate/deloox-be-multi-product-acceptance]
+    paths:
+      - "backend/scripts/check_deloox_multi_product_live.py"
+      - ".github/workflows/deloox-be-multi-product-live.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/scripts/check_deloox_multi_product_live.py"
+      - ".github/workflows/deloox-be-multi-product-live.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deloox-be-multi-product-live
+  cancel-in-progress: true
+
+jobs:
+  bounded-live-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run bounded public Deloox discovery on an existing worker (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine list --app scenthunter --json > machines.json
+          WORKER_ID="$(python - <<'PY'
+          import json
+          with open("machines.json", encoding="utf-8") as handle:
+              machines = json.load(handle)
+          workers = [
+              machine for machine in machines
+              if machine.get("state") == "started"
+              and machine.get("config", {}).get("metadata", {}).get("fly_process_group") == "worker"
+          ]
+          if not workers:
+              raise SystemExit("No already-started ScentHunter worker found; refusing to start or deploy one")
+          print(workers[0]["id"])
+          PY
+          )"
+          echo "Using already-started worker: $WORKER_ID"
+          ENCODED="$(base64 -w0 backend/scripts/check_deloox_multi_product_live.py)"
+          REMOTE_SCRIPT="cd /app/backend && printf '%s' '$ENCODED' | base64 -d | /app/.venv/bin/python"
+          printf -v REMOTE_COMMAND '/bin/sh -lc %q' "$REMOTE_SCRIPT"
+          set +e
+          OUTPUT="$(timeout 180s flyctl ssh console --app scenthunter --machine "$WORKER_ID" --pty=false --quiet -C "$REMOTE_COMMAND" 2>&1)"
+          STATUS=$?
+          set -e
+          printf '%s\n' "$OUTPUT"
+          if [ "$STATUS" -ne 0 ] || ! grep -q 'DELOOX_MULTI_PRODUCT_LIVE=' <<< "$OUTPUT"; then
+            echo "::error::Deloox multi-product live probe did not complete successfully."
+            exit 1
+          fi
+          if ! grep -q '"status": "VERIFIED_THREE_BRANDS"' <<< "$OUTPUT"; then
+            echo "::error::Deloox did not meet the three-product/three-brand acceptance gate."
+            exit 1
+          fi
