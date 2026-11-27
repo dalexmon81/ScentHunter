@@ -1,3 +1,4 @@
+# Bounded diagnostic: one search per query, max four fragrance-page fetches each.
 name: Sabina.es live diagnostic
 
 on:
@@ -29,7 +30,7 @@ jobs:
       - name: Install scraper runtime dependencies
         run: python -m pip install requests beautifulsoup4
 
-      - name: Probe Sabina Spanish native search and up to six product pages
+      - name: Probe Sabina Spanish native search and up to twelve fragrance pages
         timeout-minutes: 3
         env:
           PYTHONPATH: backend
