@@ -83,7 +83,7 @@ jobs:
           echo "Notino CJ feed URL and credentials staged for the production release."
 
       - name: Configure PerfumeMarket discovery seed for the authorized pilot
-        if: ${{ contains(github.event.head_commit.message, '[perfumemarket-only]') }}
+        if: ${{ contains(github.event.head_commit.message, '[perfumemarket-only]') || contains(github.event.head_commit.message, 'PerfumeMarket') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
