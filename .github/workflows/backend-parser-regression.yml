@@ -54,7 +54,10 @@ jobs:
       - name: Verify live PerfumeMarket product extraction (read-only)
         if: >-
           github.event_name == 'pull_request' &&
-          github.event.pull_request.head.ref == 'fix/perfumemarket-live-product-validation'
+          (
+            github.event.pull_request.head.ref == 'fix/perfumemarket-live-product-validation' ||
+            github.event.pull_request.head.ref == 'fix/perfumemarket-live-closure'
+          )
         timeout-minutes: 2
         env:
           PYTHONPATH: backend
