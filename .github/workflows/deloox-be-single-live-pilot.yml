@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: deloox-be-single-live-pilot
+  cancel-in-progress: true
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
@@ -47,7 +51,9 @@ jobs:
 
           SCRIPT="$(cat <<'PY'
           from uuid import UUID
-          import re
+          import os
+          import subprocess
+          from pathlib import Path
           import requests
           from sqlalchemy import text
 
@@ -85,10 +91,21 @@ jobs:
                   print("DELOOX_ALREADY_HAS_ACTIVE_PILOT_OFFER=" + str(existing))
                   raise SystemExit(0)
 
-          # Use the existing Deloox parser's normal product-page path.
-          # It makes one direct request and uses its built-in headless render
-          # fallback only when the HTTP response is an incomplete interstitial.
-          # No search, sitemap, retries, paid proxy, or other retailer is used.
+          # The Python package is present in the production image, but the
+          # Chromium binary is missing at Playwright's runtime cache path.
+          # Install only that browser into the worker's existing cache; no
+          # proxy, search, sitemap, retries, or other retailer is involved.
+          os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "/.cache/ms-playwright"
+          browser = Path("/.cache/ms-playwright/chromium-1091/chrome-linux/chrome")
+          if not browser.is_file():
+              subprocess.run(
+                  ["/app/.venv/bin/playwright", "install", "chromium"],
+                  check=True, timeout=240,
+              )
+
+          # Use the existing Deloox parser's normal product-page path. It makes
+          # one direct request and uses its built-in headless render fallback
+          # only if the HTTP response is an incomplete interstitial.
           with requests.Session() as http:
               record = scraper.extract_product_page(
                   http, PRODUCT_URL,
@@ -207,7 +224,7 @@ jobs:
           )"
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
           set +e
-          REMOTE_OUTPUT="$(flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 180 2>&1)"
+          REMOTE_OUTPUT="$(flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 300 2>&1)"
           REMOTE_STATUS=$?
           set -e
           printf '%s\n' "$REMOTE_OUTPUT"
