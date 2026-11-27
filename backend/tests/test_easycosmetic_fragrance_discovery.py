@@ -75,6 +75,22 @@ class EasycosmeticFragranceDiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(candidates, [])
 
+    def test_brand_is_recovered_only_when_url_category_matches_visible_title(self):
+        self.assertEqual(
+            scraper._brand_from_product_url_title(
+                "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio/product.aspx",
+                "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray",
+            ),
+            "Giorgio Armani",
+        )
+        self.assertEqual(
+            scraper._brand_from_product_url_title(
+                "https://www.easycosmetic.de/dior/sauvage/product.aspx",
+                "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray",
+            ),
+            "",
+        )
+
     def test_unknown_product_category_is_not_rejected_by_default(self):
         html = """
         <html><body>
