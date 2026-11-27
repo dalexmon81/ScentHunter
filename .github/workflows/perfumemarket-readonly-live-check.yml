@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   verify-source:
+    if: false # Disabled after the single approved live request returned HTTP 429; do not retry during retailer cooldown.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
