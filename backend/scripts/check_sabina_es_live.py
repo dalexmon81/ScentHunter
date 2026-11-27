@@ -64,11 +64,13 @@ def _fragrance_candidate(url: str) -> bool:
 
 def _matches_requested_fragrance(name: Any, query: str) -> bool:
     normalized_name = " ".join(str(name or "").casefold().replace("-", " ").split())
+    if any(term in normalized_name for term in NON_FRAGRANCE_NAME_TERMS):
+        return False
     if "afnan" in query.casefold():
-        return "afnan" in normalized_name and "9 pm" in normalized_name
+        return "9 pm" in normalized_name
     if "dior" in query.casefold():
         return "sauvage" in normalized_name
-    return "davidoff" in normalized_name and "cool water" in normalized_name
+    return "cool water" in normalized_name
 
 
 def main() -> int:
