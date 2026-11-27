@@ -56,7 +56,7 @@ def test_deloox_canonical_numeric_product_urls_remain_admitted():
 
 def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeypatch):
     product_url = (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html"
     )
     fake_scraper = SimpleNamespace(
@@ -93,7 +93,7 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
 
     cases = (
         (
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
             "Chloe Le Parfum",
             "Chloé Le Parfum 150 ml",
             "Chloé",
@@ -181,11 +181,11 @@ def test_coverage_admission_rejects_deloox_navigation_but_keeps_products():
         "deloox", "https://www.deloox.com/"
     ) == ""
     product = (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html?utm_source=test"
     )
     assert catalog_engine._coverage_allowed_url("deloox", product) == (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html"
     )
 
