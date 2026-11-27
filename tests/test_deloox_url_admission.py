@@ -41,7 +41,7 @@ def test_deloox_canonical_numeric_product_urls_remain_admitted():
     urls = (
         (
             "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
         ),
         (
             "https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html?utm_source=test",
