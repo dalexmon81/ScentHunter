@@ -22,6 +22,13 @@ def test_product_offer_line_excludes_delivery_prices_and_preserves_size():
 
 
 class NotinoPublicConnectorTests(unittest.IsolatedAsyncioTestCase):
+    def test_brand_from_url_title_allows_retailer_promotion_prefix(self):
+        brand = NotinoPublicStorefrontConnector._brand_from_url_title(
+            "https://www.notino.fr/armani/acqua-di-gio-profondo/p-123/",
+            "Black Friday Armani Acqua di Gio Profondo rechargeable pour homme",
+        )
+        self.assertEqual(brand, "Armani")
+
     async def test_discovery_returns_notino_product_urls_without_feed(self):
         connector = NotinoPublicStorefrontConnector()
         candidate = {
