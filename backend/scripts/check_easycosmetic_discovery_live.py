@@ -7,7 +7,7 @@ from urllib.parse import quote_plus, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from scrapers import easycosmetic as scraper
+from scrapers.easycosmetic import scraper
 
 
 QUERY = "Dior"
