@@ -66,33 +66,40 @@ jobs:
           if not isinstance(record, dict):
               raise RuntimeError("Deloox product page returned no valid record")
 
+          source = record.get("source") if isinstance(record.get("source"), dict) else {}
+          identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
+          attributes = record.get("attributes") if isinstance(record.get("attributes"), dict) else {}
+          offer = record.get("offer") if isinstance(record.get("offer"), dict) else {}
+          size = attributes.get("size_ml") if isinstance(attributes.get("size_ml"), dict) else {}
+          strength = attributes.get("concentration") if isinstance(attributes.get("concentration"), dict) else {}
+          gtin = identity.get("gtin") if isinstance(identity.get("gtin"), dict) else {}
           connector_data = {
               "name": record.get("name"),
-              "brand": record.get("brand"),
-              "concentration": record.get("concentration"),
-              "size_ml": record.get("size_ml"),
-              "price": record.get("price_num"),
-              "currency": record.get("currency"),
-              "availability": record.get("availability"),
-              "gtin": record.get("gtin"),
-              "url": record.get("url"),
+              "brand": source.get("source_brand"),
+              "concentration": strength.get("value"),
+              "size_ml": size.get("value"),
+              "price": offer.get("price"),
+              "currency": offer.get("currency"),
+              "availability": offer.get("availability"),
+              "gtin": gtin.get("value"),
+              "url": source.get("url"),
           }
           print("DELOOX_LIVE_EVIDENCE=" + repr(connector_data), flush=True)
 
-          if str(record.get("brand") or "").strip().casefold() != "rasasi":
+          if str(source.get("source_brand") or "").strip().casefold() != "rasasi":
               raise RuntimeError("Live brand did not match Rasasi")
           if "hawas fire" not in str(record.get("name") or "").casefold():
               raise RuntimeError("Live product name did not match Hawas Fire")
-          if record.get("size_ml") != 100:
+          if size.get("value") != 100:
               raise RuntimeError("Live page did not confirm the 100 ml variant")
-          if record.get("concentration") != "Eau de Parfum":
+          if strength.get("value") != "Eau de Parfum":
               raise RuntimeError("Live page did not confirm Eau de Parfum")
-          if record.get("availability") != "in_stock":
+          if offer.get("availability") != "in_stock":
               raise RuntimeError("Live source did not explicitly confirm in-stock availability")
-          price = float(record.get("price_num") or 0)
+          price = float(offer.get("price") or 0)
           if price <= 0:
               raise RuntimeError("Live source returned no valid positive price")
-          if EXPECTED_PRODUCT_ID not in str(record.get("url") or ""):
+          if EXPECTED_PRODUCT_ID not in str(source.get("url") or ""):
               raise RuntimeError("Parsed URL did not match the approved Deloox product")
           raw = record.get("raw_data") if isinstance(record.get("raw_data"), dict) else {}
           jsonld = raw.get("jsonld") if isinstance(raw.get("jsonld"), dict) else {}
@@ -102,8 +109,8 @@ jobs:
               isinstance(item, dict) and str(item.get("priceCurrency") or "").upper() == "EUR"
               for item in offers
           )
-          if not explicit_eur:
-              raise RuntimeError("Live source did not explicitly confirm EUR in JSON-LD")
+          if str(offer.get("currency") or "").upper() != "EUR" or not explicit_eur:
+              raise RuntimeError("Live source did not explicitly confirm EUR in both normalized offer and JSON-LD")
           print("DELOOX_LIVE_VERIFICATION=PASS", flush=True)
           PY
 
