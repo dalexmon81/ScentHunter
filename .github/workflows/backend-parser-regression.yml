@@ -89,6 +89,14 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python backend/scripts/check_easycosmetic_live.py
 
+      - name: Verify Easycosmetic.de search discovery (one request, read-only)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/easycosmetic-visible-price-currency-evidence'
+        timeout-minutes: 2
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_easycosmetic_discovery_live.py
+
       - name: Run Notino feed and staging catalog seed regression tests
         env:
           PYTHONPATH: backend
