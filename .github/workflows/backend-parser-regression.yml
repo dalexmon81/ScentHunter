@@ -90,7 +90,12 @@ jobs:
         run: python backend/scripts/check_easycosmetic_live.py
 
       - name: Verify Easycosmetic.de search discovery (one request, read-only)
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/easycosmetic-visible-price-currency-evidence'
+        if: >-
+          github.event_name == 'pull_request' &&
+          (
+            github.event.pull_request.head.ref == 'fix/easycosmetic-visible-price-currency-evidence' ||
+            github.event.pull_request.head.ref == 'fix/easycosmetic-fragrance-only-discovery'
+          )
         timeout-minutes: 2
         env:
           PYTHONPATH: backend
