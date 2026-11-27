@@ -97,6 +97,14 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python backend/scripts/check_easycosmetic_discovery_live.py
 
+      - name: Probe public Notino.fr sitemap (one request, read-only, diagnostic)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'investigate/notino-public-sitemap-discovery'
+        timeout-minutes: 2
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_notino_sitemap_live.py
+
       - name: Run Notino feed and staging catalog seed regression tests
         env:
           PYTHONPATH: backend
