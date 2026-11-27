@@ -98,6 +98,7 @@ def test_search_falls_back_to_public_storefront_when_feed_has_no_match(monkeypat
         "name": "Dior Sauvage Eau de Parfum 100 ml",
         "brand": "Dior",
         "price": "89,90 €",
+        "currency": "EUR",
         "size_ml": 100,
         "availability": "in stock",
         "available": True,
