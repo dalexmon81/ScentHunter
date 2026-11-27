@@ -476,22 +476,20 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     return None
 
 
-def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
-    """Read the displayed price from the product detail, not recommendations.
+def _extract_selected_variant_price_evidence(
+    soup: BeautifulSoup,
+) -> Tuple[Optional[float], Optional[Dict[str, str]]]:
+    """Read the selected product price and retain matching visible EUR evidence.
 
-    Easycosmetic's JSON-LD can contain a stale/cached offer that differs from
-    the price currently shown for the selected bottle size. Prefer a price
-    explicitly attached to the product detail (itemprop/data-price or a
-    product-price element); never scan the whole document for the first euro
-    amount, because variant selectors and recommendation cards contain other
-    prices.
+    A numeric data-price attribute is useful for the amount but does not prove
+    its currency. Currency is marked explicit only when the same selected
+    product-price element visibly renders the parsed amount with a euro sign
+    or EUR label.
     """
     h1 = soup.find("h1")
     if h1 is None:
-        return None
+        return None, None
 
-    # Walk outward from the title and stop at a bounded product-detail scope.
-    # This avoids accidentally selecting a price from a recommendation grid.
     roots = []
     node = h1
     for _ in range(7):
@@ -510,8 +508,6 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
             break
         node = node.parent
 
-    # Also check the nearest section/container around the title if the site
-    # doesn't use a recognizable product-detail class.
     if not roots:
         node = h1
         for _ in range(4):
@@ -522,12 +518,9 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
                 roots.append(node)
                 break
     if not roots:
-        return None
+        return None, None
 
     root = roots[0]
-    # Visible price nodes must win over metadata. Easycosmetic sometimes
-    # leaves an outdated itemprop/meta price in the HTML while the selected
-    # variant's visible price is already updated. Metadata is a last resort.
     selectors = (
         '[class*="product-price"]', '[class*="price-current"]',
         '[class*="priceCurrent"]', '[class~="price"]',
@@ -540,13 +533,36 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
             element_id = str(element.get("id") or "").lower()
             if any(marker in f"{classes} {element_id}" for marker in rejected):
                 continue
-            raw = element.get("content") or element.get("data-price") or element.get_text(" ", strip=True)
+
+            visible_text = element.get_text(" ", strip=True)
+            raw = element.get("content") or element.get("data-price") or visible_text
             price = _price_to_float(raw)
             if price is None:
                 price = _extract_price_from_text(_clean(raw))
-            if price is not None and price > 0:
-                return price
-    return None
+            if price is None or price <= 0:
+                continue
+
+            evidence = None
+            currency_text = visible_text or _clean(raw)
+            has_eur_marker = bool(re.search(r"€|\\bEUR\\b", currency_text, flags=re.I))
+            visible_amount = _extract_price_from_text(currency_text)
+            if visible_amount is None and has_eur_marker:
+                visible_amount = _price_to_float(currency_text)
+            if has_eur_marker and visible_amount is not None and abs(visible_amount - price) < 0.005:
+                evidence = {
+                    "currency": "EUR",
+                    "source": "product_price_display",
+                    "displayed_price": currency_text,
+                    "matched_price": f"{price:.2f}",
+                }
+            return price, evidence
+
+    return None, None
+
+
+def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
+    """Backward-compatible price-only helper for existing callers."""
+    return _extract_selected_variant_price_evidence(soup)[0]
 
 
 def _extract_brand(product_json: Dict[str, Any]) -> str:
@@ -1126,7 +1142,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     # this storefront, with or without a ?variant= parameter. JSON-LD can be
     # cached or can describe a different regional/default offer. Only use the
     # narrowly scoped product-detail price; never guess from arbitrary page text.
-    displayed_price = _extract_selected_variant_price(soup)
+    displayed_price, currency_evidence = _extract_selected_variant_price_evidence(soup)
     if displayed_price is not None:
         price = displayed_price
 
@@ -1212,7 +1228,10 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "url": url,
         # Keep structured source evidence so catalog ingestion can distinguish
         # an explicit ISO currency from the parser's EUR fallback.
-        "raw_data": {"jsonld_product": product_json} if product_json else {},
+        "raw_data": {
+            **({"jsonld_product": product_json} if product_json else {}),
+            **({"currency_evidence": currency_evidence} if currency_evidence else {}),
+        },
     }
 
 
