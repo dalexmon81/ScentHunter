@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Fetch one known Deloox product through the canonical ingestion path
+      - name: Verify Chromium and fetch one Deloox product without database writes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
@@ -24,24 +24,74 @@ jobs:
 
           python_script="$(cat <<'PY'
           import json
-          from app.workers.legacy_runtime import handle_legacy_fetch
+          import os
+          from pathlib import Path
+          import requests
+          from playwright.sync_api import sync_playwright
+          from app.connectors.legacy_scrapers import LegacyScraperConnector
+          from scrapers.deloox import scraper
 
-          payload = {
-              "store_id": "c88a7ce4-b453-4247-9af8-6b5b04abfddf",
-              "external_product_id": "https://www.deloox.be/produit/1323681/pino-silvestre-italian-citrus-eau-de-toilette-75-ml.html",
+          url = "https://www.deloox.be/produit/1379345/rasasi-hawas-fire-eau-de-parfum-100-ml.html"
+          with sync_playwright() as playwright:
+              browser_path = Path(playwright.chromium.executable_path)
+              if not browser_path.is_file():
+                  raise RuntimeError(
+                      "Chromium executable missing: "
+                      + str(browser_path)
+                      + " PLAYWRIGHT_BROWSERS_PATH="
+                      + str(os.environ.get("PLAYWRIGHT_BROWSERS_PATH"))
+                  )
+              print("DELOOX_CHROMIUM_PATH=" + str(browser_path))
+
+          with requests.Session() as http:
+              record = scraper.extract_product_page(
+                  http, url, query="Rasasi Hawas Fire Eau de Parfum 100 ml"
+              )
+          if not isinstance(record, dict):
+              raise RuntimeError("Deloox live product parser returned no record")
+
+          parsed = LegacyScraperConnector("deloox", scraper).parse_raw(record)
+          evidence = {
+              "name": record.get("name"),
+              "brand": record.get("brand"),
+              "concentration": record.get("concentration"),
+              "size_ml": record.get("size_ml"),
+              "price": record.get("price_num"),
+              "currency": parsed.get("currency"),
+              "currency_explicit": parsed.get("currency_explicit"),
+              "availability": record.get("availability"),
+              "gtin": record.get("gtin"),
+              "url": record.get("url"),
           }
-          result = handle_legacy_fetch(payload)
-          print("DELOOX_LIVE_PROBE_RESULT=" + json.dumps(result, default=str, sort_keys=True))
+          print("DELOOX_LIVE_EVIDENCE=" + json.dumps(evidence, default=str, sort_keys=True))
+
+          if str(record.get("brand") or "").strip().casefold() != "rasasi":
+              raise RuntimeError("Live brand did not match Rasasi")
+          if "hawas fire" not in str(record.get("name") or "").casefold():
+              raise RuntimeError("Live product name did not match Hawas Fire")
+          if record.get("size_ml") != 100:
+              raise RuntimeError("Live page did not confirm the 100 ml variant")
+          if record.get("concentration") != "Eau de Parfum":
+              raise RuntimeError("Live page did not confirm Eau de Parfum")
+          if parsed.get("currency") != "EUR" or parsed.get("currency_explicit") is not True:
+              raise RuntimeError("Live source did not explicitly confirm EUR currency")
+          if record.get("availability") != "in_stock":
+              raise RuntimeError("Live source did not explicitly confirm in-stock availability")
+          if float(record.get("price_num") or 0) <= 0:
+              raise RuntimeError("Live source returned no valid positive price")
+          if "/produit/1379345/" not in str(record.get("url") or ""):
+              raise RuntimeError("Parsed product URL did not match the approved Deloox product")
+          print("DELOOX_LIVE_PARSER_VERIFICATION=PASS")
           PY
           )"
           encoded="$(printf '%s' "$python_script" | base64 -w0)"
           remote_command="sh -lc 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
-          output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 90 2>&1)" || {
+          output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 180 2>&1)" || {
             printf '%s\n' "$output" >&2
             exit 1
           }
           printf '%s\n' "$output"
-          grep -Fq "DELOOX_LIVE_PROBE_RESULT=" <<< "$output" || {
-            echo "::error::The remote probe did not return a structured result."
+          grep -Fq "DELOOX_LIVE_PARSER_VERIFICATION=PASS" <<< "$output" || {
+            echo "::error::Deloox live parser did not reach final verification."
             exit 1
           }
