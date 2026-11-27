@@ -14,7 +14,7 @@ from typing import Any
 
 from scrapers.parfumzentrum import scraper
 
-QUERIES = ("Afnan 9 pm", "Dior Sauvage", "Davidoff Cool Water")
+QUERIES = ("Afnan 9 pm", "Dior Christian Sauvage Eau de Parfum", "Davidoff Cool Water")
 MAX_PRODUCT_FETCHES_PER_QUERY = 2
 MIN_DISTINCT_BRANDS = 3
 
