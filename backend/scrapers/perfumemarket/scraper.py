@@ -906,6 +906,26 @@ def _validate_discovered_products(session, candidates, query):
     return validated
 
 
+def _pm_extract_gtin(product, soup):
+    """Read GTIN from structured data or an explicitly labeled product UPC/EAN field."""
+    for key in ("gtin13", "gtin12", "gtin14", "gtin"):
+        value = str(product.get(key) or "").strip()
+        if value:
+            digits = re.sub(r"\\D", "", value)
+            if 8 <= len(digits) <= 14:
+                return digits, "shopify_jsonld"
+
+    page_text = soup.get_text(" ", strip=True)
+    match = re.search(
+        r"\\b(?:UPC|EAN(?:-13)?|GTIN(?:-?(?:8|12|13|14))?)\\s*[:#]?\\s*(\\d{8,14})\\b",
+        page_text,
+        re.I,
+    )
+    if match:
+        return match.group(1), "product_page_label"
+    return "", None
+
+
 def extract_product_page(session, url, query):
     """Parse a PerfumeMarket product page generically.
 
@@ -992,13 +1012,7 @@ def extract_product_page(session, url, query):
     concentration = _pm_extract_concentration(title)
 
     sku = str(product.get("sku") or "").strip()
-    gtin = str(
-        product.get("gtin13")
-        or product.get("gtin12")
-        or product.get("gtin14")
-        or product.get("gtin")
-        or ""
-    ).strip()
+    gtin, gtin_source = _pm_extract_gtin(product, soup)
     mpn = str(product.get("mpn") or "").strip()
 
     return {
@@ -1026,7 +1040,7 @@ def extract_product_page(session, url, query):
         },
         "identity": {
             "sku": {"value": sku, "source": "shopify_jsonld"} if sku else None,
-            "gtin": {"value": gtin, "source": "shopify_jsonld"} if gtin else None,
+            "gtin": {"value": gtin, "source": gtin_source} if gtin else None,
             "mpn": {"value": mpn, "source": "shopify_jsonld"} if mpn else None,
         },
         "attributes": {
