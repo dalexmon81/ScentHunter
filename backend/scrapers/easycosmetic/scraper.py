@@ -629,6 +629,33 @@ def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
     return None, ""
 
 
+NON_FRAGRANCE_PRODUCT_MARKERS = (
+    "make up", "makeup", "cosmetics", "cosmetic", "skincare", "skin care",
+    "face cream", "facial cream", "gesichtscreme", "gesichtspflege", "hautpflege",
+    "body lotion", "body cream", "hand cream", "handcreme", "shampoo",
+    "conditioner", "shower gel", "duschgel", "body wash", "deodorant",
+    "antiperspirant", "mascara", "lipstick", "lip gloss", "lip balm",
+    "foundation", "concealer", "eyeshadow", "eye shadow", "eyeliner",
+    "nail polish", "nagellack", "sunscreen", "sun cream", "sonnencreme",
+    "aftershave balm", "after shave balm", "aftershave lotion", "rasiergel",
+)
+
+
+def _is_non_fragrance_product(text: str) -> bool:
+    """Reject clearly non-fragrance product categories during perfume discovery.
+
+    Unknown categories remain eligible for the product-page parser; this is a
+    conservative exclusion filter, not a requirement that every perfume title
+    contain the word 'parfum'.
+    """
+    normalized = _normalise_text(text)
+    padded = f" {normalized} "
+    return any(
+        f" {_normalise_text(marker)} " in padded
+        for marker in NON_FRAGRANCE_PRODUCT_MARKERS
+    )
+
+
 def _extract_candidate_links(
     soup: BeautifulSoup,
     query: str,
@@ -643,6 +670,8 @@ def _extract_candidate_links(
         normalized_candidate_text = _normalise_text(
             f"{text} {url}"
         )
+        if _is_non_fragrance_product(normalized_candidate_text):
+            return
 
         bundle_markers = (
             "box",
