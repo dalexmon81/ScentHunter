@@ -89,9 +89,9 @@ A candidate's brand can be recovered from the first URL path segment only when
 the product title repeats that same brand prefix.
 
 Fetch and refresh read the exact HTTPS Notino.fr product page through the
-existing Notino parser, preferring the retailer HTML and falling back to its
-public reader representation when the edge blocks direct requests. The parser
-uses the product's stock/price-per-ml line or matching Product JSON-LD for price,
+existing Notino parser using direct storefront requests only. If the retailer
+blocks the request, the connector fails closed; it does not use a proxy, public
+reader, feed or alternate access path. The parser uses the product's stock/price-per-ml line or matching Product JSON-LD for price,
 size and stock; it does not use delivery charges or search-card prices. The
 connector preserves the product URL and extracts the product name, brand,
 concentration, size, price, explicit EUR evidence and explicit stock state.
