@@ -45,7 +45,9 @@ jobs:
         run: python -m compileall -q backend/app backend/scripts/restore_readonly_smoke.py
 
   readonly-api-smoke:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    # This smoke test connects to a disposable Neon clone. Keep it manual so
+    # ordinary pull requests never consume database quota or require Neon access.
+    if: github.event_name == 'workflow_dispatch'
     name: Catalog status and search against disposable Neon clone
     runs-on: ubuntu-latest
     timeout-minutes: 10
