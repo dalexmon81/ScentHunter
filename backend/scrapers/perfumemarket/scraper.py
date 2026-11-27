@@ -911,13 +911,13 @@ def _pm_extract_gtin(product, soup):
     for key in ("gtin13", "gtin12", "gtin14", "gtin"):
         value = str(product.get(key) or "").strip()
         if value:
-            digits = re.sub(r"\\D", "", value)
+            digits = re.sub(r"\D", "", value)
             if 8 <= len(digits) <= 14:
                 return digits, "shopify_jsonld"
 
     page_text = soup.get_text(" ", strip=True)
     match = re.search(
-        r"\\b(?:UPC|EAN(?:-13)?|GTIN(?:-?(?:8|12|13|14))?)\\s*[:#]?\\s*(\\d{8,14})\\b",
+        r"\b(?:UPC|EAN(?:-13)?|GTIN(?:-?(?:8|12|13|14))?)\s*[:#]?\s*(\d{8,14})\b",
         page_text,
         re.I,
     )
