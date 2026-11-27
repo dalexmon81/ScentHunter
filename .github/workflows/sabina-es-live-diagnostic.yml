@@ -1,4 +1,4 @@
-# Bounded diagnostic: one search per query, max four fragrance-page fetches each.
+# Bounded diagnostic: native Spanish search; fragrance-only product validation.
 name: Sabina.es live diagnostic
 
 on:
