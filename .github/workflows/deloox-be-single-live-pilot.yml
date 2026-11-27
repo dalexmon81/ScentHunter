@@ -67,6 +67,7 @@ jobs:
           EXPECTED_PRODUCT_ID = "/produit/1379345/"
           factory = make_session_factory()
 
+          # Browser cache path is pinned by the deployed production image.
           # The Python package is present in the production image, but the
           # Chromium binary is missing at Playwright's runtime cache path.
           # Install only that browser into the worker's existing cache; no
