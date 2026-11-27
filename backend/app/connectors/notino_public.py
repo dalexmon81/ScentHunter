@@ -46,7 +46,7 @@ class NotinoPublicStorefrontConnector(StoreConnector):
         # Accept the URL brand slug only when the same phrase occurs as a
         # whole-word sequence in the product title.
         match = re.search(
-            rf"(?<!\\w){re.escape(slug_prefix)}(?!\\w)",
+            rf"(?<!\w){re.escape(slug_prefix)}(?!\w)",
             str(name),
             flags=re.IGNORECASE,
         )
