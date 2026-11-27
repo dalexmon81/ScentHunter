@@ -634,7 +634,7 @@ NON_FRAGRANCE_PRODUCT_MARKERS = (
     "face cream", "facial cream", "gesichtscreme", "gesichtspflege", "hautpflege",
     "body lotion", "body cream", "hand cream", "handcreme", "shampoo",
     "conditioner", "shower gel", "duschgel", "body wash", "deodorant",
-    "antiperspirant", "mascara", "lipstick", "lip gloss", "lip balm",
+    "antiperspirant", "mascara", "lipstick", "lip gloss", "lip glow", "lip balm",
     "foundation", "concealer", "eyeshadow", "eye shadow", "eyeliner",
     "nail polish", "nagellack", "sunscreen", "sun cream", "sonnencreme",
     "aftershave balm", "after shave balm", "aftershave lotion", "rasiergel",
