@@ -41,6 +41,15 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         )
         self.connector = LegacyScraperConnector("deloox", self.scraper)
 
+    async def test_only_approved_retailers_resolve_to_production_connectors(self):
+        self.assertEqual(
+            set(__import__("app.connectors.legacy_scrapers", fromlist=["STORE_SLUGS"]).STORE_SLUGS),
+            {"bplatz", "deloox-be", "sabina-es", "easycosmetic-de", "parfumzentrum-de"},
+        )
+        for slug in ("orioudh", "parfumcity-nl", "perfumemarket"):
+            with self.subTest(slug=slug):
+                self.assertIsNone(connector_key_for_store_slug(slug))
+
     async def test_only_belgian_deloox_store_resolves_to_connector(self):
         self.assertEqual(connector_key_for_store_slug("deloox-be"), "deloox")
         for slug in ("deloox-com", "deloox-lu", "deloox-nl", "deloox-es"):
@@ -232,7 +241,7 @@ class LegacyScraperConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(observation["currency_explicit"])
 
         # Orioudh is not yet enabled as a scheduled production store.
-        self.assertEqual(connector_key_for_store_slug("orioudh"), "orioudh")
+        self.assertIsNone(connector_key_for_store_slug("orioudh"))
 
     async def test_orioudh_currency_evidence_must_match_exact_price_and_currency(self):
         connector = LegacyScraperConnector("orioudh", SimpleNamespace())
