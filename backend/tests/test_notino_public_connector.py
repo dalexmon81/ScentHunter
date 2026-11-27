@@ -66,6 +66,28 @@ class NotinoPublicConnectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(row["price"], "89.90")
         self.assertTrue(row["captured_at"])
 
+    async def test_fetch_preserves_brand_established_during_discovery(self):
+        connector = NotinoPublicStorefrontConnector()
+        url = "https://www.notino.fr/dior/sauvage/p-123/"
+        connector._candidates[url] = {
+            "url": url,
+            "name": "DIOR Sauvage Eau de Parfum",
+            "brand": "DIOR",
+            "query": "Dior Sauvage Eau de Parfum",
+        }
+        page = {
+            "url": url,
+            "name": "DIOR Sauvage Eau de Parfum",
+            "price": "89.90 €",
+            "availability": "in stock",
+            "size_ml": 100,
+            "concentration": "Eau de Parfum",
+            "currency_explicit": True,
+        }
+        with patch("app.connectors.notino_public.scraper._reader_product", return_value=page):
+            row = await connector.fetch_product(url)
+        self.assertEqual(row["brand"], "DIOR")
+
     async def test_fetch_does_not_accept_unknown_stock_or_foreign_destination(self):
         connector = NotinoPublicStorefrontConnector()
         url = "https://www.notino.fr/dior/sauvage/p-123/"
