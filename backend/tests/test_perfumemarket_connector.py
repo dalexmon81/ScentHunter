@@ -192,6 +192,8 @@ class PerfumeMarketParserTests(unittest.TestCase):
         self.assertEqual(results[0]["currency"], "EUR")
         self.assertEqual(results[0]["availability"], "in_stock")
         self.assertEqual(results[0]["gtin"], "614514465059")
+        self.assertEqual(results[0]["brand"], "Rasasi")
+        self.assertEqual(results[0]["fragrance"], "Hawas London")
 
     def test_plain_parfum_concentration_is_normalized(self):
         self.assertEqual(
