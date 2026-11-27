@@ -1,4 +1,4 @@
-# Bounded diagnostic: native Spanish search; fragrance-only product validation.
+# Bounded diagnostic: fragrance identity and product-type checks enabled.
 name: Sabina.es live diagnostic
 
 on:
