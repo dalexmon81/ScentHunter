@@ -156,6 +156,7 @@ jobs:
 
           connector = LegacyScraperConnector("perfumemarket", scraper)
           matcher = _matcher()
+          promotion_error = None
           with factory() as session, session.begin():
               store = session.get(Store, STORE_ID)
               run_id = start_ingestion_run(session, store_id=STORE_ID)
@@ -174,18 +175,20 @@ jobs:
                   )
                   finish_ingestion_run(session, run_id=run_id, status="completed")
               else:
+                  promotion_error = str(result.reason or result.status)
                   record_ingestion_progress(
                       session, run_id=run_id,
                       products_discovered=1, offers_rejected=1,
-                      error="canonical_promotion_not_completed:" + str(result.reason or result.status),
+                      error="canonical_promotion_not_completed:" + promotion_error,
                   )
                   finish_ingestion_run(session, run_id=run_id, status="partial")
-                  raise RuntimeError(
-                      "Live product was fetched but canonical offer promotion was not approved: "
-                      + str(result.reason or result.status)
-                  )
               print("PERFUMEMARKET_INGESTION_RUN=" + str(run_id))
               print("PERFUMEMARKET_OFFER_ID=" + str(result.offer_id))
+          if promotion_error:
+              raise RuntimeError(
+                  "Live product was fetched but canonical offer promotion was not approved: "
+                  + promotion_error
+              )
 
           with factory() as session:
               row = session.execute(text("""
