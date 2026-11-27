@@ -136,3 +136,86 @@ def test_catalog_first_pipeline_promotes_searches_and_refreshes_without_network_
             assert offer.product_variant_id == variant_id
     finally:
         engine.dispose()
+
+
+class FixtureNotinoConnector(FixtureRetailerConnector):
+    store_key = "notino"
+
+
+def test_direct_notino_capture_timestamp_can_publish_search_and_refresh_without_feed_timestamp():
+    from datetime import datetime, timezone
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    store_id = uuid4()
+    variant_id = uuid4()
+    captured_at = datetime.now(timezone.utc).isoformat()
+    url = "https://www.notino.fr/dior/sauvage-eau-de-parfum-100ml/p-123456/"
+    record = {
+        "external_product_id": url,
+        "raw_name": "Dior Sauvage Eau de Parfum 100 ml",
+        "brand_raw": "Dior",
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "price": "89.90",
+        "currency": "EUR",
+        "currency_explicit": True,
+        "availability": "in_stock",
+        "product_url": url,
+        "url": url,
+        "captured_at": captured_at,
+        "source": "notino_public_storefront",
+    }
+    try:
+        with Session(engine) as session, session.begin():
+            store = Store(
+                id=store_id, name="Notino.fr", slug="notino-fr",
+                domain="www.notino.fr", country="FR", currency="EUR",
+                status="active",
+            )
+            brand = Brand(name="Dior", slug="dior", normalized_name="dior")
+            session.add_all([store, brand])
+            session.flush()
+            fragrance = Fragrance(brand_id=brand.id, name="Sauvage", slug="sauvage")
+            session.add(fragrance)
+            session.flush()
+            session.add(ProductVariant(
+                id=variant_id, fragrance_id=fragrance.id,
+                concentration="Eau de Parfum", size_ml=100,
+                is_tester=False, is_refill=False,
+                is_gift_set=False, is_mini=False,
+                canonical_key="dior|sauvage|edp|100|regular",
+            ))
+            session.flush()
+            result = persist_connector_record(
+                session, connector=FixtureNotinoConnector(),
+                store_id=store_id, raw_record=dict(record), matcher=None,
+            )
+            assert result.status == "promoted", result.reason
+            assert result.offer_id is not None
+
+        with Session(engine) as session:
+            found = search_catalog(session, "Dior Sauvage EDP 100ml")
+            assert found["count"] == found["offer_count"] == 1
+            assert found["results"][0]["offers"][0]["store"] == "Notino.fr"
+
+        refreshed_at = datetime.now(timezone.utc).isoformat()
+        with Session(engine) as session, session.begin():
+            refresh_offer_observation(
+                session, offer_id=result.offer_id,
+                observation={
+                    "price": "79.90", "currency": "EUR",
+                    "availability": "in_stock", "product_url": url,
+                    "captured_at": refreshed_at,
+                },
+                source="notino_public_storefront", currency_explicit=True,
+            )
+
+        with Session(engine) as session:
+            found = search_catalog(session, "Dior Sauvage EDP 100ml")
+            assert found["count"] == found["offer_count"] == 1
+            offer = found["results"][0]["offers"][0]
+            assert offer["price"] == "79.90"
+            assert offer["availability"] == "in_stock"
+    finally:
+        engine.dispose()
