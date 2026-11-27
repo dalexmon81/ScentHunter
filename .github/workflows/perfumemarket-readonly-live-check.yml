@@ -1,0 +1,102 @@
+name: PerfumeMarket single-product read-only live verification
+
+on:
+  push:
+    branches: [ops/perfumemarket-readonly-live-check]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perfumemarket-readonly-live-check
+  cancel-in-progress: true
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read one PerfumeMarket product page without touching Neon
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine list --app scenthunter --json > machines.json
+          WORKER_ID="$(python - <<'PY'
+          import json
+          with open("machines.json", encoding="utf-8") as handle:
+              machines = json.load(handle)
+          workers = [
+              machine for machine in machines
+              if machine.get("state") == "started"
+              and machine.get("config", {}).get("metadata", {}).get("fly_process_group") == "worker"
+          ]
+          if not workers:
+              raise SystemExit("No already-started ScentHunter worker found; refusing to start or deploy one")
+          print(workers[0]["id"])
+          PY
+          )"
+          echo "Using already-started worker: $WORKER_ID"
+
+          cat > remote_check.py <<'PY'
+          import json
+          import requests
+          from scrapers.perfumemarket import scraper
+
+          PRODUCT_URL = "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp"
+          EXPECTED_GTIN = "614514465059"
+
+          with requests.Session() as http:
+              record = scraper.extract_product_page(
+                  http, PRODUCT_URL, query="Rasasi Hawas London"
+              )
+
+          if not isinstance(record, dict):
+              raise RuntimeError("PerfumeMarket returned no valid product record")
+
+          evidence = {
+              "name": record.get("name"),
+              "brand": record.get("brand"),
+              "fragrance": record.get("fragrance"),
+              "size_ml": record.get("size_ml"),
+              "concentration": record.get("concentration"),
+              "price": record.get("price_num"),
+              "currency": record.get("currency"),
+              "currency_explicit": record.get("currency_explicit"),
+              "availability": record.get("availability"),
+              "gtin": record.get("gtin"),
+              "url": record.get("url"),
+          }
+          print("PERFUMEMARKET_LIVE_EVIDENCE=" + json.dumps(evidence, ensure_ascii=False), flush=True)
+
+          if str(record.get("brand") or "").strip().casefold() != "rasasi":
+              raise RuntimeError("Live brand did not match Rasasi")
+          if "hawas london" not in str(record.get("name") or "").casefold():
+              raise RuntimeError("Live product name did not match Hawas London")
+          if record.get("size_ml") != 100:
+              raise RuntimeError("Live page did not confirm the 100 ml variant")
+          if record.get("concentration") != "Eau de Parfum":
+              raise RuntimeError("Live page did not confirm Eau de Parfum")
+          if str(record.get("gtin") or "") != EXPECTED_GTIN:
+              raise RuntimeError("Live GTIN did not match the canonical variant")
+          if record.get("currency") != "EUR" or record.get("currency_explicit") is not True:
+              raise RuntimeError("Live page did not explicitly confirm EUR")
+          if record.get("availability") != "in_stock":
+              raise RuntimeError("Live page did not explicitly confirm in-stock availability")
+          price = float(record.get("price_num") or 0)
+          if price <= 0:
+              raise RuntimeError("Live page returned no valid positive price")
+          if record.get("url") != PRODUCT_URL:
+              raise RuntimeError("Live product URL did not match the approved canonical URL")
+
+          print("PERFUMEMARKET_LIVE_VERIFICATION=PASS", flush=True)
+          PY
+
+          ENCODED="$(base64 -w0 remote_check.py)"
+          REMOTE_SCRIPT="cd /app/backend && printf '%s' '$ENCODED' | base64 -d | /app/.venv/bin/python"
+          printf -v REMOTE_COMMAND '/bin/sh -lc %q' "$REMOTE_SCRIPT"
+          flyctl machine exec "$WORKER_ID" "$REMOTE_COMMAND" --app scenthunter --timeout 120
