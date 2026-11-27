@@ -106,8 +106,9 @@ def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | No
             continue
         if not _offer_url_valid(offer.url, store.domain):
             continue
-        if store.slug == "notino-fr":
-            # Publish only direct storefront captures; historical CJ/VIV rows stay quarantined.
+        if store.slug in {"notino", "notino-fr"}:
+            # Both legacy and current Notino store slugs are direct-only.
+            # Historical CJ/VIV rows stay quarantined.
             if raw.raw_payload.get("source") != "notino_public_storefront":
                 continue
             source_time = _notino_source_timestamp(raw)
