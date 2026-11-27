@@ -1674,12 +1674,20 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     price = _price(raw_price)
     if price is None:
         return None
+    offers = selected.get("offers") if isinstance(selected, dict) else None
+    if isinstance(offers, list):
+        offers = next((item for item in offers if isinstance(item, dict)), {})
+    if not isinstance(offers, dict):
+        offers = {}
+    schema_currency = str(offers.get("priceCurrency") or "").strip()
     raw_currency = next((
         meta_values[key] for key in (
             "product:price:currency", "og:price:currency", "pricecurrency",
         ) if meta_values.get(key)
-    ), "EUR")
-    if str(raw_currency).upper() != "EUR":
+    ), schema_currency)
+    # The French storefront locale is not currency evidence. Require EUR in
+    # the exact product's structured offer or explicit price metadata.
+    if not raw_currency or str(raw_currency).upper() != "EUR":
         return None
 
     controls_text = " ".join(
@@ -1690,10 +1698,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     if not _price_is_plausible(price, size_ml):
         return None
 
-    offers = selected.get("offers") if isinstance(selected, dict) else None
-    if isinstance(offers, list):
-        offers = next((item for item in offers if isinstance(item, dict)), {})
-    schema_stock = str(offers.get("availability") or "").lower() if isinstance(offers, dict) else ""
+    schema_stock = str(offers.get("availability") or "").lower()
     if "instock" in schema_stock or "limitedavailability" in schema_stock or "onlineonly" in schema_stock:
         stock = False
     elif any(token in schema_stock for token in ("outofstock", "soldout", "discontinued")):
