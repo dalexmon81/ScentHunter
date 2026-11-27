@@ -9,6 +9,26 @@ from urllib.parse import quote, quote_plus, urljoin, urlparse
 
 STORE = "PerfumeMarket"
 BASE_URL = "https://www.perfumemarket.eu"
+
+
+class StoreRequestError(requests.RequestException):
+    """Retailer HTTP failure with a bounded Retry-After hint."""
+
+    def __init__(self, status_code, retry_after_seconds=None, url=None):
+        self.status_code = int(status_code)
+        self.retry_after_seconds = retry_after_seconds
+        self.url = url
+        super().__init__(f"PerfumeMarket HTTP {self.status_code}" + (f" for {url}" if url else ""))
+
+
+def _retry_after_seconds(response):
+    raw = str(response.headers.get("Retry-After") or "").strip()
+    if raw.isdigit():
+        return min(3600, max(30, int(raw)))
+    # If the server omits Retry-After or sends an HTTP date we cannot safely
+    # parse, use the maximum supported cooldown rather than retrying every few
+    # minutes against a retailer that is actively rate-limiting us.
+    return 3600
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
 
@@ -686,6 +706,15 @@ def search_stream(query, emit=None):
 
     try:
         rows = search(query)
+    except StoreRequestError as exc:
+        return {
+            "status": "blocked" if exc.status_code == 429 else "unavailable",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"technical_failure": True, "http_status": exc.status_code,
+                        "retry_after_seconds": exc.retry_after_seconds},
+        }
     except requests.Timeout as exc:
         return {
             "status": "timeout",
@@ -1017,6 +1046,8 @@ def extract_product_page(session, url, query):
         print(f"PERFUMEMARKET PRODUCT FETCH ERROR: {type(exc).__name__}: {exc} | {url}")
         return None
 
+    if response.status_code == 429:
+        raise StoreRequestError(429, _retry_after_seconds(response), url)
     if response.status_code >= 400:
         print(f"PERFUMEMARKET PRODUCT HTTP ERROR: {response.status_code} | {url}")
         return None
