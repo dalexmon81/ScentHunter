@@ -42,10 +42,15 @@ class NotinoPublicStorefrontConnector(StoreConnector):
         if not slug_words or not name:
             return ""
         slug_prefix = " ".join(slug_words)
-        if not scraper._norm(name).startswith(scraper._norm(slug_prefix) + " "):
-            return ""
-        title_words = str(name).split()
-        return " ".join(title_words[:len(slug_words)])
+        # Retailer promotions can precede the brand ("Black Friday Armani...").
+        # Accept the URL brand slug only when the same phrase occurs as a
+        # whole-word sequence in the product title.
+        match = re.search(
+            rf"(?<!\\w){re.escape(slug_prefix)}(?!\\w)",
+            str(name),
+            flags=re.IGNORECASE,
+        )
+        return match.group(0) if match else ""
 
     def _queries(self) -> tuple[str, ...]:
         raw = os.environ.get("SCENTHUNTER_DISCOVERY_QUERIES_NOTINO", "")
