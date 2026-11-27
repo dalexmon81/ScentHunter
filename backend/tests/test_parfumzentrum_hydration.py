@@ -731,3 +731,38 @@ class ParfumZentrumUnitPriceTests(unittest.TestCase):
         node = soup.select_one("span")
         self.assertFalse(parfumzentrum._bad_price_context(node))
 
+
+
+class ParfumZentrumCurrencyEvidenceTests(unittest.TestCase):
+    def _product(self, include_currency: bool):
+        from app.connectors.legacy_scrapers import LegacyScraperConnector
+
+        url = "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/"
+        currency_field = '"priceCurrency":"EUR",' if include_currency else ""
+        html = f"""<!doctype html><html><head>
+        <script type="application/ld+json">{{
+          "@context":"https://schema.org",
+          "@type":"Product",
+          "name":"Berdoues Monoi & Tiare Eau de Toilette 100 ml",
+          "brand":{{"@type":"Brand","name":"Berdoues"}},
+          "sku":"pz-904294",
+          "offers":{{"@type":"Offer","price":"29.40",{currency_field}
+                    "availability":"https://schema.org/InStock"}}
+        }}</script></head><body>
+        <h1>Berdoues Monoï &amp; Tiaré Eau De Toilette 100 ml (unisex)</h1>
+        </body></html>"""
+        product = parfumzentrum.extract_product_page(None, url, html=html)
+        self.assertIsNotNone(product)
+        connector = LegacyScraperConnector("parfumzentrum", parfumzentrum)
+        return connector.parse_raw(product)
+
+    def test_jsonld_eur_currency_is_explicit_for_catalog_gate(self):
+        parsed = self._product(include_currency=True)
+        self.assertEqual(parsed["currency"], "EUR")
+        self.assertTrue(parsed["currency_explicit"])
+        self.assertEqual(parsed["price"], "29.4")
+
+    def test_default_eur_without_source_currency_evidence_is_not_explicit(self):
+        parsed = self._product(include_currency=False)
+        self.assertEqual(parsed["currency"], "EUR")
+        self.assertFalse(parsed["currency_explicit"])
