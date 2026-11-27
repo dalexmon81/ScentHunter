@@ -931,7 +931,7 @@ def _pm_extract_fragrance_name(title, brand, concentration):
         if tokens and tokens[-1] == "for":
             tokens.pop()
             changed = True
-        if tokens and re.fullmatch(r"\\d+(?:[.,]\\d+)?(?:ml|cl|l|oz)", tokens[-1], re.I):
+        if tokens and re.fullmatch(r"\d+(?:[.,]\d+)?(?:ml|cl|l|oz)", tokens[-1], re.I):
             tokens.pop()
             changed = True
         for marker in concentration_markers:
