@@ -1,0 +1,37 @@
+name: Parfum-Zentrum live diagnostic
+
+on:
+  push:
+    branches:
+      - investigate/parfumzentrum-live-validation
+    paths:
+      - backend/scripts/check_parfumzentrum_live.py
+      - .github/workflows/parfumzentrum-live-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scraper runtime dependencies
+        run: python -m pip install requests beautifulsoup4
+
+      - name: Probe Parfum-Zentrum search and up to three product pages
+        timeout-minutes: 2
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_parfumzentrum_live.py
