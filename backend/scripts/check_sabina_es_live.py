@@ -21,6 +21,10 @@ QUERIES = ("Afnan 9 pm", "Dior Sauvage", "Davidoff Cool Water")
 MAX_PRODUCT_FETCHES_PER_QUERY = 2
 
 
+def _value(value: Any) -> Any:
+    return value.get("value") if isinstance(value, dict) else value
+
+
 def _decimal(value: Any) -> Decimal | None:
     try:
         result = Decimal(str(value))
@@ -33,9 +37,10 @@ def _explicit_matching_eur(product: dict[str, Any], selected_offer: Any) -> bool
     if not isinstance(selected_offer, dict):
         return False
     selected_price = _decimal(selected_offer.get("price"))
-    if selected_offer.get("currency") != "EUR" or selected_price is None:
+    if str(selected_offer.get("currency") or "").strip().upper() != "EUR" or selected_price is None:
         return False
-    jsonld = product.get("raw_data", {}).get("jsonld_product")
+    raw_data = product.get("raw_data")
+    jsonld = raw_data.get("jsonld_product") if isinstance(raw_data, dict) else None
     if not isinstance(jsonld, dict):
         return False
     offers = scraper._offer_list(jsonld)
@@ -123,8 +128,10 @@ def main() -> int:
                 offer = selected_offer if isinstance(selected_offer, dict) else {}
                 price = _decimal(offer.get("price"))
                 availability = offer.get("availability")
-                size = scraper._identity_value(row.get("attributes", {}).get("size_ml")) if isinstance(row.get("attributes"), dict) else None
-                concentration = scraper._identity_value(row.get("attributes", {}).get("concentration")) if isinstance(row.get("attributes"), dict) else None
+                attributes = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
+                identity = row.get("identity") if isinstance(row.get("identity"), dict) else {}
+                size = _value(attributes.get("size_ml"))
+                concentration = _value(attributes.get("concentration"))
                 product_url = row.get("url")
                 valid = bool(
                     brand and size and concentration and price is not None and price > 0
@@ -138,7 +145,7 @@ def main() -> int:
                     "brand": brand or None,
                     "size_ml": size,
                     "concentration": concentration,
-                    "gtin": scraper._identity_value(row.get("identity", {}).get("gtin")) if isinstance(row.get("identity"), dict) else None,
+                    "gtin": _value(identity.get("gtin")),
                     "price": str(price) if price is not None else None,
                     "currency": "EUR" if currency_explicit else None,
                     "currency_explicit": currency_explicit,
