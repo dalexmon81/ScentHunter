@@ -40,7 +40,7 @@ def test_deloox_localized_category_pages_are_not_admitted_as_products():
 def test_deloox_canonical_numeric_product_urls_remain_admitted():
     urls = (
         (
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
             "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
         ),
         (
