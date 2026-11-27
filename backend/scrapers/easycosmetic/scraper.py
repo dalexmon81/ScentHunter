@@ -636,6 +636,9 @@ NON_FRAGRANCE_PRODUCT_MARKERS = (
     "conditioner", "shower gel", "duschgel", "body wash", "deodorant",
     "antiperspirant", "mascara", "lipstick", "lip gloss", "lip glow", "lip balm",
     "foundation", "concealer", "eyeshadow", "eye shadow", "eyeliner",
+    "eye palette", "rosy glow", "crème fine", "creme fine", "crème riche",
+    "creme riche", "hyalushot", "tagescreme", "tagespflege", "pdrn shot",
+    "pdrn-shot", "le sérum", "le serum",
     "nail polish", "nagellack", "sunscreen", "sun cream", "sonnencreme",
     "aftershave balm", "after shave balm", "aftershave lotion", "rasiergel",
 )
