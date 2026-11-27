@@ -581,6 +581,21 @@ def _extract_brand(product_json: Dict[str, Any]) -> str:
     return _clean(brand)
 
 
+def _brand_from_product_url_title(url: str, name: str) -> str:
+    """Use the URL's brand category only when the visible title repeats it."""
+    try:
+        slug = urlparse(url).path.strip("/").split("/", 1)[0]
+    except ValueError:
+        return ""
+    slug_brand = _clean(slug.replace("-", " ").replace("_", " "))
+    if not slug_brand or not name:
+        return ""
+    title_prefix = " ".join(str(name).split()[:len(slug_brand.split())])
+    if _normalise_text(title_prefix) == _normalise_text(slug_brand):
+        return title_prefix
+    return ""
+
+
 def _extract_offer_data(
     product_json: Dict[str, Any],
 ) -> Tuple[Optional[float], str, str]:
@@ -1169,6 +1184,11 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         brand = _extract_brand(product_json)
         price, currency, availability = _extract_offer_data(product_json)
         image = _extract_image_url(product_json.get("image"))
+
+    # Some Easycosmetic product JSON-LD omits brand. Recover it only when the
+    # first URL category exactly matches the beginning of the visible H1.
+    if not brand:
+        brand = _brand_from_product_url_title(url, name)
 
     if not image:
         image = _extract_page_image(soup, name)
