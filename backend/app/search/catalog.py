@@ -9,7 +9,6 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Brand, Fragrance, IngestionRaw, MatchAudit, Offer, ProductVariant, Store
-from app.connectors.notino_links import validated_cj_offer_url
 
 
 def _utc(value: datetime) -> datetime:
@@ -43,12 +42,7 @@ def _offer_url_valid(url: str, domain: str | None) -> bool:
 
 
 def _display_offer_url(offer: Offer, store: Store, raw: IngestionRaw) -> str:
-    """Use CJ attribution only when its validated target is this exact Notino item."""
-    if store.slug in {"notino", "notino-fr"}:
-        affiliate_url = raw.raw_payload.get("affiliate_url")
-        validated = validated_cj_offer_url(affiliate_url, offer.url) if affiliate_url else None
-        if validated:
-            return validated
+    """Return the retailer product URL; catalog search never emits affiliate redirects."""
     return offer.url
 
 
@@ -64,6 +58,8 @@ def _notino_source_timestamp(raw: IngestionRaw) -> datetime | None:
             xml = observation.get("raw_xml")
         match = re.search(r"<last_updated>\s*([^<]+?)\s*</last_updated>", str(xml or ""), re.I)
         value = match.group(1) if match else None
+    if not value and payload.get("source") == "notino_public_storefront":
+        value = payload.get("captured_at")
     if not value:
         return None
     try:
@@ -111,9 +107,10 @@ def _eligible_offer_rows(session: Session, now: datetime, variant_ids: list | No
         if not _offer_url_valid(offer.url, store.domain):
             continue
         if store.slug == "notino-fr":
+            # Publish only direct storefront captures; historical CJ/VIV rows stay quarantined.
+            if raw.raw_payload.get("source") != "notino_public_storefront":
+                continue
             source_time = _notino_source_timestamp(raw)
-            # CJ's Notino catalogue can lag the live retailer page. Never label
-            # an old feed price as current merely because we downloaded it now.
             if source_time is None or source_time > now + timedelta(minutes=5):
                 continue
             if source_time < now - timedelta(hours=12):
