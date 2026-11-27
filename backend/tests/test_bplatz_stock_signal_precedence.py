@@ -45,7 +45,8 @@ class BplatzStockSignalPrecedenceTests(unittest.TestCase):
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed["price_num"], 25.99)
         self.assertFalse(parsed["currency_explicit"])
-        self.assertEqual(parsed["availability"], "in_stock")
+        # Without a priced JSON-LD Offer or visible stock label, fail closed.
+        self.assertEqual(parsed["availability"], "unknown")
 
     def test_price_currency_and_stock_are_bound_to_the_same_offer(self):
         html = """
