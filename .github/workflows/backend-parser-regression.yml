@@ -62,6 +62,7 @@ jobs:
           backend/tests/test_seed_catalog_store_safety.py
           backend/tests/test_bplatz_live_offer_check.py
           tests/test_bplatz_persistence_service.py
+          backend/tests/test_catalog_pipeline_sqlite.py
 
       - name: Probe public Notino storefront fallback (read-only, 5 products)
         id: notino-public-smoke
