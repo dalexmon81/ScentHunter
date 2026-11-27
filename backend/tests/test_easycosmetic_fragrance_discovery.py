@@ -35,6 +35,26 @@ class EasycosmeticFragranceDiscoveryTests(unittest.TestCase):
             ],
         )
 
+    def test_live_observed_dior_makeup_and_skincare_categories_are_rejected(self):
+        observed_products = (
+            ("Backstage Eye Palette", "/dior/backstage-eye-palette/product.aspx"),
+            ("Backstage Rosy Glow Rouge", "/dior/backstage-rosy-glow/product.aspx"),
+            ("Capture Totale Crème Fine Rechargeable", "/dior/capture-totale/creme-fine.aspx"),
+            ("Capture Totale Crème Riche Rechargeable", "/dior/capture-totale/creme-riche.aspx"),
+            ("Capture Totale Hyalushot Classic Serum", "/dior/capture-totale/hyalushot-classic.aspx"),
+            ("Capture Totale Hyalushot Serum", "/dior/capture-totale/hyalushot.aspx"),
+            ("Capture Totale Le Baume Tagescreme", "/dior/capture-totale/le-baume.aspx"),
+            ("Capture Totale Le Sérum Serum", "/dior/capture-totale/le-serum.aspx"),
+            ("Capture Totale PDRN-Shot Serum", "/dior/capture-totale/pdrn-shot.aspx"),
+        )
+        html = "<html><body>" + "".join(
+            f'<a href="{url}">{name}</a>' for name, url in observed_products
+        ) + "</body></html>"
+        candidates = scraper._extract_candidate_links(
+            BeautifulSoup(html, "html.parser"), "Dior"
+        )
+        self.assertEqual(candidates, [])
+
     def test_unknown_product_category_is_not_rejected_by_default(self):
         html = """
         <html><body>
