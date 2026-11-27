@@ -1,0 +1,47 @@
+name: Deloox one-product live probe
+
+on:
+  push:
+    branches:
+      - ops/deloox-live-product-probe
+    paths:
+      - .github/workflows/deloox-live-product-probe.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Fetch one known Deloox product through the canonical ingestion path
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          machine_id="$(flyctl machine list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state")=="started" and m.get("config",{}).get("metadata",{}).get("fly_process_group")=="app"]; print(started[0]["id"] if started else "")')"
+          test -n "$machine_id" || { echo "::error::No started app machine found."; exit 1; }
+
+          python_script="$(cat <<'PY'
+          import json
+          from app.workers.legacy_runtime import handle_legacy_fetch
+
+          payload = {
+              "store_id": "c88a7ce4-b453-4247-9af8-6b5b04abfddf",
+              "external_product_id": "https://www.deloox.be/produit/1323681/pino-silvestre-italian-citrus-eau-de-toilette-75-ml.html",
+          }
+          result = handle_legacy_fetch(payload)
+          print("DELOOX_LIVE_PROBE_RESULT=" + json.dumps(result, default=str, sort_keys=True))
+          PY
+          )"
+          encoded="$(printf '%s' "$python_script" | base64 -w0)"
+          remote_command="sh -lc 'cd /app/backend && echo $encoded | base64 -d | /app/.venv/bin/python'"
+          output="$(flyctl machine exec "$machine_id" "$remote_command" --app scenthunter --timeout 90 2>&1)" || {
+            printf '%s\n' "$output" >&2
+            exit 1
+          }
+          printf '%s\n' "$output"
+          grep -Fq "DELOOX_LIVE_PROBE_RESULT=" <<< "$output" || {
+            echo "::error::The remote probe did not return a structured result."
+            exit 1
+          }
