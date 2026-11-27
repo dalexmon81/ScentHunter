@@ -60,7 +60,7 @@ def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeyp
         "chloe-le-parfum-parfum-150-ml.html"
     )
     fake_scraper = SimpleNamespace(
-        _discover=lambda session, query: [
+        _discover=lambda session, query, deadline=None: [
             "https://www.deloox.nl/zoeken.html",
             "https://www.deloox.com/search.html",
             "https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html",
