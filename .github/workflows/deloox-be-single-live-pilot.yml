@@ -67,23 +67,6 @@ jobs:
           EXPECTED_PRODUCT_ID = "/produit/1379345/"
           factory = make_session_factory()
 
-          with factory() as session:
-              store = session.get(Store, STORE_ID)
-              if store is None or store.slug != "deloox-be" or store.status != "active":
-                  raise RuntimeError("Deloox.be canonical store is missing or inactive")
-              existing = session.execute(text("""
-                  SELECT count(*) FROM offers
-                  WHERE store_id=:store_id
-                    AND external_product_id=:external_id
-                    AND status='active'
-              """), {
-                  "store_id": str(STORE_ID),
-                  "external_id": PRODUCT_URL,
-              }).scalar_one()
-              if existing:
-                  print("DELOOX_ALREADY_HAS_ACTIVE_PILOT_OFFER=" + str(existing))
-                  raise SystemExit(0)
-
           # The Python package is present in the production image, but the
           # Chromium binary is missing at Playwright's runtime cache path.
           # Install only that browser into the worker's existing cache; no
@@ -141,6 +124,26 @@ jobs:
               raise RuntimeError("Live source returned a non-positive price")
           if EXPECTED_PRODUCT_ID not in str(record.get("url") or ""):
               raise RuntimeError("Parsed product URL did not match the approved Deloox product")
+
+          # Check the canonical store and duplicate offer only after the
+          # one live page has been captured and validated. This keeps the
+          # source-page test useful even if Neon temporarily rejects queries.
+          with factory() as session:
+              store = session.get(Store, STORE_ID)
+              if store is None or store.slug != "deloox-be" or store.status != "active":
+                  raise RuntimeError("Deloox.be canonical store is missing or inactive")
+              existing = session.execute(text("""
+                  SELECT count(*) FROM offers
+                  WHERE store_id=:store_id
+                    AND external_product_id=:external_id
+                    AND status='active'
+              """), {
+                  "store_id": str(STORE_ID),
+                  "external_id": PRODUCT_URL,
+              }).scalar_one()
+              if existing:
+                  print("DELOOX_ALREADY_HAS_ACTIVE_PILOT_OFFER=" + str(existing))
+                  raise SystemExit(0)
 
           promotion_error = None
           with factory() as session, session.begin():
