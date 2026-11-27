@@ -86,9 +86,27 @@ def main() -> int:
                     "candidate_urls": [],
                 }
                 deadline = time.time() + 25
-                candidates = scraper._discover_from_search(
-                    session, query, deadline=deadline
-                )
+                search_surfaces: list[dict[str, Any]] = []
+                original_get = session.get
+
+                def tracked_get(url: str, *args: Any, **kwargs: Any):
+                    response = original_get(url, *args, **kwargs)
+                    search_surfaces.append({
+                        "requested_url": str(url),
+                        "status": response.status_code,
+                        "final_url": response.url,
+                        "content_length": len(response.text or ""),
+                    })
+                    return response
+
+                session.get = tracked_get  # type: ignore[method-assign]
+                try:
+                    candidates = scraper._discover_from_search(
+                        session, query, deadline=deadline
+                    )
+                finally:
+                    session.get = original_get  # type: ignore[method-assign]
+                query_report["search_surfaces"] = search_surfaces
                 candidates = list(dict.fromkeys(candidates or []))
                 query_report["discovered_candidates"] = len(candidates)
                 query_report["candidate_urls"] = candidates[:MAX_PAGES_PER_QUERY]
