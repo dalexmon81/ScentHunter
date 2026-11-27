@@ -2576,7 +2576,7 @@ def _discover_deloox_search_catalog(deadline=None, progress_callback=None, max_q
                     # product-URL contract used by the durable HTML crawler so
                     # localized search/category pages never reach hydration.
                     product_url = _html_product_url(
-                        'deloox', url, STORES['deloox'][0]
+                        'deloox', url, STORES['deloox']
                     )
                     if not product_url:
                         continue
@@ -4323,6 +4323,14 @@ def _should_persist_bplatz_phase2(store, item):
 
 def refresh_url(store, url):
     try:
+        if store == 'deloox':
+            # Reject search/category/navigation URLs before any retailer
+            # request. Only canonical product detail URLs may be hydrated.
+            admitted = _html_product_url('deloox', url, STORES.get('deloox', ''))
+            if not admitted:
+                return None
+            url = admitted
+
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
