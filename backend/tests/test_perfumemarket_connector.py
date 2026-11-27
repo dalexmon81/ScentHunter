@@ -89,6 +89,7 @@ class PerfumeMarketParserTests(unittest.TestCase):
 
         self.assertEqual(record["gtin"], "614514465059")
         self.assertEqual(record["identity"]["gtin"]["source"], "product_page_label")
+        self.assertEqual(record["fragrance"], "Hawas London")
 
     def test_product_page_does_not_infer_stock_from_generic_page_copy(self):
         payload = {
