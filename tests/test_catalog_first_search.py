@@ -300,13 +300,15 @@ def test_notino_legacy_feed_rows_are_not_published(pilot):
         offer = session.get(Offer, result.offer_id)
         store = session.get(Store, offer.store_id)
         raw = session.get(IngestionRaw, result.ingestion_raw_id)
-        store.slug = "notino-fr"
         store.name = "Notino.fr"
         store.domain = "www.notino.fr"
         offer.url = "https://www.notino.fr/french-avenue/liquid-brun/"
         raw.raw_payload = {**dict(raw.raw_payload), "source": "notino_authorized_cj_viv_xml_feed", "source_updated_at": now.isoformat(), "currency_explicit": True}
-        session.flush()
-        assert search_catalog(session, "French Avenue Liquid Brun EDP 100ml", now=now)["offer_count"] == 0
+        for legacy_slug in ("notino", "notino-fr"):
+            store.slug = legacy_slug
+            session.flush()
+            result = search_catalog(session, "French Avenue Liquid Brun EDP 100ml", now=now)
+            assert result["count"] == result["offer_count"] == 0
 
 
 def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency():
