@@ -85,7 +85,7 @@ def main() -> int:
                     "verified_products": [],
                     "candidate_urls": [],
                 }
-                deadline = time.monotonic() + 25
+                deadline = time.time() + 25
                 candidates = scraper._discover_from_search(
                     session, query, deadline=deadline
                 )
