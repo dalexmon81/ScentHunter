@@ -906,6 +906,43 @@ def _validate_discovered_products(session, candidates, query):
     return validated
 
 
+def _pm_extract_fragrance_name(title, brand, concentration):
+    """Derive the base fragrance name from the retailer's explicit title format."""
+    tokens = _tokens(title)
+    brand_tokens = _tokens(brand)
+    if brand_tokens and tokens[:len(brand_tokens)] == brand_tokens:
+        tokens = tokens[len(brand_tokens):]
+
+    gender_suffixes = {"men", "women", "unisex", "male", "female"}
+    concentration_markers = {
+        "Extrait de Parfum": (("extrait", "de", "parfum"), ("extrait",)),
+        "Eau de Parfum": (("edp",), ("eau", "de", "parfum")),
+        "Eau de Toilette": (("edt",), ("eau", "de", "toilette")),
+        "Eau de Cologne": (("edc",), ("eau", "de", "cologne")),
+        "Parfum": (("parfum",),),
+    }.get(concentration, ())
+
+    changed = True
+    while tokens and changed:
+        changed = False
+        while tokens and tokens[-1] in gender_suffixes:
+            tokens.pop()
+            changed = True
+        if tokens and tokens[-1] == "for":
+            tokens.pop()
+            changed = True
+        if tokens and re.fullmatch(r"\\d+(?:[.,]\\d+)?(?:ml|cl|l|oz)", tokens[-1], re.I):
+            tokens.pop()
+            changed = True
+        for marker in concentration_markers:
+            if len(tokens) >= len(marker) and tuple(tokens[-len(marker):]) == marker:
+                del tokens[-len(marker):]
+                changed = True
+                break
+
+    return " ".join(tokens).strip().title() or None
+
+
 def _pm_extract_gtin(product, soup):
     """Read GTIN from structured data or an explicitly labeled product UPC/EAN field."""
     for key in ("gtin13", "gtin12", "gtin14", "gtin"):
@@ -1010,6 +1047,7 @@ def extract_product_page(session, url, query):
     image = _pm_extract_image(product, response.url)
     size_ml = _pm_extract_size_ml(title)
     concentration = _pm_extract_concentration(title)
+    fragrance = _pm_extract_fragrance_name(title, brand, concentration)
 
     sku = str(product.get("sku") or "").strip()
     gtin, gtin_source = _pm_extract_gtin(product, soup)
@@ -1019,6 +1057,7 @@ def extract_product_page(session, url, query):
         "store": "PerfumeMarket",
         "name": title,
         "brand": brand,
+        "fragrance": fragrance,
         "url": final_url,
         "image": image,
         "sku": sku,
@@ -1036,6 +1075,7 @@ def extract_product_page(session, url, query):
             "url": final_url,
             "name": title,
             "brand": brand,
+            "fragrance": fragrance,
             "image": image,
         },
         "identity": {
