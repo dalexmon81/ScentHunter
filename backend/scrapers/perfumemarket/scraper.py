@@ -621,7 +621,9 @@ def search(query):
                 if len(results) >= 200:
                     break
 
-    return results
+    # Discovery results are candidates, not verified products. Re-fetch every
+    # URL and discard stale/dead links before the connector sees them.
+    return _validate_discovered_products(session, results, query)
 
 
 # ---------------------------------------------------------------------------
@@ -875,11 +877,33 @@ def _pm_extract_concentration(title):
         return "Extrait de Parfum"
     if re.search(r"\b(edp|eau de parfum)\b", value):
         return "Eau de Parfum"
+    if re.search(r"\bparfum\b", value):
+        return "Parfum"
     if re.search(r"\b(edt|eau de toilette)\b", value):
         return "Eau de Toilette"
     if re.search(r"\b(eau de cologne|edc)\b", value):
         return "Eau de Cologne"
     return None
+
+
+def _validate_discovered_products(session, candidates, query):
+    """Reject stale Shopify search/catalog URLs before ingestion."""
+    validated = []
+    seen = set()
+    for candidate in candidates or []:
+        if not isinstance(candidate, dict):
+            continue
+        url = str(candidate.get("url") or "").strip()
+        key = url.rstrip("/").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        record = extract_product_page(session, url, query=query)
+        if record:
+            validated.append(record)
+        else:
+            print(f"PERFUMEMARKET DISCOVERY REJECTED: live product page unavailable or invalid | {url}")
+    return validated
 
 
 def extract_product_page(session, url, query):
