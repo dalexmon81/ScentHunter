@@ -25,10 +25,8 @@ STORE_SLUGS = {
     "sabina-es": "sabina",
     "easycosmetic-de": "easycosmetic",
     "parfumzentrum-de": "parfumzentrum",
-    # Controlled initial production activation: one explicitly verified seed query.
-    "orioudh": "orioudh",
-    "parfumcity-nl": "parfumcity",
-    "perfumemarket": "perfumemarket",
+    # Orioudh, ParfumCity and PerfumeMarket remain diagnostic-only until
+    # explicitly approved for production scheduling and offer refresh.
 }
 
 SCRAPER_MODULES = {
