@@ -4,8 +4,6 @@ import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-import requests
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.connectors.legacy_scrapers import LegacyScraperConnector
@@ -16,18 +14,26 @@ PRODUCT_URL = "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp"
 
 
 def main() -> int:
-    session = requests.Session()
-    try:
-        record = scraper.extract_product_page(
-            session,
-            PRODUCT_URL,
-            query="Rasasi Hawas London",
+    report = scraper.search_stream("Rasasi Hawas London")
+    if not isinstance(report, dict) or report.get("status") != "success":
+        raise SystemExit(
+            "PERFUMEMARKET_LIVE_RESULT=FAIL: discovery did not complete: "
+            + str(report.get("error") if isinstance(report, dict) else report)
         )
-    finally:
-        session.close()
-
+    rows = report.get("results") or []
+    record = next(
+        (
+            row for row in rows
+            if isinstance(row, dict)
+            and str(row.get("gtin") or "") == "614514465059"
+        ),
+        None,
+    )
     if not isinstance(record, dict):
-        raise SystemExit("PERFUMEMARKET_LIVE_RESULT=FAIL: product page could not be parsed")
+        raise SystemExit(
+            "PERFUMEMARKET_LIVE_RESULT=FAIL: discovery did not return Rasasi Hawas London "
+            "with the expected UPC; rows=" + str(len(rows))
+        )
 
     parsed = LegacyScraperConnector("perfumemarket", scraper).parse_raw(record)
     expected = {
