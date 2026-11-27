@@ -59,18 +59,44 @@ class NotinoPublicStorefrontConnector(StoreConnector):
 
     @staticmethod
     def _discover_query(query: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-        previous_limits = (scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT)
-        scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = 4, 6, 0
+        """Search Notino's public HTML endpoints directly; never use a proxy."""
+        previous_limits = (scraper.TIMEOUT, scraper.RETRY_COUNT)
+        scraper.TIMEOUT, scraper.RETRY_COUNT = 4, 0
         session = scraper._new_session()
+        diagnostics: dict[str, Any] = {
+            "strategy": "direct-html+jsonld-only",
+            "direct": [],
+            "reader": [],
+            "sitemap_used": False,
+        }
+        candidates: dict[str, dict[str, Any]] = {}
         try:
-            return scraper._discover(query, session, query_limit=1, allow_sitemap=False)
-        except Exception as exc:
-            raise ConnectorUnavailable(
-                f"Notino public discovery failed: {type(exc).__name__}: {exc}"
-            ) from exc
+            for search_url in scraper._search_urls(query):
+                try:
+                    response = scraper._request(session, search_url, reader=False)
+                    found = scraper.extract_candidates_from_html(response.text or "", query)
+                    diagnostics["direct"].append({
+                        "url": search_url,
+                        "status": response.status_code,
+                        "candidates": len(found),
+                    })
+                    for candidate in found:
+                        if not isinstance(candidate, Mapping):
+                            continue
+                        url = scraper._allowed_url(str(candidate.get("url") or ""), scraper.BASE_URL)
+                        if url:
+                            candidates.setdefault(url, dict(candidate))
+                except Exception as exc:
+                    diagnostics["direct"].append({
+                        "url": search_url,
+                        "status": getattr(getattr(exc, "response", None), "status_code", None),
+                        "candidates": 0,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+            return list(candidates.values()), diagnostics
         finally:
             session.close()
-            scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = previous_limits
+            scraper.TIMEOUT, scraper.RETRY_COUNT = previous_limits
 
     async def discover_products(
         self, *, cursor: str | None = None, limit: int = 100
@@ -136,48 +162,42 @@ class NotinoPublicStorefrontConnector(StoreConnector):
         query = str(candidate.get("query") or candidate.get("name") or scraper._slug_name(url)).strip()
         if not query:
             query = scraper._slug_name(url)
-        request_candidate = dict(candidate)
-        request_candidate.update({"url": url, "name": candidate.get("name") or scraper._slug_name(url),
-                                  "source": "known-product-url"})
-        previous_limits = (scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT)
-        scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = 4, 6, 0
+        previous_limits = (scraper.TIMEOUT, scraper.RETRY_COUNT)
+        scraper.TIMEOUT, scraper.RETRY_COUNT = 4, 0
         session = scraper._new_session()
         try:
-            result = scraper._reader_product(session, request_candidate, query, _allow_variants=False)
+            # Fetch the exact product page directly. A blocked request stays
+            # blocked; no Jina, proxy, feed or alternate reader is attempted.
+            response = scraper._request(session, safe_url, reader=False)
+            final_url = scraper._allowed_url(str(response.url or safe_url), scraper.BASE_URL)
+            if not final_url or final_url.rstrip("/") != safe_url.rstrip("/"):
+                return None
+            result = scraper._parse_product(final_url, response.text or "", query)
         except Exception as exc:
             raise ConnectorUnavailable(
-                f"Notino public product fetch failed: {type(exc).__name__}: {exc}"
+                f"Notino direct product fetch failed: {type(exc).__name__}: {exc}"
             ) from exc
         finally:
             session.close()
-            scraper.TIMEOUT, scraper.READER_TIMEOUT, scraper.RETRY_COUNT = previous_limits
+            scraper.TIMEOUT, scraper.RETRY_COUNT = previous_limits
 
-        if isinstance(result, list):
-            matching = [
-                row for row in result if isinstance(row, Mapping)
-                and scraper.normaliseurl(str(row.get("url") or "")).rstrip("/") == url.rstrip("/")
-            ]
-            result = matching[0] if matching else None
         if not isinstance(result, Mapping):
             return None
         result = dict(result)
         if not result.get("brand"):
-            # Discovery may have established the brand from the exact retailer
-            # URL/title pair. Preserve that evidence through product extraction;
-            # otherwise the live acceptance and canonical matcher see a blank brand.
             brand = str(candidate.get("brand") or "").strip()
             if not brand:
                 brand = self._brand_from_url_title(
-                    url, str(result.get("name") or candidate.get("name") or "")
+                    safe_url, str(result.get("name") or candidate.get("name") or "")
                 )
             if brand:
                 result["brand"] = brand
         result_url = scraper._allowed_url(str(result.get("url") or ""), scraper.BASE_URL)
-        if not result_url or result_url.rstrip("/") != url.rstrip("/"):
+        if not result_url or result_url.rstrip("/") != safe_url.rstrip("/"):
             return None
 
         captured_at = datetime.now(timezone.utc).isoformat()
-        price = scraper._price(result.get("price"))
+        price = scraper._price(result.get("price_num") or result.get("price"))
         if price is None:
             return None
         availability = str(result.get("availability") or "").strip().lower()
@@ -189,10 +209,10 @@ class NotinoPublicStorefrontConnector(StoreConnector):
             availability = "unknown"
 
         return {
-            **dict(result),
-            "external_product_id": url,
-            "product_url": url,
-            "url": url,
+            **result,
+            "external_product_id": safe_url,
+            "product_url": safe_url,
+            "url": safe_url,
             "price": f"{price:.2f}",
             "currency": "EUR",
             "currency_explicit": result.get("currency_explicit") is True,
