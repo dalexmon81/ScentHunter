@@ -62,6 +62,8 @@ class EasycosmeticFragranceDiscoveryTests(unittest.TestCase):
             ("Diorskin Forever Contour Stick", "/dior/diorskin/forever-contour-stick.aspx"),
             ("Eau Sauvage Aftershave Spray", "/dior/eau-sauvage/aftershave-spray.aspx"),
             ("Eau Sauvage Seife", "/dior/eau-sauvage/seife.aspx"),
+            ("Capture Totale Dreamskin 1-Minute Mask Pflegemaske", "/dior/capture-totale/dreamskin-mask.aspx"),
+            ("Forever Glow Luminizer Highlighter", "/dior/forever-glow-luminizer.aspx"),
         )
         html = "<html><body>" + "".join(
             f'<a href="{url}">{name}</a>' for name, url in observed_products
