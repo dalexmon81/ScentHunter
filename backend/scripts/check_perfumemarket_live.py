@@ -41,6 +41,7 @@ def main() -> int:
         "currency_explicit": True,
         "availability": "in_stock",
         "gtin": "614514465059",
+        "fragrance": "Hawas London",
         "size_ml": 100,
         "concentration": "Eau de Parfum",
         "product_url": PRODUCT_URL,
