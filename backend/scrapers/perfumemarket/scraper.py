@@ -575,6 +575,12 @@ def search(query):
             continue
         add_items([{"name": query, "url": seeded_url}], "operator-seed-url")
 
+    # An explicit operator seed is already a precise discovery result. Fetch
+    # and validate it once, then stop: probing every Shopify index after a
+    # successful seed adds no value and can trigger retailer HTTP 429 limits.
+    if results:
+        return _validate_discovered_products(session, results, query)
+
     # 1) Shopify predictive search. Always run it, but never stop the search
     # here: a partial predictive response must not hide a valid product found
     # by another generic Shopify search method.
