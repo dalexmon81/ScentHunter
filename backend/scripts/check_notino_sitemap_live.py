@@ -27,6 +27,7 @@ def main() -> int:
         "url": scraper.SITEMAP_URL,
         "http_status": None,
         "redirect_host": None,
+        "redirect_location": None,
         "sitemap_type": None,
         "sitemap_entries": 0,
         "product_url_count": 0,
@@ -43,13 +44,21 @@ def main() -> int:
         response = session.get(
             scraper.SITEMAP_URL,
             timeout=(8, 15),
-            allow_redirects=True,
+            allow_redirects=False,
         )
         report["http_status"] = response.status_code
-        parsed_final = urlparse(response.url)
-        report["redirect_host"] = (parsed_final.hostname or "").lower()
+        location = response.headers.get("Location")
+        if 300 <= response.status_code < 400 and location:
+            report["redirect_location"] = location
+            report["redirect_host"] = (urlparse(location).hostname or "").lower()
+        else:
+            report["redirect_host"] = (urlparse(response.url).hostname or "").lower()
 
-        if report["redirect_host"] not in ALLOWED_HOSTS:
+        if 300 <= response.status_code < 400 and report["redirect_host"] not in ALLOWED_HOSTS:
+            report["status"] = "BLOCKED_UNEXPECTED_REDIRECT"
+        elif 300 <= response.status_code < 400:
+            report["status"] = "REDIRECT_NOT_FOLLOWED"
+        elif report["redirect_host"] not in ALLOWED_HOSTS:
             report["status"] = "BLOCKED_UNEXPECTED_REDIRECT"
         elif response.status_code in {403, 429}:
             report["status"] = "BLOCKED"
