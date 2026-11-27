@@ -1,4 +1,5 @@
 name: Deloox.be bounded multi-product live acceptance
+# Diagnostics intentionally record search response signatures; never catalog or DB data.
 
 on:
   push:
