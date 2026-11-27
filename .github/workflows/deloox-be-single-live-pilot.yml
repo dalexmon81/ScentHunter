@@ -80,33 +80,14 @@ jobs:
                   print("DELOOX_ALREADY_HAS_ACTIVE_PILOT_OFFER=" + str(existing))
                   raise SystemExit(0)
 
-          # Exactly one direct product-page request. No search, sitemap,
-          # discovery queue, browser fallback, retry, or other retailer is used.
+          # Use the existing Deloox parser's normal product-page path.
+          # It makes one direct request and uses its built-in headless render
+          # fallback only when the HTTP response is an incomplete interstitial.
+          # No search, sitemap, retries, paid proxy, or other retailer is used.
           with requests.Session() as http:
-              response = http.get(
-                  PRODUCT_URL,
-                  headers=scraper.HEADERS,
-                  timeout=scraper.TIMEOUT,
-                  allow_redirects=True,
-              )
-              response.raise_for_status()
-              html = response.text or ""
-              final_url = str(response.url or PRODUCT_URL)
-              if "deloox.be" not in final_url.lower() or EXPECTED_PRODUCT_ID not in final_url:
-                  raise RuntimeError("Deloox redirected the pilot URL outside the approved product")
-              initial = html[:200000].lower()
-              product_markup = (
-                  "application/ld+json" in initial
-                  or re.search(r"<h1\b", initial) is not None
-                  or 'itemprop="price"' in initial
-                  or 'property="product:price:amount"' in initial
-              )
-              if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
-                  raise RuntimeError("Single Deloox response was not a complete product page; no fallback request will be made")
               record = scraper.extract_product_page(
                   http, PRODUCT_URL,
                   query="Rasasi Hawas Fire Eau de Parfum 100 ml",
-                  html=html,
               )
 
           if not isinstance(record, dict):
@@ -220,4 +201,12 @@ jobs:
           PY
           )"
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
-          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 180
+          set +e
+          REMOTE_OUTPUT="$(flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 180 2>&1)"
+          REMOTE_STATUS=$?
+          set -e
+          printf '%s\n' "$REMOTE_OUTPUT"
+          if [ "$REMOTE_STATUS" -ne 0 ] || ! grep -q "DELOOX_FINAL_VERIFICATION=PASS" <<< "$REMOTE_OUTPUT"; then
+            echo "Deloox remote ingestion did not reach final verification" >&2
+            exit 1
+          fi
