@@ -296,7 +296,11 @@ class LegacyScraperConnector(StoreConnector):
                 return parser(session, url, query="", authoritative_search=True)
             return parser(session, url, query="")
         except (requests.Timeout, requests.ConnectionError, requests.RequestException) as exc:
-            raise ConnectorUnavailable(f"{self.store_key} product fetch failed: {type(exc).__name__}: {exc}") from exc
+            unavailable = ConnectorUnavailable(
+                f"{self.store_key} product fetch failed: {type(exc).__name__}: {exc}"
+            )
+            unavailable.retry_after_seconds = getattr(exc, "retry_after_seconds", None)
+            raise unavailable from exc
         finally:
             session.close()
 
