@@ -5,6 +5,7 @@ import sys
 from urllib.parse import urlparse
 
 import requests
+from bs4 import BeautifulSoup
 
 from app.connectors.legacy_scrapers import LegacyScraperConnector
 from scrapers.easycosmetic import scraper
@@ -59,6 +60,25 @@ def main() -> int:
 
         connector = LegacyScraperConnector("easycosmetic", object())
         normalized = connector.parse_raw(raw)
+        raw_data = raw.get("raw_data") if isinstance(raw.get("raw_data"), dict) else {}
+        jsonld = raw_data.get("jsonld_product") if isinstance(raw_data.get("jsonld_product"), dict) else {}
+        soup = BeautifulSoup(response.text, "html.parser")
+        brand_meta = soup.find(attrs={"itemprop": "brand"})
+        brand_meta_text = brand_meta.get("content") or brand_meta.get_text(" ", strip=True) if brand_meta else None
+        brand_nodes = []
+        for node in soup.select('[class*="brand" i], [id*="brand" i], [itemprop="brand"]')[:12]:
+            value = node.get("content") or node.get_text(" ", strip=True)
+            value = " ".join(str(value or "").split())
+            if value and value not in brand_nodes:
+                brand_nodes.append(value[:160])
+        report["brand_evidence"] = {
+            "parsed_brand": normalized.get("brand_raw"),
+            "jsonld_brand": jsonld.get("brand"),
+            "jsonld_manufacturer": jsonld.get("manufacturer"),
+            "itemprop_brand": brand_meta_text,
+            "brand_dom_candidates": brand_nodes,
+            "jsonld_keys": sorted(jsonld.keys()),
+        }
         report.update({
             "name": normalized.get("raw_name"),
             "brand": normalized.get("brand_raw"),
@@ -73,6 +93,7 @@ def main() -> int:
         missing = [
             key for key, valid in (
                 ("name", bool(normalized.get("raw_name"))),
+                ("brand", bool(normalized.get("brand_raw"))),
                 ("size_ml", normalized.get("size_ml") is not None),
                 ("price", normalized.get("price") is not None),
                 ("explicit_eur", normalized.get("currency") == "EUR" and normalized.get("currency_explicit") is True),
