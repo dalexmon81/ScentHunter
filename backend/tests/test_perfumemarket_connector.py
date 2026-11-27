@@ -59,6 +59,37 @@ class PerfumeMarketParserTests(unittest.TestCase):
         self.assertEqual(record["sku"], "8435415062190")
         self.assertEqual(record["raw_data"]["jsonld"]["offers"]["priceCurrency"], "EUR")
 
+    def test_product_page_extracts_gtin_from_visible_upc_label(self):
+        import json
+
+        payload = {
+            "@type": "Product",
+            "name": "Rasasi Hawas London 100ml EDP - Men",
+            "brand": {"@type": "Brand", "name": "Rasasi"},
+            "offers": {
+                "@type": "Offer",
+                "price": "30.59",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/InStock",
+            },
+        }
+        html = (
+            "<script type='application/ld+json'>"
+            + json.dumps(payload)
+            + "</script><h1>Rasasi Hawas London 100ml EDP - Men</h1>"
+            + "<p>UPC: 614514465059</p>"
+        )
+        url = "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp"
+        response = SimpleNamespace(status_code=200, url=url, text=html)
+        record = scraper.extract_product_page(
+            SimpleNamespace(get=lambda *args, **kwargs: response),
+            url,
+            query="Rasasi Hawas London",
+        )
+
+        self.assertEqual(record["gtin"], "614514465059")
+        self.assertEqual(record["identity"]["gtin"]["source"], "product_page_label")
+
     def test_product_page_does_not_infer_stock_from_generic_page_copy(self):
         payload = {
             "@type": "Product",
