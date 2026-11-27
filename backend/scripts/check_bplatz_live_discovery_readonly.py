@@ -20,7 +20,7 @@ from scenthunter_next_engine.offer_normalizer import normalize_offer  # noqa: E4
 QUERY = "Liquid Brun"
 BASE_URL = "https://en.bplatz.de"
 FETCH_TIMEOUT = (5, 20)
-MAX_FETCH_CANDIDATES = 5
+MAX_FETCH_CANDIDATES = 5  # Hard cap for every read-only live probe.
 
 
 def _status_label(status_code: int) -> str:
