@@ -251,8 +251,8 @@ class PerfumeMarketParserTests(unittest.TestCase):
 
 
 class PerfumeMarketConnectorTests(unittest.IsolatedAsyncioTestCase):
-    async def test_registered_connector_and_store_slug(self):
-        self.assertEqual(connector_key_for_store_slug("perfumemarket"), "perfumemarket")
+    async def test_diagnostic_connector_is_available_but_not_registered_for_production(self):
+        self.assertIsNone(connector_key_for_store_slug("perfumemarket"))
         connector = build_legacy_connector("perfumemarket")
         self.assertEqual(connector.store_key, "perfumemarket")
         self.assertTrue(callable(connector._scraper.search_stream))
