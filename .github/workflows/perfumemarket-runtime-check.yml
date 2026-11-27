@@ -69,6 +69,42 @@ jobs:
                   "ORDER BY created_at DESC LIMIT 5"
               )).all()
               print("PERFUMEMARKET_JOBS=" + repr(jobs))
+
+          import requests
+          from app.connectors.legacy_scrapers import LegacyScraperConnector
+          from scrapers.perfumemarket import scraper
+
+          connector = LegacyScraperConnector("perfumemarket", scraper)
+          print("WORKER_DISCOVERY_QUERIES=" + repr(connector._queries()))
+          snapshot = connector._search_snapshot()
+          print("WORKER_DISCOVERY_COUNT=" + str(len(snapshot)))
+          for row in snapshot[:10]:
+              print("WORKER_DISCOVERED_PRODUCT=" + repr({
+                  "name": row.get("name"),
+                  "url": row.get("url"),
+                  "price": row.get("price"),
+                  "gtin": row.get("gtin"),
+                  "availability": row.get("availability"),
+                  "fragrance": row.get("fragrance"),
+              }))
+
+          session = requests.Session()
+          try:
+              live_record = scraper.extract_product_page(
+                  session,
+                  "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp",
+                  query="Rasasi Hawas London",
+              )
+              print("WORKER_DIRECT_PRODUCT_FETCH=" + repr({
+                  "found": isinstance(live_record, dict),
+                  "price": live_record.get("price_num") if isinstance(live_record, dict) else None,
+                  "currency": live_record.get("currency") if isinstance(live_record, dict) else None,
+                  "availability": live_record.get("availability") if isinstance(live_record, dict) else None,
+                  "gtin": live_record.get("gtin") if isinstance(live_record, dict) else None,
+                  "fragrance": live_record.get("fragrance") if isinstance(live_record, dict) else None,
+              }))
+          finally:
+              session.close()
           PY
           )"
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
