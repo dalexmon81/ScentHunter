@@ -173,6 +173,8 @@ class PerfumeMarketParserTests(unittest.TestCase):
                 self.headers = {}
 
             def get(self, url, **kwargs):
+                if url != product_url:
+                    raise AssertionError(f"unexpected extra discovery request: {url}")
                 return FakeResponse(url)
 
         session = FakeSession()
