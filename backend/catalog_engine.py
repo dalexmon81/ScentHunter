@@ -1693,14 +1693,23 @@ def _html_product_url(store, raw_url, base_url):
             return None
         return absolute
     if store == 'deloox':
-        # Product identity is the path. Strip tracking/query parameters so
-        # pagination/session parameters never create duplicate catalog rows.
+        # Deloox product identity is the path. Reject localized search,
+        # category and utility routes even when the retailer gives them an
+        # .html suffix (for example /zoeken.html or /kategorie/123/name.html).
+        # Strip tracking/query parameters from admitted product URLs.
         canonical = urllib.parse.urlunparse((
             p.scheme, p.netloc, p.path, '', '', ''
         ))
+        navigation = re.compile(
+            r'(?:^|/)(?:category|categorie|categoria|catégorie|kategorie|'
+            r'categorias|categorías|chercher|search|zoeken|buscar|busqueda|'
+            r'búsqueda|sitemap|brand|marque|marca|login|account|cart|checkout)'
+            r'(?:\.html)?(?:/|$)',
+            re.I,
+        )
+        if navigation.search(low):
+            return None
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
-            return canonical
-        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|kategorie|categorias|categorías|chercher|search|zoeken|buscar|busqueda|búsqueda|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
         return None
     if store == 'notino':
@@ -2567,7 +2576,7 @@ def _discover_deloox_search_catalog(deadline=None, progress_callback=None, max_q
                     # product-URL contract used by the durable HTML crawler so
                     # localized search/category pages never reach hydration.
                     product_url = _html_product_url(
-                        'deloox', url, STORES['deloox'][0]
+                        'deloox', url, STORES['deloox']
                     )
                     if not product_url:
                         continue
@@ -4314,6 +4323,14 @@ def _should_persist_bplatz_phase2(store, item):
 
 def refresh_url(store, url):
     try:
+        if store == 'deloox':
+            # Reject search/category/navigation URLs before any retailer
+            # request. Only canonical product detail URLs may be hydrated.
+            admitted = _html_product_url('deloox', url, STORES.get('deloox', ''))
+            if not admitted:
+                return None
+            url = admitted
+
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -6866,7 +6883,13 @@ def _coverage_allowed_url(store, raw_url):
                     if configured_host.startswith('www.')
                     else 'www.' + configured_host
                 )
-        return url if host in allowed else ''
+        if host not in allowed:
+            return ''
+        if store == 'deloox':
+            # Coverage and hydration must apply the same product-vs-navigation
+            # boundary; otherwise search/category pages can enter the queue.
+            return _html_product_url('deloox', url, STORES.get('deloox', '')) or ''
+        return url
     except Exception:
         return ''
 

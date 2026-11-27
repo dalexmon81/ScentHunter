@@ -40,8 +40,8 @@ def test_deloox_localized_category_pages_are_not_admitted_as_products():
 def test_deloox_canonical_numeric_product_urls_remain_admitted():
     urls = (
         (
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
         ),
         (
             "https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html?utm_source=test",
@@ -56,11 +56,11 @@ def test_deloox_canonical_numeric_product_urls_remain_admitted():
 
 def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeypatch):
     product_url = (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html"
     )
     fake_scraper = SimpleNamespace(
-        _discover=lambda session, query: [
+        _discover=lambda session, query, deadline=None: [
             "https://www.deloox.nl/zoeken.html",
             "https://www.deloox.com/search.html",
             "https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html",
@@ -93,7 +93,7 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
 
     cases = (
         (
-            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "https://www.deloox.be/produit/1380881/chloe-le-parfum-parfum-150-ml.html",
             "Chloe Le Parfum",
             "Chloé Le Parfum 150 ml",
             "Chloé",
@@ -181,11 +181,11 @@ def test_coverage_admission_rejects_deloox_navigation_but_keeps_products():
         "deloox", "https://www.deloox.com/"
     ) == ""
     product = (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html?utm_source=test"
     )
     assert catalog_engine._coverage_allowed_url("deloox", product) == (
-        "https://www.deloox.com/product/1380881/"
+        "https://www.deloox.be/produit/1380881/"
         "chloe-le-parfum-parfum-150-ml.html"
     )
 
