@@ -91,6 +91,7 @@ jobs:
           set -euo pipefail
           flyctl secrets set --stage \
             "SCENTHUNTER_DISCOVERY_QUERIES_PERFUMEMARKET=Rasasi Hawas London" \
+            "SCENTHUNTER_DISCOVERY_PRODUCT_URLS_PERFUMEMARKET=https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp" \
             --app scenthunter
           echo "PerfumeMarket pilot discovery seed staged for this release."
 

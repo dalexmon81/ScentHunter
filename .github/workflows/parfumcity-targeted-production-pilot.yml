@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   parfumcity:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Never run the ParfumCity pilot as a side effect of another retailer's
+    # successful deployment. Require an explicit ParfumCity-only commit tag.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[parfumcity-only]')) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[parfumcity-only]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
