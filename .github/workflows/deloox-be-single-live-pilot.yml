@@ -97,7 +97,7 @@ jobs:
               initial = html[:200000].lower()
               product_markup = (
                   "application/ld+json" in initial
-                  or re.search(r"<h1\\b", initial) is not None
+                  or re.search(r"<h1\b", initial) is not None
                   or 'itemprop="price"' in initial
                   or 'property="product:price:amount"' in initial
               )
