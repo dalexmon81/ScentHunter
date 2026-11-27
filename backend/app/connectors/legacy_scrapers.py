@@ -143,11 +143,13 @@ class LegacyScraperConnector(StoreConnector):
                         unavailable = ConnectorUnavailable(f"{self.store_key} discovery failed: {report.get('error') or status}")
                         if self.store_key in {"parfumcity", "perfumemarket"}:
                             failures = list(details.get("discovery_errors") or []) + list(details.get("fetch_errors") or [])
-                            retry_after = next(
-                                (item.get("retry_after_seconds") for item in failures
-                                 if isinstance(item, Mapping) and item.get("retry_after_seconds") is not None),
-                                None,
-                            )
+                            retry_after = details.get("retry_after_seconds")
+                            if retry_after is None:
+                                retry_after = next(
+                                    (item.get("retry_after_seconds") for item in failures
+                                     if isinstance(item, Mapping) and item.get("retry_after_seconds") is not None),
+                                    None,
+                                )
                             unavailable.retry_after_seconds = retry_after
                         raise unavailable
                     batch = report.get("results") or []
