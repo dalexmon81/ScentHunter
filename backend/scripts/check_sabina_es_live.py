@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Bounded read-only live validation of Sabina's Spanish storefront.
+"""Bounded read-only live validation of Sabina's Spanish fragrance listings.
 
-Uses only Sabina's native Spanish search endpoint (one request per query),
-then fetches at most two /es/ product pages per query. No Sellboost/Italian
-fallback, sitemap, browser, retries, database, catalog, queue, or Neon access.
+One native search request per query and at most four product-page fetches
+per query. Excludes aftershave, deodorant, bath and shaving products.
+No Italian fallback, sitemap, browser, retries, database, queue, or Neon.
 """
 from __future__ import annotations
 
@@ -17,8 +17,16 @@ import requests
 
 from scrapers.sabina import scraper
 
-QUERIES = ("Afnan 9 pm", "Dior Sauvage", "Davidoff Cool Water")
-MAX_PRODUCT_FETCHES_PER_QUERY = 2
+QUERIES = (
+    "Afnan 9 PM Eau de Parfum",
+    "Dior Sauvage Eau de Parfum",
+    "Davidoff Cool Water Eau de Toilette",
+)
+MAX_PRODUCT_FETCHES_PER_QUERY = 4
+NON_FRAGRANCE_PATH_TERMS = (
+    "after-shave", "aftershave", "afeitado", "desodorante", "deodorante",
+    "desodorante", "stick", "gel", "ducha", "bath", "body-lotion",
+)
 
 
 def _value(value: Any) -> Any:
@@ -43,19 +51,37 @@ def _explicit_matching_eur(product: dict[str, Any], selected_offer: Any) -> bool
     jsonld = raw_data.get("jsonld_product") if isinstance(raw_data, dict) else None
     if not isinstance(jsonld, dict):
         return False
-    offers = scraper._offer_list(jsonld)
     return any(
         str(item.get("priceCurrency") or "").strip().upper() == "EUR"
         and _decimal(item.get("price")) == selected_price
-        for item in offers
+        for item in scraper._offer_list(jsonld)
     )
+
+
+def _fragrance_candidate(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return (
+        path.startswith("/es/")
+        and ("perfume" in path or "parfum" in path)
+        and not any(term in path for term in NON_FRAGRANCE_PATH_TERMS)
+    )
+
+
+def _matches_requested_fragrance(name: Any, query: str) -> bool:
+    normalized_name = " ".join(str(name or "").casefold().replace("-", " ").split())
+    if "afnan" in query.casefold():
+        return "afnan" in normalized_name and "9 pm" in normalized_name
+    if "dior" in query.casefold():
+        return "sauvage" in normalized_name
+    return "davidoff" in normalized_name and "cool water" in normalized_name
 
 
 def main() -> int:
     report: dict[str, Any] = {
-        "mode": "sabina_es_native_search_read_only",
+        "mode": "sabina_es_native_fragrance_search_read_only",
         "queries": list(QUERIES),
         "discovered_candidates": 0,
+        "fragrance_candidates": 0,
         "product_pages_fetched": 0,
         "verified_products": 0,
         "distinct_verified_brands": [],
@@ -77,6 +103,7 @@ def main() -> int:
                 "query": query,
                 "search_requests": 1,
                 "discovered_candidates": 0,
+                "fragrance_candidates": 0,
                 "product_pages_fetched": 0,
                 "verified_products": 0,
                 "products": [],
@@ -109,8 +136,11 @@ def main() -> int:
             ]
             qr["discovered_candidates"] = len(candidates)
             report["discovered_candidates"] += len(candidates)
+            fragrance_candidates = [url for url in candidates if _fragrance_candidate(url)]
+            qr["fragrance_candidates"] = len(fragrance_candidates)
+            report["fragrance_candidates"] += len(fragrance_candidates)
 
-            for url in candidates[:MAX_PRODUCT_FETCHES_PER_QUERY]:
+            for url in fragrance_candidates[:MAX_PRODUCT_FETCHES_PER_QUERY]:
                 qr["product_pages_fetched"] += 1
                 report["product_pages_fetched"] += 1
                 try:
@@ -133,12 +163,14 @@ def main() -> int:
                 size = _value(attributes.get("size_ml"))
                 concentration = _value(attributes.get("concentration"))
                 product_url = row.get("url")
+                fragrance_name_match = _matches_requested_fragrance(row.get("name"), query)
                 valid = bool(
                     brand and size and concentration and price is not None and price > 0
                     and currency_explicit
                     and availability in {"in_stock", "out_of_stock"}
                     and product_url == url
-                    and urlparse(product_url).path.lower().startswith("/es/")
+                    and _fragrance_candidate(product_url)
+                    and fragrance_name_match
                 )
                 qr["products"].append({
                     "name": row.get("name"),
@@ -150,6 +182,7 @@ def main() -> int:
                     "currency": "EUR" if currency_explicit else None,
                     "currency_explicit": currency_explicit,
                     "availability": availability,
+                    "fragrance_name_match": fragrance_name_match,
                     "url": product_url,
                     "verified": valid,
                 })
