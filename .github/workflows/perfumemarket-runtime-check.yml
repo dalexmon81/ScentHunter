@@ -1,4 +1,4 @@
-name: PerfumeMarket runtime identity check
+name: PerfumeMarket single-request live ingestion
 
 on:
   workflow_dispatch:
@@ -9,16 +9,58 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  inspect:
+  ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 70
     steps:
       - name: Set up Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Inspect only the ScentHunter worker runtime
+      - name: Respect the retailer cooldown
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from datetime import datetime, timezone
+          import time
+
+          deadline = datetime(2026, 11, 27, 5, 41, 0, tzinfo=timezone.utc).timestamp()
+          remaining = max(0, int(deadline - time.time()))
+          print(f"PerfumeMarket cooldown wait: {remaining} seconds")
+          if remaining:
+              time.sleep(remaining)
+          print("PERFUMEMARKET_COOLDOWN_CLEARED=YES")
+          PY
+
+      - name: Require the matching Fly deployment to be successful
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_SHA="a5f849051897043abbeabd1654b871d3722d28f8"
+          READY=0
+          for attempt in $(seq 1 60); do
+            RUNS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$RUNS" | jq -r --arg sha "$TARGET_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$RUNS" | jq -r --arg sha "$TARGET_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            echo "PerfumeMarket target deployment: $STATUS / $CONCLUSION ($attempt/60)"
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then
+              echo "The target Fly deployment did not succeed; no retailer request will be made." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "The target Fly deployment is not confirmed successful; no retailer request will be made." >&2
+            exit 1
+          fi
+
+      - name: Fetch one live product page and ingest only verified data
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
@@ -31,18 +73,10 @@ jobs:
               machines = json.load(handle)
           workers = [
               machine for machine in machines
-              if machine.get("config", {}).get("metadata", {}).get("fly_process_group") == "worker"
+              if machine.get("state") == "started"
+              and machine.get("config", {}).get("metadata", {}).get("fly_process_group") == "worker"
           ]
-          workers = [machine for machine in workers if machine.get("state") == "started"]
           if not workers:
-              print(json.dumps([
-                  {
-                      "id": machine.get("id"),
-                      "state": machine.get("state"),
-                      "group": machine.get("config", {}).get("metadata", {}).get("fly_process_group"),
-                  }
-                  for machine in machines
-              ]))
               raise SystemExit("No started ScentHunter worker machine found")
           print(workers[0]["id"])
           PY
@@ -50,62 +84,132 @@ jobs:
           echo "Selected worker machine: $WORKER_ID"
 
           SCRIPT="$(cat <<'PY'
-          import os
-          from sqlalchemy import text
-          from app.db import make_session_factory
-
-          print("PERFUMEMARKET_QUERY_CONFIGURED=" + str(bool(os.getenv("SCENTHUNTER_DISCOVERY_QUERIES_PERFUMEMARKET"))))
-          factory = make_session_factory()
-          with factory() as session:
-              print("RUNTIME_DATABASE=" + str(session.execute(text("SELECT current_database()")).scalar()))
-              print("HAS_STORE_PRODUCTS=" + str(bool(session.execute(text("SELECT to_regclass('public.store_products') IS NOT NULL")).scalar())))
-              print("PERFUMEMARKET_STORE=" + repr(session.execute(text(
-                  "SELECT id::text, slug, status FROM stores WHERE slug='perfumemarket'"
-              )).all()))
-              jobs = session.execute(text(
-                  "SELECT id::text, stage, status, attempts, last_error "
-                  "FROM ingestion_queue_jobs "
-                  "WHERE payload->>'store_id'='a812a185-4e57-4da0-aef9-bee1d491b592' "
-                  "ORDER BY created_at DESC LIMIT 5"
-              )).all()
-              print("PERFUMEMARKET_JOBS=" + repr(jobs))
-
+          from uuid import UUID
           import requests
+          from sqlalchemy import text
+
+          from app.db import make_session_factory
+          from app.models import Store
           from app.connectors.legacy_scrapers import LegacyScraperConnector
+          from app.offers.ingestion import persist_connector_record
+          from app.repositories.ingestion_runs import (
+              start_ingestion_run,
+              record_ingestion_progress,
+              finish_ingestion_run,
+          )
+          from app.workers.notino_runtime import _matcher
           from scrapers.perfumemarket import scraper
 
-          connector = LegacyScraperConnector("perfumemarket", scraper)
-          print("WORKER_DISCOVERY_QUERIES=" + repr(connector._queries()))
-          snapshot = connector._search_snapshot()
-          print("WORKER_DISCOVERY_COUNT=" + str(len(snapshot)))
-          for row in snapshot[:10]:
-              print("WORKER_DISCOVERED_PRODUCT=" + repr({
-                  "name": row.get("name"),
-                  "url": row.get("url"),
-                  "price": row.get("price"),
-                  "gtin": row.get("gtin"),
-                  "availability": row.get("availability"),
-                  "fragrance": row.get("fragrance"),
-              }))
+          STORE_ID = UUID("a812a185-4e57-4da0-aef9-bee1d491b592")
+          PRODUCT_URL = "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp"
+          EXPECTED_GTIN = "614514465059"
+          factory = make_session_factory()
 
-          session = requests.Session()
-          try:
-              live_record = scraper.extract_product_page(
-                  session,
-                  "https://perfumemarket.eu/products/rasasi-hawas-london-100ml-edp",
-                  query="Rasasi Hawas London",
+          with factory() as session:
+              store = session.get(Store, STORE_ID)
+              if store is None or store.slug != "perfumemarket":
+                  raise RuntimeError("PerfumeMarket canonical store is missing")
+              existing = session.execute(text("""
+                  SELECT count(*) FROM offers
+                  WHERE store_id=:store_id AND status='active'
+              """), {"store_id": str(STORE_ID)}).scalar_one()
+              if existing:
+                  print("PERFUMEMARKET_ALREADY_HAS_ACTIVE_OFFERS=" + str(existing))
+                  raise SystemExit(0)
+
+          # Exactly one retailer HTTP request. No search endpoints, sitemap,
+          # retries, queue discovery, or second product-page fetch are used.
+          with requests.Session() as http:
+              record = scraper.extract_product_page(
+                  http, PRODUCT_URL, query="Rasasi Hawas London"
               )
-              print("WORKER_DIRECT_PRODUCT_FETCH=" + repr({
-                  "found": isinstance(live_record, dict),
-                  "price": live_record.get("price_num") if isinstance(live_record, dict) else None,
-                  "currency": live_record.get("currency") if isinstance(live_record, dict) else None,
-                  "availability": live_record.get("availability") if isinstance(live_record, dict) else None,
-                  "gtin": live_record.get("gtin") if isinstance(live_record, dict) else None,
-                  "fragrance": live_record.get("fragrance") if isinstance(live_record, dict) else None,
-              }))
-          finally:
-              session.close()
+
+          if not isinstance(record, dict):
+              raise RuntimeError("The single live product-page request returned no valid product record")
+
+          observed = {
+              "name": record.get("name"),
+              "brand": record.get("brand"),
+              "price": record.get("price_num"),
+              "currency": record.get("currency"),
+              "currency_explicit": record.get("currency_explicit"),
+              "availability": record.get("availability"),
+              "gtin": record.get("gtin"),
+              "url": record.get("url"),
+          }
+          print("PERFUMEMARKET_LIVE_EVIDENCE=" + repr(observed))
+
+          if str(record.get("gtin") or "") != EXPECTED_GTIN:
+              raise RuntimeError("Live GTIN did not match the canonical Rasasi Hawas London 100 ml variant")
+          if record.get("currency") != "EUR" or record.get("currency_explicit") is not True:
+              raise RuntimeError("Live source did not explicitly confirm EUR currency")
+          if record.get("availability") != "in_stock":
+              raise RuntimeError("Live source did not explicitly confirm in-stock availability")
+          try:
+              price = float(record.get("price_num"))
+          except (TypeError, ValueError):
+              raise RuntimeError("Live source returned no valid price") from None
+          if price <= 0:
+              raise RuntimeError("Live source returned a non-positive price")
+          if record.get("url") != PRODUCT_URL:
+              raise RuntimeError("Live product URL did not match the approved canonical URL")
+
+          connector = LegacyScraperConnector("perfumemarket", scraper)
+          matcher = _matcher()
+          with factory() as session, session.begin():
+              store = session.get(Store, STORE_ID)
+              run_id = start_ingestion_run(session, store_id=STORE_ID)
+              result = persist_connector_record(
+                  session,
+                  connector=connector,
+                  store_id=STORE_ID,
+                  raw_record=record,
+                  matcher=matcher,
+              )
+              if result.status == "promoted" and result.offer_id:
+                  store.status = "active"
+                  record_ingestion_progress(
+                      session, run_id=run_id,
+                      products_discovered=1, offers_created=1,
+                  )
+                  finish_ingestion_run(session, run_id=run_id, status="completed")
+              else:
+                  record_ingestion_progress(
+                      session, run_id=run_id,
+                      products_discovered=1, offers_rejected=1,
+                      error="canonical_promotion_not_completed:" + str(result.reason or result.status),
+                  )
+                  finish_ingestion_run(session, run_id=run_id, status="partial")
+                  raise RuntimeError(
+                      "Live product was fetched but canonical offer promotion was not approved: "
+                      + str(result.reason or result.status)
+                  )
+              print("PERFUMEMARKET_INGESTION_RUN=" + str(run_id))
+              print("PERFUMEMARKET_OFFER_ID=" + str(result.offer_id))
+
+          with factory() as session:
+              row = session.execute(text("""
+                  SELECT s.status AS store_status, o.status AS offer_status,
+                         o.price::text AS price, o.currency, o.availability, o.url,
+                         b.name AS brand, f.name AS fragrance,
+                         pv.size_ml, pv.gtin
+                  FROM stores s
+                  JOIN offers o ON o.store_id=s.id
+                  JOIN product_variants pv ON pv.id=o.product_variant_id
+                  JOIN fragrances f ON f.id=pv.fragrance_id
+                  JOIN brands b ON b.id=f.brand_id
+                  WHERE s.id=:store_id AND o.status='active'
+                    AND pv.gtin=:gtin
+                  ORDER BY o.captured_at DESC
+                  LIMIT 1
+              """), {"store_id": str(STORE_ID), "gtin": EXPECTED_GTIN}).mappings().first()
+              if not row:
+                  raise RuntimeError("No active canonical offer was found after ingestion")
+              if row["store_status"] != "active" or row["currency"] != "EUR" or row["availability"] != "in_stock":
+                  raise RuntimeError("Persisted PerfumeMarket offer failed final publication checks")
+              print("PERFUMEMARKET_FINAL_VERIFICATION=PASS")
+              print("PERFUMEMARKET_PERSISTED_OFFER=" + repr(dict(row)))
           PY
           )"
           ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
-          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python'" --app scenthunter --timeout 120
+          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python' " --app scenthunter --timeout 180
