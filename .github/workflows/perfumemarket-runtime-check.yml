@@ -1,0 +1,75 @@
+name: PerfumeMarket runtime identity check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/perfumemarket-runtime-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Inspect only the ScentHunter worker runtime
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl machine list --app scenthunter --json > machines.json
+          WORKER_ID="$(python - <<'PY'
+          import json
+          with open("machines.json", encoding="utf-8") as handle:
+              machines = json.load(handle)
+          workers = [
+              machine for machine in machines
+              if machine.get("config", {}).get("metadata", {}).get("fly_process_group") == "worker"
+          ]
+          workers = [machine for machine in workers if machine.get("state") == "started"]
+          if not workers:
+              print(json.dumps([
+                  {
+                      "id": machine.get("id"),
+                      "state": machine.get("state"),
+                      "group": machine.get("config", {}).get("metadata", {}).get("fly_process_group"),
+                  }
+                  for machine in machines
+              ]))
+              raise SystemExit("No started ScentHunter worker machine found")
+          print(workers[0]["id"])
+          PY
+          )"
+          echo "Selected worker machine: $WORKER_ID"
+
+          SCRIPT="$(cat <<'PY'
+          import os
+          from sqlalchemy import text
+          from app.db import make_session_factory
+
+          print("PERFUMEMARKET_QUERY_CONFIGURED=" + str(bool(os.getenv("SCENTHUNTER_DISCOVERY_QUERIES_PERFUMEMARKET"))))
+          factory = make_session_factory()
+          with factory() as session:
+              print("RUNTIME_DATABASE=" + str(session.execute(text("SELECT current_database()")).scalar()))
+              print("HAS_STORE_PRODUCTS=" + str(bool(session.execute(text("SELECT to_regclass('public.store_products') IS NOT NULL")).scalar())))
+              print("PERFUMEMARKET_STORE=" + repr(session.execute(text(
+                  "SELECT id::text, slug, status FROM stores WHERE slug='perfumemarket'"
+              )).all()))
+              jobs = session.execute(text(
+                  "SELECT id::text, stage, status, attempts, last_error "
+                  "FROM ingestion_queue_jobs "
+                  "WHERE payload->>'store_id'='a812a185-4e57-4da0-aef9-bee1d491b592' "
+                  "ORDER BY created_at DESC LIMIT 5"
+              )).all()
+              print("PERFUMEMARKET_JOBS=" + repr(jobs))
+          PY
+          )"
+          ENCODED="$(printf '%s' "$SCRIPT" | base64 -w0)"
+          flyctl machine exec "$WORKER_ID" "sh -lc 'cd /app/backend && echo $ENCODED | base64 -d | /app/.venv/bin/python'" --app scenthunter
