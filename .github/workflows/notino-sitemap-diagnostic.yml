@@ -1,6 +1,12 @@
 name: Notino sitemap diagnostic
 
 on:
+  push:
+    branches:
+      - investigate/notino-public-sitemap-discovery
+    paths:
+      - backend/scripts/check_notino_sitemap_live.py
+      - .github/workflows/notino-sitemap-diagnostic.yml
   pull_request:
     branches:
       - main
@@ -13,7 +19,12 @@ permissions:
 
 jobs:
   public-sitemap-probe:
-    if: github.event.pull_request.head.ref == 'investigate/notino-public-sitemap-discovery'
+    if: >-
+      github.ref == 'refs/heads/investigate/notino-public-sitemap-discovery' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.ref == 'investigate/notino-public-sitemap-discovery'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
