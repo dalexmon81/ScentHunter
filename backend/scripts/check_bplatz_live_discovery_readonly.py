@@ -20,6 +20,7 @@ from scenthunter_next_engine.offer_normalizer import normalize_offer  # noqa: E4
 QUERY = "Liquid Brun"
 BASE_URL = "https://en.bplatz.de"
 FETCH_TIMEOUT = (5, 20)
+MAX_FETCH_CANDIDATES = 5
 
 
 def _status_label(status_code: int) -> str:
@@ -109,6 +110,11 @@ def fetch_candidate(session: requests.Session, url: str, query: str = QUERY) -> 
         response.close()
 
 
+def select_fetch_urls(valid_urls: list[str]) -> list[str]:
+    """Bound the live product-page requests so the read-only probe stays small."""
+    return valid_urls[:MAX_FETCH_CANDIDATES]
+
+
 def main() -> int:
     discovery_session = requests.Session()
     try:
@@ -139,9 +145,10 @@ def main() -> int:
             seen.add(normalized)
             valid_urls.append(normalized)
 
+    urls_to_fetch = select_fetch_urls(valid_urls)
     fetch_results = []
     with requests.Session() as session:
-        for url in valid_urls:
+        for url in urls_to_fetch:
             fetch_results.append(fetch_candidate(session, url, QUERY))
 
     matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
@@ -200,6 +207,8 @@ def main() -> int:
         },
         "fetch": {
             "attempted": len(fetch_results),
+            "limit": MAX_FETCH_CANDIDATES,
+            "candidates_not_fetched": max(0, len(valid_urls) - len(fetch_results)),
             "parsed": parsed_count,
             "failures": [
                 {key: item.get(key) for key in (
