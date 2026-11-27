@@ -21,7 +21,13 @@ QUERIES = ("Afnan 9 pm", "Dior Sauvage", "Davidoff Cool Water")
 MAX_PRODUCT_FETCHES_PER_QUERY = 4
 NON_FRAGRANCE_PATH_TERMS = (
     "after-shave", "aftershave", "afeitado", "desodorante", "deodorante",
-    "desodorante", "stick", "gel", "ducha", "bath", "body-lotion",
+    "desodorante", "stick", "gel", "ducha", "bath", "body-lotion", "lineas-de-bano",
+)
+NON_FRAGRANCE_NAME_TERMS = (
+    "after shave", "aftershave", "desodorante", "deodorant", "limpiador",
+    "limpieza", "locion", "loción", "balsamo", "bálsamo", "gel",
+    "serum", "sérum", "cleanser", "lotion", "balm", "shaving",
+    "tonico", "tónico", "crema", "cream",
 )
 
 
