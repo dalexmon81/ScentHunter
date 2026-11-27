@@ -629,6 +629,7 @@ def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
     return None, ""
 
 
+# Keep this list limited to explicit non-fragrance category signals observed in live results.
 NON_FRAGRANCE_PRODUCT_MARKERS = (
     "make up", "makeup", "cosmetics", "cosmetic", "skincare", "skin care",
     "face cream", "facial cream", "gesichtscreme", "gesichtspflege", "hautpflege",
