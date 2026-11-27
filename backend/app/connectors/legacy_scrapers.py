@@ -387,6 +387,7 @@ class LegacyScraperConnector(StoreConnector):
             "external_product_id": str(raw.get("external_product_id") or url),
             "raw_name": raw.get("name") or source.get("source_name") or source.get("name"),
             "brand_raw": raw.get("brand") or source.get("source_brand") or source.get("brand"),
+            "fragrance": raw.get("fragrance") or source.get("fragrance"),
             "size_ml": size if size is not None else raw.get("size_ml"),
             "concentration": concentration if concentration is not None else raw.get("concentration"),
             "gtin": _identity_value(identity.get("gtin")) or raw.get("gtin"),

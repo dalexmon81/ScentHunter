@@ -621,7 +621,9 @@ def search(query):
                 if len(results) >= 200:
                     break
 
-    return results
+    # Discovery results are candidates, not verified products. Re-fetch every
+    # URL and discard stale/dead links before the connector sees them.
+    return _validate_discovered_products(session, results, query)
 
 
 # ---------------------------------------------------------------------------
@@ -875,11 +877,90 @@ def _pm_extract_concentration(title):
         return "Extrait de Parfum"
     if re.search(r"\b(edp|eau de parfum)\b", value):
         return "Eau de Parfum"
+    if re.search(r"\bparfum\b", value):
+        return "Parfum"
     if re.search(r"\b(edt|eau de toilette)\b", value):
         return "Eau de Toilette"
     if re.search(r"\b(eau de cologne|edc)\b", value):
         return "Eau de Cologne"
     return None
+
+
+def _validate_discovered_products(session, candidates, query):
+    """Reject stale Shopify search/catalog URLs before ingestion."""
+    validated = []
+    seen = set()
+    for candidate in candidates or []:
+        if not isinstance(candidate, dict):
+            continue
+        url = str(candidate.get("url") or "").strip()
+        key = url.rstrip("/").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        record = extract_product_page(session, url, query=query)
+        if record:
+            validated.append(record)
+        else:
+            print(f"PERFUMEMARKET DISCOVERY REJECTED: live product page unavailable or invalid | {url}")
+    return validated
+
+
+def _pm_extract_fragrance_name(title, brand, concentration):
+    """Derive the base fragrance name from the retailer's explicit title format."""
+    tokens = _tokens(title)
+    brand_tokens = _tokens(brand)
+    if brand_tokens and tokens[:len(brand_tokens)] == brand_tokens:
+        tokens = tokens[len(brand_tokens):]
+
+    gender_suffixes = {"men", "women", "unisex", "male", "female"}
+    concentration_markers = {
+        "Extrait de Parfum": (("extrait", "de", "parfum"), ("extrait",)),
+        "Eau de Parfum": (("edp",), ("eau", "de", "parfum")),
+        "Eau de Toilette": (("edt",), ("eau", "de", "toilette")),
+        "Eau de Cologne": (("edc",), ("eau", "de", "cologne")),
+        "Parfum": (("parfum",),),
+    }.get(concentration, ())
+
+    changed = True
+    while tokens and changed:
+        changed = False
+        while tokens and tokens[-1] in gender_suffixes:
+            tokens.pop()
+            changed = True
+        if tokens and tokens[-1] == "for":
+            tokens.pop()
+            changed = True
+        if tokens and re.fullmatch(r"\d+(?:[.,]\d+)?(?:ml|cl|l|oz)", tokens[-1], re.I):
+            tokens.pop()
+            changed = True
+        for marker in concentration_markers:
+            if len(tokens) >= len(marker) and tuple(tokens[-len(marker):]) == marker:
+                del tokens[-len(marker):]
+                changed = True
+                break
+
+    return " ".join(tokens).strip().title() or None
+
+
+def _pm_extract_gtin(product, soup):
+    """Read GTIN from structured data or an explicitly labeled product UPC/EAN field."""
+    for key in ("gtin13", "gtin12", "gtin14", "gtin"):
+        value = str(product.get(key) or "").strip()
+        if value:
+            digits = re.sub(r"\D", "", value)
+            if 8 <= len(digits) <= 14:
+                return digits, "shopify_jsonld"
+
+    page_text = soup.get_text(" ", strip=True)
+    match = re.search(
+        r"\b(?:UPC|EAN(?:-13)?|GTIN(?:-?(?:8|12|13|14))?)\s*[:#]?\s*(\d{8,14})\b",
+        page_text,
+        re.I,
+    )
+    if match:
+        return match.group(1), "product_page_label"
+    return "", None
 
 
 def extract_product_page(session, url, query):
@@ -966,21 +1047,17 @@ def extract_product_page(session, url, query):
     image = _pm_extract_image(product, response.url)
     size_ml = _pm_extract_size_ml(title)
     concentration = _pm_extract_concentration(title)
+    fragrance = _pm_extract_fragrance_name(title, brand, concentration)
 
     sku = str(product.get("sku") or "").strip()
-    gtin = str(
-        product.get("gtin13")
-        or product.get("gtin12")
-        or product.get("gtin14")
-        or product.get("gtin")
-        or ""
-    ).strip()
+    gtin, gtin_source = _pm_extract_gtin(product, soup)
     mpn = str(product.get("mpn") or "").strip()
 
     return {
         "store": "PerfumeMarket",
         "name": title,
         "brand": brand,
+        "fragrance": fragrance,
         "url": final_url,
         "image": image,
         "sku": sku,
@@ -998,11 +1075,12 @@ def extract_product_page(session, url, query):
             "url": final_url,
             "name": title,
             "brand": brand,
+            "fragrance": fragrance,
             "image": image,
         },
         "identity": {
             "sku": {"value": sku, "source": "shopify_jsonld"} if sku else None,
-            "gtin": {"value": gtin, "source": "shopify_jsonld"} if gtin else None,
+            "gtin": {"value": gtin, "source": gtin_source} if gtin else None,
             "mpn": {"value": mpn, "source": "shopify_jsonld"} if mpn else None,
         },
         "attributes": {
