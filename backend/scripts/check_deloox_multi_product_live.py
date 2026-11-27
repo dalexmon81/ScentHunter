@@ -96,6 +96,9 @@ def main() -> int:
                         "status": response.status_code,
                         "final_url": response.url,
                         "content_length": len(response.text or ""),
+                        "title": (scraper.BeautifulSoup(response.text or "", "lxml").title.get_text(" ", strip=True)
+                                  if scraper.BeautifulSoup(response.text or "", "lxml").title else None),
+                        "body_excerpt": scraper.clean((response.text or "")[:900]),
                     })
                     return response
 
