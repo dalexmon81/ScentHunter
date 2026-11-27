@@ -57,7 +57,7 @@ jobs:
       # writer for the authenticated feed in /data/store_catalog.sqlite3.
       # Stage credentials for this release; do not print or persist them.
       - name: Configure authorized Notino CJ feed for production
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           CJ_HTTP_USERNAME: ${{ secrets.CJ_HTTP_USERNAME }}
@@ -152,7 +152,7 @@ jobs:
           flyctl machines list --app scenthunter --json || true
 
       - name: Seed and verify canonical PostgreSQL catalog and retailer stores
-        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         timeout-minutes: 4
@@ -251,7 +251,7 @@ jobs:
           PY
 
       - name: Queue and verify PostgreSQL active-offer refresh for Bplatz
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         timeout-minutes: 3
@@ -309,7 +309,7 @@ jobs:
           }
 
       - name: Queue and verify daily PostgreSQL discovery for all legacy retailers
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         timeout-minutes: 3
@@ -375,7 +375,7 @@ jobs:
           }
 
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -486,22 +486,22 @@ jobs:
           PY
 
       - name: Install native libraries for backend test dependencies
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev
 
       - name: Install backend test dependencies
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         run: python -m pip install -r backend/requirements.txt
 
       - name: Run bounded Deloox discovery regression tests
-        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[parfumcity-only]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         working-directory: backend
         run: python -m unittest tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_deadline_skips_initial_fanout_when_expired tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_rotates_query_and_limits_each_run tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_budget_reserves_time_for_frontier tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_discovery_graph_reports_search_then_frontier_progress tests.test_deloox_out_of_stock.DelooxRegionalOfferPriorityTests tests.test_phase0_baseline_jobs -v
 
       - name: Exercise the canonical PostgreSQL search API
-        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[config-only-no-db]') && !contains(github.event.head_commit.message, '[perfumemarket-only]') }}
         timeout-minutes: 2
         shell: bash
         run: |
