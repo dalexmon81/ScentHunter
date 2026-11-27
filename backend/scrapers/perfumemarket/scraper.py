@@ -562,8 +562,18 @@ def search(query):
         "SCENTHUNTER_DISCOVERY_PRODUCT_URLS_PERFUMEMARKET", ""
     )
     for seeded_url in (value.strip() for value in seeded_urls.split(";")):
-        if seeded_url:
-            add_items([{"name": query, "url": seeded_url}], "operator-seed-url")
+        if not seeded_url:
+            continue
+        parsed_seed = urlparse(seeded_url)
+        if (
+            parsed_seed.scheme not in {"http", "https"}
+            or (parsed_seed.hostname or "").lower()
+            not in {"perfumemarket.eu", "www.perfumemarket.eu", "perfumemarket.nl", "www.perfumemarket.nl"}
+            or "/products/" not in parsed_seed.path.lower()
+        ):
+            print(f"PERFUMEMARKET INVALID OPERATOR PRODUCT URL SEED: {seeded_url}")
+            continue
+        add_items([{"name": query, "url": seeded_url}], "operator-seed-url")
 
     # 1) Shopify predictive search. Always run it, but never stop the search
     # here: a partial predictive response must not hide a valid product found
