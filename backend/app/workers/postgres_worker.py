@@ -137,7 +137,7 @@ def main() -> None:
                         candidate_store_id = UUID(str(job.get("payload", {}).get("store_id")))
                         with session_factory() as session:
                             store_slug = session.scalar(select(Store.slug).where(Store.id == candidate_store_id))
-                        if store_slug == "parfumcity-nl":
+                        if store_slug in {"parfumcity-nl", "perfumemarket"}:
                             cooldown_store_id = str(candidate_store_id)
                         else:
                             retry_after_seconds = None
