@@ -366,23 +366,31 @@ def parse_product_html(html, final_url, query):
 
     size = size_ml(name, soup.get_text(" ", strip=True))
     offers = offer_list(data)
-    explicit_currency = next(
-        (clean(offer.get("priceCurrency")) for offer in offers
-         if offer.get("priceCurrency") not in (None, "")),
+    # Keep price, currency and stock bound to the same JSON-LD Offer.
+    # Product pages may expose several variant offers; independently taking
+    # the first currency and last stock signal can publish a mixed offer.
+    selected_offer = next(
+        (
+            offer for offer in offers
+            if parse_price(offer.get("price") or offer.get("lowPrice")) is not None
+        ),
         None,
     )
-    price = None
+    price = (
+        parse_price(selected_offer.get("price") or selected_offer.get("lowPrice"))
+        if selected_offer else None
+    )
+    explicit_currency = (
+        clean(selected_offer.get("priceCurrency"))
+        if selected_offer and selected_offer.get("priceCurrency") not in (None, "")
+        else None
+    )
     availability = None
-    for offer in offers:
-        p = parse_price(offer.get("price") or offer.get("lowPrice"))
-        if p is not None:
-            price = p
-            break
-    for offer in offers:
-        a = norm(offer.get("availability") or "")
-        if "outofstock" in a or "soldout" in a:
+    if selected_offer:
+        stock_signal = norm(selected_offer.get("availability") or "")
+        if "outofstock" in stock_signal or "soldout" in stock_signal:
             availability = "out_of_stock"
-        elif "instock" in a or "available" in a:
+        elif "instock" in stock_signal or "available" in stock_signal:
             availability = "in_stock"
     page_text = soup.get_text(" ", strip=True)
     if availability is None:
@@ -390,9 +398,9 @@ def parse_product_html(html, final_url, query):
 
     if price is None:
         price_patterns = [
-            r"retail\\s+price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\\s*€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
+            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
         ]
         for pattern in price_patterns:
             m = re.search(pattern, page_text, re.I)

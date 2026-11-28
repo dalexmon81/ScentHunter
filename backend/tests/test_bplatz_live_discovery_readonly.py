@@ -17,6 +17,12 @@ SPEC.loader.exec_module(PROBE)
 
 
 class BplatzLiveDiscoveryProbeTests(unittest.TestCase):
+    def test_live_fetch_is_bounded_to_five_product_pages(self):
+        urls = [f"https://bplatz.de/products/item-{index}" for index in range(40)]
+        selected = PROBE.select_fetch_urls(urls)
+        self.assertEqual(len(selected), 5)
+        self.assertEqual(selected, urls[:5])
+
     def test_empty_html_is_reported_without_calling_parser(self):
         response = Mock()
         response.url = "https://en.bplatz.de/products/liquid-brun"
