@@ -4,6 +4,11 @@ on:
   # Temporarily paused during the Neon quota/restore verification window.
   # Keep manual dispatch available for an explicitly approved recovery run.
   workflow_dispatch:
+    inputs:
+      confirm_production_import:
+        description: "Type AUTHORIZE_NOTINO_PRODUCTION_IMPORT to run the production Notino feed import"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -17,7 +22,7 @@ jobs:
     name: Import authorized Notino CJ feed into PostgreSQL
     # This workflow is manual-only while the Neon operational database is
     # awaiting quota reset and read-only restore verification.
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_production_import == 'AUTHORIZE_NOTINO_PRODUCTION_IMPORT' }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
 
