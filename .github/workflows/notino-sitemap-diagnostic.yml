@@ -1,0 +1,37 @@
+name: Notino sitemap diagnostic
+
+on:
+  push:
+    branches:
+      - investigate/notino-public-sitemap-discovery
+    paths:
+      - backend/scripts/check_notino_sitemap_live.py
+
+permissions:
+  contents: read
+
+jobs:
+  public-sitemap-probe:
+    if: github.ref == 'refs/heads/investigate/notino-public-sitemap-discovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install only the scraper's runtime dependencies
+        run: python -m pip install requests beautifulsoup4
+
+      - name: Probe public Notino.fr sitemap (one request, read-only)
+        timeout-minutes: 2
+        env:
+          PYTHONPATH: backend
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python backend/scripts/check_notino_sitemap_live.py

@@ -97,6 +97,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python backend/scripts/check_easycosmetic_discovery_live.py
 
+
       - name: Run Notino feed and staging catalog seed regression tests
         env:
           PYTHONPATH: backend
@@ -110,7 +111,12 @@ jobs:
           tests/test_bplatz_persistence_service.py
 
       - name: Probe public Notino storefront fallback (read-only, 5 products)
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'fix/parfumcity-html-product-fallback'
+        if: >-
+          github.event_name != 'pull_request' ||
+          (
+            github.event.pull_request.head.ref != 'fix/parfumcity-html-product-fallback' &&
+            github.event.pull_request.head.ref != 'investigate/notino-public-sitemap-discovery'
+          )
         id: notino-public-smoke
         continue-on-error: true
         env:
