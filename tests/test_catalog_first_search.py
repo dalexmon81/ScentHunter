@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from types import SimpleNamespace
-from urllib.parse import quote
 
 import pytest
 import requests
@@ -18,7 +17,6 @@ import catalog_engine
 from app.api import catalog_search
 from app.models import IngestionRaw, MatchAudit, Offer, Store
 from app.search.catalog import catalog_status, search_catalog, _display_offer_url
-from scrapers.notino.affiliate_feed import validated_cj_offer_url
 
 
 @pytest.fixture
@@ -261,38 +259,19 @@ def test_browser_demo_route_is_registered_and_uses_catalog_api():
 
 
 
-def test_notino_catalog_link_preserves_only_exact_validated_cj_destination():
+def test_notino_catalog_link_always_uses_direct_retailer_url():
     product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
-    click_url = (
-        "https://anrdoezrs.net/click-123-456?url="
-        + quote(product_url, safe="")
-    )
-    assert validated_cj_offer_url(click_url, product_url) == click_url
-
     offer = SimpleNamespace(url=product_url)
-    raw = SimpleNamespace(raw_payload={"affiliate_url": click_url})
+    raw = SimpleNamespace(raw_payload={"affiliate_url": "https://anrdoezrs.net/click-123", "source": "notino_public_storefront"})
     for slug in ("notino", "notino-fr"):
         store = SimpleNamespace(slug=slug)
-        assert _display_offer_url(offer, store, raw) == click_url
-
-    wrong_destination = click_url.replace("liquid-brun", "other-product")
-    raw.raw_payload = {"affiliate_url": wrong_destination}
-    assert _display_offer_url(offer, store, raw) == product_url
-
-    raw.raw_payload = {
-        "affiliate_url": "https://evil.example/click?url=" + quote(product_url, safe="")
-    }
-    assert _display_offer_url(offer, store, raw) == product_url
+        assert _display_offer_url(offer, store, raw) == product_url
 
 
-
-def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypatch):
+def test_notino_catalog_search_never_returns_affiliate_redirect(pilot, monkeypatch):
     engine, result = pilot
     product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
-    click_url = (
-        "https://anrdoezrs.net/click-123-456?url="
-        + quote(product_url, safe="")
-    )
+    now = datetime.now(timezone.utc)
     with Session(engine) as session:
         offer = session.get(Offer, result.offer_id)
         store = session.get(Store, offer.store_id)
@@ -301,28 +280,62 @@ def test_notino_affiliate_link_is_returned_by_catalog_search_api(pilot, monkeypa
         store.name = "Notino.fr"
         store.domain = "www.notino.fr"
         offer.url = product_url
-        raw.raw_payload = {
-            **dict(raw.raw_payload),
-            "currency_explicit": True,
-            "source_updated_at": datetime.now(timezone.utc).isoformat(),
-            "affiliate_url": click_url,
-        }
+        raw.raw_payload = {**dict(raw.raw_payload), "source": "notino_public_storefront", "captured_at": now.isoformat(), "currency_explicit": True, "affiliate_url": "https://anrdoezrs.net/click-123"}
         session.commit()
-
     monkeypatch.setattr(catalog_search, "_engine", lambda: engine)
     app = FastAPI()
     app.include_router(catalog_search.router)
     with TestClient(app) as client:
-        response = client.get(
-            "/api/catalog/search",
-            params={"q": "French Avenue Liquid Brun EDP 100ml"},
-        )
+        response = client.get("/api/catalog/search", params={"q": "French Avenue Liquid Brun EDP 100ml"})
     assert response.status_code == 200
-    data = response.json()
-    assert data["offer_count"] == 1
-    returned_offer = data["results"][0]["offers"][0]
-    assert returned_offer["url"] == click_url
-    assert returned_offer["product_url"] == product_url
+    returned = response.json()["results"][0]["offers"][0]
+    assert returned["url"] == product_url
+    assert returned["product_url"] == product_url
+
+
+def test_notino_refresh_capture_timestamp_in_nested_observation_passes_search_gate(pilot):
+    engine, result = pilot
+    now = datetime.now(timezone.utc)
+    product_url = "https://www.notino.fr/french-avenue/liquid-brun/"
+    with Session(engine) as session:
+        offer = session.get(Offer, result.offer_id)
+        store = session.get(Store, offer.store_id)
+        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+        store.slug = "notino-fr"
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        offer.url = product_url
+        offer.captured_at = now
+        raw.raw_payload = {
+            **dict(raw.raw_payload),
+            "source": "notino_public_storefront",
+            "currency_explicit": True,
+            "refresh_observation": {"captured_at": now.isoformat()},
+        }
+        session.flush()
+        found = search_catalog(
+            session, "French Avenue Liquid Brun EDP 100ml", now=now
+        )
+        assert found["count"] == found["offer_count"] == 1
+        assert found["results"][0]["offers"][0]["url"] == product_url
+
+
+def test_notino_legacy_feed_rows_are_not_published(pilot):
+    engine, result = pilot
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        offer = session.get(Offer, result.offer_id)
+        store = session.get(Store, offer.store_id)
+        raw = session.get(IngestionRaw, result.ingestion_raw_id)
+        store.name = "Notino.fr"
+        store.domain = "www.notino.fr"
+        offer.url = "https://www.notino.fr/french-avenue/liquid-brun/"
+        raw.raw_payload = {**dict(raw.raw_payload), "source": "notino_authorized_cj_viv_xml_feed", "source_updated_at": now.isoformat(), "currency_explicit": True}
+        for legacy_slug in ("notino", "notino-fr"):
+            store.slug = legacy_slug
+            session.flush()
+            result = search_catalog(session, "French Avenue Liquid Brun EDP 100ml", now=now)
+            assert result["count"] == result["offer_count"] == 0
 
 
 def test_bplatz_hydration_uses_authoritative_parser_for_size_and_currency():

@@ -332,18 +332,12 @@ class CanonicalGtinImportTests(unittest.TestCase):
                     self.assertIsNotNone(ingested.offer_id)
                     self.assertEqual(ingested.product_variant_id, variant.id)
 
+                    # Legacy CJ/VIV ingestion can remain in historical storage,
+                    # but it must never be surfaced as a current public Notino offer.
                     after = search_catalog(session, "Dior Sauvage EDP 100 ml")
-                    self.assertEqual(after["count"], 1)
-                    self.assertEqual(after["offer_count"], 1)
-                    public_offer = after["results"][0]["offers"][0]
-                    self.assertEqual(public_offer["store"], "Notino.fr")
-                    self.assertEqual(public_offer["price"], "89.90")
-                    self.assertEqual(public_offer["currency"], "EUR")
-                    self.assertEqual(public_offer["availability"], "in_stock")
-                    self.assertEqual(
-                        public_offer["product_url"],
-                        raw_record["product_url"],
-                    )
+                    self.assertEqual(after["count"], 0)
+                    self.assertEqual(after["offer_count"], 0)
+                    self.assertEqual(after["results"], [])
                     self.assertEqual(
                         session.scalar(select(func.count()).select_from(Offer)), 1,
                     )
