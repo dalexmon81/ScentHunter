@@ -45,7 +45,8 @@ jobs:
         run: python -m compileall -q backend/app backend/scripts/restore_readonly_smoke.py
 
   readonly-api-smoke:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    # Neon quota/restore checks are deliberately manual-only; PRs run static validation above.
+    if: github.event_name == 'workflow_dispatch'
     name: Catalog status and search against disposable Neon clone
     runs-on: ubuntu-latest
     timeout-minutes: 10
