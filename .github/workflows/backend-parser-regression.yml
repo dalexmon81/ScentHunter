@@ -105,6 +105,7 @@ jobs:
           tests/test_notino_authorized_feed.py
           tests/test_notino_search_adapter.py
           tests/test_catalog_notino_discovery.py
+          tests/test_notino_identity_guard.py
           backend/tests/test_seed_catalog_store_safety.py
           backend/tests/test_bplatz_live_offer_check.py
           tests/test_bplatz_persistence_service.py
