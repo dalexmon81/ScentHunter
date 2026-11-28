@@ -1,10 +1,7 @@
 name: ScentHunter PostgreSQL pre-cutover backup
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/workflows/scenthunter-postgres-precutover-backup.yml"
+  # Legacy SQLite pre-cutover backup. Manual-only; never run as a PR side effect.
   workflow_dispatch:
 
 permissions:
@@ -16,7 +13,7 @@ concurrency:
 
 jobs:
   backup:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
