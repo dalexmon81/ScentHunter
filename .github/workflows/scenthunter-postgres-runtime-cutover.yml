@@ -1,12 +1,13 @@
 name: ScentHunter guarded PostgreSQL runtime cutover
 
 on:
+  # Production runtime cutover must never run as a side effect of editing this file.
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/scenthunter-postgres-runtime-cutover.yml"
+    inputs:
+      confirm_production_runtime_cutover:
+        description: "Type AUTHORIZE_PRODUCTION_POSTGRES_RUNTIME_CUTOVER to confirm this production change"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -17,6 +18,7 @@ concurrency:
 
 jobs:
   cutover:
+    if: ${{ inputs.confirm_production_runtime_cutover == 'AUTHORIZE_PRODUCTION_POSTGRES_RUNTIME_CUTOVER' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
