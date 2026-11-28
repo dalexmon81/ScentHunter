@@ -54,3 +54,5 @@ jobs:
 
       - name: Confirm diagnostic boundary
         run: echo "READ_ONLY_DATABASE_INVENTORY=COMPLETE; no database writes, backups, deploys, or restarts were performed."
+
+# Trigger a fresh read-only production inventory; no production data is modified.
