@@ -2,6 +2,11 @@ name: ScentHunter - Safe volume recovery fork
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_volume_fork:
+        description: "Type AUTHORIZE_VOLUME_RECOVERY_FORK to create an additional Fly volume"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   fork-volume:
+    if: ${{ inputs.confirm_volume_fork == 'AUTHORIZE_VOLUME_RECOVERY_FORK' }}
     name: Fork production volume without deploying
     runs-on: ubuntu-latest
     timeout-minutes: 15
