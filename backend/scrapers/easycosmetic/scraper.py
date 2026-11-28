@@ -1133,6 +1133,22 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         price, currency, availability = _extract_offer_data(product_json)
         image = _extract_image_url(product_json.get("image"))
 
+    if not brand:
+        # Easycosmetic exposes the manufacturer in the first-level brand
+        # breadcrumb even on pages whose Product JSON-LD omits brand.
+        for breadcrumb in soup.select(".header-breadcrumb-next a[href]"):
+            href = urljoin(url, str(breadcrumb.get("href") or ""))
+            parsed_href = urlparse(href)
+            path_parts = [part for part in parsed_href.path.split("/") if part]
+            candidate_brand = _clean(breadcrumb.get_text(" ", strip=True))
+            if (
+                parsed_href.hostname in {"easycosmetic.de", "www.easycosmetic.de"}
+                and len(path_parts) == 1
+                and candidate_brand
+            ):
+                brand = candidate_brand
+                break
+
     if not image:
         image = _extract_page_image(soup, name)
 
@@ -1225,6 +1241,15 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "availability": availability,
         "image": image,
         "size_ml": size_ml,
+        "gtin": (
+            product_json.get("gtin13")
+            or product_json.get("gtin")
+            or product_json.get("gtin12")
+            or product_json.get("gtin8")
+            if product_json else None
+        ),
+        "sku": product_json.get("sku") if product_json else None,
+        "mpn": product_json.get("mpn") if product_json else None,
         "url": url,
         # Keep structured source evidence so catalog ingestion can distinguish
         # an explicit ISO currency from the parser's EUR fallback.

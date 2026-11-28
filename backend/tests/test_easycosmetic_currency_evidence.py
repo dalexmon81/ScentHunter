@@ -37,6 +37,42 @@ class EasycosmeticCurrencyEvidenceTests(unittest.TestCase):
         self.assertEqual(normalized["currency"], "EUR")
         self.assertTrue(normalized["currency_explicit"])
 
+    def test_brand_and_gtin_are_recovered_from_verified_product_breadcrumb_and_jsonld(self):
+        html = """
+        <html><body>
+          <nav>
+            <div class="header-breadcrumb-next">
+              <a href="https://www.easycosmetic.de/giorgio-armani">Giorgio Armani</a>
+            </div>
+          </nav>
+          <script type="application/ld+json">
+            {
+              "@type": "Product",
+              "name": "Giorgio Armani Acqua di Gio Eau de Parfum 100 ml",
+              "gtin13": "3614273662504",
+              "sku": "TEST-SKU",
+              "offers": {"price": "89.99", "priceCurrency": "EUR",
+                         "availability": "https://schema.org/InStock"}
+            }
+          </script>
+          <main><article class="product-detail">
+            <h1>Giorgio Armani Acqua di Gio Eau de Parfum 100 ml</h1>
+            <div class="product-price"><span>89,99</span><span> €</span></div>
+            <p>Auf Lager</p>
+          </article></main>
+        </body></html>
+        """
+        parsed = scraper._parse_product_html(PRODUCT_URL, html)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["brand"], "Giorgio Armani")
+        self.assertEqual(parsed["gtin"], "3614273662504")
+        self.assertEqual(parsed["sku"], "TEST-SKU")
+
+        connector = LegacyScraperConnector("easycosmetic", SimpleNamespace())
+        normalized = connector.parse_raw(parsed)
+        self.assertEqual(normalized["brand_raw"], "Giorgio Armani")
+        self.assertEqual(normalized["gtin"], "3614273662504")
+
     def test_numeric_price_without_visible_currency_is_not_explicit_eur(self):
         html = """
         <html><body><main><article class="product-detail">
