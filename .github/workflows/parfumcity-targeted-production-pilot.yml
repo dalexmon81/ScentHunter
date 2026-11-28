@@ -6,6 +6,11 @@ on:
     paths:
       - .github/workflows/parfumcity-targeted-production-pilot.yml
   workflow_dispatch:
+    inputs:
+      confirm_production_pilot:
+        description: "Type AUTHORIZE_PARFUMCITY_PRODUCTION_PILOT to process production ParfumCity queue jobs"
+        required: true
+        type: string
   workflow_run:
     workflows: ["Fly Deploy"]
     types: [completed]
@@ -19,7 +24,7 @@ jobs:
   parfumcity:
     # Never run the ParfumCity pilot as a side effect of another retailer's
     # successful deployment. Require an explicit ParfumCity-only commit tag.
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[parfumcity-only]')) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[parfumcity-only]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.confirm_production_pilot == 'AUTHORIZE_PARFUMCITY_PRODUCTION_PILOT') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[parfumcity-only]')) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[parfumcity-only]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
