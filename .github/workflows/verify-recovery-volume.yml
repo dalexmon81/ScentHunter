@@ -2,6 +2,11 @@ name: ScentHunter - Read-only recovery volume verification
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_recovery_inspection:
+        description: "Type AUTHORIZE_TEMPORARY_RECOVERY_MACHINE to create a temporary inspection machine"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   verify-recovery-volume:
+    if: ${{ inputs.confirm_recovery_inspection == 'AUTHORIZE_TEMPORARY_RECOVERY_MACHINE' }}
     name: Inspect recovery SQLite database without deploying
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -25,7 +31,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           RECOVERY_VOLUME_ID="vol_vgnqnnwxex3d5xz4"
 
           echo "Confirming that the recovery volume exists and is unattached..."

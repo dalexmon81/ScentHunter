@@ -2,6 +2,11 @@ name: ScentHunter Offer-First PostgreSQL import apply
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_neon_import:
+        description: "Type AUTHORIZE_OFFERFIRST_NEON_IMPORT to write the reviewed backup into the dedicated Neon database"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   import:
+    if: ${{ inputs.confirm_neon_import == 'AUTHORIZE_OFFERFIRST_NEON_IMPORT' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

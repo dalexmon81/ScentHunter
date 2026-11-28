@@ -2,6 +2,11 @@ name: Controlled legacy SQLite telemetry rollback
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_production_rollback:
+        description: "Type AUTHORIZE_PRODUCTION_LEGACY_ROLLBACK to authorize the production secret change and deploy"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   rollback:
+    if: ${{ inputs.confirm_production_rollback == 'AUTHORIZE_PRODUCTION_LEGACY_ROLLBACK' }}
     name: Restore current main build on Fly.io
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -34,9 +40,7 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@1.5
 
-      # SAFETY: Run this workflow only after the 30-minute observation window has ended.
-      # NEVER run rollback during the observation window.
-      # secrets unset followed by deploy can restart or replace the running application.
+      # SAFETY: Run only after the observation window has ended.
       - name: Disable telemetry and restore verified main build
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
