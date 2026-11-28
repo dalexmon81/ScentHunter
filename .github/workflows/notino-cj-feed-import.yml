@@ -1,8 +1,8 @@
 name: Notino CJ Feed Import
 
 on:
-  schedule:
-    - cron: "17 5 * * *"
+  # Temporarily paused during the Neon quota/restore verification window.
+  # Keep manual dispatch available for an explicitly approved recovery run.
   workflow_dispatch:
 
 permissions:
@@ -15,9 +15,9 @@ concurrency:
 jobs:
   import:
     name: Import authorized Notino CJ feed into PostgreSQL
-    # Ingestion runs on its daily schedule or an explicit manual request,
-    # never as a side effect of an unrelated application deployment.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    # This workflow is manual-only while the Neon operational database is
+    # awaiting quota reset and read-only restore verification.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
 
