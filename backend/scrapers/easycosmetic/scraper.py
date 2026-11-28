@@ -581,6 +581,21 @@ def _extract_brand(product_json: Dict[str, Any]) -> str:
     return _clean(brand)
 
 
+def _brand_from_product_url_title(url: str, name: str) -> str:
+    """Use the URL's brand category only when the visible title repeats it."""
+    try:
+        slug = urlparse(url).path.strip("/").split("/", 1)[0]
+    except ValueError:
+        return ""
+    slug_brand = _clean(slug.replace("-", " ").replace("_", " "))
+    if not slug_brand or not name:
+        return ""
+    title_prefix = " ".join(str(name).split()[:len(slug_brand.split())])
+    if _normalise_text(title_prefix) == _normalise_text(slug_brand):
+        return title_prefix
+    return ""
+
+
 def _extract_offer_data(
     product_json: Dict[str, Any],
 ) -> Tuple[Optional[float], str, str]:
@@ -629,6 +644,41 @@ def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
     return None, ""
 
 
+# Keep this list limited to explicit non-fragrance category signals observed in live results.
+NON_FRAGRANCE_PRODUCT_MARKERS = (
+    "make up", "makeup", "cosmetics", "cosmetic", "skincare", "skin care",
+    "face cream", "facial cream", "gesichtscreme", "gesichtspflege", "hautpflege",
+    "body lotion", "body cream", "hand cream", "handcreme", "shampoo",
+    "conditioner", "shower gel", "duschgel", "body wash", "deodorant",
+    "antiperspirant", "mascara", "lipstick", "lip gloss", "lip glow", "lip balm",
+    "foundation", "concealer", "eyeshadow", "eye shadow", "eyeliner",
+    "eye palette", "rosy glow", "crème fine", "creme fine", "crème riche",
+    "creme riche", "hyalushot", "tagescreme", "tagespflege", "pdrn shot",
+    "pdrn-shot", "le sérum", "le serum", "pro-collagen shot",
+    "pro collagen shot", "augenfluid", "retishot", "contour stick",
+    "aftershave spray", "seife", "dreamskin", "mask", "pflegemaske",
+    "luminizer", "highlighter", "illuminator", "star filter",
+    "spezialprodukt", "serum", "serum yeux", "augenserum", "dermo system",
+    "nail polish", "nagellack", "sunscreen", "sun cream", "sonnencreme",
+    "aftershave balm", "after shave balm", "aftershave lotion", "rasiergel",
+)
+
+
+def _is_non_fragrance_product(text: str) -> bool:
+    """Reject clearly non-fragrance product categories during perfume discovery.
+
+    Unknown categories remain eligible for the product-page parser; this is a
+    conservative exclusion filter, not a requirement that every perfume title
+    contain the word 'parfum'.
+    """
+    normalized = _normalise_text(text)
+    padded = f" {normalized} "
+    return any(
+        f" {_normalise_text(marker)} " in padded
+        for marker in NON_FRAGRANCE_PRODUCT_MARKERS
+    )
+
+
 def _extract_candidate_links(
     soup: BeautifulSoup,
     query: str,
@@ -643,6 +693,8 @@ def _extract_candidate_links(
         normalized_candidate_text = _normalise_text(
             f"{text} {url}"
         )
+        if _is_non_fragrance_product(normalized_candidate_text):
+            return
 
         bundle_markers = (
             "box",
@@ -1132,6 +1184,11 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         brand = _extract_brand(product_json)
         price, currency, availability = _extract_offer_data(product_json)
         image = _extract_image_url(product_json.get("image"))
+
+    # Some Easycosmetic product JSON-LD omits brand. Recover it only when the
+    # first URL category exactly matches the beginning of the visible H1.
+    if not brand:
+        brand = _brand_from_product_url_title(url, name)
 
     if not image:
         image = _extract_page_image(soup, name)

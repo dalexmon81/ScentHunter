@@ -73,6 +73,7 @@ def main() -> int:
         missing = [
             key for key, valid in (
                 ("name", bool(normalized.get("raw_name"))),
+                ("brand", bool(normalized.get("brand_raw"))),
                 ("size_ml", normalized.get("size_ml") is not None),
                 ("price", normalized.get("price") is not None),
                 ("explicit_eur", normalized.get("currency") == "EUR" and normalized.get("currency_explicit") is True),

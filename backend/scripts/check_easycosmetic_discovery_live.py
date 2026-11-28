@@ -11,7 +11,7 @@ from scrapers.easycosmetic import scraper
 
 
 QUERY = "Dior"
-SEARCH_URL = scraper.SEARCH_URL.format(quote_plus(QUERY))
+SEARCH_URL = f"{scraper.BASE_URL}/suche?searchfor={quote_plus(QUERY)}"
 
 
 def main() -> int:
