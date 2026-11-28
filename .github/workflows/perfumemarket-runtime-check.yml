@@ -2,6 +2,11 @@ name: PerfumeMarket single-request live ingestion
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_live_ingestion:
+        description: "Type AUTHORIZE_PERFUMEMARKET_LIVE_INGESTION to fetch and persist the production test offer"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -9,6 +14,7 @@ permissions:
 
 jobs:
   ingest:
+    if: ${{ inputs.confirm_live_ingestion == 'AUTHORIZE_PERFUMEMARKET_LIVE_INGESTION' }}
     runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
