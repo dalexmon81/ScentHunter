@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Probe Phase 0 status
+      - name: Probe Phase 0 PostgreSQL baseline
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
           SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
@@ -19,31 +19,38 @@ jobs:
         run: |
           set -euo pipefail
           BASE_URL="${SCENTHUNTER_BASELINE_URL%/}"
-          STATUS_URL="${BASE_URL}/admin/phase0/baseline/latest"
+          STATUS_URL="${BASE_URL}/admin/phase0/postgres-baseline"
 
           echo "PROBING=$STATUS_URL"
 
-          set +e
-          curl --silent --show-error \
+          HTTP_STATUS="$(curl --silent --show-error \
             --connect-timeout 10 \
-            --max-time 15 \
+            --max-time 45 \
             -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
             -H "Accept: application/json" \
-            -w '\nHTTP_STATUS=%{http_code}\n' \
+            -w '%{http_code}' \
             "$STATUS_URL" \
-            -o phase0-status.json
-          curl_exit=$?
-          set -e
+            -o phase0-status.json)"
 
-          echo "CURL_EXIT=$curl_exit"
-          cat phase0-status.json || true
+          echo "HTTP_STATUS=$HTTP_STATUS"
+          cat phase0-status.json
 
-          test -s phase0-status.json
+          test "$HTTP_STATUS" = "200"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("phase0-status.json").read_text())
+          assert data.get("report") == "phase0-postgresql-read-only", data
+          assert data.get("database_backend") == "postgresql", data
+          assert data.get("read_only") is True, data
+          print("PHASE0_STATUS_PROBE=PASS")
+          PY
 
       - name: Upload status probe
         uses: actions/upload-artifact@v4
         with:
           name: phase0-status-probe
           path: phase0-status.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
