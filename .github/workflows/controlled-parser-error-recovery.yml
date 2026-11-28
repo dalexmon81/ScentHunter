@@ -3,6 +3,11 @@ name: PostgreSQL ingestion runtime audit
 on:
   push:
     branches: [main]
+    # Fly Deploy intentionally ignores workflow-only changes. Do not start a
+    # PostgreSQL runtime audit that waits for a deploy which cannot run.
+    paths-ignore:
+      - .github/workflows/**
+      - backend/scenthunter_next_engine/baseline_report.py
 
 permissions:
   contents: read
